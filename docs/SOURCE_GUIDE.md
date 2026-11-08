@@ -67,6 +67,7 @@ The game is split cleanly into a **simulation** that knows nothing about drawing
             │   military   (sim_military.gd)   territory, soldiers, battles   │
             │   research   (sim_research.gd)   points, techs, ages            │
             │   ai         (sim_ai.gd)         what the rivals build and do   │
+            │   sea        (sim_sea.gd)        ships, harbours, expeditions   │
             │   features   (features/*.gd)     optional systems and mods      │
             │   Diplomacy  (diplomacy.gd)      war, peace, alliances, trade   │
             └─────────────────────────────────────────────────────────────────┘
@@ -170,9 +171,17 @@ after 5 more minutes: true"). The rules that keep it so:
   carrier per stretch of road between flags (buildings, junctions, at least every 4 tiles), plus a donkey on
   a busy stretch. A load's whole
   journey is planned when it sets off: on each stretch it starts when it is at the flag and that
-  stretch's carrier is free (`p.segs`: two free-again times per stretch), so loads wait at flags on busy
+  stretch's carrier is free (`p.segs`: a `Vector3` per stretch, the free-again times of its two
+  carriers and of its donkey slot, used only once the realm has donkeys from a donkey farm; legs carried by a
+  donkey are marked `DONKEY_LEG`), so loads wait at flags on busy
   roads; a load that would wait over `MAX_QUEUE` is held back. `Trip.legs` holds the plan for drawing.
-  `tools/carriers_compare.gd` plays the same game with and without the option.
+  `tools/carriers_compare.gd` plays the same game with and without the option. Flags the player sets
+  (`p.flags`, `toggle_flag`) split a stretch where they stand; rivals set theirs in `_ai_flags`.
+- **Ships** (`sim_sea.gd`). A shipyard makes the virtual good "ship" (`p.ships`, at most `MAX_SHIPS`).
+  `expedition()` sends a ship with planks, stone and a soldier from a harbour to a free coast, where
+  `ship_arrival()` founds a new harbour (a colony). `sea_transfers()` (every 5 s) carries a load between
+  two harbours no road joins. Ships are Trips of kind "ship" that follow `water_path()` (`Trip.aim` is the
+  landing tile); `p.ships_out` counts those at sea.
 - **The road network**. For each realm, `_build_net` runs a Dijkstra search from all its stores at once
   over its roads, giving every road tile its walking time to the nearest store (`_net_dist`) and the way
   there (`_net_par`). `_relax_net` updates it cheaply when roads are only added. `store_field(s)` does
@@ -219,6 +228,16 @@ Science buildings make research points. Points go into the current tech (`p.rese
 (`mods`, cached in `_type_bonus`). Finishing the last tech of an age moves the realm to the next age;
 buildings built later take that age's look, older ones can be renovated. Repeatable "mastery" studies
 give small bonuses a few times each.
+
+### 3.7b Missions and maps
+
+A mission (`data/missions.json`, or one in `user://data/missions.json`) is a new game with goals: `pop`,
+`build`, `soldiers`, `tech`, `land`, `stock` or `defeat`, and an optional time limit. `sim.mission` and
+`sim.mission_done` are saved; `_mission_check` (every second) ticks goals off and ends the game
+(`ended.emit(win)`); `goal_progress(g)` gives [have, need] for the guide box. A mission can name a map.
+Maps (`WorldGen.load_map`, `save_map`, `from_map`) are JSON with the map arrays (`MAP_KEYS`)
+compressed and the start places; `new_game(..., p_map)` plays one instead of generating a world. The
+editor (`ui_editor.gd`) saves them to `user://maps`.
 
 ### 3.8 The rival AI (`sim_ai.gd`)
 
@@ -281,7 +300,9 @@ usually just data edits. After changing buildings, goods or techs, run `tools/re
   screen. The rest is split out into `ui_*.gd` helpers, each a small class that holds a reference to
   `main`: `ui_info` (the building info box, `_refresh_sel`), `ui_side` (the side panel), `ui_research`,
   `ui_settings`, `ui_saves` (with map pictures), `ui_diplomacy`, `ui_demolish`, `ui_targets`,
-  `ui_textures`, `ui_log`, `ui_toolbar` and `ui_guide` (the first-game checklist).
+  `ui_textures`, `ui_log`, `ui_toolbar`, `ui_guide` (the first-game checklist, or a mission's goals),
+  `ui_problems` (what is stuck and why), `ui_attack` (the attack window), `ui_chain` (a good's production
+  chain), `ui_editor` (the map editor) and `ui_missions` (the mission list).
 - **Languages** (`i18n.gd`): `data/lang_<code>.json` maps English text to a translation and is loaded as a
   Godot translation, so labels and buttons whose text is a key show translated; text with numbers goes
   through `tr("... %d ...")`. `tools/extract_strings.py` collects new text into the files. German is
@@ -338,6 +359,7 @@ There are about 75 scripts. The ones to know:
 | `door_test.gd`, `walk_test.gd`, `site_test.gd`, `full_test.gd` | roads and entrances, walking people, construction supply, full stores |
 | `garrison_test.gd`, `field_test.gd`, `battle_test.gd`, `battle_forts.gd` | soldiers and fighting |
 | `research_test.gd`, `research_ai_test.gd`, `options_test.gd`, `oldsave_test.gd` | research, new-game options, old saves |
+| `mission_test.gd`, `sea_test.gd`, `catapult_test.gd` | missions and maps, ships and colonies, catapults |
 | `ai_stuck.gd`, `econ_diag.gd`, `food_diag.gd`, `chain_diag.gd`, `route_diag.gd`, `war_check.gd`, `rival_check.gd` | finding out why rivals are stuck, hungry, short of iron, or not fighting |
 | `shot_*.gd` | screenshots of a feature (need a display: `xvfb-run -a -s "-screen 0 1920x1080x24" godot --rendering-driver opengl3 --script ...`) |
 
@@ -386,6 +408,10 @@ to `Bld`/`Player` (saved automatically) with a default that works for old saves.
 | work cycles and sites | `sim_production.gd` |
 | jobs, homes, walking people | `sim_people.gd` |
 | road carriers | `SimLogistics.plan_chain`, `_chain_trip` |
+| ships and colonies | `SimSea.expedition`, `ship_arrival`, `sea_transfers` |
+| missions | `Sim._mission_check`, `goal_progress`, `data/missions.json`, `ui_missions.gd` |
+| maps and the editor | `WorldGen.load_map`, `save_map`, `from_map`, `ui_editor.gd` |
+| statistics and border replay | `features/statistics.gd` |
 | raised ground | `MapView._ensure_lift`, `lift_at`, `_grid_mesh` |
 | translations | `i18n.gd`, `data/lang_*.json`, `tools/extract_strings.py` |
 | drawing buildings, people, carriers | `MapView._draw`, `_draw_building`, `_collect_folk` |

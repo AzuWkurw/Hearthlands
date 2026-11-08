@@ -35,7 +35,12 @@ number and updates `scripts/version.gd`, `project.godot`, the Windows export set
 | Zoom | Mouse wheel, + and -, or trackpad pinch |
 | Build | Pick a building in the Build panel, click a green tile. Hold Shift to place several |
 | Cancel | Right click or Esc |
-| Attack | Select one of your military buildings, then click an enemy military building inside the dashed circle |
+| Attack | Select one of your military buildings, then click an enemy military building inside the dashed circle. A window shows the defenders, lets you choose how many soldiers march and which kinds, and gives the odds |
+| Problems | O, or the Problems button: every building of yours that cannot work and why, longest waiting first, each with Go. Attacks on you blink red on the minimap, stuck buildings amber |
+| Production chain | Select a workshop, then Chain: the buildings that make its inputs and use its goods, with rates per minute and the weakest link marked |
+| Copy a building | Q over one of your buildings: place another of the same kind, entrance the same way |
+| Flags | Toolbar: Flag, then click one of your roads to set or take away a flag (it matters with road carriers: each flag splits a stretch) |
+| Expedition | Select a harbour with a free ship: Send an expedition, then click a free coast across the water |
 | Garrison | Select one of your military buildings: set how many soldiers it wants (- / + / Full), tick the kinds that may serve there, and choose which kind stays home when it attacks |
 | Pause / speed | Space, and 1 to 4 for 1x, 2x, 4x, 8x |
 | Minimap | Click or drag to move the camera |
@@ -54,7 +59,7 @@ number and updates `scripts/version.gd`, `project.godot`, the Windows export set
 | Demolish | The Demolish tool on the toolbar, then click your building; or select it and press Demolish or the Delete key. A window lists what you get back and what is lost; Enter demolishes, Esc keeps it. "Don't ask again" (or the option under Textures and mods) turns the question off |
 | Production targets | T, the button in Stores, or click a good and use − / + to set how many to keep |
 | Settings | Settings button or F10: renderer (OpenGL or Vulkan), display mode, resolution, interface size, VSync, frame-rate limit, animations, sound and volumes, game features |
-| Production statistics | F2, or the Statistics button: goods made and used per minute, and every realm's growth |
+| Production statistics | F2, or the Statistics button: goods made and used per minute, every realm's growth and a table of where you stand, and Borders: everyone's land minute by minute, to play back (land you have not seen stays dark until the game is over) |
 | Event log | E, or the Events button. Drag its title to move it and its edges to resize it. Go on an event moves the camera to where it happened |
 | Climate | F4, or the Climate button: seasons, biomes, weather and their effects |
 | Random events | F6: switch single events on or off, and see your recent events |
@@ -106,7 +111,9 @@ number and updates `scripts/version.gd`, `project.godot`, the Windows export set
   (buildings, junctions, and at least every 6 tiles) has its own carrier, and goods are handed on at the
   flags. A carrier takes one load at a time (a donkey helps on a busy stretch), so on busy roads goods
   wait at the flags; more roads, and more ways out of the headquarters, move more. In a test game realms
-  grew 10 to 20% slower than with ordinary porters.
+  grew 10 to 20% slower than with ordinary porters. Set your own flags (the Flag tool) to split long
+  stretches; a donkey farm breeds donkeys, and each donkey in store helps on one busy stretch. Rivals set
+  flags on their jammed stretches.
 - **Stores.** There is no shared stock: every store keeps its own goods. Headquarters hold 60 of each good,
   a storehouse 40, a warehouse 120 and a great depot 300 (bulky goods like bricks and gold take more room).
   Goods made are carried to the nearest store (on to the next one with room if it is full); production
@@ -167,6 +174,21 @@ number and updates `scripts/version.gd`, `project.godot`, the Windows export set
   The save list shows a small picture of each map.
   Saves are complete: loading continues the game exactly where it was, including rival plans and armies on the march.
   They live in `user://saves` next to the texture folder.
+- **Missions.** The Missions button on the new-game screen: four games with goals (build, grow, arm,
+  study, conquer) and a deadline. The third plays on a hand-made map. Goals show in the box on the left.
+  More can be added in `data/missions.json` (or a mod's).
+- **Map editor.** The Map editor button on the new-game screen opens the map of the seed and size chosen
+  there, empty. Paint water, beach, grass, mountain, trees, rocks, clay and ore with a brush (1 to 9
+  tiles), move the numbered start places (start 1 is yours), name the map and Save it, or Play it. Saved
+  maps can be picked under Map on the new-game screen; they are kept in the `maps` folder of the game's
+  data folder.
+- **Ships and harbours.** A harbour (on the coast) is a store that holds a little land, a soldier and 8
+  people. A shipyard builds a ship from 4 planks, up to 6. From a harbour an expedition (a ship, 4 planks,
+  2 stone and a soldier) sails to a free coast and founds a new harbour there with land around it. Ships
+  then carry goods between your harbours that no road joins, from where there is plenty to where there is
+  little. Crowded rivals sail too.
+- **Catapults.** A catapult near the border throws a stone at an enemy military building in range every
+  work cycle; a hit may kill a defender.
 - **Map size.** Auto fits the number of realms, or choose Small (96), Medium (128), Large (160), Huge (200)
   or Giant (256 tiles a side). Small maps with many realms are refused before generating.
 - **Rivals.** Strength 1 to 10 sets how fast they produce and decide, their starting stock, how soon they
@@ -193,6 +215,8 @@ Open **Settings** (top bar or F10). Everything there is remembered in `user://se
   draws fewer pixels and stretches them to fill the screen: faster on a weak graphics card, but softer.
 - **Interface size** scales everything, **VSync** waits for the screen (no tearing), and the **frame-rate
   limit** saves power.
+- **Ground details** (on by default): grass tufts, flowers, pebbles, reeds, shore foam and snow on high
+  peaks. **Day and night** (off by default): a slow day, dark nights with lit windows; only the look changes.
 - **Raised ground** (on by default) draws hills standing up from the map, as in The Settlers II (2.5D).
   Off gives the flat map of earlier builds.
 - **Language**: English or German (Deutsch) for the interface. Messages from the game itself (the event
@@ -695,7 +719,8 @@ project.godot, main.tscn
 scripts/
   main.gd        UI, input and game loop
   ui_*.gd        one part each: info box, side panel, research, settings, demolish, saves, diplomacy,
-                 targets, textures, event log, toolbar, first-game guide
+                 targets, textures, event log, toolbar, first-game guide (and mission goals), problems,
+                 attack, production chain, map editor, missions
   i18n.gd        interface languages (data/lang_*.json)
   line_chart.gd  the chart in the statistics window
   map_view.gd    world renderer
@@ -707,6 +732,7 @@ scripts/
   sim_military.gd    territory and combat
   sim_logistics.gd   roads, the road network and carriers
   sim_research.gd    research
+  sim_sea.gd     ships, harbours, expeditions and sea transport
   features/      optional features (feature.gd base, features.gd list, statistics.gd, seasons.gd, clothing.gd, diseases.gd, events.gd, tool_quality.gd, fog.gd, geology.gd, wildlife.gd)
   world_gen.gd   random maps
   game_data.gd   loads and merges the JSON data

@@ -34,6 +34,24 @@ could not be made here). Notes on what was done and what is left:
 Still open: rivals laying roads with road carriers in mind (A3), translating the game's messages (C6), more ground detail (D1),
 and B3 if 8x speed in huge games matters.
 
+## Status after build 34
+
+Build 34 did the eight ideas that came next, and the smaller ones with them:
+
+| Idea | Where |
+|---|---|
+| Problems list and minimap alerts | `ui_problems.gd`, P key |
+| Choose who attacks | `ui_attack.gd` |
+| Production chain view | `ui_chain.gd` |
+| Ships and harbours, expeditions, colonies | `sim_sea.gd`, harbour and shipyard in `buildings.json` |
+| Your own flags and donkeys for road carriers | `SimLogistics.toggle_flag`, `_ai_flags`, donkey farm (rivals now place flags, which answers A3) |
+| Catapults | `catapult` in `buildings.json`, `catapult_test.gd` |
+| Missions and a map editor | `data/missions.json`, `ui_missions.gd`, `ui_editor.gd`, `WorldGen` map files |
+| More ground detail, day and night | `map_view.gd` (tufts, stones, flowers; light by time of day) |
+| Smaller: copy a building (Q), realms compared, border replay | `main.gd`, `features/statistics.gd` |
+
+Still open: translating the game's messages (C6), and B3.
+
 ---
 
 ## A. Gameplay and the rival AI
