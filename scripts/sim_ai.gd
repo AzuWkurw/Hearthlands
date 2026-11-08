@@ -467,11 +467,26 @@ func _ai_needs_store(p: Sim.Player) -> bool:
 	return far >= 6
 
 
+## What taking building `t` is worth besides the odds: the land it holds and the mines and workshops
+## that would be lost with that land.
+func _attack_value(t: Sim.Bld) -> float:
+	var r := int(t.def.get("radius", 6))
+	var v := 0.08 * (r - 6)
+	var n := 0
+	for b in sim.blds:
+		if b.p == t.p and b.state == "ready" and not sim.is_mil(b) and absi(b.x - t.x) <= r and absi(b.y - t.y) <= r:
+			n += 3 if b.def.get("size", "") == "mine" else 1
+	return v + minf(1.0, n * 0.05)
+
+
 func ai_attack(p: Sim.Player) -> bool:
 	var srcs: Array[Sim.Bld] = []
 	for b in sim.blds:
 		if b.p == p.id and b.state == "ready" and sim.is_mil(b):
 			srcs.append(b)
+	var hq: Sim.Bld = null
+	for b in sim.blds:
+		if b.p == p.id and b.ty == "hq": hq = b; break
 	var best = null
 	var best_sc := -1e9
 	for t in sim.blds:
@@ -484,7 +499,8 @@ func ai_attack(p: Sim.Player) -> bool:
 		for s in srcs:
 			if Vector2(t.x - s.x, t.y - s.y).length() > Sim.RANGE:
 				continue
-			var av := sim.own_def(s) - 1
+			# buildings close to the headquarters keep one more man home to guard it
+			var av := sim.own_def(s) - (2 if hq != null and absi(s.x - hq.x) + absi(s.y - hq.y) <= 8 else 1)
 			if av >= 1:
 				near.append(s); total += av
 		if near.is_empty() or total < 3:
@@ -493,7 +509,7 @@ func ai_attack(p: Sim.Player) -> bool:
 		# a realm whose land is full takes worse odds: land is now only to be had by taking it
 		if ratio < (maxf(1.05, p.odds * 0.75) if p.crowded else p.odds):
 			continue
-		var sc := ratio + (p.focus * 2.0 if t.p == 1 else 0.0) + (1.5 if t.ty == "hq" else 0.0)
+		var sc := ratio + (p.focus * 2.0 if t.p == 1 else 0.0) + (1.5 if t.ty == "hq" else 0.0) + _attack_value(t)
 		if sc > best_sc:
 			best_sc = sc; best = [near, t]
 	if best == null:

@@ -203,6 +203,7 @@ class Bld:
 	var walking := 0   # soldiers on their way here from a store to join the garrison
 	var inv: Dictionary = {}   # a store's goods (res -> amount); the realm's stock is their total
 	var policy := 0            # a store: 0 normal, 1 gather here (others send it goods), 2 send away (takes nothing new)
+	var keep := 0      # a workshop: how many work cycles of inputs it keeps (0: the usual two)
 	var inbuf: Dictionary = {}     # goods carried here for its work (res -> count), used as it works
 	var incoming: Dictionary = {}  # goods on their way here for its work
 	var door := -1     # the side its entrance faces: 0 south, 1 east, 2 north, 3 west; roads join it only
@@ -298,6 +299,8 @@ class Trip:
 	var path := PackedInt32Array()
 	var site := 0      # a construction site this carrier brings materials to (0: goods to a store)
 	var dest := 0      # a building this carrier brings goods to work with (from a store)
+	var res2 := ""    # a second good in the same load for that building (filling the load up)
+	var n2 := 0
 	                   # kind "builder" or "soldier": a person walking to building `site` (0: walking home);
 	                   # for a soldier, n is his kind (0 legionary to 5 rifleman, -1 any)
 
@@ -323,6 +326,7 @@ class Attack:
 	var dshot_t := -99.0         # and by the defenders
 	var hits := 0                # soldiers hit by the last volley, for the picture
 	var uid := 0                 # its own number (from the building ids), so a field battle can name its foe
+	var n0 := 0                  # how many set out (a rival pulls back when over half have fallen and the gate still holds)
 	var field := 0               # uid of the enemy column it is fighting in the open (0: none)
 	var fstep := 0.0
 
@@ -1084,10 +1088,22 @@ func can_place(ty: String, x: int, y: int, pid: int, door := -1) -> String:
 	# a new road must be able to get to its entrance (not closed in by plots, water or rocks)
 	var rr := logistics.reach(pid)
 	var any_way := false
+	var own_plot := plot_tiles_size(size, x, y)
 	for d2: int in ([door] if door >= 0 else SIZE_DOORS.get(size, [0])):
 		var t2 := door_at(x, y, d2)
-		if t2 >= 0 and rr[t2] == 1:
+		if t2 < 0 or rr[t2] != 1:
+			continue
+		if road[t2] == pid:
 			any_way = true
+			break
+		# the way to it must not lead through the new building's own plot
+		for dd in 4:
+			var nx: int = t2 % w + DOOR_DX[dd]
+			var ny: int = t2 / w + DOOR_DY[dd]
+			if inb(nx, ny) and rr[ny * w + nx] == 1 and not own_plot.has(ny * w + nx) and ny * w + nx != idx(x, y):
+				any_way = true
+				break
+		if any_way:
 			break
 	if not any_way:
 		return "No road can get to this spot (closed in by buildings, water or rocks)" if door < 0 else "No road can get to this entrance (try turning it with R)"

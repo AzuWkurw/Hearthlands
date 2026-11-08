@@ -17,7 +17,7 @@ func _init() -> void:
 			var own := sim.plot_tiles("house", x, y)
 			for t in own:
 				if t != i: sim.plot[t] = -1
-			var path: PackedInt32Array = sim._path_to_net(x, y, p.id, -1, [0, 1, 3])
+			var path: PackedInt32Array = sim._path_to_net(x, y, p.id, -1, Sim.SIZE_DOORS[sim.size_of("house")])
 			for t in own:
 				if sim.plot[t] == -1: sim.plot[t] = 0
 			if path.size() > 0: ok += 1

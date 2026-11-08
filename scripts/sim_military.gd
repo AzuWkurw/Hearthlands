@@ -234,7 +234,7 @@ func launch_attack(src: Sim.Bld, tgt: Sim.Bld) -> String:
 	if src.ty == "hq": p.reserve -= n
 	else: src.garrison -= n
 	var a := Sim.Attack.new()
-	a.p = src.p; a.src = src.id; a.tgt = tgt.id; a.n = n; a.t0 = sim.time; a.t1 = sim.time + dist * 1.1 + 1.0
+	a.p = src.p; a.src = src.id; a.tgt = tgt.id; a.n = n; a.n0 = n; a.t0 = sim.time; a.t1 = sim.time + dist * 1.1 + 1.0
 	a.from = Vector2(src.x, src.y); a.to = Vector2(tgt.x, tgt.y)
 	a.vet = clampf(p.vets / maxf(1.0, sim.soldiers(p) + n), 0.0, 1.0)
 	a.sxp = p.res_xp if src.ty == "hq" else src.sxp
@@ -326,6 +326,13 @@ func attack_tick(dt: float) -> void:
 					continue
 				kill_defender(t, dk)
 				a.sxp += 3.0 / maxf(1.0, a.n)
+		if a.n > 0 and p.ai and a.n0 >= 3 and a.n * 2 < a.n0 and defenders(t) > a.n:
+			# a rival sees the attack going badly and calls the rest back
+			_retreat(a, p)
+			sim.attacks.remove_at(k)
+			if t.p == 1:
+				sim.emit_log("%s's attack on your %s falls back." % [p.name, String(t.def.name)], Color("86ad5c"), Vector2i(t.x, t.y))
+			continue
 		if a.n <= 0:
 			sim.attacks.remove_at(k)
 			if a.p == 1 or t.p == 1:

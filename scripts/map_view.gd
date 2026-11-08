@@ -33,6 +33,8 @@ var cam := Vector2(40, 40)       # camera centre in tiles
 var zoom := 32.0                 # screen pixels per tile
 var place_type := ""             # a building id, or a tool: "@road", "@pave", "@unroad", "@work"
 var ghost := Vector2i(-1, -1)
+var _tool_labels: Array = []   # text drawn over the map for the tool in hand (land a military building would claim)
+var _gain := {}                # while placing a military building: the best spots and how much new land each claims
 var sel_id := 0
 var preview_tiles := PackedInt32Array()   # land a demolition would lose (drawn red while it is asked)
 var preview_blds: Array = []               # buildings it would lose (crossed out)
@@ -333,6 +335,7 @@ func _draw() -> void:
 		for f: Feature in sim.features:
 			f.draw_map(self, vr)
 	# building-site markers (while placing, or with a building group open), under the buildings
+	_tool_labels = []
 	_site_markers(x0, y0, x1, y1)
 	# buildings, sorted back to front
 	var vis: Array = []
@@ -514,7 +517,7 @@ func _draw() -> void:
 	if z >= 14.0:
 		var font := get_theme_default_font()
 		var fs := clampi(int(z * 0.42), 10, 20)
-		for l in labels:
+		for l in labels + _tool_labels:
 			var sp: Vector2 = origin + (l[0] as Vector2) * z
 			draw_string_outline(font, sp + Vector2(-40, 0), String(l[1]), HORIZONTAL_ALIGNMENT_CENTER, 80, fs, 4, Color.BLACK)
 			draw_string(font, sp + Vector2(-40, 0), String(l[1]), HORIZONTAL_ALIGNMENT_CENTER, 80, fs, l[2])
@@ -642,6 +645,8 @@ func _draw_selection_and_tools() -> void:
 			var d: Dictionary = GameData.bld[place_type]
 			if d.has("radius"):
 				draw_arc(Vector2(ghost.x + 0.5, ghost.y + 0.5), float(d.radius), 0, TAU, 64, Color(1, 1, 1, 0.5), 0.08)
+				if why == "":
+					_tool_labels.append([Vector2(ghost.x + 0.5, ghost.y - 0.6), "+%d land" % land_gain(ghost.x, ghost.y, int(d.radius), 1), Color("f2cf5a")])
 			if d.has("work"):
 				draw_arc(Vector2(ghost.x + 0.5, ghost.y + 0.5), float(d.work.radius) + 0.5, 0, TAU, 48, Color(1, 1, 0.6, 0.35), 0.06)
 			if d.has("carriers"):
@@ -662,6 +667,7 @@ func _site_markers(x0: int, y0: int, x1: int, y1: int) -> void:
 		_site_key = key
 		_sites = {}
 		var sz := sim.size_of(place_type) if placing else ""
+		_gain = {}
 		for y in range(maxi(0, y0), mini(sim.h - 1, y1) + 1):
 			for x in range(maxi(0, x0), mini(sim.w - 1, x1) + 1):
 				if placing:
@@ -678,9 +684,40 @@ func _site_markers(x0: int, y0: int, x1: int, y1: int) -> void:
 			for dy in range(-1, 2):
 				for dx in range(-1, 2):
 					skip[t + dy * sim.w + dx] = true
+	# placing a military building: the spots that would claim the most new land get a "+N" ("expand here")
+	if placing and GameData.bld[place_type].has("radius"):
+		if _gain.is_empty() and not _sites.is_empty():
+			var r := int(GameData.bld[place_type].radius)
+			var all: Array = []
+			for t in _sites:
+				all.append([land_gain(t % sim.w, t / sim.w, r, 1), t])
+			all.sort_custom(func(a, b): return a[0] > b[0])
+			for k in mini(5, all.size()):
+				if int(all[k][0]) > 0:
+					_gain[all[k][1]] = all[k][0]
+			_gain[-1] = 0   # worked out (even when nothing gains)
+		for t in _gain:
+			if t >= 0 and not skip.has(t):
+				draw_circle(Vector2(t % sim.w + 0.5, t / sim.w + 0.5), 0.42, Color(0.95, 0.8, 0.3, 0.3))
+				_tool_labels.append([Vector2(t % sim.w + 0.5, t / sim.w - 0.15), "+%d" % int(_gain[t]), Color("f2cf5a")])
 	for t in _sites:
 		if not skip.has(t):
 			_site_icon(Vector2(t % sim.w + 0.5, t / sim.w + 0.72), String(_sites[t]))
+
+
+## How many tiles nobody owns yet a military building at (x, y) with radius r would claim for pid
+## (every second tile counted, times four, so it is quick enough for many spots at once).
+func land_gain(x: int, y: int, r: int, pid: int) -> int:
+	var n := 0
+	var r2 := r * r
+	for dy in range(-r, r + 1, 2):
+		for dx in range(-r, r + 1, 2):
+			if dx * dx + dy * dy > r2 or not sim.inb(x + dx, y + dy):
+				continue
+			var o := sim.owner[sim.idx(x + dx, y + dy)]
+			if o == 0:
+				n += 4
+	return n
 
 
 ## A building-site marker, as in The Settlers: a small house, a bigger house, a castle, or a mine.

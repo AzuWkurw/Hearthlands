@@ -667,8 +667,8 @@ func _biggest(s: Sim.Bld) -> String:
 
 ## A porter carries a load of res from store a to store b along the roads.
 func _transfer(p: Sim.Player, a: Sim.Bld, b: Sim.Bld, res: String) -> bool:
-	var f := store_field(b)
 	var at := sim.idx(a.x, a.y)
+	var f := store_field(b, at)
 	var d: float = (f[1] as PackedFloat32Array)[at]
 	if d >= INF:
 		return false
@@ -888,7 +888,7 @@ func source_for(p: Sim.Player, b: Sim.Bld, res: String) -> Array:
 	for s: Sim.Bld in stores_of(p):
 		if float(s.inv.get(res, 0.0)) < 1.0:
 			continue
-		var f := store_field(s)
+		var f := store_field(s, bt)
 		var d: float = (f[1] as PackedFloat32Array)[bt]
 		if d < bd or (d == bd and best != null and s.id < best.id):
 			bd = d; best = s; bf = f
@@ -905,28 +905,43 @@ func source_for(p: Sim.Player, b: Sim.Bld, res: String) -> Array:
 
 var _sfield := {}          # store id -> [road network version, walking times from it, way back to it]
 
-## Walking times over its realm's roads from store s to every tile, and the way back to s (the same
-## search as _build_net, from this one store). Kept until the network changes.
-func store_field(s: Sim.Bld) -> Array:
+## Walking times over its realm's roads from store s, and the way back to s (the same search as
+## _build_net, from this one store), worked out only as far as tile `to` (-1: everywhere). The search
+## is kept half done and carried on when a farther tile is asked for, so asking about a nearby
+## building costs little; it starts again when the network changes. Pausing never changes the order
+## the search visits tiles in, so the answers are the same as a full search (and after loading).
+## Returns [network version, walking times, way back, tiles settled, search heap].
+func store_field(s: Sim.Bld, to := -1) -> Array:
 	var k := s.p - 1
 	_net_ready(s.p)
 	var e = _sfield.get(s.id)
-	if e != null and int(e[0]) == int(net_ver[k]):
+	if e == null or int(e[0]) != int(net_ver[k]):
+		var dist := PackedFloat32Array(); dist.resize(sim.w * sim.h); dist.fill(INF)
+		var par := PackedInt32Array(); par.resize(sim.w * sim.h); par.fill(-1)
+		var done := PackedByteArray(); done.resize(sim.w * sim.h)
+		var hp0 := Sim.MinHeap.new()
+		var st0 := sim.idx(s.x, s.y)
+		dist[st0] = 0.0
+		hp0.push(0.0, st0)
+		e = [int(net_ver[k]), dist, par, done, hp0]
+		_sfield[s.id] = e
+	var done2: PackedByteArray = e[3]
+	if to >= 0 and done2[to] == 1:
 		return e
+	var hp: Sim.MinHeap = e[4]
+	if hp.size() == 0:
+		return e
+	var dist2: PackedFloat32Array = e[1]
+	var par2: PackedInt32Array = e[2]
 	var pid := s.p
-	var dist := PackedFloat32Array(); dist.resize(sim.w * sim.h); dist.fill(INF)
-	var par := PackedInt32Array(); par.resize(sim.w * sim.h); par.fill(-1)
-	var done := PackedByteArray(); done.resize(sim.w * sim.h)
-	var hp := Sim.MinHeap.new()
 	var st := sim.idx(s.x, s.y)
-	dist[st] = 0.0
-	hp.push(0.0, st)
 	while hp.size() > 0:
 		var cur := hp.pop()
-		if done[cur] == 1:
+		if done2[cur] == 1:
 			continue
-		done[cur] = 1
+		done2[cur] = 1
 		if sim.bmap[cur] != 0 and cur != st and not is_store(sim.by_id.get(sim.bmap[cur])):
+			if cur == to: break
 			continue
 		var cx := cur % sim.w
 		var cy := cur / sim.w
@@ -936,7 +951,7 @@ func store_field(s: Sim.Bld) -> Array:
 			if nx < 0 or ny < 0 or nx >= sim.w or ny >= sim.h:
 				continue
 			var ni := ny * sim.w + nx
-			if done[ni] == 1 or sim.owner[ni] != pid:
+			if done2[ni] == 1 or sim.owner[ni] != pid:
 				continue
 			if sim.bmap[ni] != 0:
 				var nb: Sim.Bld = sim.by_id.get(sim.bmap[ni])
@@ -946,13 +961,15 @@ func store_field(s: Sim.Bld) -> Array:
 				continue
 			if (sim.bmap[cur] != 0 or sim.bmap[ni] != 0) and not sim.links(cur, ni):
 				continue
-			var nd := dist[cur] + step_cost(cur, ni)
-			if nd < dist[ni]:
-				dist[ni] = nd
-				par[ni] = cur
+			var nd := dist2[cur] + step_cost(cur, ni)
+			if nd < dist2[ni]:
+				dist2[ni] = nd
+				par2[ni] = cur
 				hp.push(nd, ni)
-	e = [int(net_ver[k]), dist, par]
-	_sfield[s.id] = e
+		if cur == to:
+			break
+	# packed arrays are copied on write: put the updated ones back
+	e[1] = dist2; e[2] = par2; e[3] = done2
 	return e
 
 
@@ -994,6 +1011,22 @@ func carry_to(b: Sim.Bld, p: Sim.Player, res: String, want: int, site: bool) -> 
 		t.site = b.id
 	else:
 		t.dest = b.id
+		# room left in the load: take another input this building is short of from the same store
+		if n < load:
+			var inp: Dictionary = b.def.get("in", {})
+			var cyc := b.keep if b.keep > 0 else 2
+			var ks := inp.keys()
+			ks.sort()
+			for k2: String in ks:
+				if k2 == res or k2 == "food":
+					continue
+				var short := int(inp[k2]) * cyc - int(b.inbuf.get(k2, 0)) - int(b.incoming.get(k2, 0))
+				var n2 := mini(mini(short, load - n), int(float(s.inv.get(k2, 0.0))))
+				if n2 > 0:
+					store_add(s, p, k2, -float(n2))
+					b.incoming[k2] = int(b.incoming.get(k2, 0)) + n2
+					t.res2 = k2; t.n2 = n2
+					break
 	sim.trips.append(t)
 	return n
 
@@ -1045,7 +1078,8 @@ func _dispatch_inputs() -> void:
 				var inp: Dictionary = b.def["in"]
 				for k in inp:
 					# enough for two work cycles; food for one, so less of it sits about in workshops
-					var want := int(inp[k]) * (1 if k == "food" else 2)
+					var cyc := b.keep if b.keep > 0 else 2
+					var want := int(inp[k]) * (maxi(1, cyc / 2) if k == "food" else cyc)
 					var have := food_at(b) if k == "food" else int(b.inbuf.get(k, 0)) + int(b.incoming.get(k, 0))
 					if have >= want:
 						continue
@@ -1071,11 +1105,19 @@ func input_arrival(t: Sim.Trip, p: Sim.Player) -> void:
 		b.incoming[t.res] = int(b.incoming.get(t.res, 0)) - t.n
 		if int(b.incoming[t.res]) <= 0:
 			b.incoming.erase(t.res)
+	if b != null and b.p == t.p and t.n2 > 0:
+		b.incoming[t.res2] = int(b.incoming.get(t.res2, 0)) - t.n2
+		if int(b.incoming[t.res2]) <= 0:
+			b.incoming.erase(t.res2)
 	if b != null and not b.dead and b.p == t.p and b.state == "ready":
 		b.inbuf[t.res] = int(b.inbuf.get(t.res, 0)) + t.n
+		if t.n2 > 0:
+			b.inbuf[t.res2] = int(b.inbuf.get(t.res2, 0)) + t.n2
 		b.retry = 0.0
 	elif p.alive:
 		give(p, t.res, float(t.n), t.path[0] if t.path.size() > 0 else -1)
+		if t.n2 > 0:
+			give(p, t.res2, float(t.n2), t.path[0] if t.path.size() > 0 else -1)
 
 
 ## Sends free carriers to buildings with goods waiting. Carts first, then mules, then porters.

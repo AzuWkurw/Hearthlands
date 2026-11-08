@@ -41,7 +41,7 @@ func _init() -> void:
 		for dy in range(-r, r + 1):
 			for dx in range(-r, r + 1):
 				var x: int = me.hq.x + dx; var y: int = me.hq.y + dy
-				if spot2.x < 0 and sim.can_place("woodcutter", x, y, 1, 2) == "" and sim.inb(x, y + 1) and sim.road[sim.idx(x, y + 1)] == 1:
+				if spot2.x < 0 and sim.can_place("woodcutter", x, y, 1, 2) == "" and sim.inb(x, y + 1) and sim.road[sim.idx(x, y + 1)] == 1 and sim.road[sim.door_at(x, y, 2)] != 1:
 					spot2 = Vector2i(x, y)
 	if spot2.x >= 0:
 		sim.place("woodcutter", spot2.x, spot2.y, me, 2, false)

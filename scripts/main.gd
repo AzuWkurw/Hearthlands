@@ -1559,6 +1559,14 @@ func _refresh_sel() -> void:
 	var t := "[b]%s[/b]%s\n%s\n" % [String(d.name), "" if b.p == 1 else " of " + owner.name, sim.status(b)]
 	if b.state == "build" and b.mat_total > 0:
 		t += "Materials: %s\n[color=#9a9c88]Carriers bring them from the stores as the site needs them; nothing is set aside before.[/color]\n" % sim.materials_text(b)
+	# people walking here (a builder, the worker, soldiers), with how long until they arrive
+	var coming: Array = []
+	for tr0: Sim.Trip in sim.trips:
+		if tr0.site == b.id and (tr0.kind == "builder" or tr0.kind == "worker" or tr0.kind == "soldier"):
+			coming.append("%s in %d s" % ["a builder" if tr0.kind == "builder" else ("the worker" if tr0.kind == "worker" else "a soldier"), maxi(1, ceili(tr0.t1 - sim.time))])
+	if not coming.is_empty():
+		coming.sort()
+		t += "On the way: %s%s\n" % [", ".join(coming.slice(0, 4)), " and %d more" % (coming.size() - 4) if coming.size() > 4 else ""]
 	if b.reno_to >= 0 and b.mat_total > 0:
 		t += "Renovation materials: %s\n" % sim.materials_text(b).replace("/" , " of ")
 	if b.era >= 0:
@@ -1670,6 +1678,19 @@ func _refresh_sel() -> void:
 			sb.set_pressed_no_signal(b.policy == k)
 			sb.tooltip_text = helps[k]
 			prio_row.add_child(sb)
+	# a workshop: how many work cycles of inputs to keep here
+	if b.p == 1 and b.state == "ready" and b.def.has("in") and b.def.has("cycle"):
+		prio_row.add_child(_label("Keep inputs for", 14, DIM))
+		for k in [1, 2, 4]:
+			var kb := _button("%d cycle%s" % [k, "s" if k > 1 else ""], func():
+				var bb: Sim.Bld = sim.by_id.get(view.sel_id)
+				if bb:
+					bb.keep = k
+					_refresh_sel())
+			kb.toggle_mode = true
+			kb.set_pressed_no_signal((b.keep if b.keep > 0 else 2) == k)
+			kb.tooltip_text = "Carriers bring enough for %d work cycle%s (food for %d). More keeps it working through gaps; less leaves more in the stores for others." % [k, "s" if k > 1 else "", maxi(1, k / 2)]
+			prio_row.add_child(kb)
 	if b.p == 1 and wr > 0 and b.state == "ready":
 		sel_actions.add_child(_button("Move work area", func():
 			view.place_type = "@work"
