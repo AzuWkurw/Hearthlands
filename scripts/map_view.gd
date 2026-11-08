@@ -538,6 +538,15 @@ func _draw() -> void:
 					if raised: _lift_to(dt % w + 0.5, dt / w + 0.6)
 					_door_flag(dt, sim.players[0].color, not sim.connected(b))
 					_unlift()
+	# flags you set on your roads (road carriers mode)
+	if detail and not sim.players.is_empty():
+		for fi2 in sim.players[0].flags:
+			var fx: int = fi2 % w
+			var fy: int = fi2 / w
+			if fx >= x0 and fx <= x1 and fy >= y0 and fy <= y1 and sim.road[fi2] == 1:
+				if raised: _lift_to(fx + 0.5, fy + 0.6)
+				_door_flag(fi2, Color(0.95, 0.95, 0.9), false)
+				_unlift()
 	# carriers: loaded on the way to the store, empty on the way back (drawn in batches, see _batch_add)
 	var drawn := 0
 	_batching = true
@@ -611,7 +620,10 @@ func _draw() -> void:
 		if t.kind == "soldier":
 			_sprite(_soldier_id(t.n if t.n >= 0 else float(sim.players[t.p - 1].age)), pos, 0.5, step % 4, dx < 0, pc.lightened(0.2))
 			continue
-		if t.kind == "porter":
+		if t.kind == "porter" and not t.legs.is_empty() and _leg_donkey:
+			# road carriers: a donkey takes this load along a busy stretch
+			chh = _sprite("unit_mule", pos, 0.7, step, dx < 0)
+		elif t.kind == "porter":
 			# men with a crate on an A-frame, women with a sack; empty on the way back; at the store
 			# they stoop to set the load down
 			var pid := "unit_porter_w" if (t.p * 7 + int(t.t0 * 10.0)) % 3 == 0 else "unit_porter"
@@ -1004,12 +1016,16 @@ func _draw_night(vis: Array, x0: int, y0: int, x1: int, y1: int) -> void:
 
 ## Where a road-carriers load is: Vector3(tile from, tile to, how far between them); z < 0 when it lies
 ## waiting at the flag (tile from) for the stretch's carrier.
+var _leg_donkey := false     # set by _leg_pos: the load is on a donkey's back on this stretch
+
 func _leg_pos(t: Sim.Trip) -> Vector3:
 	var L := t.legs
 	var now := sim.time
 	var nl := L.size() / 4
 	for k in nl:
 		var ia := int(L[k * 4]); var ib := int(L[k * 4 + 1])
+		_leg_donkey = ib >= SimLogistics.DONKEY_LEG
+		ib = ib % SimLogistics.DONKEY_LEG
 		var st := L[k * 4 + 2]; var en := L[k * 4 + 3]
 		if now < st:
 			return Vector3(t.path[ia], t.path[ia], -0.0001)
@@ -1018,7 +1034,8 @@ func _leg_pos(t: Sim.Trip) -> Vector3:
 			var step := 1 if ib > ia else -1
 			var j := mini(floori(f), absi(ib - ia) - 1)
 			return Vector3(t.path[ia + j * step], t.path[ia + (j + 1) * step], f - j)
-	var last := int(L[(nl - 1) * 4 + 1])
+	var last := int(L[(nl - 1) * 4 + 1]) % SimLogistics.DONKEY_LEG
+	_leg_donkey = false
 	return Vector3(t.path[last], t.path[last], 0.0)
 
 

@@ -243,6 +243,8 @@ class Player:
 	var busy_porters := 0                  # porters out carrying goods
 	var segs := {}                         # road carriers mode: stretch of road (two flag tiles) -> when its carrier is free again
 	var road_carriers := 0                 # road carriers mode: porters posted on stretches in use
+	var flags := {}                        # road carriers mode: flags the player set on roads (tile -> true)
+	var donkeys_used := 0                  # road carriers mode: donkeys out helping on busy stretches
 	var store_total := 0                   # room for each good across all stores (before per-good factors)
 	var store_porters := 0                 # porters employed by the stores
 	var vets := 0.0
@@ -601,6 +603,9 @@ func new_game(p_seed: String, p_foes: int, p_strength: int, p_mix: bool, p_size 
 		for r in start_stock:
 			if p.stock.has(r):
 				p.stock[r] = roundf(float(start_stock[r]) * sg)
+		# with road carriers every realm starts with a few donkeys for its busiest stretches
+		if bool(opts.get("road_carriers", false)) and p.stock.has("donkey"):
+			p.stock["donkey"] = 4.0
 		if p.ai:
 			p.skill = clampi(roundi(strength + (rng.randf_range(-2.0, 2.0) if mix else 0.0)), 1, 10)
 			var f := (p.skill - 1) / 9.0
@@ -1595,7 +1600,10 @@ func feature_on(id: String) -> bool:
 
 ## Whether building type ty can be built: buildings that belong to a feature need it switched on.
 func bld_enabled(ty: String) -> bool:
-	var fid := String(GameData.bld.get(ty, {}).get("feature", ""))
+	var d: Dictionary = GameData.bld.get(ty, {})
+	if bool(d.get("carriers_mode", false)) and not bool(opts.get("road_carriers", false)):
+		return false
+	var fid := String(d.get("feature", ""))
 	return fid == "" or feature_on(fid)
 
 

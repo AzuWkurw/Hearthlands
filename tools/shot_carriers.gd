@@ -27,7 +27,7 @@ func _init() -> void:
 	var bn := 0
 	for k in count:
 		if int(count[k]) > bn: bn = count[k]; best = k
-	print("loads waiting at flags: ", count.values().reduce(func(a, b): return a + b, 0), ", most at one flag ", bn, ", stretch carriers ", me.road_carriers)
+	print("loads waiting at flags: ", count.values().reduce(func(a, b): return a + b, 0), ", most at one flag ", bn, ", stretch carriers ", me.road_carriers, ", donkeys out ", me.donkeys_used, ", flags ", me.flags.size(), ", rivals' flags ", sim.players.slice(1).map(func(q): return q.flags.size()))
 	main.view.center_on(Vector2(best % sim.w, best / sim.w))
 	main.view.zoom = 44.0
 	main.paused = true

@@ -827,6 +827,7 @@ func porters_free(p: Sim.Player) -> int:
 # carriers come from the headquarters and do not use up porters; road_carriers only counts them.
 
 const FLAG_EVERY := 4
+const DONKEY_LEG := 1000000
 const STRETCH_IDLE := 45.0     # a stretch unused this long gives its carrier back
 const MAX_QUEUE := 30.0       # a load that would wait longer than this at flags in all is not sent yet
 
@@ -839,7 +840,7 @@ func _is_flag(path: PackedInt32Array, k: int, pid: int) -> bool:
 	if k == 0 or k == path.size() - 1:
 		return true
 	var i := path[k]
-	if sim.bmap[i] != 0:
+	if sim.bmap[i] != 0 or sim.players[pid - 1].flags.has(i):
 		return true
 	var n := 0
 	var cx := i % sim.w
@@ -872,6 +873,7 @@ func plan_chain(p: Sim.Player, path: PackedInt32Array, forward: bool, commit: bo
 	var spd := 1.0 + sim.mod(p, "carry")
 	var tnow := sim.time + 0.5
 	var waited := 0.0
+	var new_donkeys := 0
 	var legs := PackedFloat32Array()
 	var need := 0
 	var books := []
@@ -886,28 +888,39 @@ func plan_chain(p: Sim.Player, path: PackedInt32Array, forward: bool, commit: bo
 			cost += step_cost(path[k], path[k + step])
 			k += step
 		cost /= spd
-		# the stretch's carrier, and on a busy stretch a donkey too (as in The Settlers): two slots, each
-		# the time it is free again
-		var slots := Vector2(-1e9, -1e9)
+		# the stretch's carrier and a second carrier (x, y), and on a busy stretch a donkey too (z), as in
+		# The Settlers: each the time it is free again
+		var slots := Vector3(-1e9, -1e9, -1e9)
 		if p.segs.has(key):
-			slots = p.segs[key]
+			var v = p.segs[key]
+			slots = Vector3(v.x, v.y, -1e9) if v is Vector2 else v   # (build 33 saves had no donkeys)
 		var slot := 0
 		var free_at := slots.x
 		if slots.x > tnow + 2.0 and slots.y < slots.x:
 			slot = 1
 			free_at = slots.y
+		# still a wait: a donkey helps, where one is out already or a free one is in store
+		var donkey_here := slots.z >= sim.time - STRETCH_IDLE
+		if free_at > tnow + 2.0 and slots.z < free_at and (donkey_here or p.donkeys_used + new_donkeys < int(float(p.stock.get("donkey", 0.0)))):
+			slot = 2
+			free_at = slots.z
+			if not donkey_here:
+				new_donkeys += 1
 		var start := maxf(tnow, free_at)
 		waited += start - tnow
 		if maxf(slots.x, slots.y) < sim.time - STRETCH_IDLE:
 			need += 1                # a stretch nobody used for a while gets its carrier back
 		var end := start + cost
-		legs.append_array(PackedFloat32Array([a, b, start, end]))
+		# (a donkey's leg is marked by DONKEY_LEG added to its end index, for drawing)
+		legs.append_array(PackedFloat32Array([a, b + (DONKEY_LEG if slot == 2 else 0), start, end]))
 		# the carrier walks back before he takes the next load (half way on average: he often
 		# meets the next one at the far flag)
 		if slot == 0:
 			slots.x = end + cost * 0.5
-		else:
+		elif slot == 1:
 			slots.y = end + cost * 0.5
+		else:
+			slots.z = end + cost * 0.5
 		books.append([key, slots])
 		tnow = end
 	# roads this busy take no more loads for now: they go when the queue has shrunk
@@ -917,6 +930,7 @@ func plan_chain(p: Sim.Player, path: PackedInt32Array, forward: bool, commit: bo
 		for bk in books:
 			p.segs[bk[0]] = bk[1]
 		p.road_carriers += need
+		p.donkeys_used += new_donkeys
 	return [tnow + 0.5, legs]
 
 
@@ -928,13 +942,69 @@ func road_carrier_tick(p: Sim.Player) -> void:
 	var keys := p.segs.keys()
 	keys.sort()
 	var n := 0
+	var dk := 0
 	for k in keys:
-		var sl: Vector2 = p.segs[k]
-		if maxf(sl.x, sl.y) < sim.time - STRETCH_IDLE:
+		var v = p.segs[k]
+		var sl: Vector3 = Vector3(v.x, v.y, -1e9) if v is Vector2 else v
+		if maxf(maxf(sl.x, sl.y), sl.z) < sim.time - STRETCH_IDLE:
 			p.segs.erase(k)
 		else:
 			n += 1
+			if sl.z >= sim.time - STRETCH_IDLE:
+				dk += 1
 	p.road_carriers = n
+	p.donkeys_used = dk
+	# rivals (and only they) split their busiest stretches with a flag every half minute
+	if p.ai and int(sim.time) % 30 == p.id % 30:
+		_ai_flags(p, keys)
+
+
+## A rival sets a flag halfway along stretches where loads queue (the carrier booked well ahead), the
+## way a Settlers player splits a jammed road. Only road tiles that are not already flags or buildings.
+func _ai_flags(p: Sim.Player, keys: Array) -> void:
+	var N := sim.w * sim.h
+	var placed := 0
+	for k in keys:
+		if not p.segs.has(k) or placed >= 3:
+			continue
+		var sl = p.segs[k]
+		if sl.x < sim.time + 12.0:
+			continue
+		var a: int = k / N
+		var b: int = k % N
+		var mx := (a % sim.w + b % sim.w) / 2
+		var my := (a / sim.w + b / sim.w) / 2
+		var best := -1
+		var bd := 99
+		for dy in range(-2, 3):
+			for dx in range(-2, 3):
+				if not sim.inb(mx + dx, my + dy):
+					continue
+				var i := sim.idx(mx + dx, my + dy)
+				if i == a or i == b or sim.road[i] != p.id or sim.bmap[i] != 0 or p.flags.has(i):
+					continue
+				var d := absi(dx) + absi(dy)
+				if d < bd:
+					bd = d; best = i
+		if best >= 0:
+			p.flags[best] = true
+			placed += 1
+
+
+## Road carriers mode: the player sets or takes away a flag on one of his roads (a flag splits a stretch).
+func toggle_flag(x: int, y: int, pid: int) -> String:
+	if not sim.inb(x, y):
+		return "Click one of your roads."
+	var i := sim.idx(x, y)
+	if sim.road[i] != pid or sim.bmap[i] != 0:
+		return "Flags go on your own roads."
+	var p := sim.players[pid - 1]
+	if p.flags.has(i):
+		p.flags.erase(i)
+		return "Flag taken away."
+	p.flags[i] = true
+	return "Flag set: the stretch is split here." if road_carriers_on() else "Flag set. Flags matter in games with road carriers (a new-game option)."
+
 
 
 ## A porter trip t along path in road carriers mode: plans and books it. False if it cannot go now.

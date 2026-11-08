@@ -462,6 +462,14 @@ def icon(shape, c, size=24):
     """A resource icon drawn in a 24x24 design, output size x size pixels."""
     d = Pen(24, 24, size / 24)
     c = c + (255,); dk = sh(c, 0.55); lt = sh(c, 1.3)
+    if shape == "donkey":
+        # a donkey's head: long face, two tall ears, a dark muzzle
+        d.polygon([(8, 21), (7, 12), (10, 8), (15, 8), (18, 12), (17, 21)], fill=c, outline=dk)
+        d.polygon([(8, 9), (6, 2), (10, 7)], fill=c, outline=dk)
+        d.polygon([(17, 9), (19, 2), (15, 7)], fill=c, outline=dk)
+        d.ellipse([8, 16, 17, 22], fill=lt, outline=dk)
+        d.ellipse([10, 11, 12, 13], fill=(30, 26, 22, 255)); d.ellipse([14, 11, 16, 13], fill=(30, 26, 22, 255))
+        return d.done()
     if shape == "log":
         d.rectangle([5, 8, 20, 16], fill=c, outline=dk); d.ellipse([2, 7, 9, 17], fill=lt, outline=dk); d.ellipse([4, 10, 7, 14], outline=dk)
         d.line([(10, 10), (19, 10)], fill=dk)

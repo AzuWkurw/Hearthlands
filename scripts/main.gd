@@ -1254,6 +1254,9 @@ func _use_tool(t: Vector2i) -> void:
 		"@pave":
 			var r2 := sim.pave_road(t.x, t.y, me)
 			_show_hint(r2 if r2 != "" else "Road paved.", 2.0)
+		"@flag":
+			_show_hint(sim.logistics.toggle_flag(t.x, t.y, 1), 2.5)
+			view.queue_redraw()
 		"@unroad":
 			var n := sim.remove_road(t.x, t.y, 1)
 			_show_hint(tr("Removed %d road tiles.") % n if n > 0 else "Click one of your roads.", 2.0)
@@ -1499,6 +1502,7 @@ func _process(delta: float) -> void:
 			"@demolish": hint.text = "Demolish: click one of your buildings (Esc to stop)"
 			"@road": hint.text = "Build road: " + ("click where the road should go (Esc to stop)" if view.road_start.x >= 0 else "click one of your roads or buildings to start")
 			"@pave": hint.text = "Pave road: click a road (1 stone per tile, up to 12 tiles)"
+			"@flag": hint.text = "Flag: click one of your roads to set or take away a flag (Esc to stop)"
 			"@unroad": hint.text = "Remove road: click a road to remove that stretch"
 			"@work": hint.text = "Move work area: click its new centre"
 			_:

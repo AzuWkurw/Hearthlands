@@ -12,7 +12,8 @@ const CAT_ICONS := {"raw": "woodcutter", "food": "farm", "industry": "iron_smelt
 const CAT_SHORT := {"logistics": "Stores", "mil": "Military"}
 const ROAD_TOOLS := [["@road", "Road", "road_5", "Build road: click one of your roads or buildings (or a building's entrance flag), then where the road should go. Esc stops."],
 	["@pave", "Pave", "road_paved_5", "Pave road: click a road to pave up to 12 tiles with stone (1 stone each). Carriers walk paved roads faster."],
-	["@unroad", "Remove", "road_15", "Remove road: click a road to take up that stretch, up to the next junction or building."]]
+	["@unroad", "Remove", "road_15", "Remove road: click a road to take up that stretch, up to the next junction or building."],
+	["@flag", "Flag", "unit_flag", "Flag (road carriers): click one of your roads to set a flag or take it away. Each flag splits a stretch, so more carriers share the road and goods move faster."]]
 
 var main: Main
 var bar: PanelContainer
@@ -60,7 +61,14 @@ func build() -> void:
 	row.add_child(VSeparator.new())
 	var rg := _group(row, "ROADS")
 	for t in ROAD_TOOLS:
-		var b := _btn(String(t[1]), Tex.get_tex(String(t[2])), String(t[3]), _on_tool.bind(String(t[0])))
+		var tex: Texture2D = Tex.get_tex(String(t[2]))
+		if Tex.frames(String(t[2])) > 1:
+			# a strip of animation frames: the first one is the icon
+			var at := AtlasTexture.new()
+			at.atlas = tex
+			at.region = Tex.frame_rect(String(t[2]), 0)
+			tex = at
+		var b := _btn(String(t[1]), tex, String(t[3]), _on_tool.bind(String(t[0])))
 		rg.add_child(b)
 		tool_btns[t[0]] = b
 	auto_btn = _btn("Auto", _auto_icon(), "Auto roads. On: a new building gets its road to your network at once, from its entrance.\nOff: after placing it you lay its road yourself, from its entrance flag.", _on_auto)

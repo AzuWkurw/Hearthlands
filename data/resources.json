@@ -474,5 +474,14 @@
   "feature": "diseases",
   "cap": 40,
   "info": "Cures the sick: at home a little, in an infirmary much faster."
+ },
+ {
+  "id": "donkey",
+  "name": "Donkeys",
+  "abbr": "Dk",
+  "color": "#8a7a6a",
+  "icon": "donkey",
+  "cap": 20,
+  "info": "With road carriers: each donkey in store helps the carrier on one busy stretch of road, so two loads can be on it at once. Bred at a donkey farm."
  }
 ]

@@ -2049,5 +2049,32 @@
    "style": "catapult",
    "sw": 1.7
   }
+ },
+ "donkey_farm": {
+  "name": "Donkey farm",
+  "cat": "logistics",
+  "size": "large",
+  "cost": {
+   "planks": 4,
+   "stone": 2
+  },
+  "time": 25,
+  "worker": "peasant",
+  "cycle": 60,
+  "in": {
+   "grain": 1,
+   "water": 1
+  },
+  "out": {
+   "donkey": 1
+  },
+  "carriers_mode": true,
+  "info": "Breeds donkeys from grain and water (only in games with road carriers). Each donkey in store helps the carrier on one busy stretch of road.",
+  "art": {
+   "style": "barn",
+   "wall": "#a08a68",
+   "sw": 2.0
+  },
+  "trade": "farming"
  }
 }
