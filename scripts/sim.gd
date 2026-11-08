@@ -2604,7 +2604,18 @@ func tick(dt: float) -> void:
 		_secondly()
 
 
+## For finding where two runs of the same game part ways: a number that changes with any change to the
+## saved state. Start the game with "-- checksums" (or set Sim.log_checksums) to print one every game
+## minute; two runs (or a run and a reload) that print different numbers went apart in that minute.
+static var log_checksums := false
+
+func checksum() -> int:
+	return hash(var_to_bytes(to_save()))
+
+
 func _secondly() -> void:
+	if log_checksums and int(time) % 60 == 0:
+		print("minute %d checksum %d" % [int(time) / 60, checksum()])
 	_rebuild_realm_lists()
 	Diplomacy.expire(self)
 	for f: Feature in features:

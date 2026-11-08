@@ -421,6 +421,7 @@ func set_feature(id: String, on: bool) -> void:
 
 
 func _ready() -> void:
+	Sim.log_checksums = "checksums" in OS.get_cmdline_user_args()
 	if "vkprobe" in OS.get_cmdline_user_args():
 		# the Vulkan test start: report what it draws with once a frame is on screen, then quit
 		set_process(false); set_physics_process(false); set_process_input(false); set_process_unhandled_input(false)
