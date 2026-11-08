@@ -1072,6 +1072,40 @@ def make_building(style, wall, roof, cat, res_icon, W=64, H=64):
             p.ellipse([cx - 3, top - 4, cx + 1, top], fill=(60, 44, 28, 255))
             p.line([(cx, top - 3), (cx + 9, top - 5)], fill=(30, 30, 34, 255), width=2.2)
             p.disc(cx + 9, top - 5, 1.1, (20, 20, 22, 255))
+    elif style == "catapult":
+        # a wooden throwing engine on a timber frame with wheels, a heap of stones beside it
+        p.rectangle([10, b - 10, 50, b - 5], fill=WOOD, outline=sh(WOOD, 0.5), width=0.6)
+        for wx in (16, 44):
+            p.ellipse([wx - 5, b - 9, wx + 5, b + 1], fill=sh(WOOD, 0.7), outline=sh(WOOD, 0.4), width=0.6)
+            p.disc(wx, b - 4, 1.2, (60, 44, 28, 255))
+        p.polygon([(22, b - 10), (30, b - 30), (34, b - 30), (38, b - 10)], fill=sh(WOOD, 0.9), outline=sh(WOOD, 0.5), width=0.5)
+        p.line([(32, b - 28), (14, b - 44)], fill=sh(WOOD, 1.1), width=2.4)
+        p.line([(32, b - 28), (40, b - 20)], fill=sh(WOOD, 1.1), width=2.4)
+        p.rectangle([36, b - 22, 44, b - 15], fill=(110, 108, 100, 255), outline=(70, 68, 62, 255), width=0.5)
+        p.pieslice([9, b - 49, 19, b - 40], 0, 180, fill=(90, 62, 36, 255))
+        p.disc(14, b - 46, 2.2, (150, 148, 140, 255))
+        for sx, sy in ((52, b - 2), (56, b - 3), (54, b - 6), (58, b - 1)):
+            p.disc(sx, sy, 2.2, (150, 148, 140, 255))
+            p.disc(sx - 0.6, sy - 0.6, 0.8, (190, 188, 180, 255))
+    elif style == "harbour":
+        # a timber quay over the water, a store shed with a crane, crates on the boards
+        p.rectangle([2, b - 6, 62, b], fill=(70, 110, 150, 255))
+        for x in range(4, 62, 3):
+            p.line([(x, b - 6), (x + 2, b - 6)], fill=(150, 190, 220, 255), width=0.5)
+        p.rectangle([6, b - 12, 60, b - 7], fill=sh(WOOD, 1.05), outline=sh(WOOD, 0.5), width=0.5)
+        for x in range(8, 60, 4):
+            p.line([(x, b - 12), (x, b - 7)], fill=sh(WOOD, 0.7), width=0.3)
+        for x in (10, 24, 38, 52):
+            p.rectangle([x, b - 7, x + 2, b], fill=sh(WOOD, 0.55))
+        g.walls(10, 30, b - 12 - 20, "timber")
+        g.roof_gable(10, 30, b - 32, 9)
+        g.door(17, 7, 10)
+        p.line([(48, b - 12), (48, b - 44)], fill=sh(WOOD, 0.8), width=2.2)
+        p.line([(48, b - 42), (60, b - 36)], fill=sh(WOOD, 0.8), width=1.6)
+        p.line([(59, b - 36), (59, b - 22)], fill=(200, 190, 160, 255), width=0.5)
+        p.rectangle([56, b - 23, 62, b - 18], fill=(160, 120, 70, 255), outline=(90, 66, 36, 255), width=0.4)
+        for cx in (38, 43):
+            p.rectangle([cx, b - 18, cx + 5, b - 12], fill=(170, 130, 80, 255), outline=(100, 72, 40, 255), width=0.4)
     elif style == "tower":
         top = b - 46
         g.walls(18, 40, top, "stone")

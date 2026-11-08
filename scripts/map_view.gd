@@ -1219,6 +1219,22 @@ func _draw_building(b: Sim.Bld, labels: Array, detail: bool) -> void:
 		if smoke.size() == 2 and (b.working or (style in HOME_SMOKE and b.state == "ready")):
 			_smoke_at(_anchor(rect, smoke), b.id * 0.137, 1.0 if b.working else 0.5)
 		_draw_worker(b, pc)
+	# a catapult's stone in flight, and dust where it lands
+	if b.def.has("siege") and b.target >= 0:
+		var tp := Vector2(b.target % sim.w + 0.5, b.target / sim.w + 0.4)
+		var sp := Vector2(b.x + 0.3, b.y + 0.1)
+		if b.working:
+			var u := sim.work_progress(b)
+			if u > 0.8:
+				var f := (u - 0.8) / 0.2
+				var pos := sp.lerp(tp, f) + Vector2(0, -sin(f * PI) * maxf(2.0, sp.distance_to(tp) * 0.35))
+				draw_circle(pos, 0.12, Color(0.6, 0.6, 0.56))
+				draw_circle(pos + Vector2(-0.03, -0.03), 0.05, Color(0.8, 0.8, 0.76))
+		var since := sim.time - b.sxp
+		if b.sxp > 0.0 and since < 0.8:
+			for k in 5:
+				var ang := k * 1.3 + b.id
+				draw_circle(tp + Vector2(cos(ang), sin(ang) * 0.5) * (0.2 + since * 0.6), 0.14 + since * 0.15, Color(0.75, 0.7, 0.6, 0.7 * (1.0 - since / 0.8)))
 	var ff := int(sim.time * 5.0 + b.id) if animate else 0
 	_sprite("unit_flag", Vector2(rect.position.x + rect.size.x * 0.85, rect.position.y + rect.size.y * _tex_top(tex) + 0.17), 0.3, ff, false, pc)
 	if b.working and b.cyc > 0.0:

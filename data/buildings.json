@@ -2024,5 +2024,30 @@
   },
   "tech": "guilds",
   "trade": "kilns"
+ },
+ "catapult": {
+  "name": "Catapult",
+  "cat": "mil",
+  "size": "medium",
+  "cost": {
+   "planks": 5,
+   "stone": 3
+  },
+  "time": 30,
+  "worker": "peasant",
+  "cycle": 24,
+  "in": {
+   "stone": 1
+  },
+  "siege": {
+   "range": 10,
+   "kill": 0.35
+  },
+  "tech": "stone_masonry",
+  "info": "Throws a stone every 24 s at the nearest enemy military building within 10 tiles, while you are at war with its realm. Each hit kills a defender about one time in three, so a strong fort can be worn down before your soldiers go in. Uses 1 stone a shot.",
+  "art": {
+   "style": "catapult",
+   "sw": 1.7
+  }
  }
 }

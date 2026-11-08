@@ -32,6 +32,13 @@ func _site_score(ty: String, x: int, y: int, p: Sim.Player) -> float:
 					bd = minf(bd, Vector2(b.x - x, b.y - y).length())
 			return -bd - dist * 0.02
 	var s := String(d.get("site", ""))
+	if d.has("siege"):
+		# a catapult goes where it can reach an enemy fort
+		var nd := 1e9
+		for t: Sim.Bld in sim.mil_list():
+			if t.p != p.id and t.state == "ready" and Diplomacy.at_war(sim, p.id, t.p):
+				nd = minf(nd, Vector2(t.x - x, t.y - y).length())
+		return (20.0 - nd) if nd <= float(d.siege.range) - 1.0 else -nd
 	if d.has("store"):
 		var nearest := 999.0
 		for b in sim.blds:
@@ -367,6 +374,7 @@ func ai_think(p: Sim.Player) -> void:
 		["scriptorium", (mini(2 if war else 4, 1 + pop / 45) if mins > 3 else 0)], ["library", mini(2 if war else 3, 1 + pop / 90)], ["paper_mill", 1 + pop / 150], ["university", 1 if S.beer > 2 else 0],
 		["fortress", c.call("fortress") + 1 if mins > 25 and unocc == 0 and p.reserve > 6 else 0],
 		["battery", c.call("battery") + 1 if war and unocc == 0 and p.reserve > 4 and c.call("battery") < 4 else 0],
+		["catapult", mini(3, _siege_targets(p)) if mins > 14 and S.stone > 12 and p.techs.has("stone_masonry") else 0],
 		["bastion", c.call("bastion") + 1 if mins > 28 and unocc == 0 and p.reserve > 8 and c.call("bastion") < 3 else 0],
 		["redoubt", c.call("redoubt") + 1 if mins > 35 and unocc == 0 and p.reserve > 12 and c.call("redoubt") < 3 else 0],
 		["storehouse", maxi((1 if mins > 8 else 0) + (1 if mins > 18 else 0), mini(5, c.call("storehouse") + (1 if _ai_needs_store(p) else 0)))],
@@ -551,6 +559,23 @@ func _ai_needs_store(p: Sim.Player) -> bool:
 		if b.cyc > 0.0 and sim.net_dist(p.id, sim.idx(b.x, b.y)) > 14.0:
 			far += 1
 	return far >= 6
+
+
+## Enemy forts (at war) close to realm p's military buildings: worth a catapult each, a few at most.
+func _siege_targets(p: Sim.Player) -> int:
+	var n := 0
+	var mine: Array = []
+	for b: Sim.Bld in sim.mil_list():
+		if b.p == p.id and b.state == "ready":
+			mine.append(b)
+	for t: Sim.Bld in sim.mil_list():
+		if t.p == p.id or t.state != "ready" or t.ty == "hq" or sim.own_def(t) < 3 or not Diplomacy.at_war(sim, p.id, t.p):
+			continue
+		for b: Sim.Bld in mine:
+			if absi(b.x - t.x) + absi(b.y - t.y) <= 14:
+				n += 1
+				break
+	return n
 
 
 ## What taking building `t` is worth besides the odds: the land it holds and the mines and workshops

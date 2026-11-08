@@ -34,6 +34,11 @@ func start_check(b: Sim.Bld, p: Sim.Player) -> String:
 			if way > 0:
 				return "Waiting for %s on its way" % name
 			return "Needs " + name
+	if d.has("siege"):
+		var tgt := siege_target(b)
+		if tgt == null:
+			return "No enemy fort in range"
+		b.target = sim.idx(tgt.x, tgt.y)
 	var wc := sim.work_center(b)
 	var wr := sim.work_radius(b)
 	match String(d.get("act", "")):
@@ -178,9 +183,44 @@ func deliver(b: Sim.Bld, p: Sim.Player, res: String, n: int) -> void:
 	sim._pending[b.id] = true
 
 
+## What catapult b aims at: the nearest military building in range of a realm it is at war with that has
+## defenders, or null.
+func siege_target(b: Sim.Bld) -> Sim.Bld:
+	var r := float(b.def.siege.range)
+	var best: Sim.Bld = null
+	var bd := 1e9
+	for t: Sim.Bld in sim.mil_list():
+		if t.p == b.p or t.state != "ready" or not Diplomacy.at_war(sim, b.p, t.p):
+			continue
+		var dd := Vector2(t.x - b.x, t.y - b.y).length()
+		if dd > r or sim.own_def(t) <= 0:
+			continue
+		if dd < bd or (dd == bd and t.id < best.id):
+			bd = dd; best = t
+	return best
+
+
+## A catapult's stone lands: it may kill one of the defenders.
+func _siege_hit(b: Sim.Bld, p: Sim.Player) -> void:
+	var t := sim.bld_at(b.target % sim.w, b.target / sim.w)
+	if t == null or t.p == b.p or not sim.is_mil(t) or not Diplomacy.at_war(sim, b.p, t.p) or sim.own_def(t) <= 0:
+		return
+	b.sxp = sim.time       # (when the last stone landed, for drawing the dust)
+	if sim.rng.randf() < float(b.def.siege.kill):
+		sim.military.kill_defender(t)
+		if b.p == 1:
+			sim.emit_log("Your catapult hit the %s of %s: one defender fewer (%d left)." % [String(t.def.name), sim.players[t.p - 1].name, sim.own_def(t)], Color("d8aa4a"), Vector2i(t.x, t.y))
+		elif t.p == 1:
+			sim.emit_log("A catapult of %s hit your %s: one defender fell (%d left)." % [p.name, String(t.def.name), sim.own_def(t)], Color("e0603a"), Vector2i(t.x, t.y))
+		Diplomacy.on_attacked(sim, t.p, b.p)
+
+
 func finish_prod(b: Sim.Bld, p: Sim.Player) -> void:
 	var d := b.def
 	var tg := b.target
+	if d.has("siege"):
+		_siege_hit(b, p)
+		return
 	match String(d.get("act", "")):
 		"cut_tree":
 			if tg < 0 or sim.deco[tg] != Sim.D_TREE: return
