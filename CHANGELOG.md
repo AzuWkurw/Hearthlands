@@ -1,5 +1,22 @@
 # Changelog
 
+## Build 34 (v0.29.0, 2026-11-08)
+
+The eight ideas from the "what next" list, and smaller touches with them.
+
+- Problems list (P): every building that is stuck and why, with alerts on the minimap. Click one to go there.
+- Attack window: choose how many soldiers attack and of which kinds, with the odds shown.
+- Production chain window: who makes a good, what goes into it and who uses it, with rates and the weakest link.
+- Catapults: a catapult near the border throws stones at enemy forts in range; each hit may kill a defender. Rivals build them at war.
+- Road carriers: set your own flags on roads (Flag tool) to split long stretches; a donkey farm breeds donkeys that help on busy stretches. Rivals place flags on jammed stretches.
+- Ships and harbours: a shipyard on the coast builds ships; from a harbour, an expedition (a ship, 4 planks, 2 stone and a soldier) founds a colony on another free coast, and ships carry goods between harbours no road joins. Rivals sail when their land is crowded.
+- Missions: four missions with goals and time limits, shown in the guide box; "The Iron Coast" is played on a hand-made map.
+- Map editor (on the new-game screen): paint ground, trees, rocks, clay and ore, move the start places, save maps and play them. Saved maps can be picked on the new-game screen.
+- Statistics: realms compared (land, techs, a ranking table) and a replay of how the borders changed, also on the end screen.
+- Q copies the selected building into placing mode.
+- Ground details (tufts, flowers, pebbles, reeds, shore foam, snow on peaks) and an optional day and night.
+- Fixed: building flags floated above small buildings; a game loaded from a save could drift from the original after a while (the tick rhythm is now saved).
+
 ## Build 33 (v0.28.0, 2026-11-08)
 
 Everything from the suggestions list (docs/SUGGESTIONS.md), and a round of bug fixes.

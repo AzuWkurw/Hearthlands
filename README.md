@@ -756,6 +756,7 @@ tools/
   checksum_run.gd, checksum_diff.gd   prove a code move changed nothing / find what differs after a load
   reach_test.gd, transfer_test.gd, stretch_test.gd   closed-in spots, goods between stores, road carriers
   shot_b33.gd, shot_raised.gd, shot_lang.gd           screenshots of the build 33 additions
+  shot_missions.gd, shot_sea.gd, shot_stats.gd, shot_b34.gd   screenshots of the build 34 additions
   make_textures.py   regenerates default textures (--force to overwrite them all)
   make_sounds.py     regenerates the sounds
   bump_build.py      raises the build number before a release
