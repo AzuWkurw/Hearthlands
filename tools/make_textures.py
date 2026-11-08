@@ -987,6 +987,24 @@ def make_building(style, wall, roof, cat, res_icon, W=64, H=64):
         g.flat_top(16, 42, top)
         g.door(25, 7, 10, arch=True)
         p.rectangle([19, top + 4, 20, top + 9], fill=DARK); p.rectangle([37, top + 4, 38, top + 9], fill=DARK)
+    elif style == "boundary_stone":
+        # a tall dressed stone with a carved sign, a cairn of small stones at its foot and a pennant
+        # on a pole beside it
+        p.ellipse([18, b - 4, 48, b + 2], fill=(0, 0, 0, 60))
+        p.polygon([(26, b), (27, b - 30), (30, b - 36), (35, b - 35), (38, b - 29), (39, b)], fill=(150, 146, 136, 255), outline=(84, 80, 72, 255), width=0.6)
+        p.polygon([(34, b), (35, b - 34), (38, b - 29), (39, b)], fill=(112, 108, 100, 255))
+        p.polygon([(27, b - 28), (29, b - 34), (31, b - 35), (29, b - 28)], fill=(186, 182, 172, 255))
+        # a carved diamond with a notch either side: the realm's border mark
+        p.polygon([(32.5, b - 27), (35.5, b - 21), (32.5, b - 15), (29.5, b - 21)], outline=(80, 76, 68, 255), width=0.9)
+        p.disc(32.5, b - 21, 0.9, (80, 76, 68, 255))
+        for yy in (b - 11, b - 8):
+            p.line([(29, yy), (31, yy - 1)], fill=(96, 92, 84, 255), width=0.7)
+            p.line([(34, yy - 1), (36, yy)], fill=(96, 92, 84, 255), width=0.7)
+        for sx, sy, r in ((23, b - 1, 2.6), (42, b - 1, 2.8), (27, b + 0.5, 2.0), (38, b + 0.5, 2.2), (45.5, b - 3, 1.8)):
+            p.disc(sx, sy, r, (132, 128, 118, 255))
+            p.disc(sx - 0.6, sy - 0.7, r * 0.45, (176, 172, 162, 255))
+        p.line([(46, b - 2), (46, b - 30)], fill=WOOD, width=1.2)
+        p.polygon([(46.5, b - 30), (56, b - 27), (46.5, b - 24)], fill=(200, 200, 196, 255), outline=(120, 120, 116, 255), width=0.4)
     elif style == "palisade":
         # a ring of pointed stakes round a small timber blockhouse
         top = b - 14

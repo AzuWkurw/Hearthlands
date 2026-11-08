@@ -28,14 +28,18 @@ func recompute_territory() -> void:
 
 
 ## Who owns each tile, worked out from the military buildings (leaving out building `without`, to see
-## what demolishing it would do).
+## what demolishing it would do). Boundary stones (`claim_only`) claim land without soldiers, but only
+## land no soldiers hold: they come last, so any military building's land wins over theirs.
 func compute_owner(without: int) -> PackedByteArray:
 	var own := PackedByteArray()
 	own.resize(sim.w * sim.h)
 	var mils: Array[Sim.Bld] = []
+	var stones: Array[Sim.Bld] = []
 	for b in sim.blds:
 		if b.id != without and b.state == "ready" and (b.ty == "hq" or (b.def.has("garrison") and b.garrison > 0)):
 			mils.append(b)
+		elif b.id != without and b.state == "ready" and not b.dead and b.def.get("claim_only", false):
+			stones.append(b)
 	for b in mils:
 		for dy in range(-1, 2):
 			for dx in range(-1, 2):
@@ -51,6 +55,15 @@ func compute_owner(without: int) -> PackedByteArray:
 				var dy := y - b.y
 				if dx * dx + dy * dy <= r2 and own[y * sim.w + x] == 0:
 					own[y * sim.w + x] = b.p
+	for b in stones:
+		var r := int(b.def.get("radius", 4))
+		var r2 := r * r
+		for y in range(maxi(0, b.y - r), mini(sim.h - 1, b.y + r) + 1):
+			for x in range(maxi(0, b.x - r), mini(sim.w - 1, b.x + r) + 1):
+				var dx := x - b.x
+				var dy := y - b.y
+				if dx * dx + dy * dy <= r2 and own[y * sim.w + x] == 0:
+					own[y * sim.w + x] = b.p
 	return own
 
 
@@ -58,7 +71,7 @@ func compute_owner(without: int) -> PackedByteArray:
 ## "rival": how much of it a rival gets, "blds": buildings left outside the border}.
 func territory_loss(b: Sim.Bld) -> Dictionary:
 	var out := {"tiles": PackedInt32Array(), "rival": 0, "blds": []}
-	if not (b.state == "ready" and b.def.has("garrison") and b.garrison > 0):
+	if not (b.state == "ready" and ((b.def.has("garrison") and b.garrison > 0) or b.def.get("claim_only", false))):
 		return out
 	var after := compute_owner(b.id)
 	var tiles := PackedInt32Array()

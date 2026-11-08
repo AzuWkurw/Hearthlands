@@ -1221,6 +1221,24 @@
   "trade": "healing",
   "feature": "diseases"
  },
+ "boundary_stone": {
+  "name": "Boundary stone",
+  "cat": "mil",
+  "size": "small",
+  "cost": {
+   "stone": 3,
+   "planks": 1
+  },
+  "time": 10,
+  "radius": 4,
+  "claim_only": true,
+  "info": "Claims free land 4 tiles around it without any soldiers. It holds only land nobody's soldiers hold: when a rival's military building reaches its land, that land is theirs and the stone falls. Good for filling gaps and pushing into empty country cheaply.",
+  "art": {
+   "style": "boundary_stone",
+   "wall": "#9a948a",
+   "sw": 1.0
+  }
+ },
  "palisade": {
   "name": "Palisade",
   "cat": "mil",

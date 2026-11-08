@@ -359,7 +359,7 @@ There are about 75 scripts. The ones to know:
 | `door_test.gd`, `walk_test.gd`, `site_test.gd`, `full_test.gd` | roads and entrances, walking people, construction supply, full stores |
 | `garrison_test.gd`, `field_test.gd`, `battle_test.gd`, `battle_forts.gd` | soldiers and fighting |
 | `research_test.gd`, `research_ai_test.gd`, `options_test.gd`, `oldsave_test.gd` | research, new-game options, old saves |
-| `mission_test.gd`, `sea_test.gd`, `catapult_test.gd` | missions and maps, ships and colonies, catapults |
+| `mission_test.gd`, `sea_test.gd`, `catapult_test.gd`, `claim_test.gd` | missions and maps, ships and colonies, catapults, boundary stones |
 | `ai_stuck.gd`, `econ_diag.gd`, `food_diag.gd`, `chain_diag.gd`, `route_diag.gd`, `war_check.gd`, `rival_check.gd` | finding out why rivals are stuck, hungry, short of iron, or not fighting |
 | `shot_*.gd` | screenshots of a feature (need a display: `xvfb-run -a -s "-screen 0 1920x1080x24" godot --rendering-driver opengl3 --script ...`) |
 
@@ -399,7 +399,7 @@ to `Bld`/`Player` (saved automatically) with a default that works for old saves.
 | carriers and what they carry | `SimLogistics._dispatch`, `_dispatch_supply`, `_dispatch_inputs`, `carry_to` |
 | goods in stores | `SimLogistics.give`, `take`, `store_add`, `stores_of` |
 | who works where | `SimPeople.staffing`, `home_avail`, `send_from_home` |
-| territory | `SimMilitary.recompute_territory` |
+| territory | `SimMilitary.recompute_territory`, `compute_owner` (boundary stones: `claim_only`, `Sim._soldiers_hold`) |
 | attacks and duels | `SimMilitary.launch_attack`, `attack_tick`, `_field_battles` |
 | rival building plan | `SimAI.ai_think` (`steps`) |
 | saving and loading | `Sim.to_save`, `Sim.from_save`, `ui_saves.gd` |

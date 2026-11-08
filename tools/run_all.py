@@ -33,6 +33,7 @@ TESTS = [
 	("missions and maps", "mission_test", [], False, False, [r"mission test: ok"]),
 	("ships and harbours", "sea_test", [], False, False, [r"sea test: ok"]),
 	("catapults",         "catapult_test", [], False, True, [r"catapult test: ok"]),
+	("boundary stones",   "claim_test", [], False, True, [r"claim test: ok"]),
 	("fog after loading", "fogsave_test", [], True, False, [r"after 3 s: (\d+)"]),
 	("toolbar tools",     "toolbar_tool_test", [], True, False, [r"tool clicks answered: 8 of 8"]),
 ]

@@ -276,7 +276,7 @@ func _ai_build(p: Sim.Player, ty: String) -> String:
 		return "skip"
 	if d.has("tech") and not p.techs.has(d.tech):
 		return "skip"
-	var sites := _ai_mil_sites(p, ty) if d.has("garrison") else _ai_sites(p, ty)
+	var sites := _ai_mil_sites(p, ty) if d.has("garrison") or d.get("claim_only", false) else _ai_sites(p, ty)
 	if sites.is_empty():
 		stats["no candidates"] = int(stats.get("no candidates", 0)) + 1
 	for s in sites:
@@ -476,6 +476,11 @@ func ai_think(p: Sim.Player) -> void:
 				no_border = false
 			if r2 == "ok" or r2 == "poor":
 				break
+	# out of room with no soldier to spare: a boundary stone takes free land without one
+	if nosite > 0 and made < p.max_b and p.reserve < 1 and int(cnt.get("boundary_stone", 0)) < 4 + int(mins / 4.0):
+		var r3 := _ai_build(p, "boundary_stone")
+		if r3 == "ok":
+			no_border = false
 	# full: not even a small building fits, or no military building finds new land to claim
 	if no_room.has("small") or no_border:
 		if not p.crowded:

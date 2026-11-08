@@ -146,7 +146,7 @@ func _why(b: Sim.Bld) -> String:
 		if b.msg == "Waiting for materials" and b.coming.is_empty():
 			return sim.status(b).trim_prefix("Waiting for materials: ").to_lower()
 		return ""
-	if b.reno_to >= 0:
+	if b.reno_to >= 0 or b.def.get("claim_only", false):
 		return ""
 	if not sim.connected(b):
 		return tr("no road yet")

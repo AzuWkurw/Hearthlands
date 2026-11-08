@@ -36,7 +36,7 @@ number and updates `scripts/version.gd`, `project.godot`, the Windows export set
 | Build | Pick a building in the Build panel, click a green tile. Hold Shift to place several |
 | Cancel | Right click or Esc |
 | Attack | Select one of your military buildings, then click an enemy military building inside the dashed circle. A window shows the defenders, lets you choose how many soldiers march and which kinds, and gives the odds |
-| Problems | O, or the Problems button: every building of yours that cannot work and why, longest waiting first, each with Go. Attacks on you blink red on the minimap, stuck buildings amber |
+| Problems | O, or the Problems button: every building of yours that cannot work and why, longest waiting first, each with Go. Attacks on you blink red on the minimap, stuck buildings amber. x hides a problem until its reason changes (or Hide all); Show hidden and Unhide all bring them back |
 | Production chain | Select a workshop, then Chain: the buildings that make its inputs and use its goods, with rates per minute and the weakest link marked |
 | Copy a building | Q over one of your buildings: place another of the same kind, entrance the same way |
 | Flags | Toolbar: Flag, then click one of your roads to set or take away a flag (it matters with road carriers: each flag splits a stretch) |
@@ -189,6 +189,10 @@ number and updates `scripts/version.gd`, `project.godot`, the Windows export set
   little. Crowded rivals sail too.
 - **Catapults.** A catapult near the border throws a stone at an enemy military building in range every
   work cycle; a hit may kill a defender.
+- **Boundary stones** (Military group). Claim free land 4 tiles around without any soldier, for 3 stone and
+  a plank. A stone must stand on land your soldiers hold (so stones can't be chained), and it holds only
+  land no soldiers hold: a rival's military building that reaches its land takes it, and the stone falls if
+  its own tile goes. Rivals out of soldiers set them too.
 - **Map size.** Auto fits the number of realms, or choose Small (96), Medium (128), Large (160), Huge (200)
   or Giant (256 tiles a side). Small maps with many realms are refused before generating.
 - **Rivals.** Strength 1 to 10 sets how fast they produce and decide, their starting stock, how soon they

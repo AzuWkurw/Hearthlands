@@ -369,6 +369,8 @@ func _finish_site(b: Sim.Bld, p: Sim.Player) -> void:
 		if b.def.has("garrison"):
 			sim.mil_fill(p)
 			sim.recompute_territory()
+		elif b.def.get("claim_only", false):
+			sim.recompute_territory()
 		if not p.ai:
 			sim.emit_log("%s is finished." % String(b.def.name), Color("d8aa4a"), Vector2i(b.x, b.y))
 

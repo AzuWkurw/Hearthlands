@@ -812,7 +812,7 @@ func demolish(b: Bld) -> void:
 	else:
 		for k in cost:
 			give(p, k, floorf(float(cost[k]) * 0.4), at)
-	var mil := is_mil(b)
+	var mil := is_mil(b) or bool(b.def.get("claim_only", false))
 	destroy(b)
 	if mil:
 		recompute_territory()
@@ -1090,6 +1090,18 @@ func links(a: int, o: int) -> bool:
 	return true
 
 
+## Whether (x, y) lies within the land of one of realm pid's manned military buildings (or its
+## headquarters), not only in land a boundary stone claimed. Stones can't be chained out that way.
+func _soldiers_hold(x: int, y: int, pid: int) -> bool:
+	for b in blds:
+		if b.p != pid or b.dead or b.state != "ready" or not (b.ty == "hq" or (b.def.has("garrison") and b.garrison > 0)):
+			continue
+		var r := int(b.def.get("radius", 6))
+		if (x - b.x) * (x - b.x) + (y - b.y) * (y - b.y) <= r * r:
+			return true
+	return false
+
+
 func can_place(ty: String, x: int, y: int, pid: int, door := -1) -> String:
 	if not inb(x, y):
 		return "Outside the map"
@@ -1101,6 +1113,8 @@ func can_place(ty: String, x: int, y: int, pid: int, door := -1) -> String:
 	if deco[i] == D_ROCK: return "Rocks in the way"
 	if deco[i] == D_CLAY: return "Clay in the way"
 	if road[i] != 0: return "A road is in the way"
+	if d.get("claim_only", false) and not _soldiers_hold(x, y, pid):
+		return "A boundary stone must stand on land your soldiers hold"
 	# no building on the doorstep of a neighbour
 	for dd in 4:
 		var nb := bld_at(x + int(DOOR_DX[dd]), y + int(DOOR_DY[dd]))
