@@ -24,8 +24,9 @@ static func min_size(n: int) -> int:
 	return 56 + n * 9
 
 
+## Since build 33 buildings need room (sizes and plots), so each realm gets more land: 8 realms get 192.
 static func auto_size(n: int) -> int:
-	return mini(176, 64 + n * 13)
+	return mini(208, 72 + n * 15)
 
 
 static func generate(seed_str: String, n_enemies: int, size_override := 0) -> Dictionary:

@@ -182,6 +182,52 @@ func _net_ready(pid: int) -> void:
 		_relax_net(pid)
 
 
+var _reach := {}           # realm id -> [key, PackedByteArray: 1 where a new road can get to]
+
+## Tiles of realm pid that a new road could reach from its road network: everything connected to the
+## network over its own land that a road may cross (no water, rocks, clay or building plots). Building
+## spots whose entrance is not among them are closed in. Worked out again when the roads or buildings
+## change.
+func reach(pid: int) -> PackedByteArray:
+	var k := pid - 1
+	_net_ready(pid)
+	var key := "%d/%d" % [int(net_ver[k]), _store_ver]
+	var e = _reach.get(pid)
+	if e != null and String(e[0]) == key:
+		return e[1]
+	var r := PackedByteArray()
+	r.resize(sim.w * sim.h)
+	var q := PackedInt32Array()
+	for i in sim.owned(pid)[0]:
+		if net_dist(pid, i) < INF and (sim.road[i] == pid or sim.bmap[i] != 0):
+			r[i] = 1
+			q.append(i)
+	var head := 0
+	while head < q.size():
+		var cur := q[head]
+		head += 1
+		var cx := cur % sim.w
+		var cy := cur / sim.w
+		for dd in 4:
+			var nx := cx + (1 if dd == 0 else (-1 if dd == 1 else 0))
+			var ny := cy + (1 if dd == 2 else (-1 if dd == 3 else 0))
+			if nx < 0 or ny < 0 or nx >= sim.w or ny >= sim.h:
+				continue
+			var ni := ny * sim.w + nx
+			if r[ni] == 1 or sim.owner[ni] != pid:
+				continue
+			if sim.ter[ni] == Sim.WATER or sim.deco[ni] == Sim.D_ROCK or sim.deco[ni] == Sim.D_CLAY:
+				continue
+			if sim.plot[ni] != 0 or sim.bmap[ni] != 0:
+				continue
+			if sim.bmap[cur] != 0 and not sim.links(cur, ni):
+				continue
+			r[ni] = 1
+			q.append(ni)
+	_reach[pid] = [key, r]
+	return r
+
+
 ## Whether walking may continue from tile i: roads and stores pass carriers on, other buildings are
 ## only ends of the line.
 func _net_spreads(i: int) -> bool:
@@ -508,20 +554,25 @@ func store_add(s: Sim.Bld, p: Sim.Player, res: String, n: float) -> void:
 
 
 ## Puts n of res into realm p's stores, the one nearest tile `at` first, as far as there is room; what
-## does not fit goes on to the next nearest. Returns how much found room (the rest is lost).
+## does not fit goes on to the next nearest. Stores set to "send away" take goods only when no other
+## store has room. Returns how much found room (the rest is lost).
 func give(p: Sim.Player, res: String, n: float, at := -1, exclude: Sim.Bld = null) -> float:
 	if n <= 0.0:
 		return 0.0
 	var left := n
-	for s: Sim.Bld in stores_near(p, at, exclude):
-		var room := store_room(s, p, res)
-		if room <= 0.0:
-			continue
-		var put := minf(room, left)
-		store_add(s, p, res, put)
-		left -= put
-		if left <= 0.0001:
-			break
+	var list := stores_near(p, at, exclude)
+	for pass_n in 2:
+		for s: Sim.Bld in list:
+			if (s.policy == 2) != (pass_n == 1):
+				continue
+			var room := store_room(s, p, res)
+			if room <= 0.0:
+				continue
+			var put := minf(room, left)
+			store_add(s, p, res, put)
+			left -= put
+			if left <= 0.0001:
+				return n
 	return n - left
 
 
@@ -548,13 +599,96 @@ func arrive_at_store(t: Sim.Trip, p: Sim.Player) -> void:
 	var at := t.path[t.path.size() - 1] if t.path.size() > 0 else -1
 	var s: Sim.Bld = sim.by_id.get(sim.bmap[at]) if at >= 0 else null
 	var left := float(t.n)
-	if s != null and not s.dead and s.p == p.id and s.state == "ready" and is_store(s):
+	if s != null and not s.dead and s.p == p.id and s.state == "ready" and is_store(s) and s.policy != 2:
 		var put := minf(maxf(0.0, store_room(s, p, t.res)), left)
 		if put > 0.0:
 			store_add(s, p, t.res, put)
 			left -= put
 	if left > 0.0:
 		give(p, t.res, left, at)
+
+
+## Goods moving between stores, every 5 game seconds, one load per realm at a time:
+## - a store set to "send away" sends its biggest pile to the nearest store that takes it;
+## - a store set to "gather here" fetches the biggest pile from another store;
+## - a store nearly full of a good (85%) sends a load to the nearest store with little of it (30%).
+func transfers() -> void:
+	for p in sim.players:
+		if not p.alive or porters_free(p) <= 1:
+			continue
+		var list := stores_of(p)
+		if list.size() < 2:
+			continue
+		var done := false
+		for s: Sim.Bld in list:
+			if done: break
+			if s.policy == 2 and not s.inv.is_empty():
+				var k := _biggest(s)
+				for t: Sim.Bld in stores_near(p, sim.idx(s.x, s.y), s):
+					if t.policy != 2 and store_room(t, p, k) >= 1.0:
+						done = _transfer(p, s, t, k)
+						break
+		for g: Sim.Bld in list:
+			if done: break
+			if g.policy == 1:
+				for o: Sim.Bld in stores_near(p, sim.idx(g.x, g.y), g):
+					if o.policy == 1 or o.inv.is_empty():
+						continue
+					var k := _biggest(o)
+					if store_room(g, p, k) >= 1.0:
+						done = _transfer(p, o, g, k)
+						break
+		for a: Sim.Bld in list:
+			if done: break
+			if a.policy != 0:
+				continue
+			var keys := a.inv.keys()
+			keys.sort()
+			for k in keys:
+				if float(a.inv[k]) < store_cap(a, p, k) * 0.85:
+					continue
+				for b2: Sim.Bld in stores_near(p, sim.idx(a.x, a.y), a):
+					if b2.policy != 2 and float(b2.inv.get(k, 0.0)) <= store_cap(b2, p, k) * 0.3 and store_room(b2, p, k) >= 2.0:
+						done = _transfer(p, a, b2, k)
+						break
+				if done: break
+
+
+func _biggest(s: Sim.Bld) -> String:
+	var best := ""
+	var bn := 0.0
+	var keys := s.inv.keys()
+	keys.sort()
+	for k in keys:
+		if float(s.inv[k]) > bn:
+			bn = float(s.inv[k]); best = k
+	return best
+
+
+## A porter carries a load of res from store a to store b along the roads.
+func _transfer(p: Sim.Player, a: Sim.Bld, b: Sim.Bld, res: String) -> bool:
+	var f := store_field(b)
+	var at := sim.idx(a.x, a.y)
+	var d: float = (f[1] as PackedFloat32Array)[at]
+	if d >= INF:
+		return false
+	var n := mini(Sim.PORTER_LOAD, mini(int(float(a.inv.get(res, 0.0))), int(store_room(b, p, res))))
+	if n <= 0:
+		return false
+	var par: PackedInt32Array = f[2]
+	var path := PackedInt32Array()
+	var c := at
+	while c != -1 and path.size() < 5000:
+		path.append(c)
+		c = par[c]
+	store_add(a, p, res, -float(n))
+	p.busy_porters += 1
+	var one_way := d / (1.0 + sim.mod(p, "carry"))
+	var t := Sim.Trip.new()
+	t.p = p.id; t.res = res; t.n = n; t.t0 = sim.time; t.t1 = sim.time + one_way + 1.0; t.t2 = t.t1 + one_way
+	t.path = path; t.kind = "porter"
+	sim.trips.append(t)
+	return true
 
 
 ## Store s is gone: its goods go to the realm's other stores as far as they have room.

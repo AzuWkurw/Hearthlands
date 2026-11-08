@@ -1656,6 +1656,20 @@ func _refresh_sel() -> void:
 			pb.set_pressed_no_signal(b.prio == pr)
 			pb.tooltip_text = PRIO_HELP[pr]
 			prio_row.add_child(pb)
+	# a store: normal, gather goods here, or send them away
+	if b.p == 1 and sim.is_store(b) and b.state == "ready" and sim.logistics.stores_of(sim.human()).size() > 1:
+		prio_row.add_child(_label("This store", 14, DIM))
+		var helps := ["Takes goods from nearby buildings and passes on what it has too much of.", "Other stores send their goods here, a load at a time.", "Takes nothing new; its goods are carried to other stores."]
+		for k in 3:
+			var sb := _button(["Normal", "Gather here", "Send away"][k], func():
+				var bb: Sim.Bld = sim.by_id.get(view.sel_id)
+				if bb:
+					bb.policy = k
+					_refresh_sel())
+			sb.toggle_mode = true
+			sb.set_pressed_no_signal(b.policy == k)
+			sb.tooltip_text = helps[k]
+			prio_row.add_child(sb)
 	if b.p == 1 and wr > 0 and b.state == "ready":
 		sel_actions.add_child(_button("Move work area", func():
 			view.place_type = "@work"
@@ -1698,7 +1712,7 @@ func _refresh_sel() -> void:
 const PRIO_HELP := {
 	2: "Gets workers and builders first, carriers fetch its goods first, and it checks for missing goods twice as often.",
 	1: "Works as usual.",
-	0: "Gets workers and builders last, and leaves the last 6 of each input (12 food) for other buildings.",
+	0: "Gets workers, builders and carried goods after the other buildings.",
 	-1: "Stopped: its worker (or builder) goes back to the idle workers, keeping his skill.",
 }
 

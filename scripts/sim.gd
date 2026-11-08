@@ -202,6 +202,7 @@ class Bld:
 	var worker := 0    # its worker: 0 none, 1 walking here from his home, 2 at work
 	var walking := 0   # soldiers on their way here from a store to join the garrison
 	var inv: Dictionary = {}   # a store's goods (res -> amount); the realm's stock is their total
+	var policy := 0            # a store: 0 normal, 1 gather here (others send it goods), 2 send away (takes nothing new)
 	var inbuf: Dictionary = {}     # goods carried here for its work (res -> count), used as it works
 	var incoming: Dictionary = {}  # goods on their way here for its work
 	var door := -1     # the side its entrance faces: 0 south, 1 east, 2 north, 3 west; roads join it only
@@ -1080,6 +1081,16 @@ func can_place(ty: String, x: int, y: int, pid: int, door := -1) -> String:
 	if pc != "": return pc
 	if not door_ok(ty, door):
 		return "A %s building's entrance can face only %s" % [String(SIZE_NAMES[size]).to_lower(), " or ".join((SIZE_DOORS[size] as Array).map(func(k): return DOOR_NAMES[k]))]
+	# a new road must be able to get to its entrance (not closed in by plots, water or rocks)
+	var rr := logistics.reach(pid)
+	var any_way := false
+	for d2: int in ([door] if door >= 0 else SIZE_DOORS.get(size, [0])):
+		var t2 := door_at(x, y, d2)
+		if t2 >= 0 and rr[t2] == 1:
+			any_way = true
+			break
+	if not any_way:
+		return "No road can get to this spot (closed in by buildings, water or rocks)" if door < 0 else "No road can get to this entrance (try turning it with R)"
 	if door >= 0:
 		var dt := door_at(x, y, door)
 		if dt < 0 or owner[dt] != pid: return "The entrance must face your own land"
@@ -2617,6 +2628,8 @@ func _secondly() -> void:
 	if log_checksums and int(time) % 60 == 0:
 		print("minute %d checksum %d" % [int(time) / 60, checksum()])
 	_rebuild_realm_lists()
+	if int(time) % 5 == 0:
+		logistics.transfers()
 	Diplomacy.expire(self)
 	for f: Feature in features:
 		f.on_second()

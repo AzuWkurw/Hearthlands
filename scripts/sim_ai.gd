@@ -211,9 +211,13 @@ func ai_think(p: Sim.Player) -> void:
 		elif b.def.has("mine") and b.msg == "Deposit exhausted":
 			sim.destroy(b)
 			return
-		elif b.state == "ready" and (b.ty == "weaponsmith" or b.ty == "barracks"):
-			# short of soldiers (or out of room, so land must be taken): weapons and soldiers come first
-			var want := Sim.PRIO_HIGH if (p.crowded or p.reserve < 2) else Sim.PRIO_NORMAL
+		elif b.state == "ready" and (b.ty == "weaponsmith" or b.ty == "barracks" or b.ty == "toolsmith"):
+			# short of soldiers (or out of room, so land must be taken): weapons and soldiers come first;
+			# the toolsmith (who takes iron too) waits unless a new worker is waiting for a tool
+			var short := p.crowded or p.reserve < 2
+			var want := Sim.PRIO_HIGH if short else Sim.PRIO_NORMAL
+			if b.ty == "toolsmith":
+				want = Sim.PRIO_LOW if short and p.tool_wait.is_empty() and float(p.stock.get("weapons", 0.0)) < 2.0 else Sim.PRIO_NORMAL
 			if b.prio != want and b.prio != Sim.PRIO_PAUSED:
 				b.prio = want
 		if b.state != "ready":
