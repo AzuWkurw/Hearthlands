@@ -111,6 +111,7 @@ var log_ui := UiLog.new(self)      # the movable event log window (ui_log.gd)
 var toolbar := UiToolbar.new(self) # the bottom toolbar: building menus, roads, demolish, scouts (ui_toolbar.gd)
 var sound: Sound                    # sound effects and ambience (sound.gd)
 var top_bar: HFlowContainer
+var side_box: PanelContainer   # the side panel (hidden in the map editor)
 var lbl_feat: Label                 # what features show on the top bar (season, weather)
 var feature_ui := {}               # feature id -> {"nodes": [...], "keys": {keycode: Callable}}
 
@@ -724,6 +725,7 @@ func _build_ui() -> void:
 	side.set_anchors_and_offsets_preset(Control.PRESET_RIGHT_WIDE)
 	side.offset_left = -SIDE_W; side.offset_right = 0; side.offset_top = 0; side.offset_bottom = 0
 	add_child(side)
+	side_box = side
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	side.add_child(scroll)

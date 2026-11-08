@@ -76,10 +76,16 @@ func start(seed_str: String, n: int, map_size: int) -> bool:
 	main.view.center_on(Vector2(sim.w / 2.0, sim.h / 2.0))
 	main.view.zoom = 12.0
 	main.setup.visible = false
+	main.side_box.visible = false
+	main.toolbar.bar.visible = false
 	main.paused = true
 	open = true
 	map_name = "map " + seed_str
 	_fill()
+	# in the side panel's place, full height
+	var vs: Vector2 = main.get_viewport().get_visible_rect().size
+	win.position = Vector2i(int(vs.x) - Main.SIDE_W, 0)
+	win.size = Vector2i(Main.SIDE_W, int(vs.y))
 	win.visible = true
 	return true
 
@@ -89,6 +95,8 @@ func close() -> void:
 	win.visible = false
 	main.view.editor = false
 	main.view.editor_starts = []
+	main.side_box.visible = true
+	main.toolbar.bar.visible = true
 	main.setup.visible = true
 	main._fill_maps()
 
@@ -155,7 +163,7 @@ func _fill() -> void:
 	br.add_child(main._button("Close", close))
 	var tip := main._label("Left button paints, the middle button or a drag with the wheel moves the map. Starts need open grass around them. Maps are kept in %s." % ProjectSettings.globalize_path(MAP_DIR), 12, Main.DIM)
 	tip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	tip.custom_minimum_size = Vector2(290, 0)
+	tip.custom_minimum_size = Vector2(370, 0)
 	body.add_child(tip)
 
 
