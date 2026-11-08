@@ -42,6 +42,8 @@ var log_rect := Rect2i()                  # where the event log window is (empty
 var log_open := true
 var features := {}                        # feature id -> switched on; features not listed use their default
 var language := "en"                      # interface language (see I18n)
+var daynight := false                     # a slow day and night (only looks)
+var details := true                       # grass tufts, reeds, foam, snow on peaks
 var raised := true                        # hills drawn raised (2.5D); off: a flat map
 var guide := true                         # show the first-game guide in a new game
 var keys := {}                            # action -> key code the player chose (Keys in Settings)
@@ -73,6 +75,8 @@ func load_file() -> void:
 	features = cf.get_value("game", "features", {})
 	guide = bool(cf.get_value("game", "guide", guide))
 	raised = bool(cf.get_value("display", "raised", raised))
+	daynight = bool(cf.get_value("display", "daynight", daynight))
+	details = bool(cf.get_value("display", "details", details))
 	language = String(cf.get_value("display", "language", language))
 	keys = cf.get_value("game", "keys", {})
 	sound_on = bool(cf.get_value("sound", "on", sound_on))
@@ -101,6 +105,8 @@ func save_file() -> void:
 	cf.set_value("game", "features", features)
 	cf.set_value("game", "guide", guide)
 	cf.set_value("display", "raised", raised)
+	cf.set_value("display", "daynight", daynight)
+	cf.set_value("display", "details", details)
 	cf.set_value("display", "language", language)
 	cf.set_value("game", "keys", keys)
 	cf.set_value("sound", "on", sound_on)

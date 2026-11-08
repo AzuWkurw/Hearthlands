@@ -115,6 +115,14 @@ func _fill_settings() -> void:
 		main.settings.raised = on
 		main.view.raised = on
 		main.settings.save_file()))
+	_set_row(g, "", _check("Ground details: grass tufts, reeds, foam, snow on peaks", main.settings.details, func(on):
+		main.settings.details = on
+		main.view.set_details(on)
+		main.settings.save_file()))
+	_set_row(g, "", _check("Day and night (only the look changes)", main.settings.daynight, func(on):
+		main.settings.daynight = on
+		main.view.daynight = on
+		main.settings.save_file()))
 	_set_row(g, "", _check("Smooth scaling (turn off for a crisp pixel look)", main.settings.smooth, func(on):
 		main.settings.smooth = on
 		main.view.set_smooth(on)

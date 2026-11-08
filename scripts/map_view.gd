@@ -435,6 +435,7 @@ func _draw_ground() -> void:
 		chunks.twin.TS = 16
 		chunks.twin.sim = sim
 		chunks.twin.smooth = chunks.smooth
+		chunks.twin.details = chunks.details
 		chunks.twin.load_images()
 	var ch: MapChunks = chunks if z >= LORES_ZOOM else chunks.twin
 	chunks.sim = sim
@@ -717,6 +718,7 @@ func _draw() -> void:
 		var vr2 := Rect2i(x0, y0, x1 - x0 + 1, y1 - y0 + 1)
 		for f: Feature in sim.features:
 			f.draw_top(self, vr2)
+	_draw_night(vis, x0, y0, x1, y1)
 	_draw_selection_and_tools()
 	# screen-space text
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
@@ -947,6 +949,57 @@ func land_gain(x: int, y: int, r: int, pid: int) -> int:
 			if o == 0:
 				n += 4
 	return n
+
+
+# --- Day and night (an option in Settings; only looks, the game itself does not change) ----------------
+const DAY_LENGTH := 480.0          # game seconds from one dawn to the next
+var daynight := false
+
+
+## Grass tufts, reeds, foam and snow baked into the ground (Settings); the chunks are baked again.
+func set_details(on: bool) -> void:
+	chunks.details = on
+	if chunks.twin != null:
+		chunks.twin.details = on
+	chunks.mark_all()
+
+
+## How dark it is now: 0 by day, 1 in the middle of the night; dusk and dawn in between.
+func night_amount() -> float:
+	if not daynight or sim == null:
+		return 0.0
+	var ph := fmod(sim.time / DAY_LENGTH, 1.0)
+	return clampf(-cos(ph * TAU) * 1.6 - 0.45, 0.0, 1.0)
+
+
+## A dark blue veil over the map at night (orange around dusk and dawn), and the lit windows of homes and
+## workshops with people in them, and torches at military buildings.
+func _draw_night(vis: Array, x0: int, y0: int, x1: int, y1: int) -> void:
+	var n := night_amount()
+	if n <= 0.0:
+		return
+	var area := Rect2(x0 - 2, y0 - 6, x1 - x0 + 5, y1 - y0 + 9)
+	var dusk := sin(n * PI)
+	draw_rect(area, Color(1.0, 0.55, 0.25, 0.10 * dusk))
+	draw_rect(area, Color(0.04, 0.06, 0.17, 0.58 * n))
+	if _glow == null:
+		return
+	for b: Sim.Bld in vis:
+		if b.dead or b.state != "ready":
+			continue
+		var lit := b.def.has("housing") or b.def.has("residence") or b.ty == "hq" or (b.staffed and b.def.has("worker")) or sim.is_mil(b)
+		if not lit:
+			continue
+		var art: Dictionary = b.def.get("art", {})
+		var sw := float(art.get("sw", 2.0))
+		var c := Vector2(b.x + 0.5, b.y + 0.55 - lift_at(b.x + 0.5, b.y + 0.9))
+		# each window flickers a little, and some houses go dark late at night
+		if b.def.has("housing") and _hash(b.id, int(sim.time / 30.0)) % 5 == 0 and n > 0.8:
+			continue
+		var fl := 0.85 + 0.15 * sin(sim.time * 3.0 + b.id * 1.7)
+		var r := 0.34 * sw if not sim.is_mil(b) else 0.5
+		draw_texture_rect(_glow, Rect2(c.x - r, c.y - r, r * 2.0, r * 2.0), false, Color(1.0, 0.78, 0.4, 0.75 * n * fl))
+		draw_circle(c + Vector2(0.06, 0.05), minf(0.08, 0.04 * sw), Color(1.0, 0.85, 0.45, 0.9 * n))
 
 
 ## Where a road-carriers load is: Vector3(tile from, tile to, how far between them); z < 0 when it lies
