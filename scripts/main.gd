@@ -99,6 +99,8 @@ var rivals_label: RichTextLabel
 
 
 var guide_ui := UiGuide.new(self)  # the first-game checklist (ui_guide.gd)
+var side_ui := UiSide.new(self)
+var info_ui := UiInfo.new(self)
 var log_ui := UiLog.new(self)      # the movable event log window (ui_log.gd)
 var toolbar := UiToolbar.new(self) # the bottom toolbar: building menus, roads, demolish, scouts (ui_toolbar.gd)
 var sound: Sound                    # sound effects and ambience (sound.gd)
@@ -409,10 +411,8 @@ func res_known(id: String) -> bool:
 	return false
 
 
-## Shows the stock rows of the goods your realm knows of, hides the rest.
 func _refresh_stock_rows() -> void:
-	for id in stock_labels:
-		(stock_labels[id] as Control).get_parent().visible = res_shown(id)
+	side_ui._refresh_stock_rows()
 
 
 ## Switches a feature on or off in the running game (from Settings).
@@ -892,7 +892,7 @@ const DIFF_CHOICES := [
 
 
 const DIFF_CHECKS := [["Endless ore veins", "endless_ore"], ["Endless stone, clay and fish", "endless_raw"], ["New workers need their trade's tool", "tools"],
-	["All research done at the start", "all_research"], ["Creative mode: build free and at once, stores never run low", "creative"]]
+	["Road carriers: one carrier per stretch of road, goods handed on at flags (The Settlers style)", "road_carriers"], ["All research done at the start", "all_research"], ["Creative mode: build free and at once, stores never run low", "creative"]]
 
 
 ## Presets: option values plus a rival strength. "Custom" leaves everything as it is.
@@ -1547,276 +1547,15 @@ func _refresh_all() -> void:
 
 
 func _refresh_folk() -> void:
-	var p := sim.human()
-	var t := ""
-	t += "Peasants  [b]%d[/b] (%d at work)\n" % [p.peasant, p.used_peasant]
-	t += "Artisans  [b]%d[/b] (%d at work)  content %d%%\n" % [p.artisan, p.used_artisan, roundi(float(p.sat.get("artisan", 0.0)) * 100)]
-	t += "Nobles  [b]%d[/b]  content %d%%\n" % [p.noble, roundi(float(p.sat.get("noble", 0.0)) * 100)]
-	t += "Soldiers  [b]%d[/b] (%d in HQ, %d veterans): %s\n" % [sim.soldiers(p), p.reserve, int(p.vets), Sim.mix_text(sim.soldier_mix(p))]
-	t += "Housing  [b]%d / %d[/b]\n" % [sim.pop_total(p), sim.housing(p)]
-	# specialists: workers level up only in their own trade
-	var ts := sim.trade_summary(p)
-	var parts := []
-	var trs := ts.keys()
-	trs.sort_custom(func(a, c): return int(ts[a].work) > int(ts[c].work))
-	for tr: String in trs:
-		var e: Dictionary = ts[tr]
-		var bit := "%s %d" % [GameData.trade_plural(tr).capitalize(), int(e.work)]
-		if int(e.work) > 0:
-			bit += " lv %.1f" % (float(e.levels) / int(e.work))
-		if int(e.idle) > 0:
-			bit += " +%d idle" % int(e.idle)
-		parts.append(bit)
-	if not parts.is_empty():
-		t += "Trades  %s\n" % ", ".join(parts)
-	for f: Feature in sim.features:
-		for line in f.panel_lines(p):
-			t += line + "\n"
-	var mules := [0, 0]
-	var carts := [0, 0]
-	for b in sim.realm_blds(p):
-		if b.def.has("carriers") and b.state == "ready":
-			var c: Dictionary = b.def.carriers
-			var pair: Array = mules if String(c.kind) == "mule" else carts
-			pair[0] += int(c.count) - b.busy if b.working else 0
-			pair[1] += int(c.count) if b.working else 0
-	t += "Carriers  [b]%d[/b] porters free%s%s\n" % [maxi(0, sim.porters_free(p)), (", %d of %d mules" % mules) if mules[1] > 0 else "", (", %d of %d carts" % carts) if carts[1] > 0 else ""]
-	t += "Storage  [b]%d[/b] of each good\n" % int(sim.capacity(p, "planks"))
-	if p.starve > 0:
-		t += "Food  [color=#f0a090][b]Starving[/b][/color]"
-	else:
-		t += "Food  [b]%d[/b] in store" % int(sim.food_total(p))
-	folk_label.text = t
+	side_ui._refresh_folk()
 
 
 func _refresh_build() -> void:
-	if sim.players.is_empty():
-		return
-	var p := sim.human()
-	# research unlocked something: show it
-	if p.techs.size() != _list_techs:
-		_rebuild_build_list()
-		_refresh_stock_rows()
-	for id in tool_buttons:
-		(tool_buttons[id] as Button).set_pressed_no_signal(view.place_type == id)
-	toolbar.refresh()
-	for id in build_buttons:
-		var b: Button = build_buttons[id]
-		var d: Dictionary = GameData.bld[id]
-		var locked: bool = d.has("tech") and not p.techs.has(d.tech)
-		b.disabled = locked
-		b.text = "%s\n%s" % [String(d.name), ("Needs " + GameData.tech_name(d.tech)) if locked else "%s · %s" % [GameData.cost_text(d.get("cost", {})), String(Sim.SIZE_NAMES[sim.size_of(id)]).to_lower()]]
-		b.modulate = Color(1, 1, 1, 0.5) if (locked or sim.missing(p, d.get("cost", {})) != "") else Color.WHITE
-		b.set_pressed_no_signal(view.place_type == id)
+	side_ui._refresh_build()
 
 
 func _refresh_sel() -> void:
-	for c in sel_actions.get_children():
-		c.queue_free()
-	var gb: Sim.Bld = sim.by_id.get(view.sel_id)
-	if not (gb != null and gb.p == 1 and gb.ty != "hq" and gb.def.has("garrison") and gb.state == "ready") and _gar_sig != "":
-		_gar_sig = ""
-		for c in garrison_box.get_children():
-			garrison_box.remove_child(c)
-			c.queue_free()
-	for c in prio_row.get_children():
-		prio_row.remove_child(c)
-		c.queue_free()
-	var b: Sim.Bld = sim.by_id.get(view.sel_id)
-	sel_box.visible = b != null or sel_res != "" or view.sel_tile >= 0
-	if b == null and sel_res != "":
-		sel_label.text = _res_info(sel_res)
-		sel_actions.add_child(_label("Keep in stock:", 14, DIM))
-		sel_actions.add_child(_target_ctrl(sel_res))
-		return
-	if b == null and view.sel_tile >= 0:
-		sel_label.text = _tile_info(view.sel_tile)
-		return
-	if b == null:
-		return
-	var d := b.def
-	var owner := sim.players[b.p - 1]
-	var t := "[b]%s[/b]%s\n%s\n" % [String(d.name), "" if b.p == 1 else " of " + owner.name, sim.status(b)]
-	if b.state == "build" and b.mat_total > 0:
-		t += "Materials: %s\n[color=#9a9c88]Carriers bring them from the stores as the site needs them; nothing is set aside before.[/color]\n" % sim.materials_text(b)
-	# people walking here (a builder, the worker, soldiers), with how long until they arrive
-	var coming: Array = []
-	for tr0: Sim.Trip in sim.trips:
-		if tr0.site == b.id and (tr0.kind == "builder" or tr0.kind == "worker" or tr0.kind == "soldier"):
-			coming.append("%s in %d s" % ["a builder" if tr0.kind == "builder" else ("the worker" if tr0.kind == "worker" else "a soldier"), maxi(1, ceili(tr0.t1 - sim.time))])
-	if not coming.is_empty():
-		coming.sort()
-		t += "On the way: %s%s\n" % [", ".join(coming.slice(0, 4)), " and %d more" % (coming.size() - 4) if coming.size() > 4 else ""]
-	if b.reno_to >= 0 and b.mat_total > 0:
-		t += "Renovation materials: %s\n" % sim.materials_text(b).replace("/" , " of ")
-	if b.era >= 0:
-		var my_age: int = owner.age
-		t += "Style: %s%s\n" % [GameData.age_name(b.era), (" [color=#9a9c88](its realm is in the %s age: it can be renovated)[/color]" % GameData.age_name(my_age)) if b.era < my_age and b.reno_to < 0 and b.state == "ready" and b.p == 1 else ""]
-		if (sim.reno_queue.get(b.p, []) as Array).has(b.id):
-			t += "Waiting its turn to be renovated.\n"
-	if b.state == "ready" and sim.is_mil(b) and sim.own_def(b) > 0:
-		t += "Soldiers: %s\n" % Sim.mix_text(sim.military.mix_of(b))
-		if b.p == 1:
-			t += "[color=#9a9c88]Each kind has its strengths (Military tab: Soldier kinds). Defenders always send their best answer to each attacker.[/color]\n"
-	if d.has("info"):
-		t += "[color=#9a9c88]%s[/color]\n" % String(d.info)
-	if d.has("in"):
-		t += "Uses: %s\n" % ", ".join((d["in"] as Dictionary).keys().map(func(k): return "%d %s" % [int(d["in"][k]), GameData.res_name(k).to_lower()]))
-	if d.has("out"):
-		t += "Makes: %s\n" % ", ".join((d.out as Dictionary).keys().map(func(k): return "%d %s" % [int(d.out[k]), GameData.res_name(k).to_lower()]))
-	# goods carried here from the stores for its work
-	if d.has("in") and b.state == "ready" and b.p == 1:
-		var parts := []
-		var keys := {}
-		for k in b.inbuf: keys[k] = true
-		for k in b.incoming: keys[k] = true
-		for k in keys:
-			var way := int(b.incoming.get(k, 0))
-			parts.append("%d %s%s" % [int(b.inbuf.get(k, 0)), GameData.res_name(k).to_lower(), (" (+%d on the way)" % way) if way > 0 else ""])
-		t += "Here for its work: %s\n" % (", ".join(parts) if not parts.is_empty() else "nothing yet (carriers fetch it from the nearest store that has it)")
-	# a store's own goods
-	if sim.is_store(b) and b.p == 1 and b.state == "ready":
-		var items := b.inv.keys().filter(func(k): return float(b.inv[k]) >= 1.0)
-		items.sort_custom(func(x, y): return float(b.inv[x]) > float(b.inv[y]))
-		var total := 0
-		for k in items: total += int(b.inv[k])
-		t += "In this store: [b]%d goods[/b]%s\n" % [total, (": " + ", ".join(items.map(func(k): return "%d %s" % [int(b.inv[k]), GameData.res_name(k).to_lower()]))) if not items.is_empty() else ""]
-	# idle people waiting here
-	if b.p == 1 and b.state == "ready":
-		var av := sim.home_avail(sim.human())
-		var here := []
-		for cls in ["peasant", "artisan", "scout", "soldier"]:
-			var n := int((av[cls] as Dictionary).get(b.id, 0))
-			if n > 0:
-				here.append("%d %s%s" % [n, cls, "" if n == 1 else "s"])
-		var room := int(d.get("residence", 0))
-		if not here.is_empty() or room > 0:
-			t += "Waiting here: %s%s\n" % [", ".join(here) if not here.is_empty() else "nobody", (" (room for %d)" % room) if room > 0 else ""]
-	if d.has("worker") and b.state == "ready" and String(d.worker) != "scout":
-		var tr := GameData.trade(b.ty)
-		if b.staffed:
-			var lv := Sim.level(b.wxp, Sim.WORKER_XP)
-			var rank := "master " if lv >= 5 else ("" if lv >= Sim.SPECIALIST else "apprentice ")
-			t += "Worker: %s%s (%s), trade: %s%s\n" % [rank, GameData.trade_title(tr), String(d.worker), GameData.trade_name(tr), " [color=#e0b060](on his way here)[/color]" if b.worker == 1 else ""]
-		else:
-			t += "Worker: %s (missing)\n" % String(d.worker)
-		var tool := sim.tool_of(b)
-		if tool != "":
-			t += "New workers need %s (%d in store)\n" % [GameData.res_name(tool).to_lower(), int(sim.human().stock.get(tool, 0.0))]
-		if b.staffed and d.has("cycle"):
-			t += _xp_line("Worker", b.wxp, Sim.WORKER_XP, "work cycles", roundi(Sim.LEVEL_BONUS * 100))
-			t += "[color=#9a9c88]Experience counts only in %s work; idle %s are hired first.[/color]\n" % [GameData.trade_name(tr).to_lower(), GameData.trade_plural(tr)]
-	if b.state == "ready" and sim.is_mil(b) and sim.own_def(b) > 0:
-		t += _xp_line("Soldiers here", sim.players[b.p - 1].res_xp if b.ty == "hq" else b.sxp, Sim.SOLDIER_XP, "battle experience", 3)
-	if b.p == 1 and sim.is_mil(b):
-		t += "[color=#d8aa4a]Click an enemy military building within the dashed circle to attack with all but one soldier.[/color]\n"
-	var waiting := 0
-	for r in b.out_buf:
-		waiting += int(b.out_buf[r])
-	if waiting > 0:
-		t += "Waiting for carriers: %d goods\n" % waiting
-	if b.state == "ready" and b.cyc > 0.0 and not sim.is_store(b):
-		var dist := sim.net_dist(b.p, sim.idx(b.x, b.y))
-		t += "Road to the nearest store: %s\n" % ("none, build a road" if dist >= Sim.INF else "%d s walk" % roundi(dist))
-	var wr := sim.work_radius(b)
-	if wr > 0:
-		var wc := sim.work_center(b)
-		var moved := wc != Vector2i(b.x, b.y)
-		t += "Work area: %d tiles across%s\n" % [wr * 2 + 1, (", moved %d tiles away (+%.1f s walking per cycle)" % [roundi(Vector2(wc.x - b.x, wc.y - b.y).length()), sim.walk_time(b)]) if moved else ", around the building"]
-	for f: Feature in sim.features:
-		for line in f.building_lines(b):
-			t += line + "\n"
-	if b.p == 1 and b.def.has("mine") and b.dry_t >= 0.0:
-		if settings.demolish_dry_mines:
-			t += "[color=#e0b060]Its vein has run dry: it will be demolished in %d s (switch this off in Settings).[/color]\n" % maxi(0, ceili(DRY_MINE_WAIT - (sim.time - b.dry_t)))
-		else:
-			t += "[color=#e0b060]Its vein has run dry: demolish it to get back 40%% of its cost.[/color]\n"
-	if b.p == 1 and sim.has_priority(b):
-		t += "Priority: [b]%s[/b]. %s\n" % [Sim.PRIO_NAMES[b.prio], PRIO_HELP[b.prio]]
-	sel_label.text = t
-	if b.p == 1 and b.ty != "hq" and b.def.has("garrison") and b.state == "ready":
-		_garrison_ui(b)
-	if b.p == 1 and sim.has_priority(b):
-		prio_row.add_child(_label("Priority", 14, DIM))
-		for pr in [Sim.PRIO_HIGH, Sim.PRIO_NORMAL, Sim.PRIO_LOW, Sim.PRIO_PAUSED]:
-			var pb := _button(Sim.PRIO_NAMES[pr], _set_prio.bind(pr))
-			pb.toggle_mode = true
-			pb.set_pressed_no_signal(b.prio == pr)
-			pb.tooltip_text = PRIO_HELP[pr]
-			prio_row.add_child(pb)
-	# a store: normal, gather goods here, or send them away
-	if b.p == 1 and sim.is_store(b) and b.state == "ready" and sim.logistics.stores_of(sim.human()).size() > 1:
-		prio_row.add_child(_label("This store", 14, DIM))
-		var helps := ["Takes goods from nearby buildings and passes on what it has too much of.", "Other stores send their goods here, a load at a time.", "Takes nothing new; its goods are carried to other stores."]
-		for k in 3:
-			var sb := _button(["Normal", "Gather here", "Send away"][k], func():
-				var bb: Sim.Bld = sim.by_id.get(view.sel_id)
-				if bb:
-					bb.policy = k
-					_refresh_sel())
-			sb.toggle_mode = true
-			sb.set_pressed_no_signal(b.policy == k)
-			sb.tooltip_text = helps[k]
-			prio_row.add_child(sb)
-	# a workshop: how many work cycles of inputs to keep here
-	if b.p == 1 and b.state == "ready" and b.def.has("in") and b.def.has("cycle"):
-		prio_row.add_child(_label("Keep inputs for", 14, DIM))
-		for k in [1, 2, 4]:
-			var kb := _button("%d cycle%s" % [k, "s" if k > 1 else ""], func():
-				var bb: Sim.Bld = sim.by_id.get(view.sel_id)
-				if bb:
-					bb.keep = k
-					_refresh_sel())
-			kb.toggle_mode = true
-			kb.set_pressed_no_signal((b.keep if b.keep > 0 else 2) == k)
-			kb.tooltip_text = "Carriers bring enough for %d work cycle%s (food for %d). More keeps it working through gaps; less leaves more in the stores for others." % [k, "s" if k > 1 else "", maxi(1, k / 2)]
-			prio_row.add_child(kb)
-	# a building site: ring a bell when it is finished
-	if b.p == 1 and (b.state == "build" or b.reno_to >= 0):
-		var wb := _button("Bell when done: %s" % ("on" if watch.has(b.id) else "off"), func():
-			var bb: Sim.Bld = sim.by_id.get(view.sel_id)
-			if bb:
-				if watch.has(bb.id): watch.erase(bb.id)
-				else: watch[bb.id] = true
-				_refresh_sel())
-		wb.tooltip_text = "Play a sound and say so when this building is finished."
-		sel_actions.add_child(wb)
-	if b.p == 1 and wr > 0 and b.state == "ready":
-		sel_actions.add_child(_button("Move work area", func():
-			view.place_type = "@work"
-			_refresh_build()))
-		if b.work.x >= 0:
-			sel_actions.add_child(_button("Reset work area", func():
-				var bb: Sim.Bld = sim.by_id.get(view.sel_id)
-				if bb:
-					sim.set_work_area(bb, bb.x, bb.y)
-					_refresh_sel()))
-	if b.p == 1 and b.state == "ready":
-		var why := sim.can_renovate(b)
-		if why == "":
-			var rb := _button("Renovate", func():
-				var bb: Sim.Bld = sim.by_id.get(view.sel_id)
-				if bb:
-					var r := sim.renovate(bb)
-					_show_hint(r if r != "" else ("Renovation starts: carriers bring half the building's materials." if bb.reno_to >= 0 else "Renovation queued: two run at a time."), 3.0)
-					_refresh_sel())
-			rb.tooltip_text = "Rebuild it in the %s style: half its building cost, carried here, and half its building time. Work stops meanwhile; the worker keeps his job." % GameData.age_name(sim.human().age)
-			sel_actions.add_child(rb)
-			var same := 0
-			for x: Sim.Bld in sim.realm_blds(sim.human()):
-				if x.ty == b.ty and sim.can_renovate(x) == "":
-					same += 1
-			if same > 1:
-				sel_actions.add_child(_button("Renovate all %d" % same, func():
-					var bb: Sim.Bld = sim.by_id.get(view.sel_id)
-					if bb:
-						_show_hint("%d %s queued for renovation; two at a time." % [sim.renovate_all(sim.human(), bb.ty), String(bb.def.name).to_lower()], 3.0)
-						_refresh_sel()))
-	if b.p == 1 and b.ty != "hq":
-		sel_actions.add_child(_button("Demolish", func():
-			var bb: Sim.Bld = sim.by_id.get(view.sel_id)
-			if bb:
-				_ask_demolish(bb)))
+	info_ui._refresh_sel()
 
 
 ## What each priority does, shown in the building panel and as button tooltips.
@@ -1828,30 +1567,12 @@ const PRIO_HELP := {
 }
 
 
-## Changes the selected building's priority (also bound to Page Up / Page Down and P).
 func _set_prio(pr: int) -> void:
-	var b: Sim.Bld = sim.by_id.get(view.sel_id)
-	if b == null or b.p != 1 or not sim.has_priority(b):
-		return
-	sim.set_priority(b, pr)
-	_show_hint("%s: priority %s." % [String(b.def.name), Sim.PRIO_NAMES[b.prio].to_lower()], 2.5)
-	_refresh_sel()
+	info_ui._set_prio(pr)
 
 
 func _refresh_rivals() -> void:
-	var t := ""
-	for q in sim.players:
-		if not q.ai:
-			continue
-		var n := 0
-		for b in sim.blds:
-			if b.p == q.id: n += 1
-		var name_s := "[color=#%s]■[/color] %s [color=#9a9c88]%s, level %d[/color]" % [q.color.to_html(false), q.name, q.pers, q.skill]
-		if q.alive:
-			t += "%s  %d buildings, %d soldiers\n" % [name_s, n, sim.soldiers(q)]
-		else:
-			t += "%s  [s]defeated[/s]\n" % name_s
-	rivals_label.text = t
+	side_ui._refresh_rivals()
 
 
 # ================================================================ experience, resource and tile info
@@ -1864,9 +1585,7 @@ func _clear_selection() -> void:
 
 
 func _xp_line(who: String, xp: float, table: Array, unit: String, pct: int) -> String:
-	var lv := Sim.level(xp, table)
-	var nxt := "max level" if lv >= table.size() else "%d / %d %s to level %d" % [int(xp), int(table[lv]), unit, lv + 1]
-	return "%s level [b]%d[/b] (%s), %+d%% %s\n" % [who, lv, nxt, (lv - 1) * pct, "win chance" if table == Sim.SOLDIER_XP else "speed"]
+	return info_ui._xp_line(who, xp, table, unit, pct)
 
 
 func _on_stock_click(event: InputEvent, id: String) -> void:
@@ -1878,62 +1597,7 @@ func _on_stock_click(event: InputEvent, id: String) -> void:
 
 
 func _res_info(id: String) -> String:
-	var p := sim.human()
-	var r: Dictionary = GameData.res_by_id.get(id, {})
-	var t := "[b]%s[/b]\nIn store: [b]%d[/b] of %d room" % [GameData.res_name(id), int(p.stock.get(id, 0.0)), int(sim.capacity(p, id))]
-	var on_way := int(sim.coming(p, id))
-	if on_way > 0:
-		t += ", %d more on the way" % on_way
-	if float(p.stock.get(id, 0.0)) + on_way >= sim.capacity(p, id) - 0.5:
-		t += "\n[color=#e0a050]Full: buildings that make it have stopped until some is used. Build a storehouse for more room.[/color]\n"
-	else:
-		t += "\n[color=#9a9c88]When the stores are full, buildings that make it stop (goods on the way count).[/color]\n"
-	if r.has("food"):
-		t += "Food: each one feeds %.1f people-meals\n" % float(r.food)
-	t += "Worth about %.1f in trade\n" % GameData.res_value(id)
-	var makers := []
-	var users := []
-	var costs := []
-	for b in GameData.bld:
-		var d: Dictionary = GameData.bld[b]
-		var mine := 0
-		for x in sim.blds:
-			if x.p == 1 and x.ty == b:
-				mine += 1
-		var have := " (you have %d)" % mine if mine > 0 else ""
-		if (d.get("out", {}) as Dictionary).has(id):
-			makers.append("%s: %d every %d s%s" % [String(d.name), int(d.out[id]), int(d.get("cycle", 0)), have])
-		elif d.has("makes_tools") and GameData.is_tool_res(id):
-			makers.append("%s: %d tools every %d s, the kind most wanted%s" % [String(d.name), int(d.makes_tools), int(d.get("cycle", 0)), have])
-		if (d.get("in", {}) as Dictionary).has(id):
-			users.append("%s uses %d%s" % [String(d.name), int(d["in"][id]), have])
-		if (d.get("cost", {}) as Dictionary).has(id):
-			costs.append(String(d.name))
-	if id in ["coal", "ore_iron", "ore_gold", "ore_copper", "stone"]:
-		makers.append("mines and quarries draw it from veins on the map; click a deposit to see what is left")
-	t += "Made by: %s\n" % ("; ".join(makers) if makers.size() > 0 else "nothing")
-	if users.size() > 0:
-		t += "Used by: %s\n" % "; ".join(users)
-	if r.has("food"):
-		t += "Eaten by everyone; miners eat it too\n"
-	if r.has("tool"):
-		var tr := String(r.tool)
-		var waiting := int(p.tool_wait.get(id, 0))
-		t += "Each new %s (%s) needs one; an idle specialist brings his own%s\n" % [GameData.trade_title(tr), GameData.trade_name(tr).to_lower(), (". [color=#f08a7a]%d building%s waiting for one[/color]" % [waiting, "s" if waiting != 1 else ""]) if waiting > 0 else ""]
-	var tg := sim.target_of(p, id)
-	t += "Production target: %s\n" % ("none (makes up to the store room)" if tg < 0 else "keep %d in store, then pause" % tg)
-	if costs.size() > 0:
-		t += "Needed to build: %s\n" % ", ".join(costs)
-	for cls in GameData.needs:
-		for key: String in GameData.needs[cls]:
-			var opts := GameData.need_options(key)
-			if id in opts:
-				var others := []
-				for o in opts:
-					if o != id:
-						others.append(GameData.res_name(o).to_lower())
-				t += "Keeps %ss content%s\n" % [cls, "" if others.is_empty() else " (or " + " or ".join(others) + " instead)"]
-	return t
+	return side_ui._res_info(id)
 
 
 func _tile_has_info(i: int) -> bool:
@@ -2028,7 +1692,7 @@ func _trade_offer() -> void:
 	diplomacy_ui._trade_offer()
 
 func _refresh_research() -> void:
-	research_ui._refresh_research()
+	side_ui._refresh_research()
 
 func _build_tech_panel() -> void:
 	research_ui._build_tech_panel()
@@ -2130,108 +1794,8 @@ func turn_on_new_features() -> void:
 		sim.emit_log("Switched on for this game: %s (new since it was saved; switch them off under Settings > Game features)." % ", ".join(added), Color("d8aa4a"))
 
 
-## The garrison settings of your military building b: how many soldiers, which kinds, and who stays
-## home when it attacks.
 func _garrison_ui(b: Sim.Bld) -> void:
-	var p := sim.human()
-	var cap := int(b.def.garrison)
-	var want := sim.garrison_wanted(b)
-	var rm := sim.rmix_of(p)
-	var gm := sim.gmix_of(b)
-	# rebuilt only when something it shows changes, so a menu that is open stays open
-	var sig := "%d|%d|%s|%d|%s|%s|%d" % [b.id, b.want_n, str(b.want_kinds), b.keep_kind, str(rm), str(gm), p.age]
-	if sig == _gar_sig:
-		return
-	_gar_sig = sig
-	for c in garrison_box.get_children():
-		garrison_box.remove_child(c)
-		c.queue_free()
-	garrison_box.add_child(HSeparator.new())
-	var row := HBoxContainer.new()
-	row.add_child(_label("Soldiers wanted", 14, DIM))
-	var minus := _button("-", func(): _set_want(b, want - 1))
-	minus.disabled = want <= 1
-	row.add_child(minus)
-	var n := _label("%d of %d" % [want, cap], 15)
-	n.custom_minimum_size = Vector2(60, 0)
-	n.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	row.add_child(n)
-	var plus := _button("+", func(): _set_want(b, want + 1))
-	plus.disabled = want >= cap
-	row.add_child(plus)
-	if b.want_n >= 0:
-		row.add_child(_button("Full", func(): _set_want(b, -1)))
-	garrison_box.add_child(row)
-	var row2 := HBoxContainer.new()
-	var kl := _label("Kinds that may serve here", 14, DIM)
-	kl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row2.add_child(kl)
-	if not b.want_kinds.is_empty():
-		row2.add_child(_button("Any", func():
-			b.want_kinds = []
-			sim.mil_fill(sim.human())
-			_refresh_sel()))
-	garrison_box.add_child(row2)
-	var grid := GridContainer.new()
-	grid.columns = 2
-	for k in 6:
-		var tb := Button.new()
-		tb.focus_mode = Control.FOCUS_NONE
-		tb.toggle_mode = true
-		tb.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		tb.custom_minimum_size = Vector2(190, 0)
-		tb.add_theme_font_size_override("font_size", 13)
-		var at := AtlasTexture.new()
-		at.atlas = Tex.get_tex("unit_soldier_e%d" % k)
-		at.region = Tex.frame_rect("unit_soldier_e%d" % k, 0)
-		tb.icon = at
-		tb.add_theme_constant_override("icon_max_width", 22)
-		var here := int(gm[k])
-		var trainable := k <= p.age or int(rm[k]) > 0 or here > 0
-		var info := ("%d at headquarters" % int(rm[k])) + ((", %d here" % here) if here > 0 else "")
-		tb.text = "%s\n%s" % [Sim.soldier_plural(k).capitalize(), info if trainable else "not yet (%s age)" % GameData.age_name(k)]
-		var ok := sim.kind_allowed(b, k)
-		tb.set_pressed_no_signal(ok)
-		# allowed kinds in gold, the others faded
-		tb.add_theme_color_override("font_pressed_color", BRASS)
-		tb.add_theme_color_override("font_hover_pressed_color", BRASS)
-		if not ok:
-			tb.modulate = Color(1, 1, 1, 0.55)
-		tb.disabled = not trainable
-		tb.tooltip_text = "Untick to keep %s out of this building: they are swapped for an allowed kind as soon as headquarters has one." % Sim.soldier_plural(k)
-		var kk := k
-		tb.toggled.connect(func(on):
-			if b.want_kinds.is_empty():
-				b.want_kinds = [true, true, true, true, true, true]
-			b.want_kinds[kk] = on
-			if not b.want_kinds.has(true):
-				b.want_kinds[kk] = true       # at least one kind must be allowed
-				_show_hint("At least one kind must be allowed.", 2.0)
-			if not b.want_kinds.has(false):
-				b.want_kinds = []
-			_click()
-			if sim.mil_fill(sim.human()):
-				sim.recompute_territory()
-			_refresh_sel())
-		grid.add_child(tb)
-	garrison_box.add_child(grid)
-	var row3 := HBoxContainer.new()
-	row3.add_child(_label("Stays home when it attacks", 14, DIM))
-	var ob := OptionButton.new()
-	ob.focus_mode = Control.FOCUS_NONE
-	ob.add_item("The oldest kind", 0)
-	for k in 6:
-		ob.add_item(Sim.soldier_name(k).capitalize(), k + 1)
-	ob.select(b.keep_kind + 1)
-	ob.tooltip_text = "When this building attacks, all but one soldier march. This picks who stays to hold it (if one of that kind is here)."
-	ob.item_selected.connect(func(i):
-		b.keep_kind = i - 1
-		_gar_sig = "-"
-		_click())
-	row3.add_child(ob)
-	garrison_box.add_child(row3)
-	garrison_box.add_child(_label("Extra soldiers go back to headquarters; missing ones come from there, newest allowed kind first.", 12, DIM))
-	(garrison_box.get_child(garrison_box.get_child_count() - 1) as Label).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	info_ui._garrison_ui(b)
 
 
 func _set_want(b: Sim.Bld, n: int) -> void:

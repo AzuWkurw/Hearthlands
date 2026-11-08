@@ -389,6 +389,16 @@ func _draw() -> void:
 		var a := t.path[k]
 		var c := t.path[k + 1]
 		var pos := Vector2(a % w, a / w).lerp(Vector2(c % w, c / w), f - k) + Vector2(0.5, 0.75)
+		var waiting := false
+		if not t.legs.is_empty():
+			# road carriers: on the stretch the load is on now, or lying at a flag waiting its turn
+			var lp := _leg_pos(t)
+			if lp.z < 0.0:
+				waiting = true
+			a = int(lp.x); c = int(lp.y)
+			pos = Vector2(a % w, a / w).lerp(Vector2(c % w, c / w), absf(lp.z)) + Vector2(0.5, 0.75)
+			if waiting:
+				pos = Vector2(a % w, a / w) + Vector2(0.5 + 0.12 * float(t.p * 7 + int(t.t0 * 10.0) % 5) / 5.0, 0.7)
 		if pos.x < x0 or pos.x > x1 + 1 or pos.y < y0 or pos.y > y1 + 1:
 			continue
 		if fog_on and t.p != 1 and fv[mini(sim.h - 1, int(pos.y)) * w + mini(w - 1, int(pos.x))] == 0:
@@ -399,8 +409,18 @@ func _draw() -> void:
 			# far out a carrier is a few pixels: a dot in the realm's colour is enough
 			draw_rect(Rect2(pos.x - 0.2, pos.y - 0.45, 0.4, 0.4), pc.lightened(0.3))
 			continue
+		if waiting:
+			# goods waiting at a flag for the next stretch's carrier
+			if _res_tex.has(t.res):
+				var wt: Texture2D = _res_tex[t.res]
+				_batch_layer = 2
+				_batch_add(wt, Rect2(pos.x - 0.15, pos.y - 0.3, 0.3, 0.3), Rect2(Vector2.ZERO, wt.get_size()), Color.WHITE)
+				_batch_layer = 0
+			continue
 		# facing: the way along the path it is walking (backwards on the way home)
 		var dx := (c % w - a % w) * (-1 if t.delivered else 1) * (-1 if (t.site != 0 or t.dest != 0) else 1)
+		if not t.legs.is_empty():
+			dx = c % w - a % w
 		var step := int(f * 8.0) if animate else 0
 		var loaded := not t.delivered
 		var chh := 0.0
@@ -735,6 +755,26 @@ func land_gain(x: int, y: int, r: int, pid: int) -> int:
 			if o == 0:
 				n += 4
 	return n
+
+
+## Where a road-carriers load is: Vector3(tile from, tile to, how far between them); z < 0 when it lies
+## waiting at the flag (tile from) for the stretch's carrier.
+func _leg_pos(t: Sim.Trip) -> Vector3:
+	var L := t.legs
+	var now := sim.time
+	var nl := L.size() / 4
+	for k in nl:
+		var ia := int(L[k * 4]); var ib := int(L[k * 4 + 1])
+		var st := L[k * 4 + 2]; var en := L[k * 4 + 3]
+		if now < st:
+			return Vector3(t.path[ia], t.path[ia], -0.0001)
+		if now < en:
+			var f := (now - st) / maxf(0.01, en - st) * absi(ib - ia)
+			var step := 1 if ib > ia else -1
+			var j := mini(floori(f), absi(ib - ia) - 1)
+			return Vector3(t.path[ia + j * step], t.path[ia + (j + 1) * step], f - j)
+	var last := int(L[(nl - 1) * 4 + 1])
+	return Vector3(t.path[last], t.path[last], 0.0)
 
 
 ## A building-site marker, as in The Settlers: a small house, a bigger house, a castle, or a mine.

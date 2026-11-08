@@ -17,7 +17,7 @@ GODOT = os.environ.get("GODOT", "godot")
 # name, script, extra args, needs a window, quick?, patterns that must appear (regex)
 TESTS = [
 	("data files",        None, [], False, True, []),
-	("save and load",     "save_test", [], False, True, [r"match after load: true", r"match after 5 more minutes: true"]),
+	("save and load",     "save_test", [], False, True, [r"match after load: true", r"match after 5 more minutes: true", r"checksum match after 5 more minutes: true"]),
 	("goods in stores",   "stores_test", ["mins=8"], False, True, [r"stock = sum of stores all game: yes"]),
 	("entrances",         "door_test", [], False, True, [r"door test: \d+ ok, 0 bad"]),
 	("walking people",    "walk_test", [], False, True, [r"garrison [1-9]"]),

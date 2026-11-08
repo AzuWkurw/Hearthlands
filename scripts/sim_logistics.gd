@@ -228,6 +228,13 @@ func reach(pid: int) -> PackedByteArray:
 	return r
 
 
+# Road searches round each new distance to the precision they are stored in, and on equal distances
+# take the way through the lower tile number. Then the result does not depend on the order the roads
+# were built in, so a loaded game (whose network is built in one go) finds the same ways as the game
+# that was saved (whose network grew a piece at a time).
+var _f32 := PackedFloat32Array([0.0])
+
+
 ## Whether walking may continue from tile i: roads and stores pass carriers on, other buildings are
 ## only ends of the line.
 func _net_spreads(i: int) -> bool:
@@ -272,8 +279,9 @@ func _relax_net(pid: int) -> void:
 				continue
 			var ni := ny * sim.w + nx
 			if dist[ni] < INF and _net_spreads(ni) and sim.links(ni, t):
-				var cand := dist[ni] + step_cost(ni, t)
-				if cand < dist[t]:
+				_f32[0] = dist[ni] + step_cost(ni, t)
+				var cand := _f32[0]
+				if cand < dist[t] or (cand == dist[t] and ni < par[t]):
 					dist[t] = cand
 					par[t] = ni
 		if dist[t] < INF:
@@ -293,11 +301,13 @@ func _relax_net(pid: int) -> void:
 			var ni := ny * sim.w + nx
 			if not _net_open(ni, pid) or not sim.links(cur, ni):
 				continue
-			var nd := dist[cur] + step_cost(cur, ni)
-			if nd < dist[ni]:
+			_f32[0] = dist[cur] + step_cost(cur, ni)
+			var nd := _f32[0]
+			if nd < dist[ni] or (nd == dist[ni] and cur < par[ni]):
+				var better := nd < dist[ni]
 				dist[ni] = nd
 				par[ni] = cur
-				hp.push(nd, ni)
+				if better: hp.push(nd, ni)
 	sim._net_dist[k] = dist
 	_net_par[k] = par
 	net_ver[k] = int(net_ver[k]) + 1
@@ -360,11 +370,13 @@ func _build_net(pid: int) -> void:
 				continue
 			if (sim.bmap[cur] != 0 or sim.bmap[ni] != 0) and not sim.links(cur, ni):
 				continue
-			var nd := dist[cur] + step_cost(cur, ni)
-			if nd < dist[ni]:
+			_f32[0] = dist[cur] + step_cost(cur, ni)
+			var nd := _f32[0]
+			if nd < dist[ni] or (nd == dist[ni] and cur < par[ni]):
+				var better := nd < dist[ni]
 				dist[ni] = nd
 				par[ni] = cur
-				hp.push(nd, ni)
+				if better: hp.push(nd, ni)
 	sim._net_dist[k] = dist
 	_net_par[k] = par
 	sim._net_dirty[k] = false
@@ -681,12 +693,18 @@ func _transfer(p: Sim.Player, a: Sim.Bld, b: Sim.Bld, res: String) -> bool:
 	while c != -1 and path.size() < 5000:
 		path.append(c)
 		c = par[c]
+	var chain := road_carriers_on()
+	if chain and plan_chain(p, path, true, false).is_empty():
+		return false
 	store_add(a, p, res, -float(n))
-	p.busy_porters += 1
+	if not chain:
+		p.busy_porters += 1
 	var one_way := d / (1.0 + sim.mod(p, "carry"))
 	var t := Sim.Trip.new()
 	t.p = p.id; t.res = res; t.n = n; t.t0 = sim.time; t.t1 = sim.time + one_way + 1.0; t.t2 = t.t1 + one_way
 	t.path = path; t.kind = "porter"
+	if chain:
+		_chain_trip(p, t, path, true)
 	sim.trips.append(t)
 	return true
 
@@ -796,7 +814,121 @@ func _clamp_stock(_p: Sim.Player) -> void:
 
 ## Porters free right now: those employed by the stores plus idle peasants, minus those out on the road.
 func porters_free(p: Sim.Player) -> int:
-	return p.store_porters + maxi(0, p.peasant - p.used_peasant) - p.busy_porters
+	return p.store_porters + maxi(0, p.peasant - p.used_peasant) - p.busy_porters - p.road_carriers
+
+
+# --- Road carriers (a new-game option, The Settlers style) --------------------------------------------
+# Every stretch of road between two flags has its own carrier. Flags stand at buildings, where roads
+# meet, and at least every FLAG_EVERY tiles. A load is handed from carrier to carrier at the flags; a
+# carrier takes one load at a time and walks back before the next, so goods queue at the flags of busy
+# stretches. Each load's whole journey is worked out when it sets off: on each stretch it starts when
+# the load is at the flag and that stretch's carrier is free.
+
+const FLAG_EVERY := 6
+const STRETCH_IDLE := 90.0     # a stretch unused this long gives its carrier back
+
+
+func road_carriers_on() -> bool:
+	return bool(sim.opts.get("road_carriers", false))
+
+
+func _is_flag(path: PackedInt32Array, k: int, pid: int) -> bool:
+	if k == 0 or k == path.size() - 1:
+		return true
+	var i := path[k]
+	if sim.bmap[i] != 0:
+		return true
+	var n := 0
+	var cx := i % sim.w
+	var cy := i / sim.w
+	for dd in 4:
+		var nx: int = cx + Sim.DOOR_DX[dd]
+		var ny: int = cy + Sim.DOOR_DY[dd]
+		if sim.inb(nx, ny) and (sim.road[ny * sim.w + nx] == pid or sim.bmap[ny * sim.w + nx] != 0):
+			n += 1
+	return n >= 3
+
+
+## Plans a load's journey along path (goods going from path[0] to the end when forward, else back):
+## [arrival time, legs] or [] when a stretch has no carrier and no porter is free to take it on.
+## commit: book the stretches (their carriers are busy until the load is through).
+func plan_chain(p: Sim.Player, path: PackedInt32Array, forward: bool, commit: bool) -> Array:
+	var n := path.size()
+	if n < 2:
+		return [sim.time, PackedFloat32Array()]
+	var order := PackedInt32Array()
+	for k in n:
+		order.append(k if forward else n - 1 - k)
+	var flags := PackedInt32Array([order[0]])
+	var since := 0
+	for j in range(1, n):
+		since += 1
+		if j == n - 1 or since >= FLAG_EVERY or _is_flag(path, order[j], p.id):
+			flags.append(order[j]); since = 0
+	var spd := 1.0 + sim.mod(p, "carry")
+	var tnow := sim.time + 0.5
+	var legs := PackedFloat32Array()
+	var need := 0
+	var books := []
+	for f in range(flags.size() - 1):
+		var a := flags[f]
+		var b := flags[f + 1]
+		var key := mini(path[a], path[b]) * sim.w * sim.h + maxi(path[a], path[b])
+		var cost := 0.0
+		var step := 1 if b > a else -1
+		var k := a
+		while k != b:
+			cost += step_cost(path[k], path[k + step])
+			k += step
+		cost /= spd
+		var free_at := -1e9
+		if p.segs.has(key):
+			free_at = float(p.segs[key])
+		if free_at < sim.time - STRETCH_IDLE:
+			need += 1                # an idle stretch: a porter has to take it on
+		var start := maxf(tnow, free_at)
+		var end := start + cost
+		legs.append_array(PackedFloat32Array([a, b, start, end]))
+		# the carrier walks back before he takes the next load (half way on average: he often
+		# meets the next one at the far flag)
+		books.append([key, end + cost * 0.5])
+		tnow = end
+	if need > 0 and porters_free(p) < need:
+		return []
+	if commit:
+		for bk in books:
+			p.segs[bk[0]] = bk[1]
+		p.road_carriers += need
+	return [tnow + 0.5, legs]
+
+
+## Once a second: stretches nobody used for a while give their carriers back; counts the rest.
+func road_carrier_tick(p: Sim.Player) -> void:
+	if p.segs.is_empty():
+		p.road_carriers = 0
+		return
+	var keys := p.segs.keys()
+	keys.sort()
+	var n := 0
+	for k in keys:
+		if float(p.segs[k]) < sim.time - STRETCH_IDLE:
+			p.segs.erase(k)
+		else:
+			n += 1
+	p.road_carriers = n
+
+
+## A porter trip t along path in road carriers mode: plans and books it. False if it cannot go now.
+func _chain_trip(p: Sim.Player, t: Sim.Trip, path: PackedInt32Array, forward: bool) -> bool:
+	var plan := plan_chain(p, path, forward, true)
+	if plan.is_empty():
+		return false
+	t.t0 = sim.time
+	t.t1 = float(plan[0])
+	t.t2 = t.t1                  # no walk home: the carriers stay on their stretches
+	t.legs = plan[1]
+	t.station = -1               # marks a chain: no porter to free at the end
+	return true
 
 
 func _rebuild_realm_lists() -> void:
@@ -961,11 +1093,13 @@ func store_field(s: Sim.Bld, to := -1) -> Array:
 				continue
 			if (sim.bmap[cur] != 0 or sim.bmap[ni] != 0) and not sim.links(cur, ni):
 				continue
-			var nd := dist2[cur] + step_cost(cur, ni)
-			if nd < dist2[ni]:
+			_f32[0] = dist2[cur] + step_cost(cur, ni)
+			var nd := _f32[0]
+			if nd < dist2[ni] or (nd == dist2[ni] and cur < par2[ni]):
+				var better := nd < dist2[ni]
 				dist2[ni] = nd
 				par2[ni] = cur
-				hp.push(nd, ni)
+				if better: hp.push(nd, ni)
 		if cur == to:
 			break
 	# packed arrays are copied on write: put the updated ones back
@@ -989,12 +1123,18 @@ func carry_to(b: Sim.Bld, p: Sim.Player, res: String, want: int, site: bool) -> 
 		var c: Dictionary = m.def.carriers
 		if m.busy < int(c.count) and int(c.load) > load and Vector2(m.x - b.x, m.y - b.y).length() <= float(c.range):
 			st = m; kind = String(c.kind); speed = float(c.speed); load = int(c.load)
-	if st == null and porters_free(p) <= 0:
+	var chain := st == null and road_carriers_on()
+	if chain:
+		if plan_chain(p, src[1], false, false).is_empty():
+			return 0
+	elif st == null and porters_free(p) <= 0:
 		return 0
 	var n := mini(mini(load, want), int(float(s.inv.get(res, 0.0))))
 	if n <= 0:
 		return 0
-	if st == null:
+	if chain:
+		pass
+	elif st == null:
 		p.busy_porters += 1
 	else:
 		st.busy += 1
@@ -1007,6 +1147,8 @@ func carry_to(b: Sim.Bld, p: Sim.Player, res: String, want: int, site: bool) -> 
 	var t := Sim.Trip.new()
 	t.p = p.id; t.res = res; t.n = n; t.t0 = sim.time; t.t1 = sim.time + one_way + 1.0; t.t2 = t.t1 + one_way
 	t.path = src[1]; t.kind = kind; t.station = st.id if st != null else 0
+	if chain:
+		_chain_trip(p, t, t.path, false)
 	if site:
 		t.site = b.id
 	else:
@@ -1157,7 +1299,11 @@ func _dispatch() -> void:
 			var c: Dictionary = s.def.carriers
 			if s.busy < int(c.count) and int(c.load) > load and Vector2(s.x - b.x, s.y - b.y).length() <= float(c.range):
 				st = s; kind = String(c.kind); speed = float(c.speed); load = int(c.load)
-		if st == null:
+		var chain := st == null and road_carriers_on()
+		if chain:
+			if plan_chain(p, path, true, false).is_empty():
+				continue
+		elif st == null:
 			if porters_free(p) <= 0:
 				continue
 			p.busy_porters += 1
@@ -1172,6 +1318,8 @@ func _dispatch() -> void:
 		var t := Sim.Trip.new()
 		t.p = p.id; t.res = res; t.n = n; t.t0 = sim.time; t.t1 = sim.time + one_way + 1.0; t.t2 = t.t1 + one_way
 		t.path = path; t.kind = kind; t.station = st.id if st != null else 0
+		if chain:
+			_chain_trip(p, t, path, true)
 		sim.trips.append(t)
 		if b.out_buf.is_empty():
 			sim._pending.erase(id)
@@ -1181,6 +1329,8 @@ func _dispatch() -> void:
 func _free_carrier(t: Sim.Trip) -> void:
 	if t.kind == "builder" or t.kind == "soldier" or t.kind == "worker":
 		return                     # builders, soldiers and workers on their way are not carriers
+	if t.station < 0:
+		return                     # road carriers mode: the carriers stay on their stretches
 	if t.station != 0:
 		var s: Sim.Bld = sim.by_id.get(t.station)
 		if s != null:

@@ -23,9 +23,11 @@ func _init() -> void:
 	print("load result: '", b.from_save(data), "'")
 	print("A: ", _sig(a)); print("B: ", _sig(b))
 	print("match after load: ", _sig(a) == _sig(b))
+	print("checksum match after load: ", a.checksum() == b.checksum())
 	for i in 3000:
 		a.tick(Sim.TICK); b.tick(Sim.TICK)
 	print("match after 5 more minutes: ", _sig(a) == _sig(b))
+	print("checksum match after 5 more minutes: ", a.checksum() == b.checksum())
 	print("A: ", _sig(a))
 	print("map size ", a.w, " research: ", a.players.map(func(p): return "%s %s age=%s techs=%d -> %s" % [p.name, "", GameData.age_name(p.age), p.techs.size(), p.research]))
 	quit()

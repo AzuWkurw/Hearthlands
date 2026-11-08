@@ -29,7 +29,9 @@ func on_start(loaded: bool) -> void:
 	if not loaded:
 		hist = {}
 		cur = {}
-	minute = int(sim.time / 60.0)
+	# (a loaded game keeps the minute being counted; saves from before build 33 did not have it)
+	if not loaded or minute < 0:
+		minute = int(sim.time / 60.0)
 
 
 func _bucket(p: Sim.Player) -> Dictionary:
@@ -77,12 +79,13 @@ func on_second() -> void:
 
 
 func save_state() -> Dictionary:
-	return {"hist": hist, "cur": cur}
+	return {"hist": hist, "cur": cur, "minute": minute}
 
 
 func load_state(d: Dictionary) -> void:
 	hist = d.get("hist", {})
 	cur = d.get("cur", {})
+	minute = int(d.get("minute", -1))
 
 
 func build_ui(main: Main) -> void:

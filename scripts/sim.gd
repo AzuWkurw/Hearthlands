@@ -147,6 +147,7 @@ const DEFAULT_OPTS := {
 	"research": 1.0,        # research speed
 	"build": 1.0,           # construction speed
 	"tools": true,          # new workers need their trade's tool
+	"road_carriers": false, # The Settlers style: one carrier for each stretch of road, goods handed on at flags
 	"all_research": false,  # every realm starts with all research done (but the Industrial Revolution)
 	"creative": false,      # creative mode: you build for free and at once, and your stores never run low
 }
@@ -240,6 +241,8 @@ class Player:
 	var res_era := -1.0 # average age of the soldiers at headquarters (-1: from an older save, see _fix_eras)
 	var rmix: Array = []  # the soldiers at headquarters by kind (legionaries ... riflemen)
 	var busy_porters := 0                  # porters out carrying goods
+	var segs := {}                         # road carriers mode: stretch of road (two flag tiles) -> when its carrier is free again
+	var road_carriers := 0                 # road carriers mode: porters posted on stretches in use
 	var store_total := 0                   # room for each good across all stores (before per-good factors)
 	var store_porters := 0                 # porters employed by the stores
 	var vets := 0.0
@@ -304,6 +307,7 @@ class Trip:
 	var path := PackedInt32Array()
 	var site := 0      # a construction site this carrier brings materials to (0: goods to a store)
 	var dest := 0      # a building this carrier brings goods to work with (from a store)
+	var legs := PackedFloat32Array()  # road carriers mode: per stretch [from path index, to index, start, end]
 	var res2 := ""    # a second good in the same load for that building (filling the load up)
 	var n2 := 0
 	                   # kind "builder" or "soldier": a person walking to building `site` (0: walking home);
@@ -718,6 +722,7 @@ func add_bld(ty: String, x: int, y: int, p: Player, instant: bool, door := -1) -
 	b.state = "ready" if instant else "build"
 	b.cyc = float(b.def.get("cycle", 0.0))
 	b.era = p.age
+	b.sera = float(p.age)   # (loading fills it in like this too, so a loaded game matches)
 	blds.append(b); by_id[b.id] = b
 	bmap[idx(x, y)] = b.id
 	for t in plot_tiles(ty, x, y):
@@ -1866,14 +1871,26 @@ func tick(dt: float) -> void:
 ## minute; two runs (or a run and a reload) that print different numbers went apart in that minute.
 static var log_checksums := false
 
+## A number for the whole game state, for comparing two runs minute by minute (log_checksums). Caches
+## that a loaded game rebuilds differently but that change nothing (path_ver) are left out, so a game
+## and the same game saved and loaded give the same numbers.
+const CHECKSUM_SKIP := ["path_ver"]
+
 func checksum() -> int:
-	return hash(var_to_bytes(to_save()))
+	var d := to_save()
+	for b: Dictionary in d.get("blds", []):
+		for k in CHECKSUM_SKIP:
+			b.erase(k)
+	return hash(var_to_bytes(d))
 
 
 func _secondly() -> void:
 	if log_checksums and int(time) % 60 == 0:
 		print("minute %d checksum %d" % [int(time) / 60, checksum()])
 	_rebuild_realm_lists()
+	if logistics.road_carriers_on():
+		for p in players:
+			logistics.road_carrier_tick(p)
 	if int(time) % 5 == 0:
 		logistics.transfers()
 	Diplomacy.expire(self)
@@ -2110,7 +2127,9 @@ func from_save(d: Dictionary) -> String:
 			b.t_start = time - b.k / maxf(0.05, b.rate_c)
 			b.t_end = b.t_start + total
 			b.retry = b.t_end
-		elif b.retry > time + 10.0:
+		elif b.retry > time + 10.0 and not (b.working and b.retry <= b.t_end + 0.001):
+			# (a working building waits for the end of its cycle, which may be further off: kept, so
+			# a loaded game goes on exactly like the one that was saved)
 			b.retry = 0.0
 	_mil_dirty = true
 	_tick_dirty = true
