@@ -3,8 +3,8 @@ extends RefCounted
 ## The game's version. Run `python3 tools/bump_build.py` before every release: it raises BUILD by one,
 ## updates DATE and copies the version into project.godot and the Windows export settings.
 
-const NUMBER := "0.27.0"
-const BUILD := 32
+const NUMBER := "0.28.0"
+const BUILD := 33
 const DATE := "2026-11-08"
 
 

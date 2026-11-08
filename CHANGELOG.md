@@ -1,5 +1,20 @@
 # Changelog
 
+## Build 33 (v0.28.0, 2026-11-08)
+
+Everything from the suggestions list (docs/SUGGESTIONS.md), and a round of bug fixes.
+
+- Raised ground: hills stand up from the map as in The Settlers II (2.5D). Buildings, people, markers, fog and seasons sit at the right height, and clicks find the right tile. Settings can turn it off.
+- Road carriers, a new-game option: one carrier for each stretch of road between flags, goods handed on at the flags, a donkey on busy stretches. On busy roads goods wait at the flags, so road layout matters.
+- Rivals plan their towns a little (large spots kept for farms, workshops near their suppliers), choose attack targets by their worth, keep a guard home, and call back attacks that go badly. Their toolsmith waits when weapons are short, and maps for many realms are larger.
+- Building spots no new road can reach are refused ("No road can get to this spot") and are no longer marked as free.
+- Stores pass goods to each other; with more than one store each can be set to Normal, Gather here or Send away.
+- A workshop can keep inputs for 1, 2 or 4 work cycles; a carrier with room left brings a second input; the info box shows who is walking there and when they arrive.
+- While placing a military building, the spots that claim the most new land show "+N".
+- A first-game guide (eight steps, ticked off as you go), German as a second language (interface; game messages are still English), keys you can change in Settings, small map pictures in the save list, a bell for building sites, and entrance pennants on building spots.
+- Fixes: a loaded game now goes on exactly like the game that was saved (equal-length road choices, the statistics minute, a reset timer and the soldiers' age differed after loading); presets on the new-game screen no longer cause an error.
+- For developers: tools/run_all.py runs every test, tools/check_data.py checks data and mods, game checksums (-- checksums) and tools/checksum_diff.gd find where two games part, and sim.gd and main.gd are split into smaller files.
+
 ## Build 32 (v0.27.0, 2026-11-08)
 
 Better rival realms: five rounds of tuning, each tested on the same maps.
