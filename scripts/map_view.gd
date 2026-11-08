@@ -248,6 +248,7 @@ func refresh_textures() -> void:
 	chunks.sim = sim
 	chunks.load_images()
 	_bld_tex.clear()
+	_tops.clear()
 	_era_tex.clear()
 	for b in GameData.bld:
 		_bld_tex[b] = Tex.get_tex(GameData.bld_tex_id(b))
@@ -1166,7 +1167,7 @@ func _draw_building(b: Sim.Bld, labels: Array, detail: bool) -> void:
 			_smoke_at(_anchor(rect, smoke), b.id * 0.137, 1.0 if b.working else 0.5)
 		_draw_worker(b, pc)
 	var ff := int(sim.time * 5.0 + b.id) if animate else 0
-	_sprite("unit_flag", Vector2(rect.position.x + rect.size.x * 0.85, rect.position.y + 0.17), 0.3, ff, false, pc)
+	_sprite("unit_flag", Vector2(rect.position.x + rect.size.x * 0.85, rect.position.y + rect.size.y * _tex_top(tex) + 0.17), 0.3, ff, false, pc)
 	if b.working and b.cyc > 0.0:
 		draw_rect(Rect2(b.x + 0.1, b.y + 1.02, 0.8, 0.08), Color(0, 0, 0, 0.6))
 		draw_rect(Rect2(b.x + 0.1, b.y + 1.02, 0.8 * sim.work_progress(b), 0.08), Color("86ad5c"))
@@ -1280,7 +1281,27 @@ func draw_ghost(ty: String, x: int, y: int, col: Color, building: bool, era := 1
 	if building:
 		var cs := minf(sw, 1.6)
 		draw_texture_rect(_constr, Rect2(x + 0.5 - cs / 2.0, rect.end.y - cs, cs, cs), false)
-	_sprite("unit_flag", Vector2(rect.position.x + rect.size.x * 0.85, rect.position.y + 0.17), 0.3, 0, false, col.darkened(0.2))
+	_sprite("unit_flag", Vector2(rect.position.x + rect.size.x * 0.85, rect.position.y + rect.size.y * _tex_top(tex) + 0.17), 0.3, 0, false, col.darkened(0.2))
+
+
+var _tops := {}   # texture -> how far down (0 to 1) its picture really starts
+
+## Where the drawing in a building picture starts, as a fraction of its height: the building's flag
+## stands there, on the roof, and not at the top of the picture's empty margin.
+func _tex_top(tex: Texture2D) -> float:
+	var k := tex.get_rid()
+	if _tops.has(k):
+		return _tops[k]
+	var top := 0.0
+	var img := tex.get_image()
+	if img != null:
+		if img.is_compressed():
+			img.decompress()
+		var used := img.get_used_rect()
+		if img.get_height() > 0 and used.size.y > 0:
+			top = float(used.position.y) / img.get_height()
+	_tops[k] = top
+	return top
 
 
 ## The soldier picture for soldiers of average age era (legionary ... rifleman).
