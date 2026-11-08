@@ -58,4 +58,12 @@ func _init() -> void:
 	main.attack_ui._go()
 	var a: Sim.Attack = sim.attacks[-1] if not sim.attacks.is_empty() else null
 	print("attack sent: ", a.n if a else -1, " mix ", a.amix if a else [], " tower left ", placed.garrison)
+	# 3. the production chain of bread
+	for g in ["bread", "planks"]:
+		main.chain_ui.open(g)
+		for i in 10: await process_frame
+		await RenderingServer.frame_post_draw
+		print("chain ", g, ": ", main.chain_ui.tip.text)
+		root.get_texture().get_image().save_png(out + "chain_%s.png" % g)
+		main.chain_ui.close()
 	quit()

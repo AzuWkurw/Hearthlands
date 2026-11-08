@@ -30,6 +30,10 @@ func _refresh_sel() -> void:
 		main.sel_label.text = main._res_info(main.sel_res)
 		main.sel_actions.add_child(main._label("Keep in stock:", 14, Main.DIM))
 		main.sel_actions.add_child(main._target_ctrl(main.sel_res))
+		var res := main.sel_res
+		var cb := main._button("Production chain", func(): main.chain_ui.open(res))
+		cb.tooltip_text = "Who makes it, what they need, who uses it, and where the chain is short"
+		main.sel_actions.add_child(cb)
 		return
 	if b == null and main.view.sel_tile >= 0:
 		main.sel_label.text = main._tile_info(main.view.sel_tile)

@@ -99,7 +99,8 @@ var rivals_label: RichTextLabel
 
 
 var problems_ui := UiProblems.new(self)  # the Problems list (ui_problems.gd)
-var attack_ui := UiAttack.new(self)      # the attack window (ui_attack.gd)
+var attack_ui := UiAttack.new(self)
+var chain_ui := UiChain.new(self)        # the production chain window (ui_chain.gd)      # the attack window (ui_attack.gd)
 var problems_btn: Button
 var guide_ui := UiGuide.new(self)  # the first-game checklist (ui_guide.gd)
 var side_ui := UiSide.new(self)
@@ -800,6 +801,7 @@ func _build_ui() -> void:
 	guide_ui.build()
 	problems_ui.build()
 	attack_ui.build()
+	chain_ui.build()
 
 	var tx := _section(col, "Textures and mods")
 	var info := _label("Put PNG files in the texture folder to replace any picture. Use Export defaults to get every current texture as a starting point, then Reload.", 13, DIM)
@@ -1407,6 +1409,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_T: _open_targets()
 		KEY_ESCAPE:
 			if attack_ui.panel.visible: attack_ui.close()
+			elif chain_ui.panel.visible: chain_ui.close()
 			elif set_panel.visible: set_panel.visible = false
 			elif targets_panel.visible: targets_panel.visible = false
 			elif tex_panel.visible: tex_panel.visible = false
