@@ -41,6 +41,8 @@ var vk_probed := false                    # the first-start Vulkan test has been
 var log_rect := Rect2i()                  # where the event log window is (empty: the default place)
 var log_open := true
 var features := {}                        # feature id -> switched on; features not listed use their default
+var guide := true                         # show the first-game guide in a new game
+var keys := {}                            # action -> key code the player chose (Keys in Settings)
 var sound_on := true
 var master_vol := 0.8
 var sfx_vol := 0.8
@@ -67,6 +69,8 @@ func load_file() -> void:
 	log_rect = cf.get_value("display", "log_rect", log_rect)
 	log_open = bool(cf.get_value("display", "log_open", log_open))
 	features = cf.get_value("game", "features", {})
+	guide = bool(cf.get_value("game", "guide", guide))
+	keys = cf.get_value("game", "keys", {})
 	sound_on = bool(cf.get_value("sound", "on", sound_on))
 	master_vol = float(cf.get_value("sound", "master", master_vol))
 	sfx_vol = float(cf.get_value("sound", "effects", sfx_vol))
@@ -91,6 +95,8 @@ func save_file() -> void:
 	cf.set_value("display", "log_rect", log_rect)
 	cf.set_value("display", "log_open", log_open)
 	cf.set_value("game", "features", features)
+	cf.set_value("game", "guide", guide)
+	cf.set_value("game", "keys", keys)
 	cf.set_value("sound", "on", sound_on)
 	cf.set_value("sound", "master", master_vol)
 	cf.set_value("sound", "effects", sfx_vol)

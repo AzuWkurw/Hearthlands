@@ -90,7 +90,7 @@ var sel_label: RichTextLabel
 var sel_actions: HBoxContainer
 
 
-var prio_row: HBoxContainer        # High / Normal / Low / Paused buttons for the selected building
+var prio_row: HFlowContainer        # High / Normal / Low / Paused buttons for the selected building
 var garrison_box: VBoxContainer    # the garrison settings of your selected military building
 var _gar_sig := ""                 # what the garrison settings were last drawn from (rebuilt only on change)
 
@@ -98,6 +98,7 @@ var _gar_sig := ""                 # what the garrison settings were last drawn 
 var rivals_label: RichTextLabel
 
 
+var guide_ui := UiGuide.new(self)  # the first-game checklist (ui_guide.gd)
 var log_ui := UiLog.new(self)      # the movable event log window (ui_log.gd)
 var toolbar := UiToolbar.new(self) # the bottom toolbar: building menus, roads, demolish, scouts (ui_toolbar.gd)
 var sound: Sound                    # sound effects and ambience (sound.gd)
@@ -778,7 +779,7 @@ func _build_ui() -> void:
 	sel_head.add_child(_button("Close", _clear_selection))
 	sel_label = _rich(); sel_label.custom_minimum_size = Vector2(390, 0); se.add_child(sel_label)
 	garrison_box = VBoxContainer.new(); garrison_box.add_theme_constant_override("separation", 4); se.add_child(garrison_box)
-	prio_row = HBoxContainer.new(); se.add_child(prio_row)
+	prio_row = HFlowContainer.new(); se.add_child(prio_row)
 	sel_actions = HBoxContainer.new(); se.add_child(sel_actions)
 	sel_box.visible = false
 
@@ -786,6 +787,7 @@ func _build_ui() -> void:
 	rivals_label = _rich(); rv.add_child(rivals_label)
 
 	log_ui.build()
+	guide_ui.build()
 
 	var tx := _section(col, "Textures and mods")
 	var info := _label("Put PNG files in the texture folder to replace any picture. Use Export defaults to get every current texture as a starting point, then Reload.", 13, DIM)
@@ -997,6 +999,7 @@ func _start(seed_str: String, foes: int, strength: int, mix: bool, size := 0, rv
 	if not sim.new_game(seed_str, foes, strength, mix, size, rv, opts):
 		return false
 	_after_world_change()
+	guide_ui.start()
 	var hq0 := sim.human().hq
 	view.center_on(Vector2(hq0.x + 0.5, hq0.y + 0.5))
 	view.zoom = 32.0
@@ -1005,6 +1008,7 @@ func _start(seed_str: String, foes: int, strength: int, mix: bool, size := 0, rv
 
 func _after_world_change() -> void:
 	view.sim = sim
+	watch = {}
 	_rebuild_feature_ui()
 	minimap.reset()
 	view.reset_world()
@@ -1262,7 +1266,81 @@ func _show_hint(text: String, secs: float) -> void:
 	hint_t = secs
 
 
+## Keys the player can change in Settings: [action, what it does, the key it has by default].
+const KEY_ACTIONS := [
+	["events", "Show or hide the event log", KEY_E],
+	["sites", "Show free building spots", KEY_B],
+	["turn", "Turn the entrance (research when not placing)", KEY_R],
+	["diplomacy", "Diplomacy", KEY_G],
+	["targets", "Production targets", KEY_T],
+	["pause", "Pause the game", KEY_SPACE],
+	["prio_pause", "Pause the selected building", KEY_P],
+	["demolish", "Demolish the selected building", KEY_DELETE],
+	["quicksave", "Quick save", KEY_F5],
+	["quickload", "Quick load", KEY_F9],
+]
+var watch := {}     # building sites the player wants to hear about when finished (id -> true)
+var key_wait := ""   # an action waiting for its new key (Settings, Keys)
+
+
+## Rings the bell for watched building sites that are finished (or gone).
+func _check_watch() -> void:
+	for id in watch.keys():
+		var b: Sim.Bld = sim.by_id.get(id)
+		if b == null or b.dead or b.p != 1:
+			watch.erase(id)
+		elif b.state == "ready" and b.reno_to < 0:
+			watch.erase(id)
+			sound.play("good", 0.9)
+			_show_hint("Your %s is finished." % String(b.def.name), 4.0)
+
+
+## The key that does action id now.
+func key_for(id: String) -> int:
+	for a in KEY_ACTIONS:
+		if a[0] == id:
+			return int(settings.keys.get(id, a[2]))
+	return KEY_NONE
+
+
+## Turns a pressed key into the default key of the action it is set to, so the rest of the input code
+## can keep using the default keys. A default key whose action was moved to another key does nothing,
+## unless another action was given it. Keys not involved pass through unchanged.
+func _translate_key(k: int) -> int:
+	if settings.keys.is_empty():
+		return k
+	for a in KEY_ACTIONS:
+		if int(settings.keys.get(a[0], a[2])) == k:
+			return int(a[2])
+	for a in KEY_ACTIONS:
+		if int(a[2]) == k:
+			return KEY_NONE
+	return k
+
+
+func _input(event: InputEvent) -> void:
+	# Settings, Keys: the next key pressed becomes the action's key (Esc keeps the old one)
+	if key_wait != "" and event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode != KEY_ESCAPE:
+			for a in KEY_ACTIONS:
+				# a key can do only one thing: whoever had it gets its own default back
+				if a[0] != key_wait and key_for(a[0]) == event.keycode:
+					settings.keys.erase(a[0])
+			settings.keys[key_wait] = event.keycode
+			settings.save_file()
+		key_wait = ""
+		get_viewport().set_input_as_handled()
+		settings_ui._fill_settings()
+
+
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not settings.keys.is_empty():
+		var tk := _translate_key(event.keycode)
+		if tk == KEY_NONE:
+			return
+		if tk != event.keycode:
+			event = event.duplicate()
+			event.keycode = tk
 	if not (event is InputEventKey) or not event.pressed or event.echo:
 		return
 	if confirm_panel.visible:
@@ -1444,6 +1522,8 @@ func _refresh_all() -> void:
 	_dry_mines()
 	_refresh_sel()
 	_refresh_rivals()
+	guide_ui.refresh()
+	_check_watch()
 	if log_dirty:
 		log_dirty = false
 		log_ui.refresh()
@@ -1691,6 +1771,16 @@ func _refresh_sel() -> void:
 			kb.set_pressed_no_signal((b.keep if b.keep > 0 else 2) == k)
 			kb.tooltip_text = "Carriers bring enough for %d work cycle%s (food for %d). More keeps it working through gaps; less leaves more in the stores for others." % [k, "s" if k > 1 else "", maxi(1, k / 2)]
 			prio_row.add_child(kb)
+	# a building site: ring a bell when it is finished
+	if b.p == 1 and (b.state == "build" or b.reno_to >= 0):
+		var wb := _button("Bell when done: %s" % ("on" if watch.has(b.id) else "off"), func():
+			var bb: Sim.Bld = sim.by_id.get(view.sel_id)
+			if bb:
+				if watch.has(bb.id): watch.erase(bb.id)
+				else: watch[bb.id] = true
+				_refresh_sel())
+		wb.tooltip_text = "Play a sound and say so when this building is finished."
+		sel_actions.add_child(wb)
 	if b.p == 1 and wr > 0 and b.state == "ready":
 		sel_actions.add_child(_button("Move work area", func():
 			view.place_type = "@work"

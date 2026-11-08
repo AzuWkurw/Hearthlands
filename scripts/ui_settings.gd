@@ -113,8 +113,12 @@ func _fill_settings() -> void:
 	_set_row(g, "", _check("Demolish mines whose vein has run dry (warns %d s before)" % Main.DRY_MINE_WAIT, main.settings.demolish_dry_mines, func(on):
 		main.settings.demolish_dry_mines = on
 		main.settings.save_file()))
+	_set_row(g, "", _check("Show the first-game guide (in the next new game)", main.settings.guide, func(on):
+		main.settings.guide = on
+		main.settings.save_file()))
 	# optional features: each one can be switched on or off, here and in the running game
 	set_body_sound_rows(g)
+	set_body_key_rows(g)
 	set_body_feature_rows(g)
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_END
@@ -226,3 +230,28 @@ func set_body_sound_rows(g: GridContainer) -> void:
 			if main.sound != null:
 				main.sound.play("click", 1.0, 0.0))
 		_set_row(g, String(row[0]), sl)
+
+
+## Keys: one row per action, with a button showing its key; click it, then press the new key.
+func set_body_key_rows(g: GridContainer) -> void:
+	var first := true
+	for a in Main.KEY_ACTIONS:
+		var id := String(a[0])
+		var waiting: bool = main.key_wait == id
+		var b := main._button("press a key... (Esc: keep)" if waiting else OS.get_keycode_string(main.key_for(id)), func():
+			main.key_wait = id
+			_fill_settings())
+		b.focus_mode = Control.FOCUS_NONE
+		b.custom_minimum_size = Vector2(110, 0)
+		b.tooltip_text = "Click, then press the key for: %s" % String(a[1])
+		var row := HBoxContainer.new()
+		row.add_child(b)
+		row.add_child(main._label(String(a[1]), 13, Main.DIM))
+		_set_row(g, "Keys" if first else "", row)
+		first = false
+	var reset := main._button("Default keys", func():
+		main.settings.keys = {}
+		main.settings.save_file()
+		_fill_settings())
+	reset.focus_mode = Control.FOCUS_NONE
+	_set_row(g, "", reset)

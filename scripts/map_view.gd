@@ -367,8 +367,9 @@ func _draw() -> void:
 				var dt := sim.door_tile(b)
 				if dt >= 0:
 					_door_flag(dt, sim.players[0].color, not sim.connected(b))
-	# carriers: loaded on the way to the store, empty on the way back
+	# carriers: loaded on the way to the store, empty on the way back (drawn in batches, see _batch_add)
 	var drawn := 0
+	_batching = true
 	for t in sim.trips:
 		if drawn > 700:
 			break
@@ -428,7 +429,9 @@ func _draw() -> void:
 				fr = 16 if sim.time - t.t1 < 0.4 else 17
 			chh = _sprite(pid, pos, 0.4, fr, dx < 0)
 			if Tex.frames(pid + "_tint") == Tex.frames(pid):
+				_batch_layer = 1
 				_sprite(pid + "_tint", pos, 0.4, fr, dx < 0, pc.lightened(0.25))
+				_batch_layer = 0
 		elif t.kind == "mule":
 			chh = _sprite("unit_mule", pos, 0.78, step, dx < 0)
 		else:
@@ -436,9 +439,15 @@ func _draw() -> void:
 			# the cart's load: the goods themselves, as many as it carries
 			if loaded:
 				var lid := "unit_load_" + _load_kind(t.res)
+				_batch_layer = 1
 				_sprite(lid, pos, 1.15, clampi(t.n, 1, 6) - 1, dx < 0)
+				_batch_layer = 0
 		if loaded and t.kind != "cart" and _res_tex.has(t.res):
-			draw_texture_rect(_res_tex[t.res], Rect2(pos.x - 0.13, pos.y - chh - 0.24, 0.26, 0.26), false)
+			var rt: Texture2D = _res_tex[t.res]
+			_batch_layer = 2
+			_batch_add(rt, Rect2(pos.x - 0.13, pos.y - chh - 0.24, 0.26, 0.26), Rect2(Vector2.ZERO, rt.get_size()), Color.WHITE)
+			_batch_layer = 0
+	_flush_batches()
 	# marching soldiers
 	for a in sim.attacks:
 		if fog_on and a.p != 1:
@@ -703,6 +712,14 @@ func _site_markers(x0: int, y0: int, x1: int, y1: int) -> void:
 	for t in _sites:
 		if not skip.has(t):
 			_site_icon(Vector2(t % sim.w + 0.5, t / sim.w + 0.72), String(_sites[t]))
+			# while placing: a small pennant on the side its entrance (and flag) would be
+			if placing:
+				var dt2 := sim.door_at(t % sim.w, t / sim.w, door)
+				if dt2 >= 0:
+					var c0 := Vector2(t % sim.w + 0.5, t / sim.w + 0.5)
+					var c1 := c0 + (Vector2(dt2 % sim.w + 0.5, dt2 / sim.w + 0.5) - c0) * 0.42
+					draw_line(c1, c1 + Vector2(0, -0.26), Color(0.2, 0.15, 0.08, 0.9), 0.035)
+					draw_colored_polygon(PackedVector2Array([c1 + Vector2(0, -0.26), c1 + Vector2(0.15, -0.2), c1 + Vector2(0, -0.14)]), Color(sim.players[0].color, 0.95))
 
 
 ## How many tiles nobody owns yet a military building at (x, y) with radius r would claim for pid
@@ -774,8 +791,35 @@ func _sprite(id: String, foot: Vector2, wid: float, f: int, flip: bool, col := C
 	if flip:
 		# a rectangle with a negative width is drawn mirrored left to right
 		dst = Rect2(foot.x + wid / 2.0, foot.y - hgt, -wid, hgt)
-	draw_texture_rect_region(tex, dst, src, col)
+	if _batching:
+		_batch_add(tex, dst, src, col)
+	else:
+		draw_texture_rect_region(tex, dst, src, col)
 	return hgt
+
+
+# Batching: while _batching is on, sprites are collected by layer and picture and drawn together at
+# _flush_batches, so the renderer can send all the pictures of one kind in one go instead of switching
+# pictures for every carrier (bodies first, then their colour and loads, then the goods they carry).
+var _batching := false
+var _batch_layer := 0
+var _batches: Array = [{}, {}, {}]
+
+func _batch_add(tex: Texture2D, dst: Rect2, src: Rect2, col: Color) -> void:
+	var layer: Dictionary = _batches[_batch_layer]
+	if not layer.has(tex):
+		layer[tex] = []
+	(layer[tex] as Array).append([dst, src, col])
+
+
+func _flush_batches() -> void:
+	_batching = false
+	for layer: Dictionary in _batches:
+		for tex: Texture2D in layer:
+			for c: Array in layer[tex]:
+				draw_texture_rect_region(tex, c[0], c[1], c[2])
+		layer.clear()
+	_batch_layer = 0
 
 
 ## A small marker under your building when its priority isn't normal: an orange arrow up for high,
@@ -957,7 +1001,9 @@ func _person(id: String, at: Vector2, f: int, flip: bool, col: Color) -> float:
 	if Tex.frames(id) >= 10:
 		var hh := _sprite(id, at, 0.4, f, flip)
 		if Tex.frames(id + "_tint") == Tex.frames(id):
+			_batch_layer = 1
 			_sprite(id + "_tint", at, 0.4, f, flip, col)
+			_batch_layer = 0
 		return hh
 	return _sprite(id, at, 0.4, f, flip, col.lightened(0.1))
 

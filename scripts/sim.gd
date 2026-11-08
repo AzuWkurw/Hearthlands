@@ -260,6 +260,7 @@ class Player:
 	var crowded_t := 0.0      # game time it became crowded (0: it is not)
 	var swap_t := -999.0      # rivals only: when it last pulled down a house to make room for a key building
 	var swap_key := ""        # rivals only: the building that room was made for (built first)
+	var reserved := PackedInt32Array()  # rivals only: large spots kept free for a farm or another large building
 	var keep_artisans := 0    # rivals only: artisans kept free of workshop jobs so the barracks can train soldiers
 	var sat: Dictionary = {"artisan": 0.0, "noble": 0.0}
 	var tax := 0.0

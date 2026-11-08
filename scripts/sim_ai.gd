@@ -106,10 +106,95 @@ func _ai_sites(p: Sim.Player, ty: String) -> Array:
 				if sim.can_place(ty, i % sim.w, i / sim.w, p.id) == "":
 					cands.append(i)
 	var scored := []
+	var large := sim.size_of(ty) == "large"
+	var kin := _kin(p, ty)
 	for i in cands:
-		scored.append([_site_score(ty, i % sim.w, i / sim.w, p) + _pack_score(ty, i % sim.w, i / sim.w, p) + sim.rng.randf() * 0.8, i % sim.w, i / sim.w])
+		var x := i % sim.w
+		var y := i / sim.w
+		var sc := _site_score(ty, x, y, p) + _pack_score(ty, x, y, p) + _kin_score(kin, x, y) + sim.rng.randf() * 0.8
+		# spots kept for large buildings: only large ones go there, and they like them
+		var near_res := _near_reserved(p, x, y)
+		if near_res == 0 and large:
+			sc += 3.0
+		elif near_res >= 0 and not large:
+			continue
+		scored.append([sc, x, y])
 	scored.sort_custom(func(a, b): return a[0] > b[0])
 	return scored.slice(0, 6)
+
+
+## The town plan (A2): a rival keeps a few large spots free early on, so a town full of houses still
+## has room for farms and the like later. Spots that can no longer take a large building are dropped.
+func _plan_town(p: Sim.Player) -> void:
+	var kept := PackedInt32Array()
+	for i in p.reserved:
+		if sim.owner[i] == p.id and sim.bmap[i] == 0 and sim.site_size(i % sim.w, i / sim.w, p.id) == "large":
+			kept.append(i)
+	p.reserved = kept
+	var want := 2 if sim.time < 20 * 60.0 else 1
+	if p.reserved.size() >= want:
+		return
+	var list := _free_tiles(p, sim.owned(p.id)[0])
+	if list.is_empty():
+		return
+	var best := -1
+	var best_sc := -1e9
+	for k in mini(120, list.size()):
+		var i := list[sim.rng.randi() % list.size()]
+		var x := i % sim.w
+		var y := i / sim.w
+		if sim.site_size(x, y, p.id) != "large" or _near_reserved(p, x, y, 6) >= 0:
+			continue
+		# open land not too far from the headquarters, near a road
+		var d := Vector2(x - p.hq.x, y - p.hq.y).length()
+		var sc := sim.count_near(x, y, 2, "open") - absf(d - 9.0) * 0.3 + _pack_score("farm", x, y, p)
+		if sc > best_sc:
+			best_sc = sc; best = i
+	if best >= 0:
+		p.reserved.append(best)
+
+
+## How far (x, y) is from the nearest reserved spot if within r tiles (0: on it), or -1.
+func _near_reserved(p: Sim.Player, x: int, y: int, r := 2) -> int:
+	var out := -1
+	for i in p.reserved:
+		var d := maxi(absi(i % sim.w - x), absi(i / sim.w - y))
+		if d <= r and (out < 0 or d < out):
+			out = d
+	return out
+
+
+## The realm's buildings that trade goods with a building of type ty: those making what it uses, and
+## those using what it makes. Grouping them shortens the carriers' walks.
+func _kin(p: Sim.Player, ty: String) -> Array:
+	var d: Dictionary = GameData.bld[ty]
+	var ins: Dictionary = d.get("in", {})
+	var outs: Dictionary = d.get("out", {})
+	var out := []
+	if ins.is_empty() and outs.is_empty():
+		return out
+	for b: Sim.Bld in sim.realm_blds(p):
+		var bi: Dictionary = b.def.get("in", {})
+		var bo: Dictionary = b.def.get("out", {})
+		var related := false
+		for k in ins:
+			if bo.has(k) or (k == "food" and b.def.get("cat", "") == "food" and not bo.is_empty()):
+				related = true
+		for k in outs:
+			if bi.has(k):
+				related = true
+		if related:
+			out.append(b)
+	return out
+
+
+func _kin_score(kin: Array, x: int, y: int) -> float:
+	var sc := 0.0
+	for b: Sim.Bld in kin:
+		var d := absi(b.x - x) + absi(b.y - y)
+		if d <= 8:
+			sc += 0.5 * (1.0 - d / 10.0)
+	return minf(sc, 2.0)
 
 
 ## Realm p's land tiles with nothing on them (no building, plot, road, tree or rock), worked out once
@@ -147,7 +232,7 @@ func _ai_mil_sites(p: Sim.Player, ty: String) -> Array:
 		var i := list[sim.rng.randi() % list.size()]
 		var x := i % sim.w
 		var y := i / sim.w
-		if sim.can_place(ty, x, y, p.id) != "":
+		if sim.can_place(ty, x, y, p.id) != "" or _near_reserved(p, x, y) >= 0:
 			continue
 		var gain := 0.0
 		for yy in range(maxi(0, y - r), mini(sim.h - 1, y + r) + 1):
@@ -199,6 +284,7 @@ func _ai_build(p: Sim.Player, ty: String) -> String:
 
 func ai_think(p: Sim.Player) -> void:
 	_free_pid = -1
+	_plan_town(p)
 	var cnt := {}
 	var building := 0
 	var unocc := 0

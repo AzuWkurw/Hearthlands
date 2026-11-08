@@ -57,7 +57,7 @@ func _save_game(slot: String, quiet := false) -> void:
 		return
 	var data := main.sim.to_save()
 	data["meta"] = {"name": slot, "saved": Time.get_datetime_string_from_system(false, true), "game_time": main.sim.time,
-		"rivals": main.sim.foes, "age": GameData.age_name(main.sim.human().age), "size": main.sim.w, "version": Version.short()}
+		"rivals": main.sim.foes, "age": GameData.age_name(main.sim.human().age), "size": main.sim.w, "version": Version.short(), "thumb": main.minimap.thumbnail(96) if main.minimap != null else PackedByteArray()}
 	f.store_var(data)
 	f.close()
 	if not quiet:
@@ -88,6 +88,7 @@ func _load_game(slot: String) -> void:
 		return
 	main.turn_on_new_features()
 	main._after_world_change()
+	main.guide_ui.box.visible = false
 	var hq := main.sim.human().hq
 	if hq != null:
 		main.view.center_on(Vector2(hq.x + 0.5, hq.y + 0.5))
@@ -116,6 +117,17 @@ func _fill_saves() -> void:
 		var d = _read_save(Main.SAVE_DIR + "/" + fn)
 		var meta: Dictionary = d.get("meta", {}) if d is Dictionary else {}
 		var row := HBoxContainer.new()
+		# a small picture of the map as it was (saves from before build 33 have none)
+		var tb: PackedByteArray = meta.get("thumb", PackedByteArray())
+		var pic := TextureRect.new()
+		pic.custom_minimum_size = Vector2(64, 64)
+		pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		if tb.size() > 0:
+			var img := Image.new()
+			if img.load_png_from_buffer(tb) == OK:
+				pic.texture = ImageTexture.create_from_image(img)
+		row.add_child(pic)
 		var gt := int(meta.get("game_time", 0))
 		var info := "%s\n%s · %02d:%02d played · %d rivals · %s age · %d tiles · %s" % [String(meta.get("name", base)), String(meta.get("saved", "")), gt / 60, gt % 60, int(meta.get("rivals", 0)), String(meta.get("age", "?")), int(meta.get("size", 0)), String(meta.get("version", "older build"))]
 		var l := main._label(info, 13)

@@ -88,6 +88,18 @@ func own_tex() -> Texture2D:
 	return _own
 
 
+## A small picture of the map with everyone's land, for the save list. PNG bytes, empty if no map yet.
+func thumbnail(px: int) -> PackedByteArray:
+	if _base_img == null or sim == null or sim.w == 0:
+		return PackedByteArray()
+	var img := _base_img.duplicate() as Image
+	img.convert(Image.FORMAT_RGBA8)
+	if _own != null:
+		img.blend_rect(_own.get_image(), Rect2i(0, 0, sim.w, sim.h), Vector2i.ZERO)
+	img.resize(px, px * sim.h / maxi(1, sim.w), Image.INTERPOLATE_BILINEAR)
+	return img.save_png_to_buffer()
+
+
 func _rebuild_owner() -> void:
 	_ver = sim.territory_version
 	var data := PackedByteArray()
