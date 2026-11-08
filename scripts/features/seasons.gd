@@ -1,0 +1,558 @@
+extends Feature
+## Seasons, biomes and weather.
+## A year has four seasons of five game minutes each, starting in spring. The map is split into biomes:
+## a cold northern taiga, a temperate middle, a dry southern steppe and wetland patches near water.
+## Each biome has its own weather, which changes every one to two and a half minutes, and its own
+## temperature (season + biome + weather; mountains are colder). Season, biome and weather speed up or
+## slow down outdoor work, construction, and how much people eat. Other features (clothes, diseases)
+## read the temperature through temp_at() and realm_temp().
+
+const YEAR := 1200.0
+const SEASONS := ["Spring", "Summer", "Autumn", "Winter"]
+const TEMPERATE := 0
+const TAIGA := 1
+const STEPPE := 2
+const WETLAND := 3
+const BIOME_NAMES := ["Temperate land", "Northern taiga", "Southern steppe", "Wetland"]
+const BIOME_TEMP := [0.0, -7.0, 5.0, -1.0]
+## Ground colour of each biome, laid thinly over the map.
+const BIOME_TINT := [Color(0.0, 0.0, 0.0, 0.0), Color(0.12, 0.28, 0.32, 0.20), Color(0.80, 0.62, 0.26, 0.24), Color(0.10, 0.32, 0.26, 0.22)]
+const WEATHER := {
+	"clear": {"name": "Clear", "dt": 1.0},
+	"cloudy": {"name": "Cloudy", "dt": -1.0},
+	"rain": {"name": "Rain", "dt": -2.0},
+	"storm": {"name": "Storm", "dt": -3.0},
+	"snow": {"name": "Snow", "dt": -3.0},
+	"blizzard": {"name": "Blizzard", "dt": -6.0},
+	"heat": {"name": "Heat wave", "dt": 6.0},
+	"fog": {"name": "Fog", "dt": -1.0},
+}
+## How likely each weather is in each season (before the biome changes it).
+const SEASON_WEATHER := [
+	{"clear": 4.0, "cloudy": 3.0, "rain": 3.0, "storm": 0.5, "fog": 1.0},
+	{"clear": 5.0, "cloudy": 2.0, "rain": 1.5, "storm": 1.0, "heat": 2.0},
+	{"clear": 3.0, "cloudy": 3.0, "rain": 3.0, "storm": 1.5, "fog": 2.0},
+	{"clear": 3.0, "cloudy": 3.0, "snow": 3.0, "blizzard": 0.7, "fog": 1.0, "rain": 0.5},
+]
+const BIOME_WEATHER := [
+	{},
+	{"snow": 2.0, "blizzard": 2.0, "heat": 0.2, "fog": 1.3},
+	{"rain": 0.5, "storm": 0.8, "heat": 2.5, "clear": 1.5, "fog": 0.3, "snow": 0.6},
+	{"fog": 3.0, "rain": 1.5},
+]
+## Crops grow in the open; their work follows the seasons most.
+const CROPS := ["farm", "orchard", "hop_farm", "vineyard", "flax_farm", "herb_garden", "apiary"]
+const ANIMALS := ["sheep_farm", "pig_farm", "dairy"]
+const WOODS := ["woodcutter", "forester", "charcoal_burner"]
+## Other work done outdoors (quarries, pits, salt pans).
+const OUTDOOR := ["quarry", "clay_pit", "saltworks", "sand_pit", "well"]
+
+var biome := PackedByteArray()       # biome of each tile
+var weather: Array = ["clear", "clear", "clear", "clear"]   # current weather of each biome
+var weather_until: Array = [0.0, 0.0, 0.0, 0.0]
+var rng := RandomNumberGenerator.new()
+var last_season := -1
+var _masks: Array = []               # per biome: a soft-edged picture of where it is (for drawing)
+var _ice: ImageTexture
+var _snow: Array = [0.0, 0.0, 0.0, 0.0]   # how much snow lies in each biome now (0 to 1), eased
+var _parts: Array = []               # rain drops and snow flakes on screen
+var _snow_t := 0.0                   # game time the snow was last brought up to date
+var _realm_t: Dictionary = {}        # realm id -> temperature at its headquarters, this second
+var _cache: Array = [{}, {}, {}, {}]  # per biome: building type -> work bonus, worked out once a second
+
+
+func _init() -> void:
+	id = "seasons"
+	title = "Seasons, biomes and weather"
+	info = "Four seasons a year, northern taiga, southern steppe and wetlands with their own weather and temperature. Crops grow best in summer and stall in winter."
+	default_on = true
+
+
+func on_start(loaded: bool) -> void:
+	_make_biomes()
+	# a new game, or a save from before this feature existed
+	if not loaded or rng.seed == 0:
+		rng.seed = (sim.seed_str + ":weather").hash()
+		for k in 4:
+			weather_until[k] = 0.0
+		last_season = season()
+	_make_textures()
+	for k in 4:
+		_snow[k] = _snow_target(k)
+	_update_realm_temps()
+
+
+# ---------------------------------------------------------------- climate
+
+## Where in the year we are, 0 to 1 (0 = the first day of spring).
+func phase() -> float:
+	return fmod(sim.time, YEAR) / YEAR
+
+
+func season() -> int:
+	return int(phase() * 4.0) % 4
+
+
+func year() -> int:
+	return int(sim.time / YEAR) + 1
+
+
+## Temperature of a biome before the weather: a smooth curve over the year, warmest in mid summer
+## (about 23 C in temperate land) and coldest in mid winter (about -3 C).
+func base_temp(k: int) -> float:
+	return 10.0 + 13.0 * sin(TAU * (phase() - 0.125)) + float(BIOME_TEMP[k])
+
+
+func biome_temp(k: int) -> float:
+	return base_temp(k) + float(WEATHER[weather[k]].dt)
+
+
+## Temperature on tile i, in degrees Celsius.
+func temp_at(i: int) -> float:
+	if i < 0 or i >= biome.size():
+		return biome_temp(TEMPERATE)
+	return biome_temp(biome[i]) - (5.0 if sim.ter[i] == Sim.MOUNT else 0.0)
+
+
+## Temperature where realm p lives (at its headquarters).
+func realm_temp(p: Sim.Player) -> float:
+	return float(_realm_t.get(p.id, biome_temp(TEMPERATE)))
+
+
+func biome_at(x: int, y: int) -> int:
+	if not sim.inb(x, y):
+		return TEMPERATE
+	return biome[sim.idx(x, y)]
+
+
+func biome_of(p: Sim.Player) -> int:
+	return biome_at(p.hq.x, p.hq.y) if p.hq != null else TEMPERATE
+
+
+## Splits the map into biomes from the map seed: north and south bands with ragged edges,
+## wetland patches near water in between.
+func _make_biomes() -> void:
+	var w := sim.w
+	var h := sim.h
+	biome = PackedByteArray()
+	biome.resize(w * h)
+	var n := FastNoiseLite.new()
+	n.seed = (sim.seed_str + ":biomes").hash() & 0x7fffffff
+	n.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	n.frequency = 1.0 / 22.0
+	var wet := FastNoiseLite.new()
+	wet.seed = n.seed + 77
+	wet.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	wet.frequency = 1.0 / 12.0
+	for y in h:
+		for x in w:
+			var i := y * w + x
+			var v := float(y) / h + n.get_noise_2d(x, y) * 0.12
+			var k := TEMPERATE
+			if v < 0.30:
+				k = TAIGA
+			elif v > 0.70:
+				k = STEPPE
+			elif sim.ter[i] != Sim.MOUNT and wet.get_noise_2d(x, y) > 0.25 and _water_near(x, y, 3) >= 5:
+				k = WETLAND
+			biome[i] = k
+
+
+func _water_near(x: int, y: int, r: int) -> int:
+	var c := 0
+	for yy in range(maxi(0, y - r), mini(sim.h - 1, y + r) + 1):
+		for xx in range(maxi(0, x - r), mini(sim.w - 1, x + r) + 1):
+			if sim.ter[yy * sim.w + xx] == Sim.WATER:
+				c += 1
+	return c
+
+
+func on_second() -> void:
+	var s := season()
+	if s != last_season:
+		last_season = s
+		var lines := [
+			"Spring has come. Fields start growing again.",
+			"Summer: crops grow fastest. Heat waves are likely in the south.",
+			"Autumn: orchards and vineyards bring in the harvest; hunters do well.",
+			"Winter has come: crops all but stop, fishing and building slow down, and people eat more.",
+		]
+		sim.emit_log(lines[s], Color("9fd0e8"))
+	var home := biome_of(sim.human()) if not sim.players.is_empty() else TEMPERATE
+	for k in 4:
+		if sim.time >= float(weather_until[k]):
+			var before: String = weather[k]
+			weather[k] = _pick_weather(k)
+			weather_until[k] = sim.time + rng.randf_range(60.0, 150.0)
+			if k == home and weather[k] != before and weather[k] in ["storm", "blizzard", "heat", "snow"]:
+				sim.emit_log("%s where you live (%s): %s." % [String(WEATHER[weather[k]].name), String(BIOME_NAMES[k]).to_lower(), _weather_effect_text(weather[k])], Color("9fd0e8"))
+	_update_realm_temps()
+	for k in 4:
+		(_cache[k] as Dictionary).clear()
+
+
+func _update_realm_temps() -> void:
+	_realm_t.clear()
+	for p: Sim.Player in sim.players:
+		if p.hq != null:
+			_realm_t[p.id] = temp_at(sim.idx(p.hq.x, p.hq.y))
+
+
+func _pick_weather(k: int) -> String:
+	var wts: Dictionary = (SEASON_WEATHER[season()] as Dictionary).duplicate()
+	var bw: Dictionary = BIOME_WEATHER[k]
+	for key in wts:
+		wts[key] = float(wts[key]) * float(bw.get(key, 1.0))
+	var total := 0.0
+	for key in wts:
+		total += float(wts[key])
+	var r := rng.randf() * total
+	var pick := "clear"
+	for key in wts:
+		r -= float(wts[key])
+		if r <= 0.0:
+			pick = key
+			break
+	# rain falls as snow in the frost, and snow as rain in a thaw
+	var t := base_temp(k)
+	if t < 0.0:
+		pick = {"rain": "snow", "storm": "blizzard"}.get(pick, pick)
+	elif t > 3.0:
+		pick = {"snow": "rain", "blizzard": "storm"}.get(pick, pick)
+	if pick == "heat" and t < 18.0:
+		pick = "clear"
+	return pick
+
+
+func _weather_effect_text(wx: String) -> String:
+	match wx:
+		"storm": return "fishermen stay ashore, outdoor work and building slow down"
+		"blizzard": return "almost no outdoor work or building"
+		"heat": return "crops wilt, workers tire"
+		"snow": return "outdoor work and building slow down"
+		"rain": return "crops grow a little faster"
+		"fog": return "fishermen and hunters find little"
+	return "fine weather"
+
+
+# ---------------------------------------------------------------- effects
+
+## Extra work speed from season, biome and weather for building b.
+func speed_bonus(_p: Sim.Player, b: Sim.Bld) -> float:
+	if biome.is_empty():
+		return 0.0
+	var k: int = biome[b.y * sim.w + b.x]
+	var c: Dictionary = _cache[k]
+	if not c.has(b.ty):
+		c[b.ty] = _bonus(b.ty, k)
+	return float(c[b.ty])
+
+
+func _bonus(ty: String, k: int) -> float:
+	var s := season()
+	var wx: String = weather[k]
+	var crop := ty in CROPS
+	var animal := ty in ANIMALS
+	var outdoor := crop or animal or ty in WOODS or ty in OUTDOOR or ty == "fisher" or ty == "hunter"
+	var bonus := 0.0
+	# the season
+	if crop:
+		bonus += [0.10, 0.25, 0.10, -0.60][s]
+		if s == 2 and (ty == "orchard" or ty == "vineyard"):
+			bonus += 0.25
+	elif animal and s == 3:
+		bonus -= 0.20
+	match ty:
+		"fisher": bonus += [0.0, 0.10, 0.0, -0.30][s]
+		"hunter": bonus += [0.0, 0.0, 0.15, -0.10][s]
+		"forester": bonus += -0.50 if s == 3 else 0.0
+	if s == 3 and ty in OUTDOOR:
+		bonus -= 0.15
+	# the biome
+	match k:
+		TAIGA:
+			if ty in WOODS or ty == "hunter": bonus += 0.20
+			if crop: bonus -= 0.25
+			if animal: bonus -= 0.10
+		STEPPE:
+			if crop: bonus += 0.10
+			if ty == "sheep_farm" or ty == "dairy": bonus += 0.20
+			if ty == "forester": bonus -= 0.30
+			if ty == "woodcutter": bonus -= 0.10
+			if ty == "saltworks": bonus += 0.20
+		WETLAND:
+			if ty == "fisher": bonus += 0.20
+			if ty == "clay_pit": bonus += 0.25
+			if ty == "herb_garden": bonus += 0.30
+			elif crop: bonus -= 0.10
+		TEMPERATE:
+			if crop: bonus += 0.10
+	# the weather
+	match wx:
+		"rain":
+			if crop: bonus += 0.10
+			if ty == "fisher": bonus -= 0.10
+			elif outdoor: bonus -= 0.05
+		"storm":
+			if ty == "fisher": bonus -= 0.60
+			elif outdoor: bonus -= 0.25
+		"snow":
+			if outdoor: bonus -= 0.15
+		"blizzard":
+			if ty == "fisher": bonus -= 0.80
+			elif outdoor: bonus -= 0.40
+		"heat":
+			if crop: bonus -= 0.40 if k == STEPPE else 0.25
+			else: bonus -= 0.05
+		"fog":
+			if ty == "fisher": bonus -= 0.20
+			if ty == "hunter": bonus -= 0.25
+	return maxf(bonus, -0.85)
+
+
+func build_factor(_p: Sim.Player, b: Sim.Bld) -> float:
+	if biome.is_empty():
+		return 1.0
+	var f := 0.8 if season() == 3 else 1.0
+	match String(weather[biome_at(b.x, b.y)]):
+		"rain": f *= 0.9
+		"storm": f *= 0.7
+		"snow": f *= 0.8
+		"blizzard": f *= 0.5
+	return f
+
+
+## People eat more in the cold: 1.5% more for each degree below 5 C.
+func food_factor(p: Sim.Player) -> float:
+	var t := realm_temp(p)
+	return 1.0 + maxf(0.0, 5.0 - t) * 0.015
+
+
+# ---------------------------------------------------------------- AI
+
+## Rivals in the cold north plant fewer crops and hunt more; nothing else changes for them.
+func ai_steps(p: Sim.Player, have: Callable) -> Array:
+	if biome_of(p) == TAIGA:
+		return [["hunter", 2], ["fisher", 2]]
+	return []
+
+
+# ---------------------------------------------------------------- interface
+
+func top_text(p: Sim.Player) -> String:
+	var k := biome_of(p)
+	return "%s, year %d  %d°C %s" % [SEASONS[season()], year(), roundi(realm_temp(p)), String(WEATHER[weather[k]].name).to_lower()]
+
+
+func panel_lines(p: Sim.Player) -> PackedStringArray:
+	var k := biome_of(p)
+	var left := int((1.0 - fmod(phase() * 4.0, 1.0)) * YEAR / 4.0)
+	return PackedStringArray(["Climate  [b]%s[/b], %s for %d:%02d more, %s" % [String(BIOME_NAMES[k]), SEASONS[season()].to_lower(), left / 60, left % 60, String(WEATHER[weather[k]].name).to_lower()]])
+
+
+func building_lines(b: Sim.Bld) -> PackedStringArray:
+	var k := biome_at(b.x, b.y)
+	var out := PackedStringArray()
+	var line := "Climate: %s, %d°C, %s" % [String(BIOME_NAMES[k]), roundi(temp_at(sim.idx(b.x, b.y))), String(WEATHER[weather[k]].name).to_lower()]
+	if b.state == "build":
+		var f := build_factor(sim.players[b.p - 1], b)
+		if absf(f - 1.0) > 0.01:
+			line += " (building %d%% speed)" % roundi(f * 100.0)
+	elif b.cyc > 0.0:
+		var sb := speed_bonus(sim.players[b.p - 1], b)
+		if absf(sb) > 0.005:
+			line += " ([color=%s]%+d%% work[/color])" % ["#a0d070" if sb > 0 else "#f0a090", roundi(sb * 100.0)]
+	out.append(line)
+	return out
+
+
+func tile_lines(i: int) -> PackedStringArray:
+	if i < 0 or i >= biome.size():
+		return PackedStringArray()
+	var k: int = biome[i]
+	return PackedStringArray(["%s: %d°C, %s" % [String(BIOME_NAMES[k]), roundi(temp_at(i)), String(WEATHER[weather[k]].name).to_lower()]])
+
+
+var _win: Window
+var _txt: RichTextLabel
+
+
+func build_ui(main: Main) -> void:
+	main.add_feature_button(self, "Climate", _toggle_window)
+	main.add_feature_key(self, KEY_F4, _toggle_window)
+	_win = main.add_feature_window(self, "Climate (F4)", Vector2i(560, 400))
+	var bg := PanelContainer.new()
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.add_theme_stylebox_override("panel", main._panel_style(0.95))
+	_win.add_child(bg)
+	_txt = RichTextLabel.new()
+	_txt.bbcode_enabled = true
+	_txt.add_theme_font_size_override("normal_font_size", 14)
+	_txt.add_theme_font_size_override("bold_font_size", 14)
+	bg.add_child(_txt)
+
+
+func _toggle_window() -> void:
+	if _win == null:
+		return
+	_win.visible = not _win.visible
+	if _win.visible:
+		_fill_window()
+
+
+func refresh_ui(_main: Main) -> void:
+	if _win != null and _win.visible:
+		_fill_window()
+
+
+func _fill_window() -> void:
+	var p := sim.human()
+	var t := "[b][color=#d8aa4a]%s of year %d[/color][/b]   (a season lasts 5 minutes)\n\n" % [SEASONS[season()], year()]
+	t += "[b]Biome            Weather        Temperature[/b]\n"
+	for k in 4:
+		var mine := " (you)" if k == biome_of(p) else ""
+		t += "%s%s: %s, %d°C\n" % [BIOME_NAMES[k], mine, String(WEATHER[weather[k]].name).to_lower(), roundi(biome_temp(k))]
+	t += "\n[b][color=#d8aa4a]Seasons[/color][/b]\n"
+	t += "Crops (farms, orchards, hop, flax and herb gardens, vineyards, apiaries): +10% spring, +25% summer, +10% autumn, -60% winter. Orchards and vineyards +25% more in autumn.\n"
+	t += "Winter: animal farms -20%, fishers -30%, hunters -10%, foresters -50%, quarries and pits -15%, building -20%. People eat more below 5°C.\n"
+	t += "\n[b][color=#d8aa4a]Biomes[/color][/b]\n"
+	t += "Northern taiga (cold): woodcutters, foresters, charcoal burners and hunters +20%; crops -25%.\n"
+	t += "Southern steppe (warm, dry): crops +10%, sheep farms and dairies +20%, saltworks +20%; foresters -30%. Heat waves hit crops hard.\n"
+	t += "Wetland (by the water): fishers +20%, clay pits +25%, herb gardens +30%; other crops -10%.\n"
+	t += "Temperate land: crops +10%.\n"
+	t += "\n[b][color=#d8aa4a]Weather[/color][/b]\n"
+	t += "Rain: crops +10%. Storm: fishers -60%, outdoor work -25%, building -30%. Snow: outdoor work -15%, building -20%. Blizzard: outdoor work -40%, building -50%. Heat wave: crops -25% (-40% in the steppe). Fog: fishers -20%, hunters -25%.\n"
+	t += "\n[color=#9a9c88]Click a building to see how the climate changes its work right now.[/color]"
+	_txt.text = t
+
+
+# ---------------------------------------------------------------- drawing
+
+func _make_textures() -> void:
+	_masks.clear()
+	for k in 4:
+		_masks.append(_mask_tex(func(i: int) -> bool: return biome[i] == k and sim.ter[i] != Sim.WATER))
+	_ice = _mask_tex(func(i: int) -> bool: return biome[i] == TAIGA and sim.ter[i] == Sim.WATER)
+
+
+## A white picture, 4 pixels per tile, opaque where keep(tile) is true, with soft edges.
+func _mask_tex(keep: Callable) -> ImageTexture:
+	var w := sim.w
+	var h := sim.h
+	var data := PackedByteArray()
+	data.resize(w * h * 2)
+	for i in w * h:
+		data[i * 2] = 255
+		data[i * 2 + 1] = 255 if keep.call(i) else 0
+	var img := Image.create_from_data(w, h, false, Image.FORMAT_LA8, data)
+	img.convert(Image.FORMAT_RGBA8)
+	img.resize(w * 4, h * 4, Image.INTERPOLATE_BILINEAR)
+	return ImageTexture.create_from_image(img)
+
+
+## How much snow should lie in biome k: from nothing above 1 C to a full cover at -7 C.
+func _snow_target(k: int) -> float:
+	var t := biome_temp(k)
+	var s := clampf((2.0 - t) / 7.0, 0.0, 1.0)
+	if weather[k] == "snow" or weather[k] == "blizzard":
+		s = maxf(s, 0.6)
+	return s
+
+
+func draw_map(view: CanvasItem, _rect: Rect2i) -> void:
+	if _masks.size() < 4:
+		return
+	var r := Rect2(0, 0, sim.w, sim.h)
+	var s := season()
+	var ph := fmod(phase() * 4.0, 1.0)
+	# a warm, golden-brown cast through autumn, strongest in its middle
+	var autumn := sin(ph * PI) if s == 2 else 0.0
+	# the fresh green of early summer
+	var green := sin(ph * PI) * 0.5 if s == 1 else 0.0
+	for k in 4:
+		# snow settles and melts over about half a game minute, however fast the game runs
+		_snow[k] = lerpf(float(_snow[k]), _snow_target(k), clampf((sim.time - _snow_t) / 30.0, 0.0, 1.0))
+		var tex: Texture2D = _masks[k]
+		var tint: Color = BIOME_TINT[k]
+		if tint.a > 0.0:
+			view.draw_texture_rect(tex, r, false, tint)
+		if autumn > 0.01:
+			view.draw_texture_rect(tex, r, false, Color(0.85, 0.48, 0.12, 0.16 * autumn))
+		if green > 0.01:
+			view.draw_texture_rect(tex, r, false, Color(0.35, 0.75, 0.25, 0.08 * green))
+		if float(_snow[k]) > 0.01:
+			view.draw_texture_rect(tex, r, false, Color(0.95, 0.97, 1.0, 0.6 * float(_snow[k])))
+	_snow_t = sim.time
+	if float(_snow[TAIGA]) > 0.4:
+		view.draw_texture_rect(_ice, r, false, Color(0.85, 0.93, 1.0, (float(_snow[TAIGA]) - 0.4) * 0.9))
+
+
+func draw_overlay(view: CanvasItem, to_tile: Callable) -> void:
+	if biome.is_empty():
+		return
+	var sz: Vector2 = (view as Control).size
+	if _parts.is_empty():
+		var r := RandomNumberGenerator.new()
+		r.seed = 7
+		for n in 260:
+			_parts.append(Vector3(r.randf(), r.randf(), r.randf()))
+	var t := Time.get_ticks_msec() / 1000.0
+	# storms darken the sky over the middle of the view, and lightning flashes now and then
+	var mid: Vector2i = to_tile.call(sz / 2.0)
+	var cw := String(weather[biome_at(mid.x, mid.y)])
+	if cw == "storm" or cw == "blizzard":
+		view.draw_rect(Rect2(Vector2.ZERO, sz), Color(0.05, 0.07, 0.12, 0.16))
+		if cw == "storm" and fmod(t, 9.7) < 0.12:
+			view.draw_rect(Rect2(Vector2.ZERO, sz), Color(1, 1, 1, 0.22))
+	elif cw == "heat":
+		view.draw_rect(Rect2(Vector2.ZERO, sz), Color(1.0, 0.6, 0.2, 0.07))
+	elif cw == "cloudy" or cw == "rain":
+		view.draw_rect(Rect2(Vector2.ZERO, sz), Color(0.1, 0.12, 0.16, 0.06))
+	var fog = sim.get_feature("fog")
+	for q: Vector3 in _parts:
+		var x0 := q.x * sz.x
+		var spd := 0.6 + q.z * 0.6
+		# the weather of the biome under the drop's column decides what falls there
+		var tl: Vector2i = to_tile.call(Vector2(x0, q.y * sz.y))
+		if not sim.inb(tl.x, tl.y):
+			continue
+		var wx := String(weather[biome_at(tl.x, tl.y)])
+		var at := Vector2.ZERO
+		match wx:
+			"rain", "storm":
+				var fall := fmod(q.y * sz.y + t * 900.0 * spd, sz.y + 40.0) - 20.0
+				var drift := (t * 120.0 * spd) if wx == "storm" else t * 40.0
+				at = Vector2(fmod(x0 + drift, sz.x), fall)
+			"snow", "blizzard":
+				var fall2 := fmod(q.y * sz.y + t * (60.0 if wx == "snow" else 200.0) * spd, sz.y + 10.0) - 5.0
+				var sway := sin(t * 1.5 + q.z * 9.0) * 12.0 + (t * 160.0 * spd if wx == "blizzard" else 0.0)
+				at = Vector2(fmod(x0 + sway + sz.x, sz.x), fall2)
+			"fog":
+				at = Vector2(fmod(x0 + t * 8.0 * spd, sz.x + 200.0) - 100.0, q.y * sz.y)
+			_:
+				continue
+		# nothing falls on land you have never seen (or off the map)
+		var tl2: Vector2i = to_tile.call(at)
+		if not sim.inb(tl2.x, tl2.y) or (fog != null and not fog.explored_at(tl2.y * sim.w + tl2.x)):
+			continue
+		match wx:
+			"rain", "storm":
+				view.draw_line(at, at + Vector2(5.0 if wx == "storm" else 2.0, 16.0), Color(0.72, 0.8, 0.95, 0.38), 1.2)
+			"snow", "blizzard":
+				view.draw_circle(at, 1.4 + q.z * 1.6, Color(1, 1, 1, 0.8))
+			"fog":
+				view.draw_circle(at, 70.0 + q.z * 50.0, Color(0.85, 0.88, 0.9, 0.035))
+
+
+# ---------------------------------------------------------------- saving
+
+func save_state() -> Dictionary:
+	return {"weather": weather, "until": weather_until, "rng": rng.state, "seed": rng.seed, "season": last_season}
+
+
+func load_state(d: Dictionary) -> void:
+	weather = d.get("weather", weather)
+	weather_until = d.get("until", weather_until)
+	rng.seed = int(d.get("seed", 0))
+	rng.state = int(d.get("rng", 0))
+	last_season = int(d.get("season", -1))

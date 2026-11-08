@@ -1,0 +1,1233 @@
+class_name SimLogistics
+extends RefCounted
+## Roads, the road network, stores, carriers and work areas.
+## Part of the simulation: sim.gd holds the shared state and calls in here; the functions reach
+## the rest of the game through `sim`.
+
+var sim: Sim
+
+var _net_par: Array = []           # per realm: next tile on the way to that store
+var net_ver: Array = []            # per realm: counts rebuilds, so cached paths know when they are stale
+var _mil: Array = []               # all military buildings and headquarters
+var _pb: Array = []                # per realm: its buildings, rebuilt once a second
+var _stations: Array = []          # per realm: working mule stations and cart yards
+
+
+func _init(p_sim: Sim) -> void:
+	sim = p_sim
+
+
+func find_path(sx: int, sy: int, gx: int, gy: int, pid: int) -> PackedInt32Array:
+	sim._stamp += 1
+	var st := sim._stamp
+	var s := sim.idx(sx, sy)
+	var g := sim.idx(gx, gy)
+	var hp := Sim.MinHeap.new()
+	sim._gs[s] = 0.0; sim._came[s] = -1; sim._seen[s] = st
+	hp.push(0.0, s)
+	var nodes := 0
+	var dirs := [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+	while hp.size() > 0:
+		var cur := hp.pop()
+		if sim._closed[cur] == st:
+			continue
+		sim._closed[cur] = st
+		if cur == g:
+			var path := PackedInt32Array()
+			var c := g
+			while c != -1:
+				path.append(c)
+				c = sim._came[c]
+			path.reverse()
+			return path
+		nodes += 1
+		if nodes > 20000:
+			break
+		var cx := cur % sim.w
+		var cy := cur / sim.w
+		for d in dirs:
+			var nx: int = cx + d.x
+			var ny: int = cy + d.y
+			if nx < 0 or ny < 0 or nx >= sim.w or ny >= sim.h:
+				continue
+			var ni := ny * sim.w + nx
+			if sim._closed[ni] == st:
+				continue
+			if ni != g:
+				if sim.owner[ni] != pid or sim.ter[ni] == Sim.WATER or sim.deco[ni] == Sim.D_ROCK or sim.deco[ni] == Sim.D_CLAY or sim.bmap[ni] != 0 or sim.plot[ni] != 0:
+					continue
+			# a road leaves or reaches a building only at its entrance
+			if (sim.bmap[cur] != 0 or sim.bmap[ni] != 0) and not sim.links(cur, ni):
+				continue
+			var tc := 0.35 if sim.road[ni] == pid else (4.0 if sim.deco[ni] == Sim.D_TREE else (2.5 if sim.ter[ni] == Sim.MOUNT else 1.0))
+			tc *= float(Sim.SLOPE_MUL[sim.slope_level(cur, ni)])
+			var ng := sim._gs[cur] + tc
+			if sim._seen[ni] != st or ng < sim._gs[ni]:
+				sim._seen[ni] = st; sim._gs[ni] = ng; sim._came[ni] = cur
+				hp.push(ng + (absi(nx - gx) + absi(ny - gy)) * 0.4, ni)
+	return PackedInt32Array()
+
+
+## Units left in the vein this tile belongs to.
+func vein_left(i: int) -> int:
+	var v := sim.vein[i] if i >= 0 and i < sim.vein.size() else 0
+	return int(sim.vein_amt[v]) if v > 0 else 0
+
+
+## Takes one unit from the vein under tile i, if it holds ore of this kind. A vein that runs dry vanishes.
+func take_ore(i: int, kind: int, keep := false) -> bool:
+	if i < 0 or sim.ore[i] != kind:
+		return false
+	var v := sim.vein[i]
+	if v <= 0 or int(sim.vein_amt[v]) <= 0:
+		return false
+	# endless veins (a difficulty option), or a lucky dig thanks to surveying research, take nothing away
+	if keep or bool(sim.opts.endless_ore):
+		return true
+	sim.vein_amt[v] = int(sim.vein_amt[v]) - 1
+	if int(sim.vein_amt[v]) == 0:
+		for t in sim.vein_tiles[v]:
+			sim.ore[t] = 0
+			sim.changed_tiles.append(t)
+		sim._owned_dirty = true
+		if sim.owner[i] == 1:
+			sim.emit_log("A %s vein has run dry." % String(GameData.ORE_NAMES.get(kind, "ore")), Color("e0b060"), Vector2i(i % sim.w, i / sim.w))
+	return true
+
+
+func lay_road(path: PackedInt32Array, pid: int) -> void:
+	for i in path:
+		if sim.bmap[i] != 0:
+			continue
+		sim.road[i] = pid
+		if sim.deco[i] == Sim.D_TREE:
+			sim.deco[i] = 0
+		sim.changed_tiles.append(i)
+	net_touch(pid, path)
+
+
+## After borders moved: a realm that lost a tile carrying its road or a building gets its network rebuilt;
+## its own old roads coming back inside its border are added. Rows are compared a piece at a time with a
+## fast built-in comparison, and only pieces that differ are looked at tile by tile.
+func _territory_nets(before: PackedByteArray) -> void:
+	var lost := {}
+	for y in sim.h:
+		var row := y * sim.w
+		for x0 in range(0, sim.w, 32):
+			var a := row + x0
+			var e := mini(a + 32, row + sim.w)
+			if before.slice(a, e) == sim.owner.slice(a, e):
+				continue
+			for i in range(a, e):
+				var was := int(before[i])
+				var now := int(sim.owner[i])
+				if was == now:
+					continue
+				if was != 0 and (sim.road[i] == was or sim.bmap[i] != 0):
+					lost[was] = true
+				if now != 0 and sim.road[i] == now:
+					net_touch(now, PackedInt32Array([i]))
+	for pid in lost:
+		net_dirty(pid)
+
+
+## Called whenever a building appears, disappears, finishes or changes hands.
+func _after_building_change(b: Sim.Bld) -> void:
+	_store_ver += 1
+	sim._mil_dirty = true
+	sim._tick_dirty = true
+	if b.dead or b.x < 0:
+		net_dirty(b.p)
+	else:
+		net_touch(b.p, PackedInt32Array([sim.idx(b.x, b.y)]))
+	if b.x >= 0:
+		sim.changed_tiles.append(sim.idx(b.x, b.y))
+
+
+func _reset_nets() -> void:
+	sim._net_dist.clear(); _net_par.clear(); sim._net_dirty.clear(); net_ver.clear(); sim._net_add.clear()
+	for p in sim.players:
+		sim._net_dist.append(PackedFloat32Array())
+		_net_par.append(PackedInt32Array())
+		sim._net_dirty.append(true)
+		sim._net_add.append([])
+		net_ver.append(0)
+
+
+## Marks the road network of realm pid (or of every realm, for 0) as needing a rebuild.
+func net_dirty(pid := 0) -> void:
+	for i in sim._net_dirty.size():
+		if pid == 0 or i == pid - 1:
+			sim._net_dirty[i] = true
+			(sim._net_add[i] as Array).clear()
+
+
+## Something only got better for realm pid's roads on these tiles (a new road or building, a store
+## finished, a tile paved). Distances can only shrink, so the network is updated from these tiles
+## outward the next time it is needed, instead of being rebuilt from scratch.
+func net_touch(pid: int, tiles: PackedInt32Array) -> void:
+	var k := pid - 1
+	if k < 0 or k >= sim._net_dirty.size() or sim._net_dirty[k]:
+		return
+	(sim._net_add[k] as Array).append_array(Array(tiles))
+
+
+## Brings realm pid's road network up to date: a full rebuild after something was lost, otherwise just
+## the tiles that got better.
+func _net_ready(pid: int) -> void:
+	var k := pid - 1
+	if sim._net_dirty[k]:
+		_build_net(pid)
+	elif not (sim._net_add[k] as Array).is_empty():
+		_relax_net(pid)
+
+
+## Whether walking may continue from tile i: roads and stores pass carriers on, other buildings are
+## only ends of the line.
+func _net_spreads(i: int) -> bool:
+	return sim.bmap[i] == 0 or is_store(sim.by_id.get(sim.bmap[i]))
+
+
+## Whether tile i can be part of realm pid's road network at all.
+func _net_open(i: int, pid: int) -> bool:
+	if sim.owner[i] != pid:
+		return false
+	if sim.bmap[i] != 0:
+		var nb: Sim.Bld = sim.by_id.get(sim.bmap[i])
+		return nb != null and nb.p == pid
+	return sim.road[i] == pid
+
+
+## Updates distances after additions only. Each touched tile first takes the best way on from a
+## neighbour already on the network (or becomes a source if it is a finished store), then improvements
+## spread outward like in _build_net, stopping wherever nothing gets shorter.
+func _relax_net(pid: int) -> void:
+	var t0 := Time.get_ticks_usec()
+	var k := pid - 1
+	var dist: PackedFloat32Array = sim._net_dist[k]
+	var par: PackedInt32Array = _net_par[k]
+	var hp := Sim.MinHeap.new()
+	for t: int in sim._net_add[k]:
+		if t < 0 or not _net_open(t, pid):
+			continue
+		var b: Sim.Bld = sim.by_id.get(sim.bmap[t])
+		if b != null and b.state == "ready" and is_store(b):
+			if dist[t] > 0.0:
+				dist[t] = 0.0
+				par[t] = -1
+			hp.push(0.0, t)
+			continue
+		var tx := t % sim.w
+		var ty := t / sim.w
+		for dd in 4:
+			var nx := tx + (1 if dd == 0 else (-1 if dd == 1 else 0))
+			var ny := ty + (1 if dd == 2 else (-1 if dd == 3 else 0))
+			if nx < 0 or ny < 0 or nx >= sim.w or ny >= sim.h:
+				continue
+			var ni := ny * sim.w + nx
+			if dist[ni] < INF and _net_spreads(ni) and sim.links(ni, t):
+				var cand := dist[ni] + step_cost(ni, t)
+				if cand < dist[t]:
+					dist[t] = cand
+					par[t] = ni
+		if dist[t] < INF:
+			hp.push(dist[t], t)
+	(sim._net_add[k] as Array).clear()
+	while hp.size() > 0:
+		var cur := hp.pop()
+		if not _net_spreads(cur):
+			continue
+		var cx := cur % sim.w
+		var cy := cur / sim.w
+		for dd in 4:
+			var nx := cx + (1 if dd == 0 else (-1 if dd == 1 else 0))
+			var ny := cy + (1 if dd == 2 else (-1 if dd == 3 else 0))
+			if nx < 0 or ny < 0 or nx >= sim.w or ny >= sim.h:
+				continue
+			var ni := ny * sim.w + nx
+			if not _net_open(ni, pid) or not sim.links(cur, ni):
+				continue
+			var nd := dist[cur] + step_cost(cur, ni)
+			if nd < dist[ni]:
+				dist[ni] = nd
+				par[ni] = cur
+				hp.push(nd, ni)
+	sim._net_dist[k] = dist
+	_net_par[k] = par
+	net_ver[k] = int(net_ver[k]) + 1
+	sim._pf("road network", t0)
+
+
+## Seconds a porter needs to walk from tile a onto its neighbour b: the ground of b, made longer by the
+## climb or descent between them (Sim.SLOPE_MUL).
+func step_cost(a: int, b: int) -> float:
+	return tile_cost(b) * float(Sim.SLOPE_MUL[sim.slope_level(a, b)])
+
+
+## Seconds a porter needs to walk onto tile i: paved roads and building doorsteps are faster than dirt.
+func tile_cost(i: int) -> float:
+	if sim.bmap[i] != 0 or sim.pave[i] == 1:
+		return Sim.PAVED_COST
+	return Sim.DIRT_COST
+
+
+func is_store(b: Sim.Bld) -> bool:
+	return b != null and b.def.has("store")
+
+
+## Works out, for every road tile and building of realm pid, the walking time to its nearest store
+## and which way to go (Dijkstra's shortest-path search, starting from all stores at once).
+func _build_net(pid: int) -> void:
+	var t0 := Time.get_ticks_usec()
+	var k := pid - 1
+	var dist := PackedFloat32Array(); dist.resize(sim.w * sim.h); dist.fill(INF)
+	var par := PackedInt32Array(); par.resize(sim.w * sim.h); par.fill(-1)
+	var done := PackedByteArray(); done.resize(sim.w * sim.h)
+	var hp := Sim.MinHeap.new()
+	for b in sim.blds:
+		if b.p == pid and b.state == "ready" and is_store(b):
+			var i := sim.idx(b.x, b.y)
+			dist[i] = 0.0
+			hp.push(0.0, i)
+	while hp.size() > 0:
+		var cur := hp.pop()
+		if done[cur] == 1:
+			continue
+		done[cur] = 1
+		if sim.bmap[cur] != 0 and not is_store(sim.by_id.get(sim.bmap[cur])):
+			continue
+		var cx := cur % sim.w
+		var cy := cur / sim.w
+		for dd in 4:
+			var nx := cx + (1 if dd == 0 else (-1 if dd == 1 else 0))
+			var ny := cy + (1 if dd == 2 else (-1 if dd == 3 else 0))
+			if nx < 0 or ny < 0 or nx >= sim.w or ny >= sim.h:
+				continue
+			var ni := ny * sim.w + nx
+			if done[ni] == 1 or sim.owner[ni] != pid:
+				continue
+			if sim.bmap[ni] != 0:
+				var nb: Sim.Bld = sim.by_id.get(sim.bmap[ni])
+				if nb == null or nb.p != pid:
+					continue
+			elif sim.road[ni] != pid:
+				continue
+			if (sim.bmap[cur] != 0 or sim.bmap[ni] != 0) and not sim.links(cur, ni):
+				continue
+			var nd := dist[cur] + step_cost(cur, ni)
+			if nd < dist[ni]:
+				dist[ni] = nd
+				par[ni] = cur
+				hp.push(nd, ni)
+	sim._net_dist[k] = dist
+	_net_par[k] = par
+	sim._net_dirty[k] = false
+	(sim._net_add[k] as Array).clear()
+	net_ver[k] = int(net_ver[k]) + 1
+	sim._pf("road network", t0)
+	sim._net_builds += 1
+
+
+## Walking seconds from tile i to realm pid's nearest store, or INF if no road leads there.
+func net_dist(pid: int, i: int) -> float:
+	_net_ready(pid)
+	var d: PackedFloat32Array = sim._net_dist[pid - 1]
+	return d[i]
+
+
+func connected(b: Sim.Bld) -> bool:
+	return net_dist(b.p, sim.idx(b.x, b.y)) < INF
+
+
+## The road route from building b to its nearest store, kept until the network changes.
+func store_path(b: Sim.Bld) -> PackedInt32Array:
+	var k := b.p - 1
+	_net_ready(b.p)
+	if b.path_ver == int(net_ver[k]):
+		return b.path
+	var path := PackedInt32Array()
+	var c := sim.idx(b.x, b.y)
+	if (sim._net_dist[k] as PackedFloat32Array)[c] < INF:
+		var par: PackedInt32Array = _net_par[k]
+		while c != -1 and path.size() < 5000:
+			path.append(c)
+			c = par[c]
+	b.path = path
+	b.path_ver = int(net_ver[k])
+	return path
+
+
+## Plans a new building's road: the join to the network with the lowest cost of new road plus walk
+## from there to a store, so new roads lead somewhere useful instead of just to the nearest road.
+func _path_to_net(sx: int, sy: int, pid: int, door := -1, doors: Array = [0, 1, 2, 3]) -> PackedInt32Array:
+	var t0 := Time.get_ticks_usec()
+	var r := _path_to_net_inner(sx, sy, pid, door, doors)
+	sim._pf("road laying", t0)
+	return r
+
+
+## door: the side the new building's entrance faces, so its road starts there (-1: any side).
+## doors: the sides allowed when door is -1 (the new building's size decides them).
+func _path_to_net_inner(sx: int, sy: int, pid: int, door := -1, doors: Array = [0, 1, 2, 3]) -> PackedInt32Array:
+	if net_dist(pid, sim.idx(sx, sy)) < INF:
+		return PackedInt32Array([sim.idx(sx, sy)])
+	var nd: PackedFloat32Array = sim._net_dist[pid - 1]
+	sim._stamp += 1
+	var st := sim._stamp
+	var s := sim.idx(sx, sy)
+	var hp := Sim.MinHeap.new()
+	sim._gs[s] = 0.0; sim._came[s] = -1; sim._seen[s] = st
+	hp.push(0.0, s)
+	var nodes := 0
+	# The best join so far: the cost of the new road to it plus the walk from there to a store.
+	# A join close by on a long detour can lose to one a little further away that is near a store.
+	var best := -1
+	var best_total := INF
+	var front := sim.door_at(sx, sy, door)
+	while hp.size() > 0:
+		var cur := hp.pop()
+		if sim._closed[cur] == st:
+			continue
+		sim._closed[cur] = st
+		# nothing reached from here on can beat the best join found
+		if sim._gs[cur] >= best_total:
+			break
+		if cur != s and nd[cur] < INF and (sim.road[cur] == pid or is_store(sim.by_id.get(sim.bmap[cur]))):
+			var total := sim._gs[cur] + nd[cur]
+			if total < best_total:
+				best_total = total
+				best = cur
+			continue
+		nodes += 1
+		if nodes > 8000:
+			break
+		var cx := cur % sim.w
+		var cy := cur / sim.w
+		for dd in 4:
+			var nx := cx + (1 if dd == 0 else (-1 if dd == 1 else 0))
+			var ny := cy + (1 if dd == 2 else (-1 if dd == 3 else 0))
+			if nx < 0 or ny < 0 or nx >= sim.w or ny >= sim.h:
+				continue
+			var ni := ny * sim.w + nx
+			if sim._closed[ni] == st or sim.owner[ni] != pid:
+				continue
+			if cur == s and front >= 0 and ni != front:
+				continue
+			if cur == s and front < 0 and not doors.has(sim.side_of(s, ni)):
+				continue
+			# other buildings' plots (and the new building's own) are no place for a road
+			if sim.plot[ni] != 0 and sim.bmap[ni] == 0:
+				continue
+			if sim.bmap[ni] != 0:
+				if not is_store(sim.by_id.get(sim.bmap[ni])) or (sim.by_id.get(sim.bmap[ni]) as Sim.Bld).p != pid:
+					continue
+				if not sim.links(ni, cur):
+					continue
+			elif sim.ter[ni] == Sim.WATER or sim.deco[ni] == Sim.D_ROCK or sim.deco[ni] == Sim.D_CLAY:
+				continue
+			# a new road tile costs its walk plus the work of laying it; mountains and trees cost more
+			var tc := Sim.DIRT_COST if sim.road[ni] == pid else Sim.NEW_ROAD_COST + Sim.DIRT_COST + (3.0 if sim.deco[ni] == Sim.D_TREE else (1.5 if sim.ter[ni] == Sim.MOUNT else 0.0))
+			# slopes slow the carriers for good, so new roads go round hills where they can
+			tc *= float(Sim.SLOPE_MUL[sim.slope_level(cur, ni)])
+			var ng := sim._gs[cur] + tc
+			if sim._seen[ni] != st or ng < sim._gs[ni]:
+				sim._seen[ni] = st; sim._gs[ni] = ng; sim._came[ni] = cur
+				hp.push(ng, ni)
+	if best < 0:
+		return PackedInt32Array()
+	var path := PackedInt32Array()
+	var c := best
+	while c != -1:
+		path.append(c)
+		c = sim._came[c]
+	path.reverse()
+	return path
+
+
+## Store room for one good: every ready store adds its tier's space; goods with a "cap" in the data
+## (bricks, gold...) take more room, so less of them fits.
+# ---------------------------------------------------------------- goods in each store
+## Every store (headquarters, storehouse, warehouse, depot) keeps its own goods in Bld.inv; the realm's
+## stock (Player.stock) is only the total of them, kept in step by store_add. Goods made are carried to
+## a store and stay there; goods needed are fetched from a store that has them.
+
+var _store_ver := 0
+var _stores_at := -1
+var _stores := {}          # realm id -> its finished stores, by id
+
+
+## Realm p's finished stores, by id (worked out again whenever a building appears, goes or finishes).
+func stores_of(p: Sim.Player) -> Array:
+	if _stores_at != _store_ver:
+		_stores_at = _store_ver
+		_stores = {}
+		for b in sim.blds:
+			if not b.dead and b.state == "ready" and is_store(b):
+				if not _stores.has(b.p):
+					_stores[b.p] = []
+				(_stores[b.p] as Array).append(b)
+	return _stores.get(p.id, [])
+
+
+## Realm p's stores, the one nearest tile `at` first (as the crow flies); at -1: nearest the headquarters.
+func stores_near(p: Sim.Player, at: int, exclude: Sim.Bld = null) -> Array:
+	var list := []
+	for s: Sim.Bld in stores_of(p):
+		if s != exclude:
+			list.append(s)
+	if at < 0 and p.hq != null:
+		at = sim.idx(p.hq.x, p.hq.y)
+	if at >= 0 and list.size() > 1:
+		var ax := at % sim.w
+		var ay := at / sim.w
+		list.sort_custom(func(a: Sim.Bld, c: Sim.Bld):
+			var da := (a.x - ax) * (a.x - ax) + (a.y - ay) * (a.y - ay)
+			var dc := (c.x - ax) * (c.x - ax) + (c.y - ay) * (c.y - ay)
+			return da < dc or (da == dc and a.id < c.id))
+	return list
+
+
+## Room for res in store s alone.
+func store_cap(s: Sim.Bld, p: Sim.Player, res: String) -> float:
+	return float(s.def.store) * GameData.res_cap(res) / 80.0 * (1.0 + sim.mod(p, "store"))
+
+
+func store_room(s: Sim.Bld, p: Sim.Player, res: String) -> float:
+	return store_cap(s, p, res) - float(s.inv.get(res, 0.0))
+
+
+## Adds n of res to store s (n < 0 takes), and to the realm's total.
+func store_add(s: Sim.Bld, p: Sim.Player, res: String, n: float) -> void:
+	var v := float(s.inv.get(res, 0.0)) + n
+	if v <= 0.0001:
+		s.inv.erase(res)
+	else:
+		s.inv[res] = v
+	var t := float(p.stock.get(res, 0.0)) + n
+	p.stock[res] = t if absf(t) > 0.0001 else 0.0
+
+
+## Puts n of res into realm p's stores, the one nearest tile `at` first, as far as there is room; what
+## does not fit goes on to the next nearest. Returns how much found room (the rest is lost).
+func give(p: Sim.Player, res: String, n: float, at := -1, exclude: Sim.Bld = null) -> float:
+	if n <= 0.0:
+		return 0.0
+	var left := n
+	for s: Sim.Bld in stores_near(p, at, exclude):
+		var room := store_room(s, p, res)
+		if room <= 0.0:
+			continue
+		var put := minf(room, left)
+		store_add(s, p, res, put)
+		left -= put
+		if left <= 0.0001:
+			break
+	return n - left
+
+
+## Takes up to n of res from realm p's stores, the one nearest tile `at` first. Returns how much it got.
+func take(p: Sim.Player, res: String, n: float, at := -1) -> float:
+	if n <= 0.0:
+		return 0.0
+	var left := n
+	for s: Sim.Bld in stores_near(p, at):
+		var have := float(s.inv.get(res, 0.0))
+		if have <= 0.0:
+			continue
+		var got := minf(have, left)
+		store_add(s, p, res, -got)
+		left -= got
+		if left <= 0.0001:
+			break
+	return n - left
+
+
+## A carrier reached store tile path[-1] with goods: they go into that store as far as it has room;
+## the rest is taken on to the next stores with room (and lost if there is none).
+func arrive_at_store(t: Sim.Trip, p: Sim.Player) -> void:
+	var at := t.path[t.path.size() - 1] if t.path.size() > 0 else -1
+	var s: Sim.Bld = sim.by_id.get(sim.bmap[at]) if at >= 0 else null
+	var left := float(t.n)
+	if s != null and not s.dead and s.p == p.id and s.state == "ready" and is_store(s):
+		var put := minf(maxf(0.0, store_room(s, p, t.res)), left)
+		if put > 0.0:
+			store_add(s, p, t.res, put)
+			left -= put
+	if left > 0.0:
+		give(p, t.res, left, at)
+
+
+## Store s is gone: its goods go to the realm's other stores as far as they have room.
+func store_lost(s: Sim.Bld, p: Sim.Player) -> void:
+	var lost := 0
+	for k in s.inv.keys():
+		var n := float(s.inv[k])
+		store_add(s, p, k, -n)
+		lost += int(n - give(p, k, n, sim.idx(s.x, s.y), s))
+	s.inv = {}
+	if lost > 0 and not p.ai and p.alive:
+		sim.emit_log("A store was lost: %d goods had nowhere to go." % lost, Color("e08a6a"), Vector2i(s.x, s.y))
+
+
+## For tests: whether every realm's stock is exactly the total of its stores.
+func stock_matches() -> String:
+	for p in sim.players:
+		var sum := {}
+		for s: Sim.Bld in stores_of(p):
+			for k in s.inv:
+				sum[k] = float(sum.get(k, 0.0)) + float(s.inv[k])
+		for k in p.stock:
+			if absf(float(p.stock[k]) - float(sum.get(k, 0.0))) > 0.01:
+				return "%s %s: stock %.2f, stores %.2f" % [p.name, k, float(p.stock[k]), float(sum.get(k, 0.0))]
+	return ""
+
+
+func capacity(p: Sim.Player, res: String) -> float:
+	return p.store_total * GameData.res_cap(res) / 80.0 * (1.0 + sim.mod(p, "store"))
+
+
+## The production target for a good: how many the realm wants to keep in stock, or -1 for no limit.
+## Tools keep TOOL_TARGET of each unless the player sets something else.
+func target_of(p: Sim.Player, res: String) -> int:
+	if p.targets.has(res):
+		return int(p.targets[res])
+	return Sim.TOOL_TARGET if GameData.is_tool_res(res) else -1
+
+
+## Tools of each kind made but not yet in store: waiting at the toolsmith or on a carrier's back.
+func _tools_coming(p: Sim.Player) -> Dictionary:
+	var out := {}
+	for b: Sim.Bld in realm_blds(p):
+		if b.def.has("makes_tools"):
+			for k in b.out_buf:
+				out[k] = int(out.get(k, 0)) + int(b.out_buf[k])
+	for t in sim.trips:
+		if t.p == p.id and not t.delivered and t.dest == 0 and GameData.is_tool_res(t.res):
+			out[t.res] = int(out.get(t.res, 0)) + t.n
+	return out
+
+
+## The tool most wanted: buildings waiting for one count first, then the shortfall against the target.
+## Returns "" when every tool is in stock.
+func wanted_tool(p: Sim.Player) -> String:
+	var coming := _tools_coming(p)
+	var best := ""
+	var best_need := 0.0
+	for t: String in GameData.tool_ids:
+		var tg := target_of(p, t)
+		var need := float(p.tool_wait.get(t, 0)) * 2.0 + float(maxi(tg, 0)) - float(p.stock.get(t, 0.0)) - float(coming.get(t, 0))
+		if need > best_need:
+			best_need = need
+			best = t
+	return best
+
+
+## The tool a new worker needs to start at building b, or "" if none (tools switched off in the
+## difficulty options, a trade without a tool, or a toolsmith, who makes his own).
+func tool_of(b: Sim.Bld) -> String:
+	if not bool(sim.opts.tools) or b.def.has("makes_tools"):
+		return ""
+	return GameData.tool_for(GameData.trade(b.ty))
+
+
+## Whether building b can take on a worker: an idle specialist of its trade brings his own tool,
+## a newcomer needs one from the stores. Remembers what is missing so the toolsmith can make it.
+func _can_hire(p: Sim.Player, b: Sim.Bld) -> bool:
+	b.need_tool = ""
+	var tool := tool_of(b)
+	if tool == "" or not (p.spec.get(sim.spec_key(b), []) as Array).is_empty():
+		return true
+	if float(p.stock.get(tool, 0.0)) >= 1.0:
+		return true
+	b.need_tool = tool
+	p.tool_wait[tool] = int(p.tool_wait.get(tool, 0)) + 1
+	return false
+
+
+func _recount_stores(p: Sim.Player) -> void:
+	var t := 0
+	var porters := 0
+	for b in sim.blds:
+		if b.p == p.id and b.state == "ready" and is_store(b):
+			t += int(b.def.store)
+			porters += int(b.def.get("porters", 0))
+	p.store_total = t
+	p.store_porters = porters
+
+
+## After a store is lost, goods beyond the remaining room are lost too.
+func _clamp_stock(_p: Sim.Player) -> void:
+	pass    # since build 31 a lost store hands its goods on itself (store_lost)
+
+
+## Porters free right now: those employed by the stores plus idle peasants, minus those out on the road.
+func porters_free(p: Sim.Player) -> int:
+	return p.store_porters + maxi(0, p.peasant - p.used_peasant) - p.busy_porters
+
+
+func _rebuild_realm_lists() -> void:
+	_pb = []
+	_stations = []
+	for p in sim.players:
+		_pb.append([])
+		_stations.append([])
+	for b in sim.blds:
+		_pb[b.p - 1].append(b)
+		if b.def.has("carriers") and b.state == "ready" and b.staffed and b.working:
+			_stations[b.p - 1].append(b)
+
+
+## The buildings of realm p (refreshed once a second).
+func realm_blds(p: Sim.Player) -> Array:
+	if _pb.size() != sim.players.size():
+		_rebuild_realm_lists()
+	return _pb[p.id - 1]
+
+
+func mil_list() -> Array:
+	if sim._mil_dirty:
+		_mil = []
+		for b in sim.blds:
+			if sim.is_mil(b):
+				_mil.append(b)
+		sim._mil_dirty = false
+	return _mil
+
+
+## Sends carriers with materials from the stores to construction sites, high-priority sites first,
+## then the oldest. Goods leave the store only when a carrier picks them up; nothing is reserved.
+func _dispatch_supply() -> void:
+	if sim._supply.is_empty():
+		return
+	var buckets := [[], [], []]
+	for id in sim._supply:
+		var b: Sim.Bld = sim.by_id.get(id)
+		if b == null or b.need.is_empty() or (b.state != "build" and b.reno_to < 0):
+			continue
+		if b.prio == Sim.PRIO_PAUSED:
+			continue
+		buckets[Sim.PRIO_HIGH - b.prio].append(b)
+	for list: Array in buckets:
+		list.sort_custom(func(a, c): return a.id < c.id)
+		for b: Sim.Bld in list:
+			var p := sim.players[b.p - 1]
+			if porters_free(p) <= 0 and (_stations[b.p - 1] as Array).is_empty():
+				continue
+			# a site holds only a few loads at a time, so materials go where work can go on
+			var waiting := 0
+			for k in b.onsite:
+				waiting += int(b.onsite[k])
+			for k in b.coming:
+				waiting += int(b.coming[k])
+			if waiting >= 6:
+				continue
+			var res := ""
+			for k in b.need:
+				if float(p.stock.get(k, 0.0)) >= 1.0:
+					res = k
+					break
+			if res == "":
+				continue
+			var n := carry_to(b, p, res, int(b.need[res]), true)
+			if n <= 0:
+				continue
+			b.need[res] = int(b.need[res]) - n
+			if int(b.need[res]) <= 0:
+				b.need.erase(res)
+			b.coming[res] = int(b.coming.get(res, 0)) + n
+			if b.need.is_empty():
+				sim._supply.erase(b.id)
+
+
+## The store a carrier fetches res from for building b: the nearest by road that has some, and the road
+## from b to it. [store, path from b to the store, walking time] or [] when no store has any.
+func source_for(p: Sim.Player, b: Sim.Bld, res: String) -> Array:
+	var bt := sim.idx(b.x, b.y)
+	var path := store_path(b)
+	if path.size() >= 2:
+		var sn: Sim.Bld = sim.by_id.get(sim.bmap[path[path.size() - 1]])
+		if sn != null and float(sn.inv.get(res, 0.0)) >= 1.0:
+			return [sn, path, net_dist(b.p, bt)]
+	var best: Sim.Bld = null
+	var bd := INF
+	var bf: Array = []
+	for s: Sim.Bld in stores_of(p):
+		if float(s.inv.get(res, 0.0)) < 1.0:
+			continue
+		var f := store_field(s)
+		var d: float = (f[1] as PackedFloat32Array)[bt]
+		if d < bd or (d == bd and best != null and s.id < best.id):
+			bd = d; best = s; bf = f
+	if best == null or bd == INF:
+		return []
+	var par: PackedInt32Array = bf[2]
+	var pth := PackedInt32Array()
+	var c := bt
+	while c != -1 and pth.size() < 5000:
+		pth.append(c)
+		c = par[c]
+	return [best, pth, bd]
+
+
+var _sfield := {}          # store id -> [road network version, walking times from it, way back to it]
+
+## Walking times over its realm's roads from store s to every tile, and the way back to s (the same
+## search as _build_net, from this one store). Kept until the network changes.
+func store_field(s: Sim.Bld) -> Array:
+	var k := s.p - 1
+	_net_ready(s.p)
+	var e = _sfield.get(s.id)
+	if e != null and int(e[0]) == int(net_ver[k]):
+		return e
+	var pid := s.p
+	var dist := PackedFloat32Array(); dist.resize(sim.w * sim.h); dist.fill(INF)
+	var par := PackedInt32Array(); par.resize(sim.w * sim.h); par.fill(-1)
+	var done := PackedByteArray(); done.resize(sim.w * sim.h)
+	var hp := Sim.MinHeap.new()
+	var st := sim.idx(s.x, s.y)
+	dist[st] = 0.0
+	hp.push(0.0, st)
+	while hp.size() > 0:
+		var cur := hp.pop()
+		if done[cur] == 1:
+			continue
+		done[cur] = 1
+		if sim.bmap[cur] != 0 and cur != st and not is_store(sim.by_id.get(sim.bmap[cur])):
+			continue
+		var cx := cur % sim.w
+		var cy := cur / sim.w
+		for dd in 4:
+			var nx := cx + (1 if dd == 0 else (-1 if dd == 1 else 0))
+			var ny := cy + (1 if dd == 2 else (-1 if dd == 3 else 0))
+			if nx < 0 or ny < 0 or nx >= sim.w or ny >= sim.h:
+				continue
+			var ni := ny * sim.w + nx
+			if done[ni] == 1 or sim.owner[ni] != pid:
+				continue
+			if sim.bmap[ni] != 0:
+				var nb: Sim.Bld = sim.by_id.get(sim.bmap[ni])
+				if nb == null or nb.p != pid:
+					continue
+			elif sim.road[ni] != pid:
+				continue
+			if (sim.bmap[cur] != 0 or sim.bmap[ni] != 0) and not sim.links(cur, ni):
+				continue
+			var nd := dist[cur] + step_cost(cur, ni)
+			if nd < dist[ni]:
+				dist[ni] = nd
+				par[ni] = cur
+				hp.push(nd, ni)
+	e = [int(net_ver[k]), dist, par]
+	_sfield[s.id] = e
+	return e
+
+
+## Sends a carrier with up to `want` of res from the nearest store that has it to building b: to a
+## construction site (site true) or as input for its work. A mule or ox cart takes it when one is
+## free close by, else a porter. Returns how many he carries (0: no store has any, or nobody free).
+func carry_to(b: Sim.Bld, p: Sim.Player, res: String, want: int, site: bool) -> int:
+	var src := source_for(p, b, res)
+	if src.is_empty():
+		return 0
+	var s: Sim.Bld = src[0]
+	var kind := "porter"
+	var speed := 1.0
+	var load := Sim.PORTER_LOAD
+	var st: Sim.Bld = null
+	for m: Sim.Bld in _stations[b.p - 1]:
+		var c: Dictionary = m.def.carriers
+		if m.busy < int(c.count) and int(c.load) > load and Vector2(m.x - b.x, m.y - b.y).length() <= float(c.range):
+			st = m; kind = String(c.kind); speed = float(c.speed); load = int(c.load)
+	if st == null and porters_free(p) <= 0:
+		return 0
+	var n := mini(mini(load, want), int(float(s.inv.get(res, 0.0))))
+	if n <= 0:
+		return 0
+	if st == null:
+		p.busy_porters += 1
+	else:
+		st.busy += 1
+	store_add(s, p, res, -float(n))
+	if site:
+		sim.used(p, res, float(n))
+	else:
+		b.incoming[res] = int(b.incoming.get(res, 0)) + n
+	var one_way := float(src[2]) / (speed * (1.0 + sim.mod(p, "carry")))
+	var t := Sim.Trip.new()
+	t.p = p.id; t.res = res; t.n = n; t.t0 = sim.time; t.t1 = sim.time + one_way + 1.0; t.t2 = t.t1 + one_way
+	t.path = src[1]; t.kind = kind; t.station = st.id if st != null else 0
+	if site:
+		t.site = b.id
+	else:
+		t.dest = b.id
+	sim.trips.append(t)
+	return n
+
+
+var _inb_at := -1
+var _inb := {}             # realm id -> its buildings that use goods, by id
+
+func _input_blds(p: Sim.Player) -> Array:
+	if _inb_at != _store_ver:
+		_inb_at = _store_ver
+		_inb = {}
+		for b in sim.blds:
+			if not b.dead and b.def.has("in"):
+				if not _inb.has(b.p):
+					_inb[b.p] = []
+				(_inb[b.p] as Array).append(b)
+	return _inb.get(p.id, [])
+
+
+## Food (any kind) at building b or on its way there.
+func food_at(b: Sim.Bld, with_coming := true) -> int:
+	var n := 0
+	for f in GameData.food_ids:
+		n += int(b.inbuf.get(f, 0))
+		if with_coming:
+			n += int(b.incoming.get(f, 0))
+	return n
+
+
+## Carriers bring workshops, mines and the like what they use, from the nearest store that has it, so
+## each keeps enough for two work cycles. One load per building per round; high priority first.
+func _dispatch_inputs() -> void:
+	for p in sim.players:
+		if not p.alive:
+			continue
+		var buckets := [[], [], []]
+		for b: Sim.Bld in _input_blds(p):
+			if b.dead or b.state != "ready" or not b.staffed or b.prio == Sim.PRIO_PAUSED or b.reno_to >= 0:
+				continue
+			buckets[Sim.PRIO_HIGH - b.prio].append(b)
+		var out_of_carriers := false
+		for list: Array in buckets:
+			if out_of_carriers:
+				break
+			for b: Sim.Bld in list:
+				if porters_free(p) <= 0 and (_stations[p.id - 1] as Array).is_empty():
+					out_of_carriers = true     # this realm's carriers are all out; the next realm's turn
+					break
+				var inp: Dictionary = b.def["in"]
+				for k in inp:
+					# enough for two work cycles; food for one, so less of it sits about in workshops
+					var want := int(inp[k]) * (1 if k == "food" else 2)
+					var have := food_at(b) if k == "food" else int(b.inbuf.get(k, 0)) + int(b.incoming.get(k, 0))
+					if have >= want:
+						continue
+					var res := String(k)
+					if k == "food":
+						res = ""
+						for f in GameData.food_ids:
+							if float(p.stock.get(f, 0.0)) >= 1.0:
+								res = f
+								break
+						if res == "":
+							continue
+					elif float(p.stock.get(k, 0.0)) < 1.0:
+						continue
+					if carry_to(b, p, res, want - have, false) > 0:
+						break
+
+
+## A carrier brought inputs to building b. If it is gone or changed hands, they go back to a store.
+func input_arrival(t: Sim.Trip, p: Sim.Player) -> void:
+	var b: Sim.Bld = sim.by_id.get(t.dest)
+	if b != null and b.p == t.p:
+		b.incoming[t.res] = int(b.incoming.get(t.res, 0)) - t.n
+		if int(b.incoming[t.res]) <= 0:
+			b.incoming.erase(t.res)
+	if b != null and not b.dead and b.p == t.p and b.state == "ready":
+		b.inbuf[t.res] = int(b.inbuf.get(t.res, 0)) + t.n
+		b.retry = 0.0
+	elif p.alive:
+		give(p, t.res, float(t.n), t.path[0] if t.path.size() > 0 else -1)
+
+
+## Sends free carriers to buildings with goods waiting. Carts first, then mules, then porters.
+func _dispatch() -> void:
+	if _stations.size() != sim.players.size():
+		_rebuild_realm_lists()
+	_dispatch_supply()
+	# goods from high-priority buildings are picked up first, from low-priority ones last
+	var buckets := [[], [], [], []]
+	for id in sim._pending:
+		var pb: Sim.Bld = sim.by_id.get(id)
+		buckets[Sim.PRIO_HIGH - (pb.prio if pb != null else Sim.PRIO_NORMAL)].append(id)
+	# oldest building first within each priority, so the order never depends on how the list was
+	# filled (a loaded game rebuilds it in another order, and must go on exactly the same)
+	for bk: Array in buckets:
+		bk.sort()
+	for id in buckets[0] + buckets[1] + buckets[2] + buckets[3]:
+		if not sim._pending.has(id):
+			continue
+		var b: Sim.Bld = sim.by_id.get(id)
+		if b == null or b.out_buf.is_empty():
+			sim._pending.erase(id)
+			continue
+		var p := sim.players[b.p - 1]
+		if porters_free(p) <= 0 and (_stations[b.p - 1] as Array).is_empty():
+			continue
+		var path := store_path(b)
+		if path.is_empty():
+			continue
+		var res: String = b.out_buf.keys()[0]
+		var have := int(b.out_buf[res])
+		var kind := "porter"
+		var speed := 1.0
+		var load := Sim.PORTER_LOAD
+		var st: Sim.Bld = null
+		for s: Sim.Bld in _stations[b.p - 1]:
+			var c: Dictionary = s.def.carriers
+			if s.busy < int(c.count) and int(c.load) > load and Vector2(s.x - b.x, s.y - b.y).length() <= float(c.range):
+				st = s; kind = String(c.kind); speed = float(c.speed); load = int(c.load)
+		if st == null:
+			if porters_free(p) <= 0:
+				continue
+			p.busy_porters += 1
+		else:
+			st.busy += 1
+		var n := mini(load, have)
+		if n >= have:
+			b.out_buf.erase(res)
+		else:
+			b.out_buf[res] = have - n
+		var one_way := net_dist(b.p, sim.idx(b.x, b.y)) / (speed * (1.0 + sim.mod(p, "carry")))
+		var t := Sim.Trip.new()
+		t.p = p.id; t.res = res; t.n = n; t.t0 = sim.time; t.t1 = sim.time + one_way + 1.0; t.t2 = t.t1 + one_way
+		t.path = path; t.kind = kind; t.station = st.id if st != null else 0
+		sim.trips.append(t)
+		if b.out_buf.is_empty():
+			sim._pending.erase(id)
+	_dispatch_inputs()
+
+
+func _free_carrier(t: Sim.Trip) -> void:
+	if t.kind == "builder" or t.kind == "soldier" or t.kind == "worker":
+		return                     # builders, soldiers and workers on their way are not carriers
+	if t.station != 0:
+		var s: Sim.Bld = sim.by_id.get(t.station)
+		if s != null:
+			s.busy = maxi(0, s.busy - 1)
+	else:
+		var p := sim.players[t.p - 1]
+		p.busy_porters = maxi(0, p.busy_porters - 1)
+
+
+## Neighbouring tiles of c that are realm pid's roads or buildings (roads end at buildings).
+func _road_nbrs(c: int, pid: int) -> Array:
+	var out := []
+	var cx := c % sim.w
+	var cy := c / sim.w
+	for dd in 4:
+		var nx := cx + (1 if dd == 0 else (-1 if dd == 1 else 0))
+		var ny := cy + (1 if dd == 2 else (-1 if dd == 3 else 0))
+		if nx < 0 or ny < 0 or nx >= sim.w or ny >= sim.h:
+			continue
+		var ni := ny * sim.w + nx
+		if (sim.road[ni] == pid or (sim.bmap[ni] != 0 and (sim.by_id.get(sim.bmap[ni]) as Sim.Bld).p == pid)) and sim.links(c, ni):
+			out.append(ni)
+	return out
+
+
+## Lays a road from (sx, sy) to (gx, gy). It must start on one of your roads or buildings.
+func build_road(sx: int, sy: int, gx: int, gy: int, pid: int) -> String:
+	if not sim.inb(sx, sy) or not sim.inb(gx, gy):
+		return "Outside the map"
+	var s := sim.idx(sx, sy)
+	var g := sim.idx(gx, gy)
+	var sb := sim.bld_at(sx, sy)
+	if sim.road[s] != pid and (sb == null or sb.p != pid):
+		return "Start a road on one of your roads or buildings."
+	if s == g:
+		return "Pick a different end tile."
+	if sim.owner[g] != pid:
+		return "Roads must stay inside your territory."
+	var gb := sim.bld_at(gx, gy)
+	if gb != null and gb.p != pid:
+		return "That building is not yours."
+	if gb == null and (sim.ter[g] == Sim.WATER or sim.deco[g] == Sim.D_ROCK or sim.deco[g] == Sim.D_CLAY):
+		return "A road cannot end there."
+	var path := find_path(sx, sy, gx, gy, pid)
+	if path.is_empty():
+		return "There is no way through for a road."
+	lay_road(path, pid)
+	return ""
+
+
+## Removes the stretch of road through (x, y), up to the next junctions or buildings.
+## Clicking a junction removes only that tile. Returns how many tiles were removed.
+func remove_road(x: int, y: int, pid: int) -> int:
+	if not sim.inb(x, y):
+		return 0
+	var i := sim.idx(x, y)
+	if sim.road[i] != pid or sim.bmap[i] != 0:
+		return 0
+	var removed := PackedInt32Array()
+	if _road_nbrs(i, pid).size() >= 3:
+		removed.append(i)
+	else:
+		var stack := [i]
+		var seen := {i: true}
+		while stack.size() > 0:
+			var c: int = stack.pop_back()
+			var nb := _road_nbrs(c, pid)
+			if c != i and nb.size() >= 3:
+				continue
+			removed.append(c)
+			for n in nb:
+				if not seen.has(n) and sim.bmap[n] == 0:
+					seen[n] = true
+					stack.append(n)
+	for c in removed:
+		sim.road[c] = 0
+		sim.pave[c] = 0
+		sim.changed_tiles.append(c)
+	net_dirty(pid)
+	return removed.size()
+
+
+## Paves up to 12 connected road tiles around (x, y) with stone, 1 stone per tile.
+func pave_road(x: int, y: int, p: Sim.Player) -> String:
+	if not sim.inb(x, y) or sim.road[sim.idx(x, y)] != p.id:
+		return "Click one of your roads."
+	var queue := [sim.idx(x, y)]
+	var seen := {sim.idx(x, y): true}
+	var count := 0
+	var looked := 0
+	while queue.size() > 0 and count < 12 and looked < 60:
+		var c: int = queue.pop_front()
+		looked += 1
+		if sim.pave[c] == 0:
+			if float(p.stock.get("stone", 0.0)) < 1.0:
+				break
+			take(p, "stone", 1.0, c)
+			sim.pave[c] = 1
+			sim.changed_tiles.append(c)
+			count += 1
+		for n in _road_nbrs(c, p.id):
+			if not seen.has(n) and sim.bmap[n] == 0:
+				seen[n] = true
+				queue.append(n)
+	if count == 0:
+		return "Not enough stone to pave." if float(p.stock.get("stone", 0.0)) < 1.0 else "This stretch is already paved."
+	net_touch(p.id, PackedInt32Array(seen.keys()))
+	return ""
+
+
+func work_center(b: Sim.Bld) -> Vector2i:
+	return b.work if b.work.x >= 0 else Vector2i(b.x, b.y)
+
+
+func work_radius(b: Sim.Bld) -> int:
+	return int((b.def.get("work", {}) as Dictionary).get("radius", 0))
+
+
+## Extra seconds per cycle for walking to a moved work area and back.
+func walk_time(b: Sim.Bld) -> float:
+	if b.work.x < 0:
+		return 0.0
+	return Vector2(b.work.x - b.x, b.work.y - b.y).length() * 0.6
+
+
+## Moves a building's work area so it is centred on (x, y), within the building's move limit.
+func set_work_area(b: Sim.Bld, x: int, y: int) -> String:
+	var wd: Dictionary = b.def.get("work", {})
+	if wd.is_empty():
+		return "This building has no work area to move."
+	if not sim.inb(x, y):
+		return "Outside the map"
+	var lim := int(wd.get("move", 6))
+	if Vector2(x - b.x, y - b.y).length() > lim + 0.01:
+		return "Too far: the work area can move at most %d tiles from the building." % lim
+	b.work = Vector2i(-1, -1) if (x == b.x and y == b.y) else Vector2i(x, y)
+	b.retry = 0.0
+	b.fails = 0
+	return ""
+
+
+## Short status line for a building, for the selection panel.
+func status(b: Sim.Bld) -> String:
+	var d := b.def
+	if b.reno_to >= 0:
+		return "Being renovated into the %s style: %d%%%s" % [GameData.age_name(b.reno_to), roundi(b.reno_prog * 100), "" if b.mat_used >= b.mat_total or not b.onsite.is_empty() or b.reno_prog < float(b.mat_used) / maxf(1, b.mat_total) else " (waiting for materials)"]
+	if b.state == "build":
+		if b.msg == "Waiting for materials":
+			var miss := []
+			var p := sim.players[b.p - 1]
+			for k in b.need:
+				if float(p.stock.get(k, 0.0)) < 1.0:
+					miss.append(GameData.res_name(k).to_lower())
+			if not b.coming.is_empty():
+				return "Waiting for materials (on the way) %d%%" % roundi(b.prog * 100)
+			if not miss.is_empty():
+				return "Waiting for materials: no %s in store" % " or ".join(miss)
+			return "Waiting for materials (no free carrier) %d%%" % roundi(b.prog * 100)
+		if not b.staffed:
+			return "Waiting for a builder (no idle peasants)"
+		if b.msg == "Waiting for a road connection":
+			return "Waiting for a road to a store"
+		return "Under construction %d%%" % roundi(b.prog * 100)
+	if b.ty == "hq":
+		return "Soldiers in reserve: %d. Stores %d of each good." % [sim.players[b.p - 1].reserve, int(d.store)]
+	if d.has("store"):
+		return "Store: room for %d more of each good" % int(d.store)
+	if d.has("carriers"):
+		var c: Dictionary = d.carriers
+		return "%d of %d %ss out on the road%s" % [b.busy, int(c.count), String(c.kind), "" if b.working else " (%s)" % (b.msg if b.msg != "" else "idle")]
+	if d.has("vision"):
+		return ("Lookout: a scout watches %d tiles around" % int(d.vision)) if b.staffed else "No scout inside (train scouts at a scout lodge)"
+	if d.has("garrison"):
+		return "Garrison %d/%d%s" % [b.garrison, int(d.garrison), "" if b.garrison > 0 else " (empty, claims no land)"]
+	if d.has("housing"):
+		return "Homes for %d people" % int(d.housing)
+	if b.working:
+		return "Working %d%%" % roundi(sim.work_progress(b) * 100)
+	return b.msg if b.msg != "" else "Idle"
+
+
+## The shortest walk over land (8 directions) from tile a towards tile b. If b can't be reached,
+## it ends at the reachable land tile closest to b.
+func land_path(a: int, b: int) -> PackedInt32Array:
+	var w := sim.w
+	var h := sim.h
+	var par := PackedInt32Array()
+	par.resize(w * h)
+	par.fill(-2)
+	par[a] = -1
+	var q := PackedInt32Array([a])
+	var head := 0
+	var bx := b % w
+	var by := b / w
+	var best := a
+	var bd := 1e9
+	while head < q.size():
+		var c := q[head]
+		head += 1
+		var cx := c % w
+		var cy := c / w
+		var d := Vector2(cx - bx, cy - by).length_squared()
+		if d < bd:
+			bd = d; best = c
+		if c == b:
+			break
+		for dy in [-1, 0, 1]:
+			for dx in [-1, 0, 1]:
+				if dx == 0 and dy == 0:
+					continue
+				var nx: int = cx + dx
+				var ny: int = cy + dy
+				if nx < 0 or ny < 0 or nx >= w or ny >= h:
+					continue
+				var ni := ny * w + nx
+				if par[ni] != -2 or sim.ter[ni] == Sim.WATER:
+					continue
+				par[ni] = c
+				q.append(ni)
+	var out := PackedInt32Array()
+	var c2 := best
+	while c2 != -1 and out.size() < 4000:
+		out.append(c2)
+		c2 = par[c2]
+	out.reverse()
+	return out

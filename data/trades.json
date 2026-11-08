@@ -1,0 +1,67 @@
+{
+ "woodland": {
+  "name": "Woodland",
+  "title": "woodsman",
+  "plural": "woodsmen"
+ },
+ "mining": {
+  "name": "Mining and quarrying",
+  "title": "miner",
+  "plural": "miners"
+ },
+ "farming": {
+  "name": "Farming",
+  "title": "farmer",
+  "plural": "farmers"
+ },
+ "hunting": {
+  "name": "Fishing and hunting",
+  "title": "huntsman",
+  "plural": "huntsmen"
+ },
+ "victuals": {
+  "name": "Food and drink",
+  "title": "victualler",
+  "plural": "victuallers"
+ },
+ "woodwork": {
+  "name": "Woodwork",
+  "title": "joiner",
+  "plural": "joiners"
+ },
+ "metal": {
+  "name": "Metalwork",
+  "title": "smith",
+  "plural": "smiths"
+ },
+ "kilns": {
+  "name": "Kilns and glass",
+  "title": "kiln master",
+  "plural": "kiln masters"
+ },
+ "textiles": {
+  "name": "Textiles and leather",
+  "title": "clothier",
+  "plural": "clothiers"
+ },
+ "fine": {
+  "name": "Fine crafts",
+  "title": "craftsman",
+  "plural": "craftsmen"
+ },
+ "learning": {
+  "name": "Teaching and learning",
+  "title": "scholar",
+  "plural": "scholars"
+ },
+ "transport": {
+  "name": "Transport",
+  "title": "drover",
+  "plural": "drovers"
+ },
+ "healing": {
+  "name": "Healing",
+  "title": "healer",
+  "plural": "healers"
+ }
+}

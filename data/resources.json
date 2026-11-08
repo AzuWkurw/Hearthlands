@@ -1,0 +1,478 @@
+[
+ {
+  "id": "wood",
+  "name": "Logs",
+  "abbr": "Lg",
+  "color": "#8a5a2b",
+  "icon": "log"
+ },
+ {
+  "id": "stone",
+  "name": "Stone",
+  "abbr": "St",
+  "color": "#9d9d96",
+  "icon": "rock"
+ },
+ {
+  "id": "clay",
+  "name": "Clay",
+  "abbr": "Cl",
+  "color": "#c98a52",
+  "icon": "blob",
+  "cap": 40
+ },
+ {
+  "id": "water",
+  "name": "Water",
+  "abbr": "Wa",
+  "color": "#4a90d9",
+  "icon": "drop",
+  "cap": 40
+ },
+ {
+  "id": "grain",
+  "name": "Grain",
+  "abbr": "Gr",
+  "color": "#e0c04a",
+  "icon": "ears"
+ },
+ {
+  "id": "hops",
+  "name": "Hops",
+  "abbr": "Hp",
+  "color": "#8fae4c",
+  "icon": "cone",
+  "cap": 30
+ },
+ {
+  "id": "wool",
+  "name": "Wool",
+  "abbr": "Wl",
+  "color": "#e8e4da",
+  "icon": "fluff",
+  "cap": 30
+ },
+ {
+  "id": "hides",
+  "name": "Hides",
+  "abbr": "Hd",
+  "color": "#8a6a4a",
+  "icon": "hide"
+ },
+ {
+  "id": "salt",
+  "name": "Salt",
+  "abbr": "Sa",
+  "color": "#f2f2ee",
+  "icon": "crystal",
+  "cap": 30
+ },
+ {
+  "id": "coal",
+  "name": "Coal",
+  "abbr": "Ca",
+  "color": "#4a4a4a",
+  "icon": "lump"
+ },
+ {
+  "id": "ore_iron",
+  "name": "Iron ore",
+  "abbr": "Io",
+  "color": "#8a6a5a",
+  "icon": "orechunk"
+ },
+ {
+  "id": "ore_copper",
+  "name": "Copper ore",
+  "abbr": "Co",
+  "color": "#c0703a",
+  "icon": "orechunk"
+ },
+ {
+  "id": "ore_gold",
+  "name": "Gold ore",
+  "abbr": "Go",
+  "color": "#c9a42e",
+  "icon": "orechunk"
+ },
+ {
+  "id": "planks",
+  "name": "Planks",
+  "abbr": "Pl",
+  "color": "#c99a5b",
+  "icon": "stack"
+ },
+ {
+  "id": "bricks",
+  "name": "Bricks",
+  "abbr": "Br",
+  "color": "#b5533a",
+  "icon": "bricks",
+  "cap": 30
+ },
+ {
+  "id": "flour",
+  "name": "Flour",
+  "abbr": "Fl",
+  "color": "#eee6cf",
+  "icon": "sack",
+  "cap": 40
+ },
+ {
+  "id": "bread",
+  "name": "Bread",
+  "abbr": "Bd",
+  "color": "#d98d3f",
+  "icon": "loaf",
+  "food": 1.2
+ },
+ {
+  "id": "fish",
+  "name": "Fish",
+  "abbr": "Fi",
+  "color": "#5aa5c7",
+  "icon": "fish",
+  "food": 1.0
+ },
+ {
+  "id": "smoked_fish",
+  "name": "Smoked fish",
+  "abbr": "Sf",
+  "color": "#a8744a",
+  "icon": "fish",
+  "food": 1.8
+ },
+ {
+  "id": "meat",
+  "name": "Meat",
+  "abbr": "Mt",
+  "color": "#c0564a",
+  "icon": "ham",
+  "food": 1.0
+ },
+ {
+  "id": "apples",
+  "name": "Apples",
+  "abbr": "Ap",
+  "color": "#c8402f",
+  "icon": "apple",
+  "food": 0.6
+ },
+ {
+  "id": "beer",
+  "name": "Beer",
+  "abbr": "Be",
+  "color": "#e0a82e",
+  "icon": "mug"
+ },
+ {
+  "id": "cloth",
+  "name": "Cloth",
+  "abbr": "Cs",
+  "color": "#8aa6c9",
+  "icon": "cloth"
+ },
+ {
+  "id": "leather",
+  "name": "Leather",
+  "abbr": "Le",
+  "color": "#a0643a",
+  "icon": "flat"
+ },
+ {
+  "id": "paper",
+  "name": "Paper",
+  "abbr": "Pa",
+  "color": "#efe9d6",
+  "icon": "cloth",
+  "cap": 40
+ },
+ {
+  "id": "iron",
+  "name": "Iron",
+  "abbr": "Ir",
+  "color": "#aab4bf",
+  "icon": "ingot"
+ },
+ {
+  "id": "copper",
+  "name": "Copper",
+  "abbr": "Cu",
+  "color": "#d0823f",
+  "icon": "ingot"
+ },
+ {
+  "id": "gold",
+  "name": "Gold",
+  "abbr": "Au",
+  "color": "#ffd34d",
+  "icon": "ingot",
+  "cap": 40
+ },
+ {
+  "id": "axes",
+  "name": "Axes",
+  "abbr": "Ax",
+  "color": "#9aa0a8",
+  "icon": "axe",
+  "tool": "woodland",
+  "cap": 40
+ },
+ {
+  "id": "pickaxes",
+  "name": "Pickaxes",
+  "abbr": "Pi",
+  "color": "#8a8f96",
+  "icon": "pickaxe",
+  "tool": "mining",
+  "cap": 40
+ },
+ {
+  "id": "farm_tools",
+  "name": "Farm tools",
+  "abbr": "Fa",
+  "color": "#b0a070",
+  "icon": "scythe",
+  "tool": "farming",
+  "cap": 40
+ },
+ {
+  "id": "bows",
+  "name": "Bows and rods",
+  "abbr": "Bo",
+  "color": "#9a7040",
+  "icon": "bow",
+  "tool": "hunting",
+  "cap": 40
+ },
+ {
+  "id": "knives",
+  "name": "Knives",
+  "abbr": "Kn",
+  "color": "#c0c4ca",
+  "icon": "cleaver",
+  "tool": "victuals",
+  "cap": 40
+ },
+ {
+  "id": "saws",
+  "name": "Saws",
+  "abbr": "Sa",
+  "color": "#a8adb4",
+  "icon": "saw",
+  "tool": "woodwork",
+  "cap": 40
+ },
+ {
+  "id": "tongs",
+  "name": "Smith's tongs",
+  "abbr": "Sm",
+  "color": "#6a6e74",
+  "icon": "tongs",
+  "tool": "metal",
+  "cap": 40
+ },
+ {
+  "id": "trowels",
+  "name": "Trowels",
+  "abbr": "Tr",
+  "color": "#a09a90",
+  "icon": "trowel",
+  "tool": "kilns",
+  "cap": 40
+ },
+ {
+  "id": "shears",
+  "name": "Shears",
+  "abbr": "Sh",
+  "color": "#b8bcc2",
+  "icon": "shears",
+  "tool": "textiles",
+  "cap": 40
+ },
+ {
+  "id": "chisels",
+  "name": "Chisels",
+  "abbr": "Ch",
+  "color": "#c8b070",
+  "icon": "chisel",
+  "tool": "fine",
+  "cap": 40
+ },
+ {
+  "id": "quills",
+  "name": "Quills",
+  "abbr": "Qu",
+  "color": "#e8e4d8",
+  "icon": "quill",
+  "tool": "learning",
+  "cap": 40
+ },
+ {
+  "id": "harnesses",
+  "name": "Harnesses",
+  "abbr": "Ha",
+  "color": "#8a5a30",
+  "icon": "harness",
+  "tool": "transport",
+  "cap": 40
+ },
+ {
+  "id": "weapons",
+  "name": "Weapons",
+  "abbr": "Wp",
+  "color": "#b04040",
+  "icon": "sword"
+ },
+ {
+  "id": "armor",
+  "name": "Armor",
+  "abbr": "Ar",
+  "color": "#7f8fa6",
+  "icon": "shield"
+ },
+ {
+  "id": "clothes",
+  "name": "Clothes",
+  "abbr": "Ct",
+  "color": "#b86ab0",
+  "icon": "shirt"
+ },
+ {
+  "id": "flax",
+  "name": "Flax",
+  "abbr": "Fx",
+  "color": "#9fb6d8",
+  "icon": "ears",
+  "feature": "clothing",
+  "info": "Grown on flax farms; woven into linen clothes."
+ },
+ {
+  "id": "linen_clothes",
+  "name": "Linen clothes",
+  "abbr": "Li",
+  "color": "#e6dcc0",
+  "icon": "shirt",
+  "feature": "clothing",
+  "info": "Light summer clothes. Keep people working in the heat."
+ },
+ {
+  "id": "fur_coats",
+  "name": "Fur coats",
+  "abbr": "Fc",
+  "color": "#7a5636",
+  "icon": "shirt",
+  "feature": "clothing",
+  "info": "Warm winter clothes. Keep people working, and healthy, in the cold."
+ },
+ {
+  "id": "jewelry",
+  "name": "Jewelry",
+  "abbr": "Jw",
+  "color": "#f0e08a",
+  "icon": "ring"
+ },
+ {
+  "id": "furniture",
+  "name": "Furniture",
+  "abbr": "Fu",
+  "color": "#9a6a3a",
+  "icon": "chair"
+ },
+ {
+  "id": "sand",
+  "name": "Sand",
+  "abbr": "Sd",
+  "color": "#e2cf94",
+  "icon": "heap"
+ },
+ {
+  "id": "glass",
+  "name": "Glassware",
+  "abbr": "Gl",
+  "color": "#9fd6e0",
+  "icon": "goblet",
+  "cap": 40
+ },
+ {
+  "id": "milk",
+  "name": "Milk",
+  "abbr": "Mk",
+  "color": "#f4f1e6",
+  "icon": "pail"
+ },
+ {
+  "id": "cheese",
+  "name": "Cheese",
+  "abbr": "Ch",
+  "color": "#f0c64a",
+  "icon": "wedge",
+  "food": 1.6
+ },
+ {
+  "id": "sausages",
+  "name": "Sausages",
+  "abbr": "Sg",
+  "color": "#b0503e",
+  "icon": "links",
+  "food": 1.6
+ },
+ {
+  "id": "honey",
+  "name": "Honey",
+  "abbr": "Hn",
+  "color": "#e8a72a",
+  "icon": "jar",
+  "food": 0.8
+ },
+ {
+  "id": "wax",
+  "name": "Beeswax",
+  "abbr": "Wx",
+  "color": "#e8d98a",
+  "icon": "blob",
+  "cap": 40
+ },
+ {
+  "id": "candles",
+  "name": "Candles",
+  "abbr": "Cd",
+  "color": "#f6efd2",
+  "icon": "candle",
+  "cap": 40
+ },
+ {
+  "id": "grapes",
+  "name": "Grapes",
+  "abbr": "Gr",
+  "color": "#7a3f8a",
+  "icon": "grapes"
+ },
+ {
+  "id": "wine",
+  "name": "Wine",
+  "abbr": "Wn",
+  "color": "#8a1f3a",
+  "icon": "bottle"
+ },
+ {
+  "id": "herbs",
+  "name": "Herbs",
+  "abbr": "Hb",
+  "color": "#6aa84f",
+  "icon": "cone",
+  "feature": "diseases",
+  "cap": 40,
+  "info": "Grown in herb gardens; the apothecary makes medicine from them."
+ },
+ {
+  "id": "medicine",
+  "name": "Medicine",
+  "abbr": "Md",
+  "color": "#c84a6a",
+  "icon": "bottle",
+  "feature": "diseases",
+  "cap": 40,
+  "info": "Cures the sick: at home a little, in an infirmary much faster."
+ }
+]

@@ -1,0 +1,13 @@
+{
+ "artisan": {
+  "beer|wine": 0.004,
+  "clothes": 0.002
+ },
+ "noble": {
+  "wine|beer": 0.008,
+  "clothes": 0.003,
+  "jewelry": 0.0015,
+  "furniture": 0.002,
+  "glass|candles": 0.0015
+ }
+}

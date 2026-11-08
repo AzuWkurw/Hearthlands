@@ -1,0 +1,2028 @@
+{
+ "hq": {
+  "name": "Headquarters",
+  "cat": "special",
+  "size": "large",
+  "cost": {},
+  "time": 0,
+  "radius": 9,
+  "housing": 20,
+  "art": {
+   "style": "hq",
+   "wall": "#b9a97c",
+   "sw": 4.0
+  },
+  "info": "Your first store (60 of each good), your people and your last stand.",
+  "store": 60,
+  "porters": 12
+ },
+ "woodcutter": {
+  "name": "Woodcutter",
+  "cat": "raw",
+  "size": "small",
+  "cost": {
+   "planks": 2
+  },
+  "time": 8,
+  "worker": "peasant",
+  "cycle": 14,
+  "out": {
+   "wood": 1
+  },
+  "act": "cut_tree",
+  "site": "trees:4:5",
+  "info": "Fells trees within 5 tiles.",
+  "art": {
+   "style": "shed",
+   "wall": "#9b7348",
+   "sw": 2.0
+  },
+  "work": {
+   "radius": 5,
+   "move": 6
+  },
+  "trade": "woodland"
+ },
+ "forester": {
+  "name": "Forester",
+  "cat": "raw",
+  "size": "small",
+  "cost": {
+   "planks": 2
+  },
+  "time": 8,
+  "worker": "peasant",
+  "cycle": 18,
+  "act": "plant",
+  "info": "Plants trees on open land nearby.",
+  "art": {
+   "style": "shed",
+   "wall": "#5f8a4c",
+   "sw": 2.0
+  },
+  "work": {
+   "radius": 5,
+   "move": 6
+  },
+  "trade": "woodland"
+ },
+ "quarry": {
+  "name": "Quarry",
+  "cat": "raw",
+  "size": "small",
+  "cost": {
+   "planks": 2
+  },
+  "time": 9,
+  "worker": "peasant",
+  "cycle": 16,
+  "out": {
+   "stone": 1
+  },
+  "act": "cut_rock",
+  "site": "rocks:4",
+  "info": "Cuts rocks or granite within 4 tiles.",
+  "art": {
+   "style": "quarry",
+   "wall": "#8f8f88",
+   "sw": 2.0
+  },
+  "work": {
+   "radius": 4,
+   "move": 6
+  },
+  "trade": "mining"
+ },
+ "sawmill": {
+  "name": "Sawmill",
+  "cat": "raw",
+  "size": "medium",
+  "cost": {
+   "planks": 2,
+   "stone": 1
+  },
+  "time": 10,
+  "worker": "peasant",
+  "cycle": 10,
+  "in": {
+   "wood": 1
+  },
+  "out": {
+   "planks": 1
+  },
+  "info": "Logs into planks.",
+  "art": {
+   "style": "workshop",
+   "wall": "#b58a55",
+   "sw": 2.0
+  },
+  "trade": "woodwork"
+ },
+ "clay_pit": {
+  "name": "Clay pit",
+  "cat": "raw",
+  "size": "small",
+  "cost": {
+   "planks": 2
+  },
+  "time": 9,
+  "worker": "peasant",
+  "cycle": 14,
+  "out": {
+   "clay": 1
+  },
+  "act": "dig_clay",
+  "site": "clay:4",
+  "info": "Digs clay patches within 4 tiles.",
+  "art": {
+   "style": "shed",
+   "wall": "#b8793f",
+   "sw": 2.0
+  },
+  "work": {
+   "radius": 4,
+   "move": 6
+  },
+  "trade": "mining"
+ },
+ "charcoal_burner": {
+  "name": "Charcoal burner",
+  "cat": "raw",
+  "size": "medium",
+  "cost": {
+   "planks": 3,
+   "stone": 1
+  },
+  "time": 12,
+  "worker": "peasant",
+  "cycle": 22,
+  "in": {
+   "wood": 2
+  },
+  "out": {
+   "coal": 1
+  },
+  "info": "Burns logs into coal when no coal mine is available.",
+  "art": {
+   "style": "kiln",
+   "wall": "#6a5a4a",
+   "sw": 2.0
+  },
+  "trade": "woodland"
+ },
+ "saltworks": {
+  "name": "Saltworks",
+  "cat": "raw",
+  "size": "small",
+  "cost": {
+   "planks": 3,
+   "stone": 1
+  },
+  "time": 12,
+  "worker": "peasant",
+  "cycle": 24,
+  "out": {
+   "salt": 1
+  },
+  "site": "shore:2",
+  "info": "Needs open water within 2 tiles.",
+  "art": {
+   "style": "shed",
+   "wall": "#c8d0d4",
+   "sw": 2.0
+  },
+  "tech": "salt_trade",
+  "trade": "mining"
+ },
+ "fisher": {
+  "name": "Fisher",
+  "cat": "food",
+  "size": "small",
+  "cost": {
+   "planks": 2
+  },
+  "time": 8,
+  "worker": "peasant",
+  "cycle": 15,
+  "out": {
+   "fish": 1
+  },
+  "act": "fish",
+  "site": "fish:3",
+  "info": "Needs water with fish within 3 tiles.",
+  "art": {
+   "style": "stilt",
+   "wall": "#5f93ad",
+   "sw": 2.0
+  },
+  "work": {
+   "radius": 3,
+   "move": 6
+  },
+  "trade": "hunting"
+ },
+ "hunter": {
+  "name": "Hunter",
+  "cat": "food",
+  "size": "small",
+  "cost": {
+   "planks": 2
+  },
+  "time": 8,
+  "worker": "peasant",
+  "cycle": 22,
+  "out": {
+   "meat": 1,
+   "hides": 1
+  },
+  "site": "forest:8:8",
+  "info": "Needs a large forest within 8 tiles. Also yields hides.",
+  "art": {
+   "style": "shed",
+   "wall": "#8a6a55",
+   "sw": 2.0
+  },
+  "work": {
+   "radius": 8,
+   "move": 6
+  },
+  "trade": "hunting"
+ },
+ "farm": {
+  "name": "Farm",
+  "cat": "food",
+  "size": "large",
+  "cost": {
+   "planks": 3,
+   "stone": 1
+  },
+  "time": 12,
+  "worker": "peasant",
+  "cycle": 26,
+  "out": {
+   "grain": 3
+  },
+  "site": "open:4:2",
+  "info": "Grain from open fields around it.",
+  "art": {
+   "style": "barn",
+   "wall": "#c3a64a",
+   "sw": 2.0
+  },
+  "trade": "farming"
+ },
+ "orchard": {
+  "name": "Orchard",
+  "cat": "food",
+  "size": "large",
+  "cost": {
+   "planks": 3
+  },
+  "time": 10,
+  "worker": "peasant",
+  "cycle": 20,
+  "out": {
+   "apples": 3
+  },
+  "site": "open:4:2",
+  "info": "Apples. Cheap food that fills slowly.",
+  "art": {
+   "style": "barn",
+   "wall": "#a8c05a",
+   "sw": 2.0
+  },
+  "trade": "farming"
+ },
+ "hop_farm": {
+  "name": "Hop farm",
+  "cat": "food",
+  "size": "large",
+  "cost": {
+   "planks": 3,
+   "stone": 1
+  },
+  "time": 12,
+  "worker": "peasant",
+  "cycle": 28,
+  "out": {
+   "hops": 2
+  },
+  "site": "open:4:2",
+  "info": "Hops for the brewery.",
+  "art": {
+   "style": "barn",
+   "wall": "#8fae4c",
+   "sw": 2.0
+  },
+  "tech": "monasteries",
+  "trade": "farming"
+ },
+ "sheep_farm": {
+  "name": "Sheep farm",
+  "cat": "food",
+  "size": "large",
+  "cost": {
+   "planks": 3,
+   "stone": 1
+  },
+  "time": 12,
+  "worker": "peasant",
+  "cycle": 30,
+  "in": {
+   "water": 1
+  },
+  "out": {
+   "wool": 2
+  },
+  "site": "open:5:2",
+  "info": "Wool for weavers.",
+  "art": {
+   "style": "barn",
+   "wall": "#e0dccc",
+   "sw": 2.0
+  },
+  "tech": "wool_trade",
+  "trade": "farming"
+ },
+ "pig_farm": {
+  "name": "Pig farm",
+  "cat": "food",
+  "size": "large",
+  "cost": {
+   "planks": 4,
+   "stone": 2
+  },
+  "time": 16,
+  "worker": "peasant",
+  "cycle": 28,
+  "in": {
+   "grain": 1,
+   "water": 1
+  },
+  "out": {
+   "meat": 3,
+   "hides": 1
+  },
+  "site": "open:3:2",
+  "info": "Grain and water into meat and hides.",
+  "art": {
+   "style": "barn",
+   "wall": "#d0a0a0",
+   "sw": 2.0
+  },
+  "tech": "heavy_plough",
+  "trade": "farming"
+ },
+ "well": {
+  "name": "Well",
+  "cat": "food",
+  "size": "small",
+  "cost": {
+   "planks": 2,
+   "stone": 1
+  },
+  "time": 8,
+  "worker": "peasant",
+  "cycle": 8,
+  "out": {
+   "water": 1
+  },
+  "info": "Fresh water.",
+  "art": {
+   "style": "well",
+   "wall": "#6a95b8",
+   "sw": 1.2
+  },
+  "trade": "farming"
+ },
+ "mill": {
+  "name": "Mill",
+  "cat": "food",
+  "size": "medium",
+  "cost": {
+   "planks": 3,
+   "stone": 2
+  },
+  "time": 14,
+  "worker": "peasant",
+  "cycle": 10,
+  "in": {
+   "grain": 1
+  },
+  "out": {
+   "flour": 1
+  },
+  "info": "Grain into flour.",
+  "art": {
+   "style": "mill",
+   "wall": "#c9c0a3",
+   "sw": 2.0
+  },
+  "trade": "victuals"
+ },
+ "bakery": {
+  "name": "Bakery",
+  "cat": "food",
+  "size": "medium",
+  "cost": {
+   "planks": 3,
+   "stone": 2
+  },
+  "time": 14,
+  "worker": "peasant",
+  "cycle": 14,
+  "in": {
+   "flour": 1,
+   "water": 1
+  },
+  "out": {
+   "bread": 3
+  },
+  "info": "Flour and water into bread.",
+  "art": {
+   "style": "workshop",
+   "wall": "#cf9a5a",
+   "sw": 2.0
+  },
+  "trade": "victuals"
+ },
+ "smokehouse": {
+  "name": "Smokehouse",
+  "cat": "food",
+  "size": "medium",
+  "cost": {
+   "planks": 3,
+   "stone": 2
+  },
+  "time": 14,
+  "worker": "peasant",
+  "cycle": 16,
+  "in": {
+   "fish": 2,
+   "salt": 1,
+   "wood": 1
+  },
+  "out": {
+   "smoked_fish": 3
+  },
+  "info": "Smoked fish is the most filling food.",
+  "art": {
+   "style": "kiln",
+   "wall": "#8a5a3a",
+   "sw": 2.0
+  },
+  "tech": "salt_trade",
+  "trade": "victuals"
+ },
+ "brewery": {
+  "name": "Brewery",
+  "cat": "food",
+  "size": "medium",
+  "cost": {
+   "planks": 4,
+   "stone": 3
+  },
+  "time": 18,
+  "worker": "artisan",
+  "cycle": 22,
+  "in": {
+   "grain": 1,
+   "hops": 1,
+   "water": 1
+  },
+  "out": {
+   "beer": 2
+  },
+  "info": "Beer keeps artisans and nobles content.",
+  "art": {
+   "style": "workshop",
+   "wall": "#c9a05a",
+   "sw": 2.0
+  },
+  "tech": "monasteries",
+  "trade": "victuals"
+ },
+ "coal_mine": {
+  "name": "Coal mine",
+  "cat": "industry",
+  "size": "mine",
+  "cost": {
+   "planks": 4,
+   "stone": 2
+  },
+  "time": 16,
+  "worker": "artisan",
+  "cycle": 18,
+  "in": {
+   "food": 1
+  },
+  "out": {
+   "coal": 1
+  },
+  "mine": 1,
+  "info": "On a coal deposit. Miners eat.",
+  "art": {
+   "style": "mine",
+   "wall": "#444444",
+   "sw": 2.0
+  },
+  "trade": "mining"
+ },
+ "iron_mine": {
+  "name": "Iron mine",
+  "cat": "industry",
+  "size": "mine",
+  "cost": {
+   "planks": 4,
+   "stone": 2
+  },
+  "time": 16,
+  "worker": "artisan",
+  "cycle": 18,
+  "in": {
+   "food": 1
+  },
+  "out": {
+   "ore_iron": 1
+  },
+  "mine": 2,
+  "info": "On an iron deposit. Miners eat.",
+  "art": {
+   "style": "mine",
+   "wall": "#7a5a4a",
+   "sw": 2.0
+  },
+  "trade": "mining"
+ },
+ "gold_mine": {
+  "name": "Gold mine",
+  "cat": "industry",
+  "size": "mine",
+  "cost": {
+   "planks": 4,
+   "stone": 2
+  },
+  "time": 16,
+  "worker": "artisan",
+  "cycle": 22,
+  "in": {
+   "food": 1
+  },
+  "out": {
+   "ore_gold": 1
+  },
+  "mine": 3,
+  "info": "On a gold deposit. Miners eat.",
+  "art": {
+   "style": "mine",
+   "wall": "#a68a2a",
+   "sw": 2.0
+  },
+  "trade": "mining"
+ },
+ "copper_mine": {
+  "name": "Copper mine",
+  "cat": "industry",
+  "size": "mine",
+  "cost": {
+   "planks": 4,
+   "stone": 2
+  },
+  "time": 16,
+  "worker": "artisan",
+  "cycle": 20,
+  "in": {
+   "food": 1
+  },
+  "out": {
+   "ore_copper": 1
+  },
+  "mine": 5,
+  "info": "On a copper deposit. Miners eat.",
+  "art": {
+   "style": "mine",
+   "wall": "#8a5a3a",
+   "sw": 2.0
+  },
+  "trade": "mining"
+ },
+ "brickworks": {
+  "name": "Brickworks",
+  "cat": "industry",
+  "size": "medium",
+  "cost": {
+   "planks": 3,
+   "stone": 2
+  },
+  "time": 14,
+  "worker": "peasant",
+  "cycle": 16,
+  "in": {
+   "clay": 2,
+   "coal": 1
+  },
+  "out": {
+   "bricks": 2
+  },
+  "info": "Clay and coal into bricks.",
+  "art": {
+   "style": "kiln",
+   "wall": "#b5533a",
+   "sw": 2.0
+  },
+  "trade": "kilns"
+ },
+ "iron_smelter": {
+  "name": "Iron smelter",
+  "cat": "industry",
+  "size": "medium",
+  "cost": {
+   "planks": 3,
+   "stone": 3
+  },
+  "time": 16,
+  "worker": "artisan",
+  "cycle": 18,
+  "in": {
+   "ore_iron": 1,
+   "coal": 1
+  },
+  "out": {
+   "iron": 1
+  },
+  "info": "Iron ore and coal into iron.",
+  "art": {
+   "style": "kiln",
+   "wall": "#7d7d88",
+   "sw": 2.0
+  },
+  "trade": "metal"
+ },
+ "copper_smelter": {
+  "name": "Copper smelter",
+  "cat": "industry",
+  "size": "medium",
+  "cost": {
+   "planks": 3,
+   "stone": 3
+  },
+  "time": 16,
+  "worker": "artisan",
+  "cycle": 18,
+  "in": {
+   "ore_copper": 1,
+   "coal": 1
+  },
+  "out": {
+   "copper": 1
+  },
+  "info": "Copper ore and coal into copper.",
+  "art": {
+   "style": "kiln",
+   "wall": "#a8703a",
+   "sw": 2.0
+  },
+  "trade": "metal"
+ },
+ "mint": {
+  "name": "Mint",
+  "cat": "industry",
+  "size": "medium",
+  "cost": {
+   "planks": 3,
+   "stone": 3
+  },
+  "time": 16,
+  "worker": "artisan",
+  "cycle": 20,
+  "in": {
+   "ore_gold": 1,
+   "coal": 1
+  },
+  "out": {
+   "gold": 1
+  },
+  "info": "Gold ore and coal into gold.",
+  "art": {
+   "style": "workshop",
+   "wall": "#b89a3a",
+   "sw": 2.0
+  },
+  "trade": "metal"
+ },
+ "toolsmith": {
+  "name": "Toolsmith",
+  "cat": "crafts",
+  "size": "medium",
+  "cost": {
+   "planks": 3,
+   "stone": 3
+  },
+  "time": 16,
+  "worker": "artisan",
+  "cycle": 16,
+  "in": {
+   "iron": 1,
+   "planks": 1
+  },
+  "info": "Makes the tool each trade needs, whichever is wanted most: tools that buildings are waiting for first, then those below their production target.",
+  "art": {
+   "style": "workshop",
+   "wall": "#5f7f5a",
+   "sw": 2.0
+  },
+  "trade": "metal",
+  "makes_tools": 2
+ },
+ "weaponsmith": {
+  "name": "Weaponsmith",
+  "cat": "crafts",
+  "size": "medium",
+  "cost": {
+   "planks": 3,
+   "stone": 3
+  },
+  "time": 16,
+  "worker": "artisan",
+  "cycle": 22,
+  "in": {
+   "iron": 1,
+   "coal": 1
+  },
+  "out": {
+   "weapons": 1
+  },
+  "info": "Iron and coal into weapons.",
+  "art": {
+   "style": "workshop",
+   "wall": "#8c4a4a",
+   "sw": 2.0
+  },
+  "trade": "metal"
+ },
+ "armorer": {
+  "name": "Armorer",
+  "cat": "crafts",
+  "size": "medium",
+  "cost": {
+   "planks": 3,
+   "stone": 3
+  },
+  "time": 16,
+  "worker": "artisan",
+  "cycle": 26,
+  "in": {
+   "iron": 1,
+   "leather": 1,
+   "coal": 1
+  },
+  "out": {
+   "armor": 1
+  },
+  "info": "Armor makes veteran soldiers stronger.",
+  "art": {
+   "style": "workshop",
+   "wall": "#6f7f96",
+   "sw": 2.0
+  },
+  "tech": "chainmail",
+  "trade": "metal"
+ },
+ "tannery": {
+  "name": "Tannery",
+  "cat": "crafts",
+  "size": "medium",
+  "cost": {
+   "planks": 3,
+   "stone": 2
+  },
+  "time": 14,
+  "worker": "artisan",
+  "cycle": 20,
+  "in": {
+   "hides": 1,
+   "water": 1
+  },
+  "out": {
+   "leather": 1
+  },
+  "info": "Hides into leather.",
+  "art": {
+   "style": "workshop",
+   "wall": "#8a5a3a",
+   "sw": 2.0
+  },
+  "trade": "textiles"
+ },
+ "weaver": {
+  "name": "Weaver",
+  "cat": "crafts",
+  "size": "medium",
+  "cost": {
+   "planks": 3,
+   "stone": 2
+  },
+  "time": 14,
+  "worker": "peasant",
+  "cycle": 18,
+  "in": {
+   "wool": 2
+  },
+  "out": {
+   "cloth": 1
+  },
+  "info": "Wool into cloth.",
+  "art": {
+   "style": "workshop",
+   "wall": "#8aa6c9",
+   "sw": 2.0
+  },
+  "tech": "wool_trade",
+  "trade": "textiles"
+ },
+ "tailor": {
+  "name": "Tailor",
+  "cat": "crafts",
+  "size": "medium",
+  "cost": {
+   "planks": 3,
+   "stone": 2
+  },
+  "time": 14,
+  "worker": "artisan",
+  "cycle": 24,
+  "in": {
+   "cloth": 2
+  },
+  "out": {
+   "clothes": 1
+  },
+  "info": "Cloth into clothes.",
+  "art": {
+   "style": "workshop",
+   "wall": "#b86ab0",
+   "sw": 2.0
+  },
+  "tech": "guilds",
+  "trade": "textiles"
+ },
+ "flax_farm": {
+  "name": "Flax farm",
+  "cat": "raw",
+  "size": "large",
+  "cost": {
+   "planks": 3
+  },
+  "time": 10,
+  "worker": "peasant",
+  "cycle": 24,
+  "out": {
+   "flax": 2
+  },
+  "site": "open:4:2",
+  "info": "Grows flax for linen clothes. A crop: best in summer, slow in winter.",
+  "art": {
+   "style": "barn",
+   "wall": "#9fb6d8",
+   "sw": 2.0
+  },
+  "trade": "farming",
+  "feature": "clothing"
+ },
+ "linen_weaver": {
+  "name": "Linen weaver",
+  "cat": "crafts",
+  "size": "medium",
+  "cost": {
+   "planks": 3,
+   "stone": 1
+  },
+  "time": 12,
+  "worker": "peasant",
+  "cycle": 20,
+  "in": {
+   "flax": 2
+  },
+  "out": {
+   "linen_clothes": 2
+  },
+  "info": "Flax into light linen clothes for the summer heat.",
+  "art": {
+   "style": "workshop",
+   "wall": "#d8ccb0",
+   "sw": 2.0
+  },
+  "trade": "textiles",
+  "feature": "clothing"
+ },
+ "furrier": {
+  "name": "Furrier",
+  "cat": "crafts",
+  "size": "medium",
+  "cost": {
+   "planks": 3,
+   "stone": 1
+  },
+  "time": 12,
+  "worker": "peasant",
+  "cycle": 22,
+  "in": {
+   "hides": 2
+  },
+  "out": {
+   "fur_coats": 2
+  },
+  "info": "Hides into warm fur coats for the winter. Hunters and pig farms bring hides.",
+  "art": {
+   "style": "workshop",
+   "wall": "#7a5636",
+   "sw": 2.0
+  },
+  "trade": "textiles",
+  "feature": "clothing"
+ },
+ "jeweller": {
+  "name": "Jeweller",
+  "cat": "crafts",
+  "size": "medium",
+  "cost": {
+   "planks": 3,
+   "stone": 3,
+   "bricks": 2
+  },
+  "time": 20,
+  "worker": "artisan",
+  "cycle": 34,
+  "in": {
+   "gold": 1,
+   "copper": 1
+  },
+  "out": {
+   "jewelry": 1
+  },
+  "info": "Gold and copper into jewelry for nobles.",
+  "art": {
+   "style": "workshop",
+   "wall": "#e0d070",
+   "sw": 2.0
+  },
+  "tech": "guilds",
+  "trade": "fine"
+ },
+ "carpenter": {
+  "name": "Carpenter",
+  "cat": "crafts",
+  "size": "medium",
+  "cost": {
+   "planks": 3,
+   "stone": 2
+  },
+  "time": 14,
+  "worker": "artisan",
+  "cycle": 24,
+  "in": {
+   "planks": 2
+  },
+  "out": {
+   "furniture": 1
+  },
+  "info": "Planks into furniture.",
+  "art": {
+   "style": "workshop",
+   "wall": "#9a6a3a",
+   "sw": 2.0
+  },
+  "tech": "guilds",
+  "trade": "woodwork"
+ },
+ "house": {
+  "name": "House",
+  "cat": "folk",
+  "size": "medium",
+  "cost": {
+   "planks": 2,
+   "stone": 1
+  },
+  "time": 10,
+  "housing": 8,
+  "info": "Homes for 8 people.",
+  "art": {
+   "style": "house",
+   "wall": "#c8b08a",
+   "sw": 2.0
+  }
+ },
+ "lodge": {
+  "name": "Workers' lodge",
+  "cat": "folk",
+  "size": "medium",
+  "cost": {
+   "planks": 3,
+   "stone": 1
+  },
+  "time": 12,
+  "residence": 12,
+  "info": "Up to 12 idle workers wait here instead of at headquarters, so they are close at hand when a building nearby needs one, and builders and new workers have a short walk.",
+  "art": {
+   "style": "school",
+   "wall": "#c4a676",
+   "sw": 2.0
+  }
+ },
+ "apartments": {
+  "name": "Apartments",
+  "cat": "folk",
+  "size": "large",
+  "cost": {
+   "planks": 4,
+   "stone": 3,
+   "bricks": 3
+  },
+  "time": 22,
+  "housing": 20,
+  "info": "Homes for 20 people.",
+  "art": {
+   "style": "apartments",
+   "wall": "#bfa27a",
+   "sw": 2.4
+  }
+ },
+ "school": {
+  "name": "School",
+  "cat": "folk",
+  "size": "medium",
+  "cost": {
+   "planks": 4,
+   "stone": 3
+  },
+  "time": 16,
+  "worker": "peasant",
+  "cycle": 28,
+  "in": {
+   "bread": 2
+  },
+  "train": "artisan",
+  "info": "A teacher trains a peasant into an artisan.",
+  "art": {
+   "style": "school",
+   "wall": "#8f9fc0",
+   "sw": 2.0
+  },
+  "trade": "learning"
+ },
+ "barracks": {
+  "name": "Barracks",
+  "cat": "folk",
+  "size": "medium",
+  "cost": {
+   "planks": 4,
+   "stone": 4
+  },
+  "time": 18,
+  "worker": "artisan",
+  "cycle": 30,
+  "in": {
+   "weapons": 1,
+   "bread": 1
+  },
+  "train": "soldier",
+  "info": "Turns an artisan into a soldier. Armor in store makes a veteran.",
+  "art": {
+   "style": "barracks",
+   "wall": "#a05050",
+   "sw": 2.4
+  },
+  "trade": "learning"
+ },
+ "manor": {
+  "name": "Manor",
+  "cat": "folk",
+  "size": "large",
+  "cost": {
+   "planks": 6,
+   "stone": 4,
+   "bricks": 4,
+   "gold": 3
+  },
+  "time": 26,
+  "worker": "artisan",
+  "cycle": 60,
+  "in": {
+   "gold": 2,
+   "bread": 1
+  },
+  "train": "noble",
+  "info": "Raises an artisan to noble. Nobles pay tax in gold.",
+  "art": {
+   "style": "castle",
+   "wall": "#a78fc0",
+   "sw": 2.6
+  },
+  "tech": "feudalism",
+  "trade": "learning"
+ },
+ "herb_garden": {
+  "name": "Herb garden",
+  "cat": "folk",
+  "size": "small",
+  "cost": {
+   "planks": 2
+  },
+  "time": 8,
+  "worker": "peasant",
+  "cycle": 22,
+  "out": {
+   "herbs": 2
+  },
+  "site": "open:3:2",
+  "info": "Grows healing herbs. A crop: slow in winter, best in wetlands.",
+  "art": {
+   "style": "shed",
+   "wall": "#6aa84f",
+   "sw": 2.0
+  },
+  "trade": "farming",
+  "feature": "diseases"
+ },
+ "apothecary": {
+  "name": "Apothecary",
+  "cat": "folk",
+  "size": "medium",
+  "cost": {
+   "planks": 3,
+   "stone": 2
+  },
+  "time": 14,
+  "worker": "artisan",
+  "cycle": 20,
+  "in": {
+   "herbs": 2
+  },
+  "out": {
+   "medicine": 2
+  },
+  "info": "Herbs into medicine. Medicine in store cures the sick slowly at home.",
+  "art": {
+   "style": "workshop",
+   "wall": "#c84a6a",
+   "sw": 2.0
+  },
+  "trade": "healing",
+  "feature": "diseases"
+ },
+ "infirmary": {
+  "name": "Infirmary",
+  "cat": "folk",
+  "size": "medium",
+  "cost": {
+   "planks": 4,
+   "stone": 3
+  },
+  "time": 16,
+  "worker": "artisan",
+  "cycle": 16,
+  "in": {
+   "medicine": 1
+  },
+  "info": "Healers cure 8 sick people per medicine. Works only while somebody is sick.",
+  "art": {
+   "style": "school",
+   "wall": "#e8e0d0",
+   "sw": 2.2,
+   "sign": "cross",
+   "sign_color": "#d04a4a"
+  },
+  "trade": "healing",
+  "feature": "diseases"
+ },
+ "bathhouse": {
+  "name": "Bathhouse",
+  "cat": "folk",
+  "size": "medium",
+  "cost": {
+   "planks": 4,
+   "stone": 3
+  },
+  "time": 16,
+  "worker": "peasant",
+  "cycle": 30,
+  "in": {
+   "water": 1,
+   "wood": 1
+  },
+  "info": "Keeps 50 people clean while it works: fewer outbreaks of dysentery, plague and other diseases.",
+  "art": {
+   "style": "workshop",
+   "wall": "#7fb0c8",
+   "sw": 2.0,
+   "sign": "drop",
+   "sign_color": "#5a9ad0"
+  },
+  "trade": "healing",
+  "feature": "diseases"
+ },
+ "palisade": {
+  "name": "Palisade",
+  "cat": "mil",
+  "size": "small",
+  "cost": {
+   "planks": 3
+  },
+  "time": 8,
+  "radius": 5,
+  "garrison": 1,
+  "info": "A ring of stakes round a blockhouse: the cheapest, quickest way to claim land. Claims 5 tiles, holds 1 soldier. All wood, no stone.",
+  "art": {
+   "style": "palisade",
+   "wall": "#9a7a52",
+   "sw": 1.8
+  }
+ },
+ "hut": {
+  "name": "Guard hut",
+  "cat": "mil",
+  "size": "small",
+  "cost": {
+   "planks": 2,
+   "stone": 1
+  },
+  "time": 12,
+  "radius": 6,
+  "garrison": 2,
+  "info": "Claims 6 tiles. Holds 2 soldiers.",
+  "art": {
+   "style": "hut",
+   "wall": "#a08a6a",
+   "sw": 2.0
+  }
+ },
+ "guardhouse": {
+  "name": "Guardhouse",
+  "cat": "mil",
+  "size": "medium",
+  "cost": {
+   "planks": 2,
+   "stone": 3
+  },
+  "time": 18,
+  "radius": 7,
+  "garrison": 3,
+  "wall": 0.03,
+  "tech": "shield_walls",
+  "info": "A stout stone guardhouse. Claims 7 tiles, holds 3. Its walls help the defenders (+3% a duel).",
+  "art": {
+   "style": "hut",
+   "wall": "#8e8a80",
+   "sw": 2.2
+  }
+ },
+ "tower": {
+  "name": "Tower",
+  "cat": "mil",
+  "size": "medium",
+  "cost": {
+   "planks": 3,
+   "stone": 4
+  },
+  "time": 25,
+  "radius": 9,
+  "garrison": 4,
+  "info": "Claims 9 tiles. Holds 4 soldiers.",
+  "art": {
+   "style": "tower",
+   "wall": "#9a9a92",
+   "sw": 1.6
+  }
+ },
+ "keep": {
+  "name": "Keep",
+  "cat": "mil",
+  "size": "large",
+  "cost": {
+   "planks": 4,
+   "stone": 6
+  },
+  "time": 35,
+  "radius": 11,
+  "garrison": 6,
+  "wall": 0.05,
+  "tech": "town_walls",
+  "info": "A walled stone keep. Claims 11 tiles, holds 6. Thick walls (+5% a duel for its defenders).",
+  "art": {
+   "style": "tower",
+   "wall": "#8a8478",
+   "sw": 2.1
+  }
+ },
+ "castle": {
+  "name": "Castle",
+  "cat": "mil",
+  "size": "large",
+  "cost": {
+   "planks": 5,
+   "stone": 6,
+   "bricks": 4,
+   "gold": 2
+  },
+  "time": 50,
+  "radius": 13,
+  "garrison": 8,
+  "needs_noble": true,
+  "info": "Claims 13 tiles. Holds 8. Needs a noble.",
+  "art": {
+   "style": "castle",
+   "wall": "#8d8d98",
+   "sw": 3.0
+  },
+  "tech": "castles"
+ },
+ "scout_lodge": {
+  "name": "Scout lodge",
+  "cat": "mil",
+  "size": "small",
+  "cost": {
+   "planks": 3,
+   "stone": 1
+  },
+  "time": 10,
+  "worker": "peasant",
+  "cycle": 40,
+  "in": {
+   "bread": 1,
+   "bows": 1
+  },
+  "train": "scout",
+  "info": "Trains peasants as scouts, with bread and a bow. Scouts man watch towers and explore the map (Send scout).",
+  "art": {
+   "style": "shed",
+   "wall": "#6a8a50",
+   "sw": 2.0,
+   "sign": "bow",
+   "sign_color": "#9a7040"
+  },
+  "trade": "hunting",
+  "feature": "fog"
+ },
+ "watch_tower": {
+  "name": "Watch tower",
+  "cat": "mil",
+  "size": "small",
+  "cost": {
+   "planks": 3,
+   "stone": 2
+  },
+  "time": 12,
+  "worker": "scout",
+  "vision": 14,
+  "info": "A tall wooden lookout. With a scout inside it lifts the fog of war 14 tiles around. It claims no land.",
+  "art": {
+   "style": "tower",
+   "wall": "#8a6a48",
+   "sw": 1.3
+  },
+  "feature": "fog"
+ },
+ "scriptorium": {
+  "name": "Scriptorium",
+  "cat": "science",
+  "size": "medium",
+  "cost": {
+   "planks": 3,
+   "stone": 2
+  },
+  "time": 12,
+  "worker": "artisan",
+  "cycle": 12,
+  "in": {
+   "bread": 1
+  },
+  "out": {
+   "research": 4
+  },
+  "info": "Scribes turn bread into research.",
+  "art": {
+   "style": "school",
+   "wall": "#c8b8a0",
+   "sw": 2
+  },
+  "trade": "learning"
+ },
+ "library": {
+  "name": "Library",
+  "cat": "science",
+  "size": "medium",
+  "cost": {
+   "planks": 4,
+   "stone": 4
+  },
+  "time": 16,
+  "worker": "artisan",
+  "cycle": 15,
+  "in": {
+   "bread": 1
+  },
+  "out": {
+   "research": 8
+  },
+  "tech": "monasteries",
+  "info": "Monastic library. Twice a scriptorium's research.",
+  "art": {
+   "style": "school",
+   "wall": "#a8b0c8",
+   "sw": 2.2
+  },
+  "trade": "learning"
+ },
+ "paper_mill": {
+  "name": "Paper mill",
+  "cat": "science",
+  "size": "medium",
+  "cost": {
+   "planks": 3,
+   "stone": 2
+  },
+  "time": 14,
+  "worker": "peasant",
+  "cycle": 16,
+  "in": {
+   "wood": 1,
+   "water": 1
+  },
+  "out": {
+   "paper": 2
+  },
+  "tech": "papermaking",
+  "info": "Logs and water into paper for universities.",
+  "art": {
+   "style": "mill",
+   "wall": "#e0dccc",
+   "sw": 2
+  },
+  "trade": "woodwork"
+ },
+ "university": {
+  "name": "University",
+  "cat": "science",
+  "size": "large",
+  "cost": {
+   "planks": 6,
+   "stone": 6,
+   "bricks": 6
+  },
+  "time": 30,
+  "worker": "artisan",
+  "cycle": 20,
+  "in": {
+   "paper": 1,
+   "beer": 1
+  },
+  "out": {
+   "research": 16
+  },
+  "tech": "printing_press",
+  "info": "Paper and beer into a lot of research.",
+  "art": {
+   "style": "castle",
+   "wall": "#9aa8c8",
+   "sw": 2.6
+  },
+  "trade": "learning"
+ },
+ "fortress": {
+  "name": "Fortress",
+  "cat": "mil",
+  "size": "large",
+  "cost": {
+   "planks": 6,
+   "stone": 10,
+   "bricks": 8,
+   "iron": 2
+  },
+  "time": 60,
+  "radius": 15,
+  "garrison": 12,
+  "tech": "gunpowder",
+  "info": "Bastioned fort. Claims 15 tiles, holds 12.",
+  "art": {
+   "style": "castle",
+   "wall": "#7d7d70",
+   "sw": 3.4
+  }
+ },
+ "bastion": {
+  "name": "Star fort",
+  "cat": "mil",
+  "size": "large",
+  "cost": {
+   "planks": 4,
+   "stone": 10,
+   "bricks": 6
+  },
+  "time": 55,
+  "radius": 14,
+  "garrison": 10,
+  "wall": 0.08,
+  "cannon": [
+   7,
+   4,
+   2,
+   0.35
+  ],
+  "tech": "star_forts",
+  "info": "A low, angled star fort built to shrug off cannon. Claims 14 tiles, holds 10. Walls +8% a duel, and its cannon fire on attackers 6 tiles out.",
+  "art": {
+   "style": "bastion",
+   "wall": "#a29a86",
+   "sw": 3.2
+  }
+ },
+ "battery": {
+  "name": "Gun battery",
+  "cat": "mil",
+  "size": "large",
+  "cost": {
+   "planks": 3,
+   "stone": 4,
+   "iron": 3
+  },
+  "time": 30,
+  "radius": 8,
+  "garrison": 5,
+  "cannon": [
+   8,
+   3,
+   3,
+   0.4
+  ],
+  "tech": "drill_manuals",
+  "info": "An earthwork with cannon. Claims 8 tiles, holds 5. Its guns fire on attackers from 8 tiles out, every 4 seconds, while it has a crew.",
+  "art": {
+   "style": "battery",
+   "wall": "#7a7048",
+   "sw": 2.6
+  }
+ },
+ "redoubt": {
+  "name": "Armoured redoubt",
+  "cat": "mil",
+  "size": "large",
+  "cost": {
+   "planks": 3,
+   "stone": 8,
+   "bricks": 10,
+   "iron": 6
+  },
+  "time": 60,
+  "radius": 16,
+  "garrison": 16,
+  "wall": 0.08,
+  "cannon": [
+   9,
+   3,
+   4,
+   0.4
+  ],
+  "tech": "rifling",
+  "info": "Brick and iron casemates with breech-loading guns. Claims 16 tiles, holds 16. Walls +8% a duel; its guns fire on attackers 9 tiles out every 3 seconds.",
+  "art": {
+   "style": "bastion",
+   "wall": "#8a5a48",
+   "sw": 3.4
+  }
+ },
+ "steelworks": {
+  "name": "Steelworks",
+  "cat": "industry",
+  "size": "large",
+  "cost": {
+   "planks": 6,
+   "bricks": 8,
+   "iron": 4
+  },
+  "time": 30,
+  "worker": "artisan",
+  "cycle": 14,
+  "in": {
+   "ore_iron": 2,
+   "coal": 1
+  },
+  "out": {
+   "iron": 3
+  },
+  "tech": "steam_engine",
+  "info": "Steam-blown furnace. Iron in bulk.",
+  "art": {
+   "style": "kiln",
+   "wall": "#5a5a62",
+   "sw": 2.4
+  },
+  "trade": "metal"
+ },
+ "machine_works": {
+  "name": "Machine works",
+  "cat": "crafts",
+  "size": "large",
+  "cost": {
+   "planks": 5,
+   "bricks": 6,
+   "iron": 3
+  },
+  "time": 28,
+  "worker": "artisan",
+  "cycle": 16,
+  "in": {
+   "iron": 1,
+   "coal": 1
+  },
+  "out": {
+   "weapons": 1
+  },
+  "tech": "steam_engine",
+  "info": "Steam-powered smithy: weapons and the tools most wanted.",
+  "art": {
+   "style": "workshop",
+   "wall": "#6a6e78",
+   "sw": 2.4
+  },
+  "trade": "metal",
+  "makes_tools": 3
+ },
+ "textile_mill": {
+  "name": "Textile mill",
+  "cat": "crafts",
+  "size": "large",
+  "cost": {
+   "planks": 5,
+   "bricks": 6,
+   "iron": 2
+  },
+  "time": 28,
+  "worker": "peasant",
+  "cycle": 12,
+  "in": {
+   "wool": 2,
+   "coal": 1
+  },
+  "out": {
+   "cloth": 3,
+   "clothes": 1
+  },
+  "tech": "textile_mills",
+  "info": "Steam looms: cloth and clothes from wool.",
+  "art": {
+   "style": "workshop",
+   "wall": "#8a7a9a",
+   "sw": 2.4
+  },
+  "trade": "textiles"
+ },
+ "storehouse": {
+  "name": "Storehouse",
+  "cat": "logistics",
+  "size": "medium",
+  "cost": {
+   "planks": 4,
+   "stone": 2
+  },
+  "time": 14,
+  "store": 40,
+  "info": "Tier 1 store: room for 40 more of each good and 6 more porters. Carriers deliver to the nearest store, so outposts work faster.",
+  "art": {
+   "style": "barn",
+   "wall": "#a89068",
+   "sw": 2
+  },
+  "porters": 8
+ },
+ "warehouse": {
+  "name": "Warehouse",
+  "cat": "logistics",
+  "size": "large",
+  "cost": {
+   "planks": 6,
+   "stone": 6,
+   "bricks": 4
+  },
+  "time": 24,
+  "store": 120,
+  "tech": "trade_fairs",
+  "info": "Tier 2 store: room for 120 more of each good and 12 more porters.",
+  "art": {
+   "style": "workshop",
+   "wall": "#9a8460",
+   "sw": 2.4
+  },
+  "porters": 12
+ },
+ "depot": {
+  "name": "Great depot",
+  "cat": "logistics",
+  "size": "large",
+  "cost": {
+   "planks": 8,
+   "bricks": 10,
+   "iron": 4
+  },
+  "time": 36,
+  "store": 300,
+  "tech": "railways",
+  "info": "Tier 3 store: room for 300 more of each good and 20 more porters.",
+  "art": {
+   "style": "castle",
+   "wall": "#8a7a68",
+   "sw": 3
+  },
+  "porters": 20
+ },
+ "mule_station": {
+  "name": "Mule station",
+  "cat": "logistics",
+  "size": "medium",
+  "cost": {
+   "planks": 3,
+   "stone": 1
+  },
+  "time": 10,
+  "worker": "peasant",
+  "cycle": 40,
+  "in": {
+   "grain": 1
+  },
+  "carriers": {
+   "kind": "mule",
+   "count": 6,
+   "range": 10,
+   "speed": 1.5,
+   "load": 3
+  },
+  "info": "Keeps 6 pack mules fed with grain. Mules carry 3 goods at a time, faster than porters, for buildings within 10 tiles.",
+  "art": {
+   "style": "barn",
+   "wall": "#a07850",
+   "sw": 2
+  },
+  "trade": "transport"
+ },
+ "cart_yard": {
+  "name": "Ox cart yard",
+  "cat": "logistics",
+  "size": "medium",
+  "cost": {
+   "planks": 5,
+   "stone": 2
+  },
+  "time": 16,
+  "worker": "artisan",
+  "cycle": 60,
+  "in": {
+   "planks": 1
+  },
+  "tech": "ox_carts",
+  "carriers": {
+   "kind": "cart",
+   "count": 4,
+   "range": 12,
+   "speed": 1.3,
+   "load": 6
+  },
+  "info": "Builds and repairs 4 ox carts that carry 6 goods at a time for buildings within 12 tiles.",
+  "art": {
+   "style": "workshop",
+   "wall": "#8a6a48",
+   "sw": 2.2
+  },
+  "trade": "transport"
+ },
+ "sand_pit": {
+  "name": "Sand pit",
+  "cat": "raw",
+  "size": "small",
+  "cost": {
+   "planks": 2
+  },
+  "time": 10,
+  "worker": "peasant",
+  "cycle": 16,
+  "out": {
+   "sand": 1
+  },
+  "site": "shore:2",
+  "info": "Digs sand near the water, for glassworks.",
+  "art": {
+   "style": "shed",
+   "wall": "#d8c48a",
+   "sw": 2.0
+  },
+  "tech": "guilds",
+  "trade": "mining"
+ },
+ "apiary": {
+  "name": "Apiary",
+  "cat": "food",
+  "size": "small",
+  "cost": {
+   "planks": 3
+  },
+  "time": 10,
+  "worker": "peasant",
+  "cycle": 26,
+  "out": {
+   "honey": 1,
+   "wax": 1
+  },
+  "site": "open:3:2",
+  "info": "Bees make honey (food) and beeswax for candles.",
+  "art": {
+   "style": "shed",
+   "wall": "#e6c35a",
+   "sw": 2.0
+  },
+  "trade": "woodland"
+ },
+ "dairy": {
+  "name": "Dairy farm",
+  "cat": "food",
+  "size": "medium",
+  "cost": {
+   "planks": 3,
+   "stone": 1
+  },
+  "time": 12,
+  "worker": "peasant",
+  "cycle": 24,
+  "in": {
+   "grain": 1,
+   "water": 1
+  },
+  "out": {
+   "milk": 2
+  },
+  "site": "open:5:2",
+  "info": "Cows give milk for cheese.",
+  "art": {
+   "style": "barn",
+   "wall": "#c9b28a",
+   "sw": 2.0
+  },
+  "tech": "heavy_plough",
+  "trade": "farming"
+ },
+ "cheesery": {
+  "name": "Cheesery",
+  "cat": "food",
+  "size": "medium",
+  "cost": {
+   "planks": 3,
+   "stone": 2
+  },
+  "time": 14,
+  "worker": "peasant",
+  "cycle": 18,
+  "in": {
+   "milk": 2,
+   "salt": 1
+  },
+  "out": {
+   "cheese": 3
+  },
+  "info": "Milk and salt into cheese, a rich food that keeps.",
+  "art": {
+   "style": "workshop",
+   "wall": "#e8d7a0",
+   "sw": 2.0
+  },
+  "tech": "salt_trade",
+  "trade": "victuals"
+ },
+ "butcher": {
+  "name": "Butcher",
+  "cat": "food",
+  "size": "medium",
+  "cost": {
+   "planks": 3,
+   "stone": 2
+  },
+  "time": 14,
+  "worker": "peasant",
+  "cycle": 16,
+  "in": {
+   "meat": 2,
+   "salt": 1
+  },
+  "out": {
+   "sausages": 4
+  },
+  "info": "Meat and salt into sausages: more food from the same meat.",
+  "art": {
+   "style": "workshop",
+   "wall": "#b86a5a",
+   "sw": 2.0
+  },
+  "tech": "salt_trade",
+  "trade": "victuals"
+ },
+ "vineyard": {
+  "name": "Vineyard",
+  "cat": "food",
+  "size": "large",
+  "cost": {
+   "planks": 3,
+   "stone": 1
+  },
+  "time": 12,
+  "worker": "peasant",
+  "cycle": 30,
+  "out": {
+   "grapes": 2
+  },
+  "site": "open:4:2",
+  "info": "Grapes for the winery.",
+  "art": {
+   "style": "barn",
+   "wall": "#9a6aa8",
+   "sw": 2.0
+  },
+  "tech": "monasteries",
+  "trade": "farming"
+ },
+ "winery": {
+  "name": "Winery",
+  "cat": "food",
+  "size": "medium",
+  "cost": {
+   "planks": 4,
+   "stone": 3
+  },
+  "time": 18,
+  "worker": "artisan",
+  "cycle": 24,
+  "in": {
+   "grapes": 2
+  },
+  "out": {
+   "wine": 2
+  },
+  "info": "Wine: nobles prefer it, and it serves artisans as well as beer.",
+  "art": {
+   "style": "workshop",
+   "wall": "#a85a6a",
+   "sw": 2.0
+  },
+  "tech": "monasteries",
+  "trade": "victuals"
+ },
+ "chandler": {
+  "name": "Chandler",
+  "cat": "crafts",
+  "size": "medium",
+  "cost": {
+   "planks": 3,
+   "stone": 1
+  },
+  "time": 12,
+  "worker": "artisan",
+  "cycle": 18,
+  "in": {
+   "wax": 1
+  },
+  "out": {
+   "candles": 2
+  },
+  "info": "Beeswax into candles; nobles want candles or glassware.",
+  "art": {
+   "style": "workshop",
+   "wall": "#d8c890",
+   "sw": 2.0
+  },
+  "tech": "monasteries",
+  "trade": "fine"
+ },
+ "glassworks": {
+  "name": "Glassworks",
+  "cat": "industry",
+  "size": "medium",
+  "cost": {
+   "planks": 3,
+   "stone": 3,
+   "bricks": 2
+  },
+  "time": 18,
+  "worker": "artisan",
+  "cycle": 20,
+  "in": {
+   "sand": 2,
+   "coal": 1
+  },
+  "out": {
+   "glass": 1
+  },
+  "info": "Sand and coal into glassware; nobles want glassware or candles.",
+  "art": {
+   "style": "kiln",
+   "wall": "#8ab8c0",
+   "sw": 2.0
+  },
+  "tech": "guilds",
+  "trade": "kilns"
+ }
+}
