@@ -462,7 +462,7 @@ func _snow_target(k: int) -> float:
 func draw_map(view: CanvasItem, _rect: Rect2i) -> void:
 	if _masks.size() < 4:
 		return
-	var r := Rect2(0, 0, sim.w, sim.h)
+	var mv = view   # the map view: draws whole-map pictures raised with the ground
 	var s := season()
 	var ph := fmod(phase() * 4.0, 1.0)
 	# a warm, golden-brown cast through autumn, strongest in its middle
@@ -475,16 +475,16 @@ func draw_map(view: CanvasItem, _rect: Rect2i) -> void:
 		var tex: Texture2D = _masks[k]
 		var tint: Color = BIOME_TINT[k]
 		if tint.a > 0.0:
-			view.draw_texture_rect(tex, r, false, tint)
+			mv.draw_map_texture(view, tex, tint)
 		if autumn > 0.01:
-			view.draw_texture_rect(tex, r, false, Color(0.85, 0.48, 0.12, 0.16 * autumn))
+			mv.draw_map_texture(view, tex, Color(0.85, 0.48, 0.12, 0.16 * autumn))
 		if green > 0.01:
-			view.draw_texture_rect(tex, r, false, Color(0.35, 0.75, 0.25, 0.08 * green))
+			mv.draw_map_texture(view, tex, Color(0.35, 0.75, 0.25, 0.08 * green))
 		if float(_snow[k]) > 0.01:
-			view.draw_texture_rect(tex, r, false, Color(0.95, 0.97, 1.0, 0.6 * float(_snow[k])))
+			mv.draw_map_texture(view, tex, Color(0.95, 0.97, 1.0, 0.6 * float(_snow[k])))
 	_snow_t = sim.time
 	if float(_snow[TAIGA]) > 0.4:
-		view.draw_texture_rect(_ice, r, false, Color(0.85, 0.93, 1.0, (float(_snow[TAIGA]) - 0.4) * 0.9))
+		mv.draw_map_texture(view, _ice, Color(0.85, 0.93, 1.0, (float(_snow[TAIGA]) - 0.4) * 0.9))
 
 
 func draw_overlay(view: CanvasItem, to_tile: Callable) -> void:

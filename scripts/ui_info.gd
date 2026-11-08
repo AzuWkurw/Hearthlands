@@ -164,18 +164,18 @@ func _refresh_sel() -> void:
 	if b.p == 1 and b.state == "ready" and b.def.has("in") and b.def.has("cycle"):
 		main.prio_row.add_child(main._label("Keep inputs for", 14, Main.DIM))
 		for k in [1, 2, 4]:
-			var kb := main._button("%d cycle%s" % [k, "s" if k > 1 else ""], func():
+			var kb := main._button(tr("%d cycle%s") % [k, "s" if k > 1 else ""], func():
 				var bb: Sim.Bld = main.sim.by_id.get(main.view.sel_id)
 				if bb:
 					bb.keep = k
 					_refresh_sel())
 			kb.toggle_mode = true
 			kb.set_pressed_no_signal((b.keep if b.keep > 0 else 2) == k)
-			kb.tooltip_text = "Carriers bring enough for %d work cycle%s (food for %d). More keeps it working through gaps; less leaves more in the stores for others." % [k, "s" if k > 1 else "", maxi(1, k / 2)]
+			kb.tooltip_text = tr("Carriers bring enough for %d work cycle%s (food for %d). More keeps it working through gaps; less leaves more in the stores for others.") % [k, "s" if k > 1 else "", maxi(1, k / 2)]
 			main.prio_row.add_child(kb)
 	# a building site: ring a bell when it is finished
 	if b.p == 1 and (b.state == "build" or b.reno_to >= 0):
-		var wb := main._button("Bell when done: %s" % ("on" if main.watch.has(b.id) else "off"), func():
+		var wb := main._button(tr("Bell when done: %s") % ("on" if main.watch.has(b.id) else "off"), func():
 			var bb: Sim.Bld = main.sim.by_id.get(main.view.sel_id)
 			if bb:
 				if main.watch.has(bb.id): main.watch.erase(bb.id)
@@ -202,17 +202,17 @@ func _refresh_sel() -> void:
 					var r := main.sim.renovate(bb)
 					main._show_hint(r if r != "" else ("Renovation starts: carriers bring half the building's materials." if bb.reno_to >= 0 else "Renovation queued: two run at a time."), 3.0)
 					_refresh_sel())
-			rb.tooltip_text = "Rebuild it in the %s style: half its building cost, carried here, and half its building time. Work stops meanwhile; the worker keeps his job." % GameData.age_name(main.sim.human().age)
+			rb.tooltip_text = tr("Rebuild it in the %s style: half its building cost, carried here, and half its building time. Work stops meanwhile; the worker keeps his job.") % GameData.age_name(main.sim.human().age)
 			main.sel_actions.add_child(rb)
 			var same := 0
 			for x: Sim.Bld in main.sim.realm_blds(main.sim.human()):
 				if x.ty == b.ty and main.sim.can_renovate(x) == "":
 					same += 1
 			if same > 1:
-				main.sel_actions.add_child(main._button("Renovate all %d" % same, func():
+				main.sel_actions.add_child(main._button(tr("Renovate all %d") % same, func():
 					var bb: Sim.Bld = main.sim.by_id.get(main.view.sel_id)
 					if bb:
-						main._show_hint("%d %s queued for renovation; two at a time." % [main.sim.renovate_all(main.sim.human(), bb.ty), String(bb.def.name).to_lower()], 3.0)
+						main._show_hint(tr("%d %s queued for renovation; two at a time.") % [main.sim.renovate_all(main.sim.human(), bb.ty), String(bb.def.name).to_lower()], 3.0)
 						_refresh_sel()))
 	if b.p == 1 and b.ty != "hq":
 		main.sel_actions.add_child(main._button("Demolish", func():
@@ -227,7 +227,7 @@ func _set_prio(pr: int) -> void:
 	if b == null or b.p != 1 or not main.sim.has_priority(b):
 		return
 	main.sim.set_priority(b, pr)
-	main._show_hint("%s: priority %s." % [String(b.def.name), Sim.PRIO_NAMES[b.prio].to_lower()], 2.5)
+	main._show_hint(tr("%s: priority %s.") % [String(b.def.name), Sim.PRIO_NAMES[b.prio].to_lower()], 2.5)
 	_refresh_sel()
 
 
@@ -259,7 +259,7 @@ func _garrison_ui(b: Sim.Bld) -> void:
 	var minus := main._button("-", func(): main._set_want(b, want - 1))
 	minus.disabled = want <= 1
 	row.add_child(minus)
-	var n := main._label("%d of %d" % [want, cap], 15)
+	var n := main._label(tr("%d of %d") % [want, cap], 15)
 	n.custom_minimum_size = Vector2(60, 0)
 	n.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	row.add_child(n)
@@ -296,7 +296,7 @@ func _garrison_ui(b: Sim.Bld) -> void:
 		var here := int(gm[k])
 		var trainable := k <= p.age or int(rm[k]) > 0 or here > 0
 		var info := ("%d at headquarters" % int(rm[k])) + ((", %d here" % here) if here > 0 else "")
-		tb.text = "%s\n%s" % [Sim.soldier_plural(k).capitalize(), info if trainable else "not yet (%s age)" % GameData.age_name(k)]
+		tb.text = tr("%s\n%s") % [Sim.soldier_plural(k).capitalize(), info if trainable else "not yet (%s age)" % GameData.age_name(k)]
 		var ok := main.sim.kind_allowed(b, k)
 		tb.set_pressed_no_signal(ok)
 		# allowed kinds in gold, the others faded
@@ -305,7 +305,7 @@ func _garrison_ui(b: Sim.Bld) -> void:
 		if not ok:
 			tb.modulate = Color(1, 1, 1, 0.55)
 		tb.disabled = not trainable
-		tb.tooltip_text = "Untick to keep %s out of this building: they are swapped for an allowed kind as soon as headquarters has one." % Sim.soldier_plural(k)
+		tb.tooltip_text = tr("Untick to keep %s out of this building: they are swapped for an allowed kind as soon as headquarters has one.") % Sim.soldier_plural(k)
 		var kk := k
 		tb.toggled.connect(func(on):
 			if b.want_kinds.is_empty():

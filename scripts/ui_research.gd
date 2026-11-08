@@ -144,7 +144,7 @@ func _build_tech_panel() -> void:
 	tree.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	tree.selected.connect(func(id): _select(id, false))
 	tree.activated.connect(_activate)
-	tree.zoom_changed.connect(func(z): zoom_btn.text = "%d%%" % roundi(z * 100.0))
+	tree.zoom_changed.connect(func(z): zoom_btn.text = tr("%d%%") % roundi(z * 100.0))
 	mid.add_child(tree)
 	var side := VBoxContainer.new()
 	side.custom_minimum_size = Vector2(290, 0)
@@ -264,7 +264,7 @@ func _fill_tech() -> void:
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		b.clip_text = true
 		b.add_theme_font_size_override("font_size", 13)
-		b.text = "%s  %s" % [GameData.age_name(a), ("start" if n == 0 else "%d/%d" % [done, n])]
+		b.text = tr("%s  %s") % [GameData.age_name(a), ("start" if n == 0 else "%d/%d" % [done, n])]
 		if a == p.age:
 			b.add_theme_color_override("font_color", TechTreeView.C_STUDY)
 			b.text = "◆ " + b.text
@@ -300,7 +300,7 @@ func _fill_queue(p: Sim.Player) -> void:
 		if GameData.reps.has(id):
 			nm += " %d" % (int(p.reps.get(id, 0)) + ahead + 1)
 		var c := main.sim.research_cost(p, id, ahead)
-		b.text = "%s  %s" % [nm, ("%d/%d" % [int(minf(p.rp, c)), int(c)]) if qi < 0 else (_mins(_points_until(p, qi)) if rate > 0.01 else "")]
+		b.text = tr("%s  %s") % [nm, ("%d/%d" % [int(minf(p.rp, c)), int(c)]) if qi < 0 else (_mins(_points_until(p, qi)) if rate > 0.01 else "")]
 		if qi < 0:
 			b.add_theme_color_override("font_color", TechTreeView.C_STUDY)
 		b.tooltip_text = "Click to show it in the tree"
@@ -330,7 +330,7 @@ func _fill_detail(p: Sim.Player) -> void:
 		c.queue_free()
 	var id := tree.sel
 	if id == "" or not (GameData.techs.has(id) or GameData.reps.has(id)):
-		detail.text = "[font_size=18][color=#d8aa4a]The tech tree[/color][/font_size]\n\nEach card is a tech. Lines run from what a tech [b]needs[/b] to what it [b]leads to[/b]. Ages run left to right; each band is a branch of your realm.\n\nHover a card to light up its whole line. Click it to see what it does. Double-click a tech to [b]add it to the end of the queue[/b], with everything it needs.\n\n[color=#8fc070]Green[/color]: done.  [color=#8fc0ff]Blue[/color]: being studied.  [color=#d8aa4a]Gold[/color]: ready to study.  Grey: needs another tech first.\n\n[b]Mastery[/b] (the bottom band): each age has three studies you can take again and again, a few times each, for a small bonus every time. They open when your realm enters their age.\n\n[color=#9a9c88]Drag or use the wheel to move around. Ctrl + wheel, a pinch, or the - and + buttons zoom. Scriptoriums, libraries and universities make research points; nobles add a little. Points carry over, so you can save them up.%s[/color]" % (" Research victory is on: the first realm to finish the Industrial Revolution wins." if main.sim.research_victory else "")
+		detail.text = tr("[font_size=18][color=#d8aa4a]The tech tree[/color][/font_size]\n\nEach card is a tech. Lines run from what a tech [b]needs[/b] to what it [b]leads to[/b]. Ages run left to right; each band is a branch of your realm.\n\nHover a card to light up its whole line. Click it to see what it does. Double-click a tech to [b]add it to the end of the queue[/b], with everything it needs.\n\n[color=#8fc070]Green[/color]: done.  [color=#8fc0ff]Blue[/color]: being studied.  [color=#d8aa4a]Gold[/color]: ready to study.  Grey: needs another tech first.\n\n[b]Mastery[/b] (the bottom band): each age has three studies you can take again and again, a few times each, for a small bonus every time. They open when your realm enters their age.\n\n[color=#9a9c88]Drag or use the wheel to move around. Ctrl + wheel, a pinch, or the - and + buttons zoom. Scriptoriums, libraries and universities make research points; nobles add a little. Points carry over, so you can save them up.%s[/color]") % (" Research victory is on: the first realm to finish the Industrial Revolution wins." if main.sim.research_victory else "")
 		return
 	var st := tree.state_of(id)
 	var label: String = {"done": "[color=#8fc070]Done[/color]", "study": "[color=#8fc0ff]Being studied[/color]", "avail": "[color=#d8aa4a]Ready to study[/color]", "locked": "[color=#9a9c88]Locked[/color]"}[st]

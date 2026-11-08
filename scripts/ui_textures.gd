@@ -54,9 +54,9 @@ func _open_textures() -> void:
 		l.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
 		l.custom_minimum_size = Vector2(130, 0)
 		cell.add_child(l)
-		cell.tooltip_text = "%s.png, %dx%d" % [id, tr.texture.get_width(), tr.texture.get_height()]
+		cell.tooltip_text = tr("%s.png, %dx%d") % [id, tr.texture.get_width(), tr.texture.get_height()]
 		tex_grid.add_child(cell)
-	tex_info.text = "%d textures, %d custom. Custom files go in %s and use the names below with .png. Any size works: buildings keep their proportions, terrain and roads fill one tile. Unit and flag textures are tinted with each realm's colour, so draw them light." % [ids.size(), n_custom, Tex.ensure_user_dir()]
+	tex_info.text = tr("%d textures, %d custom. Custom files go in %s and use the names below with .png. Any size works: buildings keep their proportions, terrain and roads fill one tile. Unit and flag textures are tinted with each realm's colour, so draw them light.") % [ids.size(), n_custom, Tex.ensure_user_dir()]
 	main.tex_panel.visible = true
 
 
@@ -66,4 +66,4 @@ func _reload_textures() -> void:
 	for id in main.stock_icons:
 		main.stock_icons[id].texture = Tex.get_tex("res_" + String(id))
 	main._refresh_build()
-	main._show_hint("Textures reloaded. %d custom in use." % Tex.custom.size(), 4.0)
+	main._show_hint(tr("Textures reloaded. %d custom in use.") % Tex.custom.size(), 4.0)

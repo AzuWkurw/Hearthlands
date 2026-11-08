@@ -49,7 +49,7 @@ func _ask_demolish(b: Sim.Bld) -> void:
 	if not main.ask_demolish:
 		_do_demolish()
 		return
-	main.confirm_title.text = "Demolish the %s?" % String(b.def.name).to_lower()
+	main.confirm_title.text = tr("Demolish the %s?") % String(b.def.name).to_lower()
 	main.confirm_text.text = "\n".join(demolish_effects(b))
 	(main.confirm_panel.find_child("Dont", true, false) as CheckBox).button_pressed = false
 	_preview(b)

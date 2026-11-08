@@ -93,12 +93,12 @@ func refresh() -> void:
 		l.custom_minimum_size = Vector2(320, 0)
 		l.add_theme_font_size_override("normal_font_size", 13)
 		if done[k]:
-			l.text = "[color=#86ad5c]✔[/color] [color=#9a9c88]%s[/color]" % STEPS[k][0]
+			l.text = "[color=#86ad5c]✔[/color] [color=#9a9c88]%s[/color]" % tr(STEPS[k][0])
 		elif not tip_given:
 			tip_given = true
-			l.text = "[color=#e8c870]▶[/color] [b]%s[/b]\n[color=#b8b8a8]%s[/color]" % [STEPS[k][0], STEPS[k][2]]
+			l.text = "[color=#e8c870]▶[/color] [b]%s[/b]\n[color=#b8b8a8]%s[/color]" % [tr(STEPS[k][0]), tr(STEPS[k][2])]
 		else:
-			l.text = "[color=#6a6c60]○[/color] %s" % STEPS[k][0]
+			l.text = "[color=#6a6c60]○[/color] %s" % tr(STEPS[k][0])
 		list.add_child(l)
 	if all:
 		main._show_hint("First steps done! Your town is on its way. (The guide closes.)", 5.0)

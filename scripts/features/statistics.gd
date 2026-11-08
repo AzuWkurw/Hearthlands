@@ -177,7 +177,7 @@ func refresh() -> void:
 		if m > 0.0 or u > 0.0:
 			var net := (m - u) / maxf(1.0, last.size())
 			rows.append("%s: made [color=#86c55c]%.1f[/color], used [color=#e07a5f]%.1f[/color] per minute (%s), %d in store" % [r.name, m / maxf(1.0, last.size()), u / maxf(1.0, last.size()), ("[color=#86c55c]%+.1f[/color]" if net >= 0.0 else "[color=#e07a5f]%+.1f[/color]") % net, int(p.stock.get(r.id, 0.0))])
-	table.text = "[b]%s[/b]: green made, red used, per game minute.\n[b]Last 10 minutes[/b]\n%s" % [GameData.res_name(sel_good), "\n".join(rows) if rows.size() > 0 else "nothing counted yet"]
+	table.text = tr("[b]%s[/b]: green made, red used, per game minute.\n[b]Last 10 minutes[/b]\n%s") % [GameData.res_name(sel_good), "\n".join(rows) if rows.size() > 0 else "nothing counted yet"]
 	var key: String = ["pop", "bld", "sol", "made_total", "rp"][realm_metric.selected]
 	var ser := []
 	var legend := []

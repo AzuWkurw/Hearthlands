@@ -275,7 +275,7 @@ func draw_map(view: CanvasItem, rect: Rect2i) -> void:
 		var k := String(a[0])
 		var wd := {"deer": 0.62, "boar": 0.5, "hare": 0.3, "wolf": 0.6}[k] as float
 		var f := int(sim.time * 6.0 + float(a[1]) * 3.0) % 4 if (moving and anim) else 0
-		mv._sprite("unit_" + k, at + Vector2(0.5, 0.8), wd, f, float(a[3]) < float(a[1]))
+		mv._sprite("unit_" + k, at + Vector2(0.5, 0.8 - float(mv.lift_at(at.x + 0.5, at.y + 0.8))), wd, f, float(a[3]) < float(a[1]))
 	# fish jumping in the fishing grounds, now and then
 	if anim and float(mv.zoom) >= 14.0:
 		var w := sim.w

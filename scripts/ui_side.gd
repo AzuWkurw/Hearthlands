@@ -77,7 +77,7 @@ func _refresh_build() -> void:
 		var d: Dictionary = GameData.bld[id]
 		var locked: bool = d.has("tech") and not p.techs.has(d.tech)
 		b.disabled = locked
-		b.text = "%s\n%s" % [String(d.name), ("Needs " + GameData.tech_name(d.tech)) if locked else "%s · %s" % [GameData.cost_text(d.get("cost", {})), String(Sim.SIZE_NAMES[main.sim.size_of(id)]).to_lower()]]
+		b.text = tr("%s\n%s") % [String(d.name), ("Needs " + GameData.tech_name(d.tech)) if locked else "%s · %s" % [GameData.cost_text(d.get("cost", {})), String(Sim.SIZE_NAMES[main.sim.size_of(id)]).to_lower()]]
 		b.modulate = Color(1, 1, 1, 0.5) if (locked or main.sim.missing(p, d.get("cost", {})) != "") else Color.WHITE
 		b.set_pressed_no_signal(main.view.place_type == id)
 

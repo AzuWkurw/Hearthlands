@@ -435,11 +435,13 @@ func _ready() -> void:
 		return
 	GameData.ensure()
 	settings.load_file()
+	I18n.setup(settings.language)
 	_build_ui()
 	settings.apply(get_window())
 	view.set_animate(settings.animate)
 	view.set_smooth(settings.smooth)
 	view.auto_roads = settings.auto_roads
+	view.raised = settings.raised
 	ask_demolish = settings.ask_demolish
 	# in a window the interface size must follow the window when it is resized
 	get_window().size_changed.connect(func(): settings.apply_scale(get_window()))
@@ -471,13 +473,13 @@ func _after_restart() -> void:
 		if running == want:
 			Settings.write_override(want)
 			settings.renderer = want
-			_show_hint("Now drawing with %s. It will be used from now on." % Settings.renderer_name(want), 8.0)
+			_show_hint(tr("Now drawing with %s. It will be used from now on.") % Settings.renderer_name(want), 8.0)
 		else:
 			settings.renderer = running
-			_show_hint("%s could not start on this PC, so the game stays with %s." % [Settings.renderer_name(want), Settings.renderer_name(running)], 10.0)
+			_show_hint(tr("%s could not start on this PC, so the game stays with %s.") % [Settings.renderer_name(want), Settings.renderer_name(running)], 10.0)
 		settings.save_file()
 	elif running != settings.renderer:
-		_show_hint("Started with %s instead of the chosen %s (safe mode?). Pick a renderer in Settings to keep one." % [Settings.renderer_name(running), Settings.renderer_name(settings.renderer)], 10.0)
+		_show_hint(tr("Started with %s instead of the chosen %s (safe mode?). Pick a renderer in Settings to keep one.") % [Settings.renderer_name(running), Settings.renderer_name(settings.renderer)], 10.0)
 	if "resume" in args and FileAccess.file_exists(SAVE_DIR + "/autosave.save"):
 		_load_game("autosave")
 	elif _should_probe_vulkan(running):
@@ -587,7 +589,7 @@ func _section(parent: Control, title: String) -> VBoxContainer:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 6)
 	pc.add_child(v)
-	v.add_child(_label(title.to_upper(), 14, BRASS))
+	v.add_child(_label(tr(title).to_upper(), 14, BRASS))
 	return v
 
 
@@ -664,7 +666,7 @@ func _build_ui() -> void:
 	lbl_feat = _label("", 14, BRASS); tb.add_child(lbl_feat)
 	btn_pause = _button("Pause", _toggle_pause); tb.add_child(btn_pause)
 	for s in [1, 2, 4, 8]:
-		var b := _button("%dx" % s, _set_speed.bind(float(s)))
+		var b := _button(tr("%dx") % s, _set_speed.bind(float(s)))
 		b.toggle_mode = true
 		speed_btns[s] = b
 		tb.add_child(b)
@@ -799,7 +801,7 @@ func _build_ui() -> void:
 	tf.add_child(_button("Export defaults", func():
 		var n := Tex.export_defaults()
 		var p := Tex.write_manifest()
-		_show_hint("Wrote %d textures and a list to %s" % [n, p.get_base_dir()], 6.0)))
+		_show_hint(tr("Wrote %d textures and a list to %s") % [n, p.get_base_dir()], 6.0)))
 	tf.add_child(_button("Reload textures", _reload_textures))
 	tf.add_child(_button("Browse textures", _open_textures))
 	var sl := _label("Smooth scaling, animations and other options are in Settings.", 13, DIM)
@@ -845,12 +847,12 @@ func _build_setup() -> void:
 	r1.add_child(_button("Random", func(): seed_edit.text = _rand_seed()))
 	foes_lbl = _label(""); v.add_child(foes_lbl)
 	foes_slider = HSlider.new(); foes_slider.min_value = 1; foes_slider.max_value = 8; foes_slider.value = 3
-	foes_slider.value_changed.connect(func(x): foes_lbl.text = "Rival realms: %d" % int(x))
+	foes_slider.value_changed.connect(func(x): foes_lbl.text = tr("Rival realms: %d") % int(x))
 	v.add_child(foes_slider)
 	str_lbl = _label(""); v.add_child(str_lbl)
 	str_slider = HSlider.new(); str_slider.min_value = 1; str_slider.max_value = 10; str_slider.value = 5
 	var names := ["", "Gentle", "Easy", "Easy+", "Moderate", "Normal", "Normal+", "Hard", "Hard+", "Brutal", "Merciless"]
-	str_slider.value_changed.connect(func(x): str_lbl.text = "Rival strength: %s (%d)" % [names[int(x)], int(x)])
+	str_slider.value_changed.connect(func(x): str_lbl.text = tr("Rival strength: %s (%d)") % [names[int(x)], int(x)])
 	v.add_child(str_slider)
 	mix_check = CheckBox.new(); mix_check.text = "Vary each rival's skill"; mix_check.button_pressed = true; v.add_child(mix_check)
 	var r2 := HBoxContainer.new(); v.add_child(r2)
@@ -867,7 +869,7 @@ func _build_setup() -> void:
 		var sz: int = SIZES[size_opt.selected][1]
 		var n := int(foes_slider.value) + 1
 		if sz > 0 and sz < WorldGen.min_size(n):
-			_show_hint("A %d-tile map is too small for %d realms. Pick at least %d tiles or fewer rivals." % [sz, n, WorldGen.min_size(n)], 6.0)
+			_show_hint(tr("A %d-tile map is too small for %d realms. Pick at least %d tiles or fewer rivals.") % [sz, n, WorldGen.min_size(n)], 6.0)
 			return
 		var o := _difficulty_opts()
 		o["features"] = settings.enabled_features()
@@ -955,7 +957,8 @@ func _apply_preset(i: int) -> void:
 			if is_equal_approx(float(c[2][k][1]), float(vals[c[1]])):
 				o.select(k)
 	for c in DIFF_CHECKS:
-		(diff[c[1]] as CheckBox).set_pressed_no_signal(bool(vals[c[1]]))
+		if vals.has(c[1]):
+			(diff[c[1]] as CheckBox).set_pressed_no_signal(bool(vals[c[1]]))
 	str_slider.value = int(DIFF_PRESETS[i][2])
 	(diff["preset"] as OptionButton).select(i)
 
@@ -1081,7 +1084,7 @@ func _rebuild_build_list() -> void:
 		var b := Button.new()
 		b.focus_mode = Control.FOCUS_NONE
 		b.toggle_mode = true
-		b.text = "%s\n%s" % [String(d.name), GameData.cost_text(d.get("cost", {}))]
+		b.text = tr("%s\n%s") % [String(d.name), GameData.cost_text(d.get("cost", {}))]
 		b.icon = Tex.get_tex(GameData.bld_tex_id(id))
 		b.expand_icon = true
 		b.add_theme_constant_override("icon_max_width", 40)
@@ -1094,7 +1097,7 @@ func _rebuild_build_list() -> void:
 		build_buttons[id] = b
 	_refresh_build()
 	if hidden > 0:
-		var note := _label("%d more to unlock by research (R)" % hidden, 12, DIM)
+		var note := _label(tr("%d more to unlock by research (R)") % hidden, 12, DIM)
 		note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		note.custom_minimum_size = Vector2(176, 0)
 		build_grid.add_child(note)
@@ -1158,7 +1161,7 @@ func _on_tile(t: Vector2i) -> void:
 			sim.emit_log("Building a %s." % String(GameData.bld[ty].name).to_lower(), DIM, Vector2i(t.x, t.y))
 			var short := sim.missing(sim.human(), GameData.bld[ty].get("cost", {}))
 			if short != "":
-				_show_hint("Not enough %s in store yet: the site waits until carriers can bring it." % GameData.res_name(short).to_lower(), 3.0)
+				_show_hint(tr("Not enough %s in store yet: the site waits until carriers can bring it.") % GameData.res_name(short).to_lower(), 3.0)
 			var nb := sim.bld_at(t.x, t.y)
 			if not Input.is_key_pressed(KEY_SHIFT):
 				view.place_type = ""
@@ -1240,7 +1243,7 @@ func _use_tool(t: Vector2i) -> void:
 			_show_hint(r2 if r2 != "" else "Road paved.", 2.0)
 		"@unroad":
 			var n := sim.remove_road(t.x, t.y, 1)
-			_show_hint("Removed %d road tiles." % n if n > 0 else "Click one of your roads.", 2.0)
+			_show_hint(tr("Removed %d road tiles.") % n if n > 0 else "Click one of your roads.", 2.0)
 		"@work":
 			var b: Sim.Bld = sim.by_id.get(view.sel_id)
 			if b == null:
@@ -1292,7 +1295,7 @@ func _check_watch() -> void:
 		elif b.state == "ready" and b.reno_to < 0:
 			watch.erase(id)
 			sound.play("good", 0.9)
-			_show_hint("Your %s is finished." % String(b.def.name), 4.0)
+			_show_hint(tr("Your %s is finished.") % String(b.def.name), 4.0)
 
 
 ## The key that does action id now.
@@ -1374,7 +1377,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				# only the sides its size allows (a large building's entrance always faces south)
 				var sides: Array = Sim.SIZE_DOORS.get(sim.size_of(view.place_type), [0])
 				if sides.size() <= 1:
-					_show_hint("A %s building's entrance always faces %s." % [String(Sim.SIZE_NAMES[sim.size_of(view.place_type)]).to_lower(), Sim.DOOR_NAMES[sides[0]]], 2.0)
+					_show_hint(tr("A %s building's entrance always faces %s.") % [String(Sim.SIZE_NAMES[sim.size_of(view.place_type)]).to_lower(), Sim.DOOR_NAMES[sides[0]]], 2.0)
 				else:
 					var k := maxi(0, sides.find(view.door))
 					view.door = int(sides[(k + (sides.size() - 1 if event.shift_pressed else 1)) % sides.size()])
@@ -1483,12 +1486,12 @@ func _process(delta: float) -> void:
 				hint.text = "Click a spot on the map (Esc or right click to stop)"
 				var ft := _feature_tool(view.place_type)
 				if not ft.is_empty():
-					hint.text = "%s: %s" % [String(ft[1][1]), String(ft[1][3])]
+					hint.text = tr("%s: %s") % [String(ft[1][1]), String(ft[1][3])]
 		hint.visible = true
 	elif view.place_type != "":
 		var why := sim.can_place(view.place_type, view.ghost.x, view.ghost.y, 1, view.door)
 		var szn := String(Sim.SIZE_NAMES[sim.size_of(view.place_type)])
-		hint.text = "%s (%s): %s   (entrance faces %s, R turns it; roads: %s)" % [String(GameData.bld[view.place_type].name), szn.to_lower(), why if why != "" else "click to build", Sim.DOOR_NAMES[view.door], "auto" if settings.auto_roads else "by hand"]
+		hint.text = tr("%s (%s): %s   (entrance faces %s, R turns it; roads: %s)") % [String(GameData.bld[view.place_type].name), szn.to_lower(), why if why != "" else "click to build", Sim.DOOR_NAMES[view.door], "auto" if settings.auto_roads else "by hand"]
 		hint.visible = true
 	else:
 		hint.visible = false
@@ -1530,12 +1533,12 @@ func _refresh_all() -> void:
 		if sim.logs.size() > 0 and "attacks your" in String(sim.logs[-1][1]):
 			view.flash = 1.0
 	var m := int(sim.time) / 60
-	lbl_time.text = "%02d:%02d" % [m, int(sim.time) % 60]
-	lbl_pop.text = "Pop %d / %d" % [sim.pop_total(p), sim.housing(p)]
+	lbl_time.text = tr("%02d:%02d") % [m, int(sim.time) % 60]
+	lbl_pop.text = tr("Pop %d / %d") % [sim.pop_total(p), sim.housing(p)]
 	var alive := 0
 	for q in sim.players:
 		if q.ai and q.alive: alive += 1
-	lbl_foes.text = "Rivals %d" % alive
+	lbl_foes.text = tr("Rivals %d") % alive
 	var bits := PackedStringArray()
 	for f: Feature in sim.features:
 		var tt := f.top_text(p)
@@ -1652,7 +1655,7 @@ func _update_perf() -> void:
 	var per := float(usec - int(perf_last.usec)) / 1000.0 / maxf(0.001, game_secs)
 	perf_last = {"time": sim.time, "usec": usec}
 	perf_t = 0.0
-	perf_label.text = "%d fps · map drawing %.1f ms · simulation %.1f ms per game second · %d buildings · %d carriers on the road" % [Engine.get_frames_per_second(), (view.draw_usec + view.ground_usec) / 1000.0, per if game_secs > 0.0 else 0.0, sim.blds.size(), sim.trips.size()]
+	perf_label.text = tr("%d fps · map drawing %.1f ms · simulation %.1f ms per game second · %d buildings · %d carriers on the road") % [Engine.get_frames_per_second(), (view.draw_usec + view.ground_usec) / 1000.0, per if game_secs > 0.0 else 0.0, sim.blds.size(), sim.trips.size()]
 
 
 # ================================================================ entry points into the parts

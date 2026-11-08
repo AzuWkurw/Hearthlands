@@ -41,6 +41,8 @@ var vk_probed := false                    # the first-start Vulkan test has been
 var log_rect := Rect2i()                  # where the event log window is (empty: the default place)
 var log_open := true
 var features := {}                        # feature id -> switched on; features not listed use their default
+var language := "en"                      # interface language (see I18n)
+var raised := true                        # hills drawn raised (2.5D); off: a flat map
 var guide := true                         # show the first-game guide in a new game
 var keys := {}                            # action -> key code the player chose (Keys in Settings)
 var sound_on := true
@@ -70,6 +72,8 @@ func load_file() -> void:
 	log_open = bool(cf.get_value("display", "log_open", log_open))
 	features = cf.get_value("game", "features", {})
 	guide = bool(cf.get_value("game", "guide", guide))
+	raised = bool(cf.get_value("display", "raised", raised))
+	language = String(cf.get_value("display", "language", language))
 	keys = cf.get_value("game", "keys", {})
 	sound_on = bool(cf.get_value("sound", "on", sound_on))
 	master_vol = float(cf.get_value("sound", "master", master_vol))
@@ -96,6 +100,8 @@ func save_file() -> void:
 	cf.set_value("display", "log_open", log_open)
 	cf.set_value("game", "features", features)
 	cf.set_value("game", "guide", guide)
+	cf.set_value("display", "raised", raised)
+	cf.set_value("display", "language", language)
 	cf.set_value("game", "keys", keys)
 	cf.set_value("sound", "on", sound_on)
 	cf.set_value("sound", "master", master_vol)

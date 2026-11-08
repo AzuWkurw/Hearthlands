@@ -72,6 +72,143 @@ var _origin := Vector2.ZERO
 var _folk_roads: Dictionary = {}   # house id -> [game time worked out, straight runs of road nearby: [from, to]]
 var _vary: ImageTexture            # ground variation (see _make_variation)
 
+# --- Raised ground (2.5D) ---------------------------------------------------------------------------
+# Each tile corner is raised by the height of the ground around it (LIFT tiles per height step, the sea
+# stays flat), and the ground is drawn as a grid of quads through those corners, so hills stand up from
+# the map as in The Settlers II; the light and shade from the slopes is baked into the chunks. Buildings,
+# people and markers are drawn raised by the height under their feet (lift_at). Clicks are traced back
+# through the raised ground (screen_to_tile). The "Raised ground" option turns it off (all flat).
+const LIFT := 0.014
+var raised := true
+var _lift := PackedFloat32Array()  # (w + 1) x (h + 1) tile corners: how far each is raised, in tiles
+var _lift_key := ""
+var _chunk_mesh := {}              # chunk key -> ArrayMesh through its raised corners
+var _map_mesh: ArrayMesh           # the whole map, a coarse grid (for pictures covering the whole map)
+var _base_origin := Vector2.ZERO
+var _cur_lift := 0.0
+
+
+## Works out the corner heights again when the map or the option changed.
+func _ensure_lift() -> void:
+	var key := "%d|%d|%d|%s" % [sim.get_instance_id(), sim.w, sim.h, raised]
+	if key == _lift_key and _lift.size() == (sim.w + 1) * (sim.h + 1):
+		return
+	_lift_key = key
+	_chunk_mesh = {}
+	_map_mesh = null
+	var W := sim.w + 1
+	_lift = PackedFloat32Array(); _lift.resize(W * (sim.h + 1))
+	if not raised or sim.height.size() != sim.w * sim.h:
+		return
+	for cy in sim.h + 1:
+		for cx in W:
+			var s := 0.0
+			var n := 0
+			var water := false
+			for dy in [-1, 0]:
+				for dx in [-1, 0]:
+					var x: int = cx + dx
+					var y: int = cy + dy
+					if x >= 0 and y >= 0 and x < sim.w and y < sim.h:
+						var i := y * sim.w + x
+						if sim.ter[i] == Sim.WATER:
+							water = true
+						s += float(sim.height[i])
+						n += 1
+			# corners touching the sea stay at sea level, so the shore meets the water
+			_lift[cy * W + cx] = 0.0 if water or n == 0 else maxf(0.0, s / n - 6.0) * LIFT
+
+
+## How far the ground at (fx, fy), in tiles, is raised on screen.
+func lift_at(fx: float, fy: float) -> float:
+	if not raised or sim == null or _lift.size() != (sim.w + 1) * (sim.h + 1):
+		return 0.0
+	var W := sim.w + 1
+	var x := clampf(fx, 0.0, float(sim.w) - 0.001)
+	var y := clampf(fy, 0.0, float(sim.h) - 0.001)
+	var ix := int(x)
+	var iy := int(y)
+	var u := x - ix
+	var v := y - iy
+	var a := _lift[iy * W + ix]
+	var b := _lift[iy * W + ix + 1]
+	var c := _lift[(iy + 1) * W + ix]
+	var d := _lift[(iy + 1) * W + ix + 1]
+	return lerpf(lerpf(a, b, u), lerpf(c, d, u), v)
+
+
+## Draw what follows raised as the ground at (fx, fy) is; _unlift goes back to the flat map.
+func _lift_to(fx: float, fy: float) -> void:
+	_cur_lift = lift_at(fx, fy)
+	_origin = _base_origin + Vector2(0, -_cur_lift * zoom)
+	draw_set_transform(_origin, 0.0, Vector2(zoom, zoom))
+
+
+func _unlift() -> void:
+	if _cur_lift == 0.0 and _origin == _base_origin:
+		return
+	_cur_lift = 0.0
+	_origin = _base_origin
+	draw_set_transform(_origin, 0.0, Vector2(zoom, zoom))
+
+
+## A grid of quads over tiles (x0, y0) to (x0 + nx * step, y0 + ny * step) through the raised corners,
+## its picture spread over uv0..uv1.
+func _grid_mesh(x0: int, y0: int, nx: int, ny: int, step: int, uv0: Vector2, uv1: Vector2) -> ArrayMesh:
+	var W := sim.w + 1
+	var verts := PackedVector2Array()
+	var uvs := PackedVector2Array()
+	for j in ny + 1:
+		for i in nx + 1:
+			var cx := mini(x0 + i * step, sim.w)
+			var cy := mini(y0 + j * step, sim.h)
+			var l := _lift[cy * W + cx] if _lift.size() == W * (sim.h + 1) else 0.0
+			verts.append(Vector2(x0 + i * step, y0 + j * step - l))
+			uvs.append(uv0 + (uv1 - uv0) * Vector2(float(i) / nx, float(j) / ny))
+	var idx := PackedInt32Array()
+	for j in ny:
+		for i in nx:
+			var a := j * (nx + 1) + i
+			idx.append_array(PackedInt32Array([a, a + 1, a + nx + 1, a + 1, a + nx + 2, a + nx + 1]))
+	var arr := []
+	arr.resize(Mesh.ARRAY_MAX)
+	arr[Mesh.ARRAY_VERTEX] = verts
+	arr[Mesh.ARRAY_TEX_UV] = uvs
+	arr[Mesh.ARRAY_INDEX] = idx
+	var m := ArrayMesh.new()
+	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+	return m
+
+
+func _chunk_grid(cx: int, cy: int) -> ArrayMesh:
+	var k := cy * 1000 + cx
+	if not _chunk_mesh.has(k):
+		_chunk_mesh[k] = _grid_mesh(cx * MapChunks.CH, cy * MapChunks.CH, MapChunks.CH, MapChunks.CH, 1, Vector2.ZERO, Vector2.ONE)
+	return _chunk_mesh[k]
+
+
+## Draws a picture that covers the whole map (fog, territory far out, ground variation) on canvas item
+## ci, raised with the ground.
+func draw_map_texture(ci: CanvasItem, tex: Texture2D, mod := Color.WHITE) -> void:
+	if not raised or _lift.size() != (sim.w + 1) * (sim.h + 1):
+		ci.draw_texture_rect(tex, Rect2(0, 0, sim.w, sim.h), false, mod)
+		return
+	if _map_mesh == null:
+		var st := 2
+		var nx := ceili(sim.w / float(st))
+		var ny := ceili(sim.h / float(st))
+		_map_mesh = _grid_mesh(0, 0, nx, ny, st, Vector2.ZERO, Vector2(nx * st / float(sim.w), ny * st / float(sim.h)))
+	ci.draw_mesh(_map_mesh, tex, Transform2D(), mod)
+
+
+## Four raised corners of tile (x, y), for drawing something lying on the ground there.
+func tile_quad(x: int, y: int) -> PackedVector2Array:
+	var W := sim.w + 1
+	if not raised or _lift.size() != W * (sim.h + 1):
+		return PackedVector2Array([Vector2(x, y), Vector2(x + 1, y), Vector2(x + 1, y + 1), Vector2(x, y + 1)])
+	return PackedVector2Array([Vector2(x, y - _lift[y * W + x]), Vector2(x + 1, y - _lift[y * W + x + 1]),
+		Vector2(x + 1, y + 1 - _lift[(y + 1) * W + x + 1]), Vector2(x, y + 1 - _lift[(y + 1) * W + x])])
+
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -197,6 +334,12 @@ func tiles_changed(tiles: PackedInt32Array) -> void:
 
 func screen_to_tile(pos: Vector2) -> Vector2i:
 	var wpos := (pos - size / 2.0) / zoom + cam
+	if raised and sim != null and _lift.size() == (sim.w + 1) * (sim.h + 1):
+		# the ground at y is drawn lift_at higher: look for the y whose raised place is under the mouse
+		var y := wpos.y
+		for k in 4:
+			y = wpos.y + lift_at(wpos.x, y)
+		return Vector2i(floori(wpos.x), floori(y))
 	return Vector2i(floori(wpos.x), floori(wpos.y))
 
 
@@ -278,7 +421,8 @@ func _draw_ground() -> void:
 	var x0 := maxi(0, floori(cam.x - half.x / z) - 1)
 	var x1 := mini(sim.w - 1, ceili(cam.x + half.x / z) + 1)
 	var y0 := maxi(0, floori(cam.y - half.y / z) - 1)
-	var y1 := mini(sim.h - 1, ceili(cam.y + half.y / z) + 2)
+	var y1 := mini(sim.h - 1, ceili(cam.y + half.y / z) + (5 if raised else 2))
+	_ensure_lift()
 	g.draw_set_transform(half - cam * z, 0.0, Vector2(z, z))
 	# the dark background beyond the map edge, given in tiles like everything on this layer
 	g.draw_rect(Rect2(cam - half / z, size / z), Color("0d0f0c"))
@@ -301,11 +445,22 @@ func _draw_ground() -> void:
 				var tex := ch.get_chunk(cx, cy, budget)
 				var r := Rect2(cx * MapChunks.CH, cy * MapChunks.CH, MapChunks.CH, MapChunks.CH)
 				if tex != null:
-					g.draw_texture_rect(tex, r, false)
+					if raised:
+						g.draw_mesh(_chunk_grid(cx, cy), tex)
+					else:
+						g.draw_texture_rect(tex, r, false)
 				elif minimap != null and minimap.base_tex() != null:
-					g.draw_texture_rect_region(minimap.base_tex(), r, r)
+					# not baked yet: that part of the minimap picture, raised the same way
+					if raised:
+						var fk := -(cy * 1000 + cx) - 1
+						if not _chunk_mesh.has(fk):
+							var CHN := MapChunks.CH
+							_chunk_mesh[fk] = _grid_mesh(cx * CHN, cy * CHN, CHN, CHN, 1, Vector2(cx * CHN / float(sim.w), cy * CHN / float(sim.h)), Vector2((cx + 1) * CHN / float(sim.w), (cy + 1) * CHN / float(sim.h)))
+						g.draw_mesh(_chunk_mesh[fk], minimap.base_tex())
+					else:
+						g.draw_texture_rect_region(minimap.base_tex(), r, r)
 	elif minimap != null and minimap.base_tex() != null:
-		g.draw_texture_rect(minimap.base_tex(), Rect2(0, 0, sim.w, sim.h), false)
+		draw_map_texture(g, minimap.base_tex())
 	ground_usec = Time.get_ticks_usec() - t_start
 
 
@@ -324,11 +479,16 @@ func _draw() -> void:
 	var w := sim.w
 	var detail := animate and z >= ANIM_ZOOM
 	draw_set_transform(origin, 0.0, Vector2(z, z))
+	_ensure_lift()
+	_base_origin = origin
+	_cur_lift = 0.0
+	if raised:
+		y1 = mini(sim.h - 1, y1 + 3)
 	# far out the territory comes from the minimap's picture, drawn here so it skips the water shader
 	if z < DETAIL_ZOOM and minimap != null and minimap.own_tex() != null:
-		draw_texture_rect(minimap.own_tex(), Rect2(0, 0, sim.w, sim.h), false)
+		draw_map_texture(self, minimap.own_tex())
 	if _vary != null:
-		draw_texture_rect(_vary, Rect2(0, 0, sim.w, sim.h), false)
+		draw_map_texture(self, _vary)
 	# features draw on the ground (season colours, snow) under the buildings
 	if not sim.features.is_empty():
 		var vr := Rect2i(x0, y0, x1 - x0 + 1, y1 - y0 + 1)
@@ -357,7 +517,12 @@ func _draw() -> void:
 	for b in vis:
 		while fi < folk.size() and float(folk[fi][0]) < b.y + 0.98:
 			_draw_folk_one(folk[fi]); fi += 1
+		if raised: _lift_to(b.x + 0.5, b.y + 0.9)
+		var nl := labels.size()
 		_draw_building(b, labels, detail)
+		for li in range(nl, labels.size()):
+			labels[li][0] = (labels[li][0] as Vector2) + Vector2(0, -_cur_lift)
+		_unlift()
 	while fi < folk.size():
 		_draw_folk_one(folk[fi]); fi += 1
 	# entrance flags of your buildings, close up; one still without a road waves a warning ring
@@ -366,7 +531,9 @@ func _draw() -> void:
 			if b.p == 1 and b.door >= 0 and not b.dead:
 				var dt := sim.door_tile(b)
 				if dt >= 0:
+					if raised: _lift_to(dt % w + 0.5, dt / w + 0.6)
 					_door_flag(dt, sim.players[0].color, not sim.connected(b))
+					_unlift()
 	# carriers: loaded on the way to the store, empty on the way back (drawn in batches, see _batch_add)
 	var drawn := 0
 	_batching = true
@@ -404,6 +571,8 @@ func _draw() -> void:
 		if fog_on and t.p != 1 and fv[mini(sim.h - 1, int(pos.y)) * w + mini(w - 1, int(pos.x))] == 0:
 			continue
 		drawn += 1
+		if raised:
+			pos.y -= lift_at(pos.x, pos.y)
 		var pc: Color = sim.players[t.p - 1].color
 		if z < DETAIL_ZOOM:
 			# far out a carrier is a few pixels: a dot in the realm's colour is enough
@@ -476,6 +645,10 @@ func _draw() -> void:
 				continue
 		var left := a.to.x < a.from.x
 		var col: Color = sim.players[a.p - 1].color.lightened(0.2)
+		if raised:
+			var apos: Vector2 = a.to if a.fighting else a.from.lerp(a.to, clampf((sim.time - a.t0) / maxf(0.01, a.t1 - a.t0), 0.0, 1.0))
+			_lift_to(apos.x + 0.5, apos.y + 0.9)
+		var nl2 := labels.size()
 		if a.fighting:
 			# a duel at the gate: the attacker and a defender take turns to strike
 			var tgt: Sim.Bld = sim.by_id.get(a.tgt)
@@ -534,6 +707,9 @@ func _draw() -> void:
 					draw_circle(gate, 0.08, Color(1.0, 0.85, 0.4, 0.95))
 					draw_line(gate, pos2 + Vector2(0, -0.3), Color(1.0, 0.95, 0.7, 0.5), 0.03)
 			labels.append([pos2 + Vector2(0, -0.85), str(a.n), Color.WHITE])
+		for li in range(nl2, labels.size()):
+			labels[li][0] = (labels[li][0] as Vector2) + Vector2(0, -_cur_lift)
+		_unlift()
 	if not sim.features.is_empty():
 		var vr2 := Rect2i(x0, y0, x1 - x0 + 1, y1 - y0 + 1)
 		for f: Feature in sim.features:
@@ -546,6 +722,8 @@ func _draw() -> void:
 	if z >= 14.0:
 		var font := get_theme_default_font()
 		var fs := clampi(int(z * 0.42), 10, 20)
+		for l in _tool_labels:
+			l[0] = (l[0] as Vector2) + Vector2(0, -lift_at((l[0] as Vector2).x, (l[0] as Vector2).y + 0.6))
 		for l in labels + _tool_labels:
 			var sp: Vector2 = origin + (l[0] as Vector2) * z
 			draw_string_outline(font, sp + Vector2(-40, 0), String(l[1]), HORIZONTAL_ALIGNMENT_CENTER, 80, fs, 4, Color.BLACK)
@@ -568,6 +746,7 @@ func _draw_selection_and_tools() -> void:
 				draw_line(c + Vector2(0.45, -0.45), c + Vector2(-0.45, 0.45), Color("ff4a3a"), 0.14)
 	var sel: Sim.Bld = sim.by_id.get(sel_id)
 	if sel != null:
+		if raised: _lift_to(sel.x + 0.5, sel.y + 0.5)
 		draw_rect(Rect2(sel.x, sel.y, 1, 1), Color("ffe28a"), false, 0.08)
 		if sel.p == 1 and sim.is_mil(sel):
 			draw_arc(Vector2(sel.x + 0.5, sel.y + 0.5), Sim.RANGE, 0, TAU, 96, Color(1, 1, 1, 0.35), 0.08)
@@ -583,10 +762,15 @@ func _draw_selection_and_tools() -> void:
 				draw_line(Vector2(sel.x + 0.5, sel.y + 0.5), cpos, Color(1.0, 1.0, 0.6, 0.6), 0.06)
 		if sel.def.has("carriers"):
 			draw_arc(Vector2(sel.x + 0.5, sel.y + 0.5), float(sel.def.carriers.range), 0, TAU, 64, Color(0.6, 0.9, 1.0, 0.5), 0.07)
+	_unlift()
 	if sel_tile >= 0:
-		draw_rect(Rect2(sel_tile % w, sel_tile / w, 1, 1), Color("8fe0ff"), false, 0.08)
+		var q := tile_quad(sel_tile % w, sel_tile / w)
+		q.append(q[0])
+		draw_polyline(q, Color("8fe0ff"), 0.08)
 	if place_type == "" or not sim.inb(ghost.x, ghost.y):
 		return
+	# the tool's marks lie on the ground at the mouse
+	if raised: _lift_to(ghost.x + 0.5, ghost.y + 0.5)
 	var g := Rect2(ghost.x, ghost.y, 1, 1)
 	match place_type:
 		"@road":
@@ -600,7 +784,8 @@ func _draw_selection_and_tools() -> void:
 					if k > 0: sl = maxi(sl, sim.slope_level(path[k - 1], i))
 					if k < path.size() - 1: sl = maxi(sl, sim.slope_level(i, path[k + 1]))
 					var col := Color(0.66, 0.55, 0.37, 0.85) if sl == 0 else (MapChunks.SLOPE_COL[sl] as Color)
-					draw_rect(Rect2(i % w + 0.25, i / w + 0.25, 0.5, 0.5), col)
+					var dl := lift_at(i % w + 0.5, i / w + 0.5) - _cur_lift
+					draw_rect(Rect2(i % w + 0.25, i / w + 0.25 - dl, 0.5, 0.5), col)
 				draw_rect(g, Color("86ad5c") if path.size() > 0 else Color("d9483d"), false, 0.08)
 			else:
 				var ok := sim.road[sim.idx(ghost.x, ghost.y)] == 1 or (sim.bld_at(ghost.x, ghost.y) != null and sim.bld_at(ghost.x, ghost.y).p == 1) or sim.door_owner(ghost.x, ghost.y, 1) != null
@@ -670,7 +855,8 @@ func _draw_selection_and_tools() -> void:
 					for k in range(1, _auto_path.size()):
 						var i := _auto_path[k]
 						if sim.road[i] != 1:
-							draw_rect(Rect2(i % w + 0.3, i / w + 0.3, 0.4, 0.4), Color(0.66, 0.55, 0.37, 0.75))
+							var dl2 := lift_at(i % w + 0.5, i / w + 0.5) - _cur_lift
+							draw_rect(Rect2(i % w + 0.3, i / w + 0.3 - dl2, 0.4, 0.4), Color(0.66, 0.55, 0.37, 0.75))
 			var d: Dictionary = GameData.bld[place_type]
 			if d.has("radius"):
 				draw_arc(Vector2(ghost.x + 0.5, ghost.y + 0.5), float(d.radius), 0, TAU, 64, Color(1, 1, 1, 0.5), 0.08)
@@ -727,10 +913,12 @@ func _site_markers(x0: int, y0: int, x1: int, y1: int) -> void:
 			_gain[-1] = 0   # worked out (even when nothing gains)
 		for t in _gain:
 			if t >= 0 and not skip.has(t):
+				if raised: _lift_to(t % sim.w + 0.5, t / sim.w + 0.5)
 				draw_circle(Vector2(t % sim.w + 0.5, t / sim.w + 0.5), 0.42, Color(0.95, 0.8, 0.3, 0.3))
 				_tool_labels.append([Vector2(t % sim.w + 0.5, t / sim.w - 0.15), "+%d" % int(_gain[t]), Color("f2cf5a")])
 	for t in _sites:
 		if not skip.has(t):
+			if raised: _lift_to(t % sim.w + 0.5, t / sim.w + 0.6)
 			_site_icon(Vector2(t % sim.w + 0.5, t / sim.w + 0.72), String(_sites[t]))
 			# while placing: a small pennant on the side its entrance (and flag) would be
 			if placing:
@@ -740,6 +928,7 @@ func _site_markers(x0: int, y0: int, x1: int, y1: int) -> void:
 					var c1 := c0 + (Vector2(dt2 % sim.w + 0.5, dt2 / sim.w + 0.5) - c0) * 0.42
 					draw_line(c1, c1 + Vector2(0, -0.26), Color(0.2, 0.15, 0.08, 0.9), 0.035)
 					draw_colored_polygon(PackedVector2Array([c1 + Vector2(0, -0.26), c1 + Vector2(0.15, -0.2), c1 + Vector2(0, -0.14)]), Color(sim.players[0].color, 0.95))
+	_unlift()
 
 
 ## How many tiles nobody owns yet a military building at (x, y) with radius r would claim for pid
@@ -1084,11 +1273,11 @@ func draw_ghost(ty: String, x: int, y: int, col: Color, building: bool, era := 1
 	var art: Dictionary = GameData.bld.get(ty, {}).get("art", {})
 	var sw := float(art.get("sw", 2.0))
 	var hgt := sw * tex.get_height() / maxf(1.0, tex.get_width())
-	var rect := Rect2(x + 0.5 - sw / 2.0, y + 1.0 - hgt, sw, hgt)
+	var rect := Rect2(x + 0.5 - sw / 2.0, y + 1.0 - hgt - lift_at(x + 0.5, y + 0.9), sw, hgt)
 	draw_texture_rect(tex, rect, false, Color(0.85, 0.85, 0.85, 0.45 if building else 0.95))
 	if building:
 		var cs := minf(sw, 1.6)
-		draw_texture_rect(_constr, Rect2(x + 0.5 - cs / 2.0, y + 1.0 - cs, cs, cs), false)
+		draw_texture_rect(_constr, Rect2(x + 0.5 - cs / 2.0, rect.end.y - cs, cs, cs), false)
 	_sprite("unit_flag", Vector2(rect.position.x + rect.size.x * 0.85, rect.position.y + 0.17), 0.3, 0, false, col.darkened(0.2))
 
 
@@ -1206,7 +1395,10 @@ func _folk_add(id: String, pos: Vector2, wid: float, f: int, flip: bool) -> void
 
 
 func _draw_folk_one(e: Array) -> void:
-	_sprite(String(e[1]), e[2], float(e[3]), int(e[4]), bool(e[5]))
+	var at: Vector2 = e[2]
+	if raised:
+		at.y -= lift_at(at.x, at.y)
+	_sprite(String(e[1]), at, float(e[3]), int(e[4]), bool(e[5]))
 
 
 func _folk_kind(p: Sim.Player, seed: int) -> String:

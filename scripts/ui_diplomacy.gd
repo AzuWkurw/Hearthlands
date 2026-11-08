@@ -23,7 +23,7 @@ func _on_diplomacy_changed() -> void:
 
 func _update_dip_button() -> void:
 	var n := main.sim.proposals.size()
-	main.dip_btn.text = "Diplomacy (%d)" % n if n > 0 else "Diplomacy"
+	main.dip_btn.text = tr("Diplomacy (%d)") % n if n > 0 else "Diplomacy"
 
 
 func _build_diplomacy_panel() -> void:
@@ -99,7 +99,7 @@ func _fill_diplomacy() -> void:
 		var row := HBoxContainer.new()
 		var l := main._rich()
 		l.custom_minimum_size = Vector2(430, 0)
-		l.text = "[color=#%s]■[/color] [b]%s[/b] [color=#9a9c88]%s, level %d[/color]\n%s · thinks of you: %s (%d) · army %d vs your %d" % [q.color.to_html(false), q.name, q.pers, q.skill, Diplomacy.NAMES[rel], Diplomacy.mood(op), roundi(op), roundi(Diplomacy.strength(main.sim, q)), roundi(my_str)]
+		l.text = tr("[color=#%s]■[/color] [b]%s[/b] [color=#9a9c88]%s, level %d[/color]\n%s · thinks of you: %s (%d) · army %d vs your %d") % [q.color.to_html(false), q.name, q.pers, q.skill, Diplomacy.NAMES[rel], Diplomacy.mood(op), roundi(op), roundi(Diplomacy.strength(main.sim, q)), roundi(my_str)]
 		row.add_child(l)
 		if rel == Diplomacy.WAR:
 			row.add_child(main._button("Offer peace", _dip_propose.bind(q.id, "peace")))
@@ -177,10 +177,10 @@ func _trade_quote() -> void:
 	var q := main.sim.players[int(parts[0]) - 1]
 	var n := Diplomacy.fair_amount(main.sim, q, 1, parts[1], parts[3])
 	if n <= 0:
-		main.trade_result.text = "%s would not give any %s for that." % [q.name, GameData.res_name(parts[3]).to_lower()]
+		main.trade_result.text = tr("%s would not give any %s for that.") % [q.name, GameData.res_name(parts[3]).to_lower()]
 	else:
 		trade_want_n.value = n
-		main.trade_result.text = "%s would give up to %d %s for %s." % [q.name, n, GameData.res_name(parts[3]).to_lower(), Diplomacy.goods_text(parts[1])]
+		main.trade_result.text = tr("%s would give up to %d %s for %s.") % [q.name, n, GameData.res_name(parts[3]).to_lower(), Diplomacy.goods_text(parts[1])]
 
 
 func _trade_offer() -> void:
@@ -192,7 +192,7 @@ func _trade_offer() -> void:
 	var q := main.sim.players[int(parts[0]) - 1]
 	var r := Diplomacy.propose(main.sim, 1, q.id, kind, parts[1], parts[2])
 	if r == "":
-		main.trade_result.text = "%s accepted. Their opinion of you is now %d." % [q.name, roundi(Diplomacy.opinion(q, 1))]
+		main.trade_result.text = tr("%s accepted. Their opinion of you is now %d.") % [q.name, roundi(Diplomacy.opinion(q, 1))]
 	else:
 		main.trade_result.text = r
 	_fill_diplomacy()

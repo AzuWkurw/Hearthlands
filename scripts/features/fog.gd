@@ -261,8 +261,8 @@ func draw_top(view: CanvasItem, rect: Rect2i) -> void:
 			var going := sim.time <= float(wk[3])
 			var path: PackedInt32Array = wk[1]
 			var dir := float(path[path.size() - 1] % sim.w - path[0] % sim.w)
-			mv._sprite("unit_scout", at + Vector2(0.5, 0.8), 0.42, int(sim.time * 5.0) % 4, (dir < 0) == going, sim.players[int(wk[0]) - 1].color.lightened(0.35))
-	view.draw_texture_rect(tex, Rect2(0, 0, sim.w, sim.h), false)
+			mv._sprite("unit_scout", at + Vector2(0.5, 0.8 - float(mv.lift_at(at.x + 0.5, at.y + 0.8))), 0.42, int(sim.time * 5.0) % 4, (dir < 0) == going, sim.players[int(wk[0]) - 1].color.lightened(0.35))
+	mv.draw_map_texture(view, tex)
 
 
 func save_state() -> Dictionary:

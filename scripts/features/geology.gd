@@ -281,8 +281,9 @@ func draw_map(view: CanvasItem, rect: Rect2i) -> void:
 			for x in range(maxi(0, rect.position.x), mini(w, rect.end.x + 1)):
 				var i := y * w + x
 				if k.size() > i and k[i] == 1 and int(sim.ore[i]) == want and sim.vein_left(i) > 0:
-					view.draw_rect(Rect2(x + 0.08, y + 0.08, 0.84, 0.84), Color(ORE_COL[want], 0.35))
-					view.draw_rect(Rect2(x + 0.08, y + 0.08, 0.84, 0.84), Color(1, 1, 0.7, 0.8), false, 0.05)
+					var ly := float(mv.lift_at(x + 0.5, y + 0.5))
+					view.draw_rect(Rect2(x + 0.08, y + 0.08 - ly, 0.84, 0.84), Color(ORE_COL[want], 0.35))
+					view.draw_rect(Rect2(x + 0.08, y + 0.08 - ly, 0.84, 0.84), Color(1, 1, 0.7, 0.8), false, 0.05)
 	for m in marks:
 		var i: int = m[0]
 		var x := i % w
@@ -290,7 +291,7 @@ func draw_map(view: CanvasItem, rect: Rect2i) -> void:
 		if x < rect.position.x - 1 or y < rect.position.y - 1 or x > rect.end.x + 1 or y > rect.end.y + 1:
 			continue
 		var a := clampf((FADE - (sim.time - float(m[1]))) / 60.0, 0.0, 1.0)
-		var base := Vector2(x + 0.5, y + 0.85)
+		var base := Vector2(x + 0.5, y + 0.85 - float(mv.lift_at(x + 0.5, y + 0.85)))
 		view.draw_line(base, base + Vector2(0, -0.6), Color(0.35, 0.25, 0.15, a), 0.05)
 		var o := int(sim.ore[i]) if sim.vein_left(i) > 0 else 0
 		if o != 0:
@@ -310,7 +311,7 @@ func draw_top(view: CanvasItem, _rect: Rect2i) -> void:
 			continue
 		var surveying := sim.time >= float(t[3]) and sim.time < float(t[5])
 		var f := (4 + int(sim.time * 3.0) % 2) if surveying else int(sim.time * 5.0) % 4
-		mv._sprite("unit_worker_pick", at + Vector2(0.5, 0.85), 0.42, f, false, sim.players[int(t[0]) - 1].color.lightened(0.35))
+		mv._sprite("unit_worker_pick", at + Vector2(0.5, 0.85 - float(mv.lift_at(at.x + 0.5, at.y + 0.85))), 0.42, f, false, sim.players[int(t[0]) - 1].color.lightened(0.35))
 
 
 func save_state() -> Dictionary:
