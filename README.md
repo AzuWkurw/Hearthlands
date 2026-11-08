@@ -543,7 +543,9 @@ Rules:
 - **Names:**
   - `terrain_<water|beach|grass|mountain>_<0-3>` are four variants each, mixed randomly.
   - `road_<0-15>` are picked by which neighbours connect (bits: 1 up, 2 right, 4 down, 8 left).
-  - `deco_tree_0/1/2`, `deco_rock_0/1`, `deco_clay` and `deco_peak_0/1` (mountain peaks) are scenery.
+  - `deco_tree_0` to `deco_tree_4`, `deco_rock_0/1`, `deco_clay` and `deco_peak_0/1` (mountain peaks) are scenery.
+    Trees and peaks are 64 x 96 (one tile wide, the foot at the bottom), boulders 64 x 64; they stand upright
+    on the raised ground.
     Trees and peaks are 1.5 tiles tall and reach into the tile above.
   - `ore_<1-5>` are deposits: coal, iron, gold, granite, copper.
   - `res_<id>` are resource icons and `bld_<id>` are buildings.
@@ -758,6 +760,8 @@ tools/
   shot_b33.gd, shot_raised.gd, shot_lang.gd           screenshots of the build 33 additions
   shot_missions.gd, shot_sea.gd, shot_stats.gd, shot_b34.gd   screenshots of the build 34 additions
   make_textures.py   regenerates default textures (--force to overwrite them all)
+  make_scenery.py    the shaded trees, peaks and boulders (called by make_textures.py)
+  shot_scenery.gd, shot_editor.gd   screenshots of the scenery and the map editor
   make_sounds.py     regenerates the sounds
   bump_build.py      raises the build number before a release
   readme_tables.py   rebuilds the resource, building and research tables in this README from the data

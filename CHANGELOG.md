@@ -1,5 +1,13 @@
 # Changelog
 
+## Build 35 (v0.30.0, 2026-11-08)
+
+- Trees, mountain peaks and boulders stand upright on the hills instead of being bent and stretched with the raised ground.
+- New pictures for them, twice as detailed and shaded so they look round: firs, spruces, oaks, limes and birches (two more kinds of tree), peaks with a lit and a shaded side, boulders with soft shadows.
+- Woods grow in patches of one kind (firs here, broad-leaved trees there), and each tree is a little bigger or smaller, lighter or darker and off the tile's centre, so forests no longer look stamped.
+- Map editor: ore you paint shows at once, and painting redraws only the part of the map that changed instead of the whole map.
+- The map editor takes the side panel's place, so it no longer covers the map.
+
 ## Build 34 (v0.29.0, 2026-11-08)
 
 The eight ideas from the "what next" list, and smaller touches with them.
