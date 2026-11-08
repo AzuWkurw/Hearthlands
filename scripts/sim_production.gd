@@ -99,6 +99,9 @@ func start_check(b: Sim.Bld, p: Sim.Player) -> String:
 			if o == "research":
 				full = false
 				continue
+			if o == "ship":
+				full = p.ships >= SimSea.MAX_SHIPS
+				continue
 			var cap := sim.capacity(p, o)
 			var have := float(p.stock.get(o, 0.0))
 			# goods on their way only matter near the top: far below it, skip counting them
@@ -146,7 +149,7 @@ func _count_cycle(b: Sim.Bld, p: Sim.Player, c: Dictionary) -> void:
 	var out: Dictionary = b.def.get("out", {})
 	var extra := _extra_out(p, b.ty)
 	for k in out:
-		if k != "research":
+		if k != "research" and k != "ship":
 			c[k] = float(c.get(k, 0.0)) + float(out[k]) + extra
 
 
@@ -171,6 +174,11 @@ func deliver(b: Sim.Bld, p: Sim.Player, res: String, n: int) -> void:
 	sim.made(p, res, n)
 	for f: Feature in sim.features:
 		f.on_made_at(b, p, res, n)
+	if res == "ship":
+		p.ships = mini(SimSea.MAX_SHIPS, p.ships + n)
+		if not p.ai:
+			sim.emit_log("A new ship is ready (%d in all)." % p.ships, Color("8fc0ff"), Vector2i(b.x, b.y))
+		return
 	if res == "research":
 		var gain := n * (1.0 + sim.mod(p, "research")) * float(sim.opts.research)
 		p.rp += gain

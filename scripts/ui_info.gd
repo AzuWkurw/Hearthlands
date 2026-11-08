@@ -177,6 +177,17 @@ func _refresh_sel() -> void:
 			kb.set_pressed_no_signal((b.keep if b.keep > 0 else 2) == k)
 			kb.tooltip_text = tr("Carriers bring enough for %d work cycle%s (food for %d). More keeps it working through gaps; less leaves more in the stores for others.") % [k, "s" if k > 1 else "", maxi(1, k / 2)]
 			main.prio_row.add_child(kb)
+	# a harbour: ships, and an expedition to another coast
+	if b.p == 1 and b.ty == "harbour" and b.state == "ready":
+		var me := main.sim.human()
+		main.prio_row.add_child(main._label("Ships: %d (%d at sea)" % [me.ships, me.ships_out], 14, Main.DIM))
+		var eb := main._button("Send an expedition", func():
+			main.expedition_from = b.id
+			main.view.place_type = "@expedition"
+			main._show_hint("Click a free coast across the water (Esc to stop).", 4.0))
+		eb.tooltip_text = "A ship, 4 planks and 2 stone from this harbour and a soldier from the headquarters sail to another coast and found a harbour there, with land around it."
+		eb.disabled = main.sim.sea.free_ships(me) < 1
+		main.sel_actions.add_child(eb)
 	# a building site: ring a bell when it is finished
 	if b.p == 1 and (b.state == "build" or b.reno_to >= 0):
 		var wb := main._button(tr("Bell when done: %s") % ("on" if main.watch.has(b.id) else "off"), func():

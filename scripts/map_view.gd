@@ -582,7 +582,7 @@ func _draw() -> void:
 		else:
 			prog = 1.0 - clampf((sim.time - t.t1) / maxf(0.01, t.t2 - t.t1), 0.0, 1.0)
 		# carriers bringing materials walk the other way: from the store out to the site
-		if t.site != 0 or t.dest != 0:
+		if (t.site != 0 or t.dest != 0) and t.kind != "ship":
 			prog = 1.0 - prog
 		var f := prog * n
 		var k := mini(floori(f), n - 1)
@@ -620,7 +620,7 @@ func _draw() -> void:
 				_batch_layer = 0
 			continue
 		# facing: the way along the path it is walking (backwards on the way home)
-		var dx := (c % w - a % w) * (-1 if t.delivered else 1) * (-1 if (t.site != 0 or t.dest != 0) else 1)
+		var dx := (c % w - a % w) * (-1 if t.delivered else 1) * (-1 if (t.site != 0 or t.dest != 0) and t.kind != "ship" else 1)
 		if not t.legs.is_empty():
 			dx = c % w - a % w
 		var step := int(f * 8.0) if animate else 0
@@ -636,6 +636,18 @@ func _draw() -> void:
 			var cls := String(wb.def.get("worker", "peasant")) if wb != null else "peasant"
 			var fid := "unit_folk_artisan" if cls == "artisan" else "unit_folk_peasant"
 			_person(fid, pos, step % (8 if Tex.frames(fid) >= 10 else 4), dx < 0, pc.lightened(0.25))
+			continue
+		if t.kind == "ship":
+			# a little ship: brown hull, a white sail with the realm's colour
+			var fl := -1.0 if dx < 0 else 1.0
+			var bob := 0.03 * sin(sim.time * 3.0 + t.t0)
+			var hp := pos + Vector2(0, -0.2 + bob)
+			draw_colored_polygon(PackedVector2Array([hp + 1.6 * Vector2(-0.45 * fl, -0.1), hp + 1.6 * Vector2(0.5 * fl, -0.1), hp + 1.6 * Vector2(0.3 * fl, 0.12), hp + 1.6 * Vector2(-0.35 * fl, 0.12)]), Color("6b4a2a"))
+			draw_line(hp + 1.6 * Vector2(0, -0.1), hp + 1.6 * Vector2(0, -0.75), Color("3a2a18"), 0.07)
+			draw_colored_polygon(PackedVector2Array([hp + 1.6 * Vector2(0.03 * fl, -0.72), hp + 1.6 * Vector2(0.34 * fl, -0.2), hp + 1.6 * Vector2(0.03 * fl, -0.2)]), Color("f2efe4"))
+			draw_rect(Rect2(hp + 1.6 * Vector2(-0.02, -0.82), Vector2(0.16 * fl, 0.08)).abs(), pc)
+			if t.res != "@expedition" and _res_tex.has(t.res):
+				draw_texture_rect(_res_tex[t.res], Rect2(hp + 1.6 * Vector2(-0.32 * fl - 0.1, -0.32), Vector2(0.32, 0.32)), false)
 			continue
 		if t.kind == "soldier":
 			_sprite(_soldier_id(t.n if t.n >= 0 else float(sim.players[t.p - 1].age)), pos, 0.5, step % 4, dx < 0, pc.lightened(0.2))

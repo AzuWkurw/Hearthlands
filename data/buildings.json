@@ -2076,5 +2076,53 @@
    "sw": 2.0
   },
   "trade": "farming"
+ },
+ "harbour": {
+  "name": "Harbour",
+  "cat": "logistics",
+  "size": "medium",
+  "cost": {
+   "planks": 6,
+   "stone": 4
+  },
+  "time": 40,
+  "store": 20,
+  "porters": 4,
+  "residence": 8,
+  "radius": 5,
+  "garrison": 1,
+  "site": "shore:2",
+  "info": "A store on the coast. Expeditions sail from here to found a colony on another shore (a ship, 4 planks, 2 stone and a soldier), and ships carry goods between your harbours that no road joins. Holds a little land, a soldier, and 8 people.",
+  "art": {
+   "style": "barn",
+   "wall": "#6f8fa8",
+   "sw": 2.0
+  }
+ },
+ "shipyard": {
+  "name": "Shipyard",
+  "cat": "logistics",
+  "size": "medium",
+  "cost": {
+   "planks": 5,
+   "stone": 2
+  },
+  "time": 30,
+  "worker": "artisan",
+  "cycle": 90,
+  "in": {
+   "planks": 4
+  },
+  "out": {
+   "ship": 1
+  },
+  "site": "shore:2",
+  "info": "Builds a ship from 4 planks every work cycle, up to 6 ships. Ships sail expeditions and carry goods between harbours.",
+  "art": {
+   "style": "workshop",
+   "wall": "#8a7050",
+   "sw": 2.0
+  },
+  "trade": "woodwork"
  }
 }

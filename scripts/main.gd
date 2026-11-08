@@ -1346,6 +1346,12 @@ func _use_tool(t: Vector2i) -> void:
 		"@flag":
 			_show_hint(sim.logistics.toggle_flag(t.x, t.y, 1), 2.5)
 			view.queue_redraw()
+		"@expedition":
+			var hb: Sim.Bld = sim.by_id.get(expedition_from)
+			var why := sim.sea.expedition(me, hb, t.x, t.y)
+			_show_hint(why if why != "" else "The expedition sets sail.", 3.5)
+			if why == "":
+				view.place_type = ""
 		"@unroad":
 			var n := sim.remove_road(t.x, t.y, 1)
 			_show_hint(tr("Removed %d road tiles.") % n if n > 0 else "Click one of your roads.", 2.0)
@@ -1388,6 +1394,7 @@ const KEY_ACTIONS := [
 	["quicksave", "Quick save", KEY_F5],
 	["quickload", "Quick load", KEY_F9],
 ]
+var expedition_from := 0   # the harbour an expedition will leave from (the @expedition tool)
 var watch := {}     # building sites the player wants to hear about when finished (id -> true)
 var key_wait := ""   # an action waiting for its new key (Settings, Keys)
 
@@ -1592,6 +1599,7 @@ func _process(delta: float) -> void:
 			"@road": hint.text = "Build road: " + ("click where the road should go (Esc to stop)" if view.road_start.x >= 0 else "click one of your roads or buildings to start")
 			"@pave": hint.text = "Pave road: click a road (1 stone per tile, up to 12 tiles)"
 			"@flag": hint.text = "Flag: click one of your roads to set or take away a flag (Esc to stop)"
+			"@expedition": hint.text = "Expedition: click a free coast across the water (Esc to stop)"
 			"@unroad": hint.text = "Remove road: click a road to remove that stretch"
 			"@work": hint.text = "Move work area: click its new centre"
 			_:

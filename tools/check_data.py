@@ -14,7 +14,7 @@ SIZES = {"small", "medium", "large", "mine"}
 CATS = {"raw", "food", "industry", "crafts", "folk", "science", "logistics", "mil", "special"}  # special: the headquarters
 WORKERS = {"peasant", "artisan", "noble", "scout"}
 FEATURES = {"statistics", "seasons", "clothing", "diseases", "events", "tool_quality", "fog", "geology", "wildlife"}
-VIRTUAL = {"food", "research"}  # "food" in an input means any food; "research" out means research points
+VIRTUAL = {"food", "research", "ship"}  # "ship": a ship for the realm (sim_sea.gd)  # "food" in an input means any food; "research" out means research points
 
 
 def load(name, mods):

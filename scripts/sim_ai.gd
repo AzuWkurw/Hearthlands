@@ -292,6 +292,8 @@ func _ai_build(p: Sim.Player, ty: String) -> String:
 func ai_think(p: Sim.Player) -> void:
 	_free_pid = -1
 	_plan_town(p)
+	if p.crowded:
+		sim.sea.ai_expedition(p)
 	var cnt := {}
 	var building := 0
 	var unocc := 0
@@ -375,6 +377,8 @@ func ai_think(p: Sim.Player) -> void:
 		["fortress", c.call("fortress") + 1 if mins > 25 and unocc == 0 and p.reserve > 6 else 0],
 		["battery", c.call("battery") + 1 if war and unocc == 0 and p.reserve > 4 and c.call("battery") < 4 else 0],
 		["donkey_farm", 1 if mins > 10 and bool(sim.opts.get("road_carriers", false)) else 0],
+		# crowded realms by the sea look for land across the water
+		["harbour", 1 if mins > 18 and p.crowded else 0], ["shipyard", 1 if c.call("harbour") > 0 else 0],
 		["catapult", mini(3, _siege_targets(p)) if mins > 14 and S.stone > 12 and p.techs.has("stone_masonry") else 0],
 		["bastion", c.call("bastion") + 1 if mins > 28 and unocc == 0 and p.reserve > 8 and c.call("bastion") < 3 else 0],
 		["redoubt", c.call("redoubt") + 1 if mins > 35 and unocc == 0 and p.reserve > 12 and c.call("redoubt") < 3 else 0],

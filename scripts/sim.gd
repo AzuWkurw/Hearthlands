@@ -22,6 +22,7 @@ var ai := SimAI.new(self)
 var military := SimMilitary.new(self)
 var logistics := SimLogistics.new(self)
 var research := SimResearch.new(self)
+var sea := SimSea.new(self)
 var people := SimPeople.new(self)
 var production := SimProduction.new(self)
 
@@ -33,6 +34,7 @@ func dispose() -> void:
 	military.sim = null
 	logistics.sim = null
 	research.sim = null
+	sea.sim = null
 	production.sim = null
 	people.sim = null
 	for f: Feature in features:
@@ -244,6 +246,8 @@ class Player:
 	var segs := {}                         # road carriers mode: stretch of road (two flag tiles) -> when its carrier is free again
 	var road_carriers := 0                 # road carriers mode: porters posted on stretches in use
 	var flags := {}                        # road carriers mode: flags the player set on roads (tile -> true)
+	var ships := 0                         # ships built at its shipyards
+	var ships_out := 0                     # ships at sea (expeditions and cargoes)
 	var donkeys_used := 0                  # road carriers mode: donkeys out helping on busy stretches
 	var store_total := 0                   # room for each good across all stores (before per-good factors)
 	var store_porters := 0                 # porters employed by the stores
@@ -310,6 +314,7 @@ class Trip:
 	var site := 0      # a construction site this carrier brings materials to (0: goods to a store)
 	var dest := 0      # a building this carrier brings goods to work with (from a store)
 	var legs := PackedFloat32Array()  # road carriers mode: per stretch [from path index, to index, start, end]
+	var aim := -1      # a ship on an expedition: the tile it lands on
 	var res2 := ""    # a second good in the same load for that building (filling the load up)
 	var n2 := 0
 	                   # kind "builder" or "soldier": a person walking to building `site` (0: walking home);
@@ -1854,7 +1859,9 @@ func tick(dt: float) -> void:
 		if not t.delivered and time >= t.t1:
 			t.delivered = true
 			var p := players[t.p - 1]
-			if t.kind == "builder" or t.kind == "soldier" or t.kind == "worker":
+			if t.kind == "ship":
+				sea.ship_arrival(t, p)
+			elif t.kind == "builder" or t.kind == "soldier" or t.kind == "worker":
 				_walker_arrival(t, p)
 			elif t.dest != 0:
 				logistics.input_arrival(t, p)
@@ -1971,6 +1978,7 @@ func _secondly() -> void:
 			logistics.road_carrier_tick(p)
 	if int(time) % 5 == 0:
 		logistics.transfers()
+		sea.sea_transfers()
 	Diplomacy.expire(self)
 	for f: Feature in features:
 		f.on_second()
