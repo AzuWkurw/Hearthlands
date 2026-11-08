@@ -22,6 +22,8 @@ var ai := SimAI.new(self)
 var military := SimMilitary.new(self)
 var logistics := SimLogistics.new(self)
 var research := SimResearch.new(self)
+var people := SimPeople.new(self)
+var production := SimProduction.new(self)
 
 
 ## The parts and the simulation refer to each other, so neither would ever be freed on its own.
@@ -31,6 +33,8 @@ func dispose() -> void:
 	military.sim = null
 	logistics.sim = null
 	research.sim = null
+	production.sim = null
+	people.sim = null
 	for f: Feature in features:
 		f.sim = null
 
@@ -1499,21 +1503,11 @@ func materials_text(b: Bld) -> String:
 # ================================================================ economy
 
 func food_total(p: Player) -> float:
-	var t := 0.0
-	for f in GameData.food_ids:
-		t += float(p.stock[f])
-	return t
+	return people.food_total(p)
 
 
-## Takes the cheapest food item. Returns its food value, or 0 if there is none.
 func take_food(p: Player, at := -1) -> float:
-	for f in GameData.food_ids:
-		if p.stock[f] >= 1.0:
-			if logistics.take(p, f, 1.0, at) < 1.0:
-				continue
-			used(p, f, 1.0)
-			return GameData.food_value(f)
-	return 0.0
+	return people.take_food(p, at)
 
 
 ## Puts n of res into realm p's stores, nearest tile `at` first (see SimLogistics.give).
@@ -1639,122 +1633,27 @@ func made(p: Player, res: String, n: float) -> void:
 
 
 func housing(p: Player) -> int:
-	var c := 0
-	for b in realm_blds(p):
-		if b.state == "ready":
-			c += int(b.def.get("housing", 0))
-	return int(c * (1.0 + mod(p, "housing")))
+	return people.housing(p)
 
 
 func pop_total(p: Player) -> int:
-	return p.peasant + p.artisan + p.noble
+	return people.pop_total(p)
 
 
 func soldiers(p: Player) -> int:
-	var c := p.reserve
-	for b in mil_list():
-		if b.p == p.id:
-			c += b.garrison
-	for a in attacks:
-		if a.p == p.id:
-			c += a.n
-	return c
+	return people.soldiers(p)
 
 
 func idle(p: Player, cls: String) -> int:
-	return p.peasant - p.used_peasant if cls == "peasant" else p.artisan - p.used_artisan
+	return people.idle(p, cls)
 
 
 func rate(p: Player, b: Bld) -> float:
-	var r := p.prod if p.ai else 1.0
-	if p.starve > 0:
-		r *= 0.5
-	if not _type_bonus.has(p.id):
-		_type_bonus[p.id] = {}
-	var tb: Dictionary = _type_bonus[p.id]
-	var bonus: float
-	if tb.has(b.ty):
-		bonus = tb[b.ty]
-	else:
-		bonus = mod(p, "speed:" + b.ty) + mod(p, "speed:cat:" + String(b.def.get("cat", ""))) + mod(p, "speed:all") + mod(p, "speed:trade:" + GameData.trade(b.ty))
-		tb[b.ty] = bonus
-	for f: Feature in features:
-		bonus += f.speed_bonus(p, b)
-	# spearmen are cheap and quick to train
-	if p.age == 1 and String(b.def.get("train", "")) == "soldier":
-		bonus += 0.3
-	if String(b.def.get("worker", "")) == "artisan":
-		r *= 1.0 + 0.25 * float(p.sat.artisan)
-		bonus += mod(p, "speed:worker:artisan")
-	return r * (1.0 + bonus) * (1.0 + LEVEL_BONUS * (level(b.wxp, WORKER_XP) - 1))
+	return people.rate(p, b)
 
 
 func staffing(p: Player) -> void:
-	var ip := p.peasant - p.away
-	var ia := p.artisan - (mini(p.keep_artisans, p.artisan) if p.ai else 0)
-	var isc := p.scout - p.scout_out
-	var mine := realm_blds(p)
-	p.tool_wait = {}
-	# builders and workers go to high-priority buildings first, then normal, then low; paused get none.
-	# The buildings are put in that order once; when every priority is normal the list stays as it is.
-	var ordered: Array = mine
-	var hi := []
-	var lo := []
-	var pa := []
-	for b: Bld in mine:
-		if b.prio == PRIO_HIGH: hi.append(b)
-		elif b.prio == PRIO_LOW: lo.append(b)
-		elif b.prio == PRIO_PAUSED: pa.append(b)
-	if hi.size() + lo.size() + pa.size() > 0:
-		ordered = hi
-		for b: Bld in mine:
-			if b.prio == PRIO_NORMAL:
-				ordered.append(b)
-		ordered.append_array(lo)
-		ordered.append_array(pa)
-	for b: Bld in ordered:
-		if b.state == "build":
-			b.staffed = b.prio != PRIO_PAUSED and ip > 0
-			if b.staffed: ip -= 1
-			# the builder walks from a store to the site before work starts; he leaves if taken off it
-			if b.staffed and b.builder == 0 and not creative(p):
-				if send_from_home(b, p, "builder", "peasant"):
-					b.builder = 1
-			elif not b.staffed and b.builder != 0:
-				b.builder = 0
-	for b: Bld in ordered:
-		if b.state != "ready":
-			continue
-		if b.cyc > 0.0:
-			b.rate_c = rate(p, b)
-		var wk := String(b.def.get("worker", ""))
-		var was := b.staffed
-		if wk == "peasant":
-			b.staffed = b.prio != PRIO_PAUSED and ip > 0 and (was or _can_hire(p, b))
-			if b.staffed: ip -= 1
-		elif wk == "artisan":
-			b.staffed = b.prio != PRIO_PAUSED and ia > 0 and (was or _can_hire(p, b))
-			if b.staffed: ia -= 1
-		elif wk == "scout":
-			b.staffed = b.prio != PRIO_PAUSED and isc > 0
-			if b.staffed: isc -= 1
-		if b.staffed:
-			b.need_tool = ""
-		if was and not b.staffed:
-			_release_worker(p, b)
-		elif b.staffed and not was:
-			_hire_worker(p, b)
-		# a newly hired worker walks from his home; one who leaves goes home
-		if b.staffed and b.worker == 0 and walks_to_work(b):
-			if creative(p) or send_from_home(b, p, "worker", wk):
-				b.worker = 2 if creative(p) else 1
-		elif not b.staffed and b.worker != 0:
-			b.worker = 0
-	p.used_peasant = p.peasant - ip
-	p.used_artisan = p.artisan - ia
-	p.used_scout = p.scout - p.scout_out - isc
-	_trim_specialists(p, "peasant", p.peasant - p.used_peasant)
-	_trim_specialists(p, "artisan", p.artisan - p.used_artisan)
+	people.staffing(p)
 
 
 ## Whether building b has a priority to set: construction sites and buildings with a worker.
@@ -1762,502 +1661,72 @@ func has_priority(b: Bld) -> bool:
 	return b.state == "build" or b.def.has("worker")
 
 
-## Sets building b's priority and hands out workers again at once, so the change shows straight away.
 func set_priority(b: Bld, pr: int) -> void:
-	b.prio = clampi(pr, PRIO_PAUSED, PRIO_HIGH)
-	b.retry = 0.0
-	b.fails = 0
-	staffing(players[b.p - 1])
+	people.set_priority(b, pr)
 
 
-## The key of the specialist pool for building b's workers: "class:trade".
 func spec_key(b: Bld) -> String:
-	return String(b.def.get("worker", "")) + ":" + GameData.trade(b.ty)
+	return people.spec_key(b)
 
 
-## Building b's worker leaves (no worker to spare, or the building is gone). Experience counts only
-## in the trade he worked in, so he joins the idle workers as a specialist of that trade.
 func _release_worker(p: Player, b: Bld) -> void:
-	b.retry = 0.0
-	if b.wxp >= WORKER_XP[1]:
-		var key := spec_key(b)
-		if not p.spec.has(key):
-			p.spec[key] = []
-		(p.spec[key] as Array).append(b.wxp)
-	b.wxp = 0.0
+	people._release_worker(p, b)
 
 
-## Building b gets a worker: the most experienced idle specialist of its trade if there is one,
-## otherwise a newcomer who starts at level 1.
 func _hire_worker(p: Player, b: Bld) -> void:
-	b.wxp = 0.0
-	var pool: Array = p.spec.get(spec_key(b), [])
-	if pool.is_empty():
-		# a newcomer: he takes his trade's tool from the stores, unless good tool care lets him make do
-		var tool := tool_of(b)
-		var took := ""
-		if tool != "" and float(p.stock.get(tool, 0.0)) >= 1.0 and rng.randf() >= mod(p, "tool_save"):
-			take(p, tool, 1.0, idx(b.x, b.y))
-			used(p, tool, 1.0)
-			took = tool
-		for f: Feature in features:
-			f.on_hire(p, b, took)
-		return
-	var best := 0
-	for i in pool.size():
-		if float(pool[i]) > float(pool[best]):
-			best = i
-	b.wxp = float(pool[best])
-	pool.remove_at(best)
-	for f: Feature in features:
-		f.on_hire(p, b, "")
+	people._hire_worker(p, b)
 
 
-## There can't be more idle specialists than idle workers (some were trained into another class,
-## starved, or took a job in a different trade). The least experienced lose their specialty first.
 func _trim_specialists(p: Player, cls: String, idle_n: int) -> void:
-	var all := []
-	for key: String in p.spec:
-		if key.begins_with(cls + ":"):
-			for i in (p.spec[key] as Array).size():
-				all.append([float(p.spec[key][i]), key])
-	var extra := all.size() - maxi(0, idle_n)
-	if extra <= 0:
-		return
-	all.sort_custom(func(a, c): return a[0] < c[0])
-	for n in extra:
-		var pool: Array = p.spec[all[n][1]]
-		pool.erase(all[n][0])
+	people._trim_specialists(p, cls, idle_n)
 
 
-## How many workers of each trade a realm has, at work and idle, with their levels.
-## Returns trade -> {"work": n, "idle": n, "levels": total level of those at work, "spec": specialists at work}.
 func trade_summary(p: Player) -> Dictionary:
-	var out := {}
-	for b: Bld in realm_blds(p):
-		if b.state != "ready" or not b.staffed or not b.def.has("worker"):
-			continue
-		var t := GameData.trade(b.ty)
-		if not out.has(t):
-			out[t] = {"work": 0, "idle": 0, "levels": 0, "spec": 0}
-		var lv := level(b.wxp, WORKER_XP)
-		out[t].work += 1
-		out[t].levels += lv
-		if lv >= SPECIALIST:
-			out[t].spec += 1
-	for key: String in p.spec:
-		var t2 := key.split(":")[1]
-		if (p.spec[key] as Array).is_empty():
-			continue
-		if not out.has(t2):
-			out[t2] = {"work": 0, "idle": 0, "levels": 0, "spec": 0}
-		out[t2].idle += (p.spec[key] as Array).size()
-	return out
+	return people.trade_summary(p)
 
 
 func start_check(b: Bld, p: Player) -> String:
-	var d := b.def
-	if b.reno_to >= 0:
-		return "Being renovated"
-	if not connected(b):
-		return "Not connected by road to a store"
-	var waiting := 0
-	for k in b.out_buf:
-		waiting += int(b.out_buf[k])
-	if waiting >= 6:
-		return "Waiting for carriers"
-	var inp: Dictionary = d.get("in", {})
-	# what it works with must have been carried here from a store first
-	for k in inp:
-		var n := int(inp[k])
-		var here := logistics.food_at(b, false) if k == "food" else int(b.inbuf.get(k, 0))
-		if here < n:
-			var name := "food" if k == "food" else GameData.res_name(k).to_lower()
-			var way := logistics.food_at(b) - here if k == "food" else int(b.incoming.get(k, 0))
-			if way > 0:
-				return "Waiting for %s on its way" % name
-			return "Needs " + name
-	var wc := work_center(b)
-	var wr := work_radius(b)
-	match String(d.get("act", "")):
-		"cut_tree":
-			b.target = find_near(wc.x, wc.y, wr, "tree")
-			if b.target < 0: return "No trees left in the work area"
-		"cut_rock":
-			b.target = find_near(wc.x, wc.y, wr, "rock")
-			if b.target < 0: return "No stone left in the work area"
-		"fish":
-			b.target = find_near(wc.x, wc.y, wr, "fish")
-			if b.target < 0: return "No fish left in the work area"
-		"dig_clay":
-			b.target = find_near(wc.x, wc.y, wr, "clay")
-			if b.target < 0: return "No clay left in the work area"
-		"plant":
-			b.target = find_near(wc.x, wc.y, wr, "plant", 0, b.p)
-			if b.target < 0: return "No room to plant in the work area"
-	if d.has("mine"):
-		b.target = find_near(b.x, b.y, 2, "ore", int(d.mine))
-		if b.target < 0: return "Deposit exhausted"
-	var sc := site_check(d, wc.x, wc.y, true)
-	if sc != "": return sc
-	var keeps_food := String(d.get("train", "")) == "noble" or (d.get("out", {}) as Dictionary).has("research")
-	if keeps_food and food_total(p) < pop_total(p) * 0.2 + 10.0:
-		return "Saving food for the people"
-	match String(d.get("train", "")):
-		"artisan":
-			if idle(p, "peasant") < 1: return "No idle peasant"
-			if idle(p, "artisan") >= 2: return "Enough artisans for now"
-			if p.peasant < p.artisan * 2 or p.starve > 0: return "Peasants are needed on the land"
-		"soldier":
-			# with no artisan to train, an old soldier at headquarters is retrained to the current kind
-			b.retrain = false
-			if idle(p, "artisan") < 1:
-				if mix_oldest(rmix_of(p)) < p.age:
-					b.retrain = true
-				else:
-					return "No idle artisan"
-		"noble":
-			if idle(p, "artisan") < 1: return "No idle artisan"
-		"scout":
-			if idle(p, "peasant") < 1: return "No idle peasant"
-			if p.scout - p.used_scout - p.scout_out >= 2: return "Enough scouts for now (2 idle)"
-	if String(d.get("train", "")) == "noble" and p.noble >= maxi(2, p.artisan / 2):
-		return "Enough nobles for now"
-	if d.has("makes_tools") and wanted_tool(p) == "":
-		return "Every tool is in stock (see production targets)"
-	var outs: Dictionary = d.get("out", {})
-	if outs.size() > 0:
-		# goods already on their way (waiting at buildings, on a carrier's back, or being made) count
-		# as in store, so the stores never take more than they hold
-		var extra := _extra_out(p, b.ty)
-		var full := true
-		var by_target := false
-		var full_res := ""
-		for o in outs:
-			if o == "research":
-				full = false
-				continue
-			var cap := capacity(p, o)
-			var have := float(p.stock.get(o, 0.0))
-			# goods on their way only matter near the top: far below it, skip counting them
-			if have + float(outs[o]) + extra > cap - maxf(30.0, cap * 0.5):
-				have += coming(p, o)
-			var tg := target_of(p, o)
-			if tg >= 0 and have >= tg:
-				by_target = true
-			elif have + float(outs[o]) + extra <= cap:
-				full = false
-			elif full_res == "":
-				full_res = o
-		if full:
-			if by_target:
-				var o0: String = outs.keys()[0]
-				return "Target reached: %d %s in store" % [int(p.stock.get(o0, 0.0)), GameData.res_name(o0).to_lower()]
-			return "Stores are full of %s (%d of %d): production stops until some is used, or build a storehouse" % [GameData.res_name(full_res).to_lower(), int(p.stock.get(full_res, 0.0)), int(capacity(p, full_res))]
-	return ""
+	return production.start_check(b, p)
 
 
-## Goods of res on their way to realm p's stores: waiting at buildings for a carrier, carried, or
-## being made right now. Worked out once a tick.
 func coming(p: Player, res: String) -> float:
-	if _coming_tick != _ticks:
-		_coming_tick = _ticks
-		_coming = {}
-	if not _coming.has(p.id):
-		# worked out for one realm at a time, at most once a tick, and only when one of its stores is
-		# nearly full (see start_check)
-		var c: Dictionary = {}
-		for b: Bld in realm_blds(p):
-			if not b.out_buf.is_empty():
-				for k in b.out_buf:
-					c[k] = float(c.get(k, 0.0)) + float(b.out_buf[k])
-			if b.working and b.def.has("out"):
-				_count_cycle(b, p, c)
-		for t in trips:
-			if t.p == p.id and not t.delivered and t.site == 0 and t.dest == 0:
-				c[t.res] = float(c.get(t.res, 0.0)) + t.n
-		_coming[p.id] = c
-	return float((_coming[p.id] as Dictionary).get(res, 0.0))
+	return production.coming(p, res)
 
 
 func _count_cycle(b: Bld, p: Player, c: Dictionary) -> void:
-	var out: Dictionary = b.def.get("out", {})
-	var extra := _extra_out(p, b.ty)
-	for k in out:
-		if k != "research":
-			c[k] = float(c.get(k, 0.0)) + float(out[k]) + extra
+	production._count_cycle(b, p, c)
 
 
-## Extra goods a cycle of building type ty makes for realm p (research "out:" effects), remembered
-## until the realm's research changes.
 func _extra_out(p: Player, ty: String) -> int:
-	if not _type_bonus.has(p.id):
-		_type_bonus[p.id] = {}
-	var tb: Dictionary = _type_bonus[p.id]
-	var key := "+" + ty
-	if not tb.has(key):
-		tb[key] = int(mod(p, "out:" + ty))
-	return tb[key]
+	return production._extra_out(p, ty)
 
 
-## Puts n of res in realm p's stores, as much as there is room for (the rest is lost).
 func store_goods(p: Player, res: String, n: float, at := -1) -> void:
-	give(p, res, n, at)
+	production.store_goods(p, res, n, at)
 
 
 func deliver(b: Bld, p: Player, res: String, n: int) -> void:
-	made(p, res, n)
-	for f: Feature in features:
-		f.on_made_at(b, p, res, n)
-	if res == "research":
-		var gain := n * (1.0 + mod(p, "research")) * float(opts.research)
-		p.rp += gain
-		p.rp_total += gain
-		return
-	if is_store(b):
-		store_goods(p, res, n, idx(b.x, b.y))
-		return
-	b.out_buf[res] = int(b.out_buf.get(res, 0)) + n
-	_pending[b.id] = true
+	production.deliver(b, p, res, n)
 
 
 func finish_prod(b: Bld, p: Player) -> void:
-	var d := b.def
-	var tg := b.target
-	match String(d.get("act", "")):
-		"cut_tree":
-			if tg < 0 or deco[tg] != D_TREE: return
-			deco[tg] = 0; changed_tiles.append(tg)
-		"cut_rock":
-			if tg < 0: return
-			if deco[tg] == D_ROCK:
-				if not opts.endless_raw:
-					amt[tg] -= 1
-				if amt[tg] == 0: deco[tg] = 0; changed_tiles.append(tg)
-			elif not take_ore(tg, 4, rng.randf() < mod(p, "vein")):
-				return
-		"fish":
-			if tg < 0 or amt[tg] == 0: return
-			if not opts.endless_raw:
-				amt[tg] -= 1
-		"dig_clay":
-			if tg < 0 or deco[tg] != D_CLAY or amt[tg] == 0: return
-			if not opts.endless_raw:
-				amt[tg] -= 1
-			if amt[tg] == 0: deco[tg] = 0; changed_tiles.append(tg)
-		"plant":
-			if tg >= 0 and deco[tg] == 0 and bmap[tg] == 0 and plot[tg] == 0 and road[tg] == 0:
-				deco[tg] = D_TREE; changed_tiles.append(tg)
-			return
-	if d.has("mine"):
-		if tg < 0 or not take_ore(tg, int(d.mine), rng.randf() < mod(p, "vein")): return
-	if d.has("makes_tools"):
-		# the toolsmith makes, one by one, whichever tool is wanted most at that moment
-		for n in int(d.makes_tools) + int(mod(p, "out:" + b.ty)):
-			var tool := wanted_tool(p)
-			if tool == "":
-				break
-			deliver(b, p, tool, 1)
-	match String(d.get("train", "")):
-		"artisan":
-			if p.peasant > 3:
-				p.peasant -= 1; p.artisan += 1
-				if not p.ai: emit_log("A peasant became an artisan.", Color("86ad5c"), Vector2i(b.x, b.y))
-			return
-		"soldier":
-			if b.retrain:
-				b.retrain = false
-				var rm := rmix_of(p)
-				for k in clampi(p.age, 0, 5):
-					if int(rm[k]) > 0:
-						rm[k] -= 1
-						rm[clampi(p.age, 0, 5)] += 1
-						p.res_era = mix_avg(rm)
-						if not p.ai: emit_log("A %s was retrained as a %s." % [soldier_name(k), soldier_name(p.age)], Color("86ad5c"), Vector2i(b.x, b.y))
-						break
-				return
-			if p.artisan > 0:
-				p.artisan -= 1
-				p.res_xp = mix_xp(p.res_xp, p.reserve, 0.0, 1)
-				var rm := rmix_of(p)
-				rm[clampi(p.age, 0, 5)] += 1
-				p.reserve += 1
-				p.res_era = mix_avg(rm)
-				var vet := false
-				if p.stock.get("armor", 0.0) >= 1.0:
-					take(p, "armor", 1.0, idx(b.x, b.y)); p.vets += 1.0; vet = true
-				if not p.ai: emit_log("A new %s joins the headquarters." % ("veteran" if vet else "soldier"), Color("86ad5c"), Vector2i(p.hq.x, p.hq.y) if p.hq != null else Vector2i(-1, -1))
-			return
-		"noble":
-			if p.artisan > 0:
-				p.artisan -= 1; p.noble += 1
-				if not p.ai: emit_log("An artisan was raised to noble.", Color("86ad5c"), Vector2i(b.x, b.y))
-			return
-		"scout":
-			if p.peasant > 3:
-				p.peasant -= 1; p.scout += 1
-				if not p.ai: emit_log("A new scout is ready. Send him exploring, or he will man a watch tower.", Color("86ad5c"), Vector2i(p.hq.x, p.hq.y) if p.hq != null else Vector2i(-1, -1))
-			return
-	var out: Dictionary = d.get("out", {})
-	var extra := int(mod(p, "out:" + b.ty))
-	for k in out:
-		deliver(b, p, k, int(out[k]) + (extra if k != "research" else 0))
+	production.finish_prod(b, p)
 
 
 func build_tick(b: Bld, p: Player, dt: float) -> void:
-	if creative(p) and b.mat_total == 0:
-		b.prog = 1.0
-		_finish_site(b, p)
-		return
-	if not b.staffed:
-		b.msg = "Paused" if b.prio == PRIO_PAUSED else "Waiting for a builder"
-		return
-	if not connected(b):
-		b.msg = "Waiting for a road connection"
-		return
-	if b.builder != 2:
-		b.msg = "The builder is on his way" if b.builder == 1 else "Waiting for a builder"
-		return
-	# work goes only as far as the materials used so far allow; the builder uses the next one when
-	# he needs it, and waits when none has arrived
-	if b.mat_total > 0 and b.prog >= float(b.mat_used) / b.mat_total - 0.0001 and b.mat_used < b.mat_total:
-		var got := ""
-		for k in b.onsite:
-			if int(b.onsite[k]) > 0:
-				got = k
-				break
-		if got == "":
-			b.msg = "Waiting for materials"
-			return
-		b.onsite[got] = int(b.onsite[got]) - 1
-		if int(b.onsite[got]) <= 0:
-			b.onsite.erase(got)
-		b.spent[got] = int(b.spent.get(got, 0)) + 1
-		b.mat_used += 1
-	var fk := 1.0
-	for f: Feature in features:
-		fk *= f.build_factor(p, b)
-	b.prog += dt * fk * (0.6 if p.starve > 0 else 1.0) * (1.0 + mod(p, "build")) * float(opts.build) / maxf(1.0, float(b.def.get("time", 10)))
-	if b.mat_total > 0:
-		b.prog = minf(b.prog, float(b.mat_used) / b.mat_total)
-	b.msg = "Under construction"
-	if b.prog >= 1.0:
-		_finish_site(b, p)
+	production.build_tick(b, p, dt)
 
 
 func _finish_site(b: Bld, p: Player) -> void:
-	if b.builder == 2:
-		# the builder walks back to the store (only to be seen: he is free at once)
-		var path := logistics.store_path(b)
-		if path.size() >= 2:
-			var t := Trip.new()
-			t.p = p.id; t.kind = "builder"; t.res = "@builder"; t.n = 0; t.site = 0
-			t.t0 = time; t.t1 = time + logistics.net_dist(b.p, idx(b.x, b.y)) + 0.5; t.t2 = t.t1
-			t.path = path
-			trips.append(t)
-	b.builder = 0
-	if true:
-		b.state = "ready"; b.prog = 0.0; b.msg = ""
-		_after_building_change(b)
-		if is_store(b):
-			_recount_stores(p)
-		if b.def.has("garrison"):
-			mil_fill(p)
-			recompute_territory()
-		if not p.ai:
-			emit_log("%s is finished." % String(b.def.name), Color("d8aa4a"), Vector2i(b.x, b.y))
+	production._finish_site(b, p)
 
 
-## Runs only when a building wakes up: its work cycle ended, its last start check asked to be
-## repeated now, or its worker left. While a cycle runs the building sleeps until b.t_end, so
-## hundreds of busy buildings cost nothing in between.
 func prod_tick(b: Bld, p: Player, _dt: float) -> void:
-	var d := b.def
-	var cyc := b.cyc
-	if cyc <= 0.0:
-		return
-	if b.working:
-		if not b.staffed:
-			# the worker left in the middle of a cycle: the work so far is lost
-			b.working = false
-		elif time < b.t_end:
-			b.retry = b.t_end
-			return
-		else:
-			b.working = false
-			var before := level(b.wxp, WORKER_XP)
-			b.wxp += 1.0 + mod(p, "xp")
-			var after := level(b.wxp, WORKER_XP)
-			if after > before and after >= SPECIALIST and not p.ai:
-				emit_log("The %s's %s reached level %d." % [String(d.name).to_lower(), GameData.trade_title(GameData.trade(b.ty)), after], Color("a0d070"), Vector2i(b.x, b.y))
-			finish_prod(b, p)
-			for f: Feature in features:
-				f.on_cycle(p, b)
-	if not b.staffed:
-		if b.prio == PRIO_PAUSED:
-			b.msg = "Paused"
-		elif b.need_tool != "":
-			b.msg = "Needs %s for a new worker" % GameData.res_name(b.need_tool).to_lower()
-		else:
-			b.msg = "No %s available" % String(d.get("worker", "worker"))
-		b.retry = time + 1.0
-		return
-	if b.worker != 2 and walks_to_work(b):
-		b.msg = "The worker is on his way" if b.worker == 1 else "Waiting for a worker (no road from a home?)"
-		b.retry = time + 1.0
-		return
-	var t0 := Time.get_ticks_usec()
-	var why := start_check(b, p)
-	if why == "":
-		for f: Feature in features:
-			why = f.work_block(p, b)
-			if why != "":
-				break
-	_pf("start checks", t0)
-	if why != "":
-		b.msg = why
-		# wait before checking again: 1 second at first, up to 3 if it keeps failing;
-		# high-priority buildings keep checking every half second, so they grab goods as soon as they arrive
-		if b.prio == PRIO_HIGH:
-			b.retry = time + 0.5
-		else:
-			# waiting for goods: look again soon; waiting for the land or the stores to change (trees to
-			# grow, a store to empty): that takes a while, so look less often
-			var cap := 3.0 if why.begins_with("Needs") or why.begins_with("No idle") or why.begins_with("Waiting") else 6.0
-			b.retry = time + minf(1.0 + b.fails * 0.5, cap) + rng.randf() * 0.3
-		b.fails += 1
-		return
-	b.fails = 0
-	var inp: Dictionary = d.get("in", {})
-	for k in inp:
-		if k == "food":
-			# the cheapest food it has
-			var left := int(inp[k])
-			for f in GameData.food_ids:
-				while left > 0 and int(b.inbuf.get(f, 0)) > 0:
-					b.inbuf[f] = int(b.inbuf[f]) - 1
-					if int(b.inbuf[f]) <= 0: b.inbuf.erase(f)
-					used(p, f, 1.0)
-					left -= 1
-		else:
-			b.inbuf[k] = int(b.inbuf.get(k, 0)) - int(inp[k])
-			if int(b.inbuf[k]) <= 0: b.inbuf.erase(k)
-			used(p, k, float(inp[k]))
-	# the cycle's length is fixed now, from the walk and the current work speed
-	b.working = true
-	if _coming_tick == _ticks and _coming.has(p.id):
-		_count_cycle(b, p, _coming[p.id])     # so the next building this tick sees it
-	b.msg = "Working"
-	b.t_start = time
-	b.t_end = time + (cyc + walk_time(b)) / maxf(0.05, b.rate_c)
-	b.retry = b.t_end
+	production.prod_tick(b, p, _dt)
 
 
-## How far the current work cycle has got, from 0 to 1.
 func work_progress(b: Bld) -> float:
-	if not b.working or b.t_end <= b.t_start:
-		return 0.0
-	return clampf((time - b.t_start) / (b.t_end - b.t_start), 0.0, 1.0)
+	return production.work_progress(b)
 
 
 # ---------------------------------------------------------------- where people wait
@@ -2268,299 +1737,59 @@ func work_progress(b: Bld) -> float:
 ## roads from the nearest of these that has one. Who waits where is worked out from the counts each
 ## time it is needed (it is not saved), always in the same order.
 
-## Whether building b's worker walks there from his home (not soldiers' buildings, nor stores).
 func walks_to_work(b: Bld) -> bool:
-	var wk := String(b.def.get("worker", ""))
-	return wk == "peasant" or wk == "artisan" or wk == "scout"
+	return people.walks_to_work(b)
 
 
-## How many idle people of class cls building b holds at most (0: none wait there).
 func home_cap(b: Bld, cls: String) -> int:
-	if b.dead or b.state != "ready":
-		return 0
-	if b.ty == "hq":
-		return 1 << 30
-	var tr := String(b.def.get("train", ""))
-	if tr != "":
-		return 12 if tr == cls else 0
-	if cls == "peasant" or cls == "artisan":
-		return int(b.def.get("residence", b.def.get("housing", 0)))
-	return 0
+	return people.home_cap(b, cls)
 
 
 var _avail_at := {}      # realm id -> tick the list below was worked out
 var _avail := {}         # realm id -> {class: {building id: idle people there}}
 
-## Who waits where in realm p right now: {class: {building id: count}}, worked out once per tick.
 func home_avail(p: Player) -> Dictionary:
-	if int(_avail_at.get(p.id, -1)) == _ticks and _avail.has(p.id):
-		return _avail[p.id]
-	var idle_n := {"peasant": maxi(0, p.peasant - p.used_peasant), "artisan": maxi(0, p.artisan - p.used_artisan),
-		"scout": maxi(0, p.scout - p.used_scout - p.scout_out), "soldier": maxi(0, p.reserve)}
-	var trainers := []
-	var homes := []
-	for b in realm_blds(p):
-		if b.dead or b.state != "ready" or b.ty == "hq":
-			continue
-		if String(b.def.get("train", "")) != "":
-			trainers.append(b)
-		elif int(b.def.get("residence", b.def.get("housing", 0))) > 0:
-			homes.append(b)
-	var out := {"peasant": {}, "artisan": {}, "scout": {}, "soldier": {}}
-	# the trained wait where they were trained
-	for b: Bld in trainers:
-		var cls := String(b.def.train)
-		if out.has(cls) and int(idle_n[cls]) > 0:
-			var n := mini(12, int(idle_n[cls]))
-			out[cls][b.id] = n
-			idle_n[cls] = int(idle_n[cls]) - n
-	# lodges first (they are built to keep workers close to work), then homes; a home's room is shared
-	homes.sort_custom(func(a: Bld, c: Bld): return (a.def.has("residence") and not c.def.has("residence")) or (a.def.has("residence") == c.def.has("residence") and a.id < c.id))
-	for b: Bld in homes:
-		var room := int(b.def.get("residence", b.def.get("housing", 0)))
-		for cls in ["peasant", "artisan"]:
-			var n := mini(room, int(idle_n[cls]))
-			if n > 0:
-				out[cls][b.id] = n
-				idle_n[cls] = int(idle_n[cls]) - n
-				room -= n
-	if p.hq != null and not p.hq.dead:
-		for cls in idle_n:
-			if int(idle_n[cls]) > 0:
-				out[cls][p.hq.id] = int(out[cls].get(p.hq.id, 0)) + int(idle_n[cls])
-	_avail[p.id] = out
-	_avail_at[p.id] = _ticks
-	return out
+	return people.home_avail(p)
 
 
-## The nearest building by road from building b where someone of class cls waits: [home, road from b
-## to it, walking time], or [] if none can be reached.
 func nearest_home(p: Player, b: Bld, cls: String) -> Array:
-	var avail: Dictionary = home_avail(p).get(cls, {})
-	if avail.is_empty():
-		return []
-	_stamp += 1
-	var st := _stamp
-	var s := idx(b.x, b.y)
-	var hp := MinHeap.new()
-	_gs[s] = 0.0; _came[s] = -1; _seen[s] = st
-	hp.push(0.0, s)
-	var nodes := 0
-	while hp.size() > 0:
-		var cur := hp.pop()
-		if _closed[cur] == st:
-			continue
-		_closed[cur] = st
-		if cur != s and bmap[cur] != 0:
-			var hb: Bld = by_id.get(bmap[cur])
-			if hb != null and hb.p == p.id and int(avail.get(hb.id, 0)) > 0:
-				var path := PackedInt32Array()
-				var c := cur
-				while c != -1:
-					path.append(c)
-					c = _came[c]
-				path.reverse()
-				return [hb, path, _gs[cur]]
-			if not logistics.is_store(hb):
-				continue
-		nodes += 1
-		if nodes > 6000:
-			break
-		var cx := cur % w
-		var cy := cur / w
-		for dd in 4:
-			var nx := cx + (1 if dd == 0 else (-1 if dd == 1 else 0))
-			var ny := cy + (1 if dd == 2 else (-1 if dd == 3 else 0))
-			if nx < 0 or ny < 0 or nx >= w or ny >= h:
-				continue
-			var ni := ny * w + nx
-			if _closed[ni] == st or owner[ni] != p.id:
-				continue
-			if bmap[ni] != 0:
-				var nb: Bld = by_id.get(bmap[ni])
-				if nb == null or nb.p != p.id:
-					continue
-			elif road[ni] != p.id:
-				continue
-			if not links(cur, ni):
-				continue
-			var ng := _gs[cur] + logistics.step_cost(cur, ni)
-			if _seen[ni] != st or ng < _gs[ni]:
-				_seen[ni] = st; _gs[ni] = ng; _came[ni] = cur
-				hp.push(ng, ni)
-	return []
+	return people.nearest_home(p, b, cls)
 
 
-## Someone of class cls walks from the nearest place he waits to building b: a "worker", "builder" or
-## "soldier" (n: the soldier's kind). False when nobody can reach it.
 func send_from_home(b: Bld, p: Player, kind: String, cls: String, n := 0) -> bool:
-	var hm := nearest_home(p, b, cls)
-	if hm.is_empty():
-		return false
-	var home: Bld = hm[0]
-	var avail: Dictionary = home_avail(p)[cls]
-	avail[home.id] = int(avail[home.id]) - 1
-	if int(avail[home.id]) <= 0:
-		avail.erase(home.id)
-	var speed := 1.15 if kind == "soldier" else 1.0
-	var t := Trip.new()
-	t.p = p.id; t.kind = kind; t.res = "@" + kind; t.n = n; t.site = b.id
-	t.t0 = time; t.t1 = time + float(hm[2]) / (speed * (1.0 + mod(p, "carry"))) + 0.5; t.t2 = t.t1
-	t.path = hm[1]
-	trips.append(t)
-	return true
+	return people.send_from_home(b, p, kind, cls, n)
 
 
-## A builder or soldier sets out from the nearest store to building b along the roads. False when
-## no road leads there. n: the soldier's kind.
 func send_walker(b: Bld, p: Player, kind: String, n: int) -> bool:
-	var path := logistics.store_path(b)
-	if path.size() < 2:
-		return false
-	var speed := 1.15 if kind == "soldier" else 1.0
-	var one_way := logistics.net_dist(b.p, idx(b.x, b.y)) / (speed * (1.0 + mod(p, "carry")))
-	var t := Trip.new()
-	t.p = p.id; t.kind = kind; t.res = "@" + kind; t.n = n; t.site = b.id
-	t.t0 = time; t.t1 = time + one_way + 0.5; t.t2 = t.t1
-	t.path = path
-	trips.append(t)
-	return true
+	return people.send_walker(b, p, kind, n)
 
 
-## A builder or soldier reached his building. A builder starts work there. A soldier joins the
-## garrison (the first one in claims the building's land); if the building is gone or was taken
-## meanwhile, he goes back to the reserve.
 func _walker_arrival(t: Trip, p: Player) -> void:
-	var b: Bld = by_id.get(t.site) if t.site != 0 else null
-	if t.kind == "builder":
-		if b != null and not b.dead and b.p == t.p and b.state == "build" and b.builder == 1:
-			b.builder = 2
-			b.retry = 0.0
-		return
-	if t.kind == "worker":
-		if b != null and not b.dead and b.p == t.p and b.state == "ready" and b.worker == 1:
-			b.worker = 2
-			b.retry = 0.0
-		return
-	if b != null and b.p == t.p:
-		b.walking = maxi(0, b.walking - 1)
-	if b != null and not b.dead and b.p == t.p and b.state == "ready" and b.def.has("garrison"):
-		b.sxp = mix_xp(b.sxp, b.garrison, p.res_xp, 1)
-		if t.n >= 0:
-			gmix_of(b)[t.n] += 1
-		b.garrison += 1
-		b.sera = mix_avg(gmix_of(b))
-		if b.garrison == 1:
-			recompute_territory()
-		_mil_dirty = true
-		return
-	if p.alive:
-		p.reserve += 1
-		if t.n >= 0:
-			rmix_of(p)[t.n] += 1
-		p.res_era = mix_avg(rmix_of(p))
+	people._walker_arrival(t, p)
 
 
 func mil_fill(p: Player) -> bool:
-	var changed := false
-	for b: Bld in mil_list():
-		if b.p != p.id or b.state != "ready" or not b.def.has("garrison"):
-			continue
-		if b.def.get("needs_noble", false) and p.noble < 1:
-			continue
-		var cap := garrison_wanted(b)
-		# soldiers leave the reserve and walk there along the roads; they join the garrison on arrival
-		# (_walker_arrival), and an empty building claims its land only once the first one is in
-		while b.garrison + b.walking < cap and p.reserve > (0 if b.garrison + b.walking == 0 else 2):
-			var rm := rmix_of(p)
-			var best := _newest_allowed(b, rm)
-			if best < 0 and b.garrison + b.walking > 0:
-				break                       # no soldier of an allowed kind at headquarters
-			if best < 0:
-				best = mix_newest(rm)       # an empty building takes anyone rather than stand empty
-			if not send_from_home(b, p, "soldier", "soldier", best) and not send_walker(b, p, "soldier", best):
-				break                       # no road to it
-			if best >= 0:
-				rm[best] -= 1
-			b.walking += 1; p.reserve -= 1
-			p.res_era = mix_avg(rmix_of(p))
-		# the player's garrison settings: extra soldiers go home, kinds not wanted are swapped
-		if b.want_n >= 0 or not b.want_kinds.is_empty():
-			_garrison_settle(b, p, cap)
-	return changed
+	return people.mil_fill(p)
 
 
-## Soldiers building b should hold: the player's choice, at least 1, at most what it holds.
 func garrison_wanted(b: Bld) -> int:
-	var cap := int(b.def.get("garrison", 0))
-	return cap if b.want_n < 0 else clampi(b.want_n, 1, cap)
+	return people.garrison_wanted(b)
 
 
-## Whether soldiers of kind k may serve in building b.
 func kind_allowed(b: Bld, k: int) -> bool:
-	return b.want_kinds.is_empty() or k >= b.want_kinds.size() or bool(b.want_kinds[k])
+	return people.kind_allowed(b, k)
 
 
 func _newest_allowed(b: Bld, m: Array) -> int:
-	for k in range(m.size() - 1, -1, -1):
-		if int(m[k]) > 0 and kind_allowed(b, k):
-			return k
-	return -1
+	return people._newest_allowed(b, m)
 
 
-## Sends extra soldiers back to headquarters (kinds not wanted first, then the oldest) and swaps
-## kinds not wanted for wanted ones waiting at headquarters, one at a time.
 func _garrison_settle(b: Bld, p: Player, want: int) -> void:
-	var gm := gmix_of(b)
-	while b.garrison > want:
-		var k := -1
-		for kk in gm.size():
-			if int(gm[kk]) > 0 and not kind_allowed(b, kk):
-				k = kk; break
-		if k < 0:
-			k = mix_oldest(gm)
-		if k < 0 or k >= gm.size():
-			break
-		gm[k] -= 1
-		rmix_of(p)[k] += 1
-		p.res_xp = mix_xp(p.res_xp, p.reserve, b.sxp, 1)
-		b.garrison -= 1; p.reserve += 1
-	for kk in gm.size():
-		if int(gm[kk]) > 0 and not kind_allowed(b, kk):
-			var rm := rmix_of(p)
-			var j := _newest_allowed(b, rm)
-			if j < 0:
-				break
-			gm[kk] -= 1; rm[kk] += 1
-			rm[j] -= 1; gm[j] += 1
-			break
-	b.sera = mix_avg(gmix_of(b))
-	p.res_era = mix_avg(rmix_of(p))
+	people._garrison_settle(b, p, want)
 
 
 func update_needs(p: Player) -> void:
-	for cls in GameData.needs:
-		var count := p.artisan if cls == "artisan" else (p.noble if cls == "noble" else (p.peasant if cls == "peasant" else soldiers(p)))
-		var list: Dictionary = GameData.needs[cls]
-		var ok := 0
-		for res in list:
-			var key := String(cls) + ":" + String(res)
-			var m := float(p.need_meter.get(key, 0.0)) + count * float(list[res]) * maxf(0.3, 1.0 + mod(p, "need"))
-			if m >= 1.0:
-				m -= 1.0
-				# "wine|beer" means either will do: the first one in store is used
-				for alt in String(res).split("|"):
-					if float(p.stock.get(alt, 0.0)) >= 1.0:
-						take(p, alt, 1.0)
-						used(p, alt, 1.0)
-						p.need_ok[key] = 90.0
-						break
-			p.need_meter[key] = m
-			var left := float(p.need_ok.get(key, 0.0)) - 1.0
-			p.need_ok[key] = left
-			if left > 0.0:
-				ok += 1
-		p.sat[cls] = float(ok) / maxf(1.0, list.size()) if count > 0 else 0.0
+	people.update_needs(p)
 
 
 # ================================================================ tick
