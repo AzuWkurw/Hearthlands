@@ -123,6 +123,8 @@ func _ensure_lift() -> void:
 func lift_at(fx: float, fy: float) -> float:
 	if not raised or sim == null or _lift.size() != (sim.w + 1) * (sim.h + 1):
 		return 0.0
+	if is_nan(fx) or is_nan(fy):
+		return 0.0
 	var W := sim.w + 1
 	var x := clampf(fx, 0.0, float(sim.w) - 0.001)
 	var y := clampf(fy, 0.0, float(sim.h) - 0.001)

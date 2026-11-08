@@ -39,6 +39,14 @@ func _init() -> void:
 	main.view.ghost = Vector2i(me.hq.x + 4, me.hq.y + 2)
 	main._refresh_all()
 	for i in 10: await process_frame
+	# look at the best "expand here" spot
+	var bestg := -1
+	for t in main.view._gain:
+		if t >= 0 and (bestg < 0 or int(main.view._gain[t]) > int(main.view._gain[bestg])): bestg = t
+	if bestg >= 0:
+		main.view.center_on(Vector2(bestg % sim.w - 3, bestg / sim.w))
+		main.view.ghost = Vector2i(bestg % sim.w, bestg / sim.w)
+	for i in 10: await process_frame
 	await RenderingServer.frame_post_draw
 	print("expand spots ", main.view._gain, " sites ", main.view._sites.size())
 	root.get_texture().get_image().save_png(out + "b33_expand.png")

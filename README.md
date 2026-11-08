@@ -100,14 +100,25 @@ number and updates `scripts/version.gd`, `project.godot`, the Windows export set
   building until a carrier picks them up: porters (2 goods) come from your stores and your idle peasants,
   mule stations keep 6 mules (3 goods, faster) and ox cart yards 4 carts (6 goods) for buildings within
   their range. Paved roads are walked faster. A building with 6 goods waiting stops until they are collected.
+  A spot that no new road could reach (closed in by other buildings, water or rocks) is refused, and the
+  site markers leave it out.
+- **Road carriers (new-game option).** As in The Settlers: every stretch of road between two flags
+  (buildings, junctions, and at least every 6 tiles) has its own carrier, and goods are handed on at the
+  flags. A carrier takes one load at a time (a donkey helps on a busy stretch), so on busy roads goods
+  wait at the flags; more roads, and more ways out of the headquarters, move more. In a test game realms
+  grew 10 to 20% slower than with ordinary porters.
 - **Stores.** There is no shared stock: every store keeps its own goods. Headquarters hold 60 of each good,
   a storehouse 40, a warehouse 120 and a great depot 300 (bulky goods like bricks and gold take more room).
   Goods made are carried to the nearest store (on to the next one with room if it is full); production
   pauses when the realm has no room left. The Stores panel shows the total of all stores; click a store to
   see what it holds. Losing a store moves its goods to your other stores, as far as they have room.
+  With more than one store, each can be set to *Normal* (passes on what it has too much of), *Gather here*
+  (other stores send it their goods) or *Send away* (takes nothing new, its goods go to the others).
 - **Carried inputs.** A workshop, mine or school works only with goods carried to it: a carrier fetches
   them from the nearest store by road that has them, and each keeps enough for two work cycles (food for
-  one). Construction materials come the same way. Its info box shows what is there and what is on its way.
+  one); its info box can change that to 1 or 4. A carrier with room left takes a second input the same
+  building is short of. Construction materials come the same way. Its info box shows what is there, what is
+  on its way, and who is walking there and how soon they arrive.
 - **People live in buildings.** Idle people wait in houses and apartments (newcomers), at the building that
   trained them (artisans at the school, soldiers at the barracks, scouts at the scout lodge), in workers'
   lodges (12 each, Folk group) or at headquarters. A new worker, builder or soldier walks along the roads
@@ -150,14 +161,19 @@ number and updates `scripts/version.gd`, `project.godot`, the Windows export set
   garrisons help defend each other. Rivals make offers to you and treaties with each other. Once at least
   half the rivals are defeated, an alliance with everyone left is an allied victory, and an ally reaching
   the Industrial Revolution counts as a shared victory.
+- **Building sites.** *Bell when done* in a site's info box plays a sound and says so when it is finished.
+  While placing a military building, the spots that would claim the most new land show "+N".
 - **Saving.** Name a save, or use F5/F9 for a quick slot. The game autosaves every 5 minutes of play.
+  The save list shows a small picture of each map.
   Saves are complete: loading continues the game exactly where it was, including rival plans and armies on the march.
   They live in `user://saves` next to the texture folder.
 - **Map size.** Auto fits the number of realms, or choose Small (96), Medium (128), Large (160), Huge (200)
   or Giant (256 tiles a side). Small maps with many realms are refused before generating.
 - **Rivals.** Strength 1 to 10 sets how fast they produce and decide, their starting stock, how soon they
   attack and what odds they accept. Each is a *builder*, *balanced* or *warlord* personality, and they
-  fight each other as well as you.
+  fight each other as well as you. They keep large spots free for farms, group workshops near their
+  suppliers, choose targets worth taking (headquarters, much land, mines), keep a guard home, and call an
+  attack back when it goes badly.
 
 ## Graphics settings
 
@@ -177,6 +193,15 @@ Open **Settings** (top bar or F10). Everything there is remembered in `user://se
   draws fewer pixels and stretches them to fill the screen: faster on a weak graphics card, but softer.
 - **Interface size** scales everything, **VSync** waits for the screen (no tearing), and the **frame-rate
   limit** saves power.
+- **Raised ground** (on by default) draws hills standing up from the map, as in The Settlers II (2.5D).
+  Off gives the flat map of earlier builds.
+- **Language**: English or German (Deutsch) for the interface. Messages from the game itself (the event
+  log and the building info) are still in English. Other languages: add `data/lang_<code>.json` (or put
+  it in the mods folder's `data`); `python3 tools/extract_strings.py` fills in the texts to translate.
+- **Keys**: click a key in the list, then press the new one (Esc keeps the old one). *Default keys* puts
+  them all back.
+- **Show the first-game guide**: a short checklist for the first minutes of a new game, ticked off as you
+  go. Closing it turns this off.
 - Command line (also for the exported game): `--rendering-method gl_compatibility` or `forward_plus` or
   `mobile` starts with that renderer once; `--resolution 1280x720` sets the window size.
 
@@ -669,11 +694,15 @@ Copy it into the mods folder to try it.
 project.godot, main.tscn
 scripts/
   main.gd        UI, input and game loop
-  ui_*.gd        one window each: research, settings, demolish, saves, diplomacy, targets, textures, event log
+  ui_*.gd        one part each: info box, side panel, research, settings, demolish, saves, diplomacy,
+                 targets, textures, event log, toolbar, first-game guide
+  i18n.gd        interface languages (data/lang_*.json)
   line_chart.gd  the chart in the statistics window
   map_view.gd    world renderer
   minimap.gd     overview map
-  sim.gd         rules: economy, production, people, saves
+  sim.gd         rules: the state, placing buildings, the tick, saves
+  sim_production.gd  work cycles and construction sites
+  sim_people.gd      jobs, homes, people walking to work, needs and food
   sim_ai.gd      rival AI
   sim_military.gd    territory and combat
   sim_logistics.gd   roads, the road network and carriers
@@ -695,6 +724,12 @@ data/            resources, buildings, research tree, population needs, trades
 textures/        default textures (PNG)
 sounds/          sound effects and ambience loops (WAV, made by tools/make_sounds.py)
 tools/
+  run_all.py         runs every test and says which passed ("quick" for the fast ones)
+  check_data.py      checks data/*.json (and mods) for unknown goods, techs and sizes
+  extract_strings.py collects interface text into data/lang_*.json for translating
+  checksum_run.gd, checksum_diff.gd   prove a code move changed nothing / find what differs after a load
+  reach_test.gd, transfer_test.gd, stretch_test.gd   closed-in spots, goods between stores, road carriers
+  shot_b33.gd, shot_raised.gd, shot_lang.gd           screenshots of the build 33 additions
   make_textures.py   regenerates default textures (--force to overwrite them all)
   make_sounds.py     regenerates the sounds
   bump_build.py      raises the build number before a release

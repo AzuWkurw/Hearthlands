@@ -1,9 +1,38 @@
 # Suggestions for Hearthlands
 
 What could be improved next, gathered while building and testing versions up to 0.27.0 (build 32).
+The status table below says what build 33 did with each item.
 Each item says why it matters, where in the code it lives, and roughly how big a job it is:
 **S** = an hour or two, **M** = a day, **L** = several days. The most useful items come first in each
 section. See `docs/SOURCE_GUIDE.md` for how the code fits together.
+
+## Status after build 33
+
+Everything below was done in build 33 except **B3** (moving loops to C++ needs a Windows C++ build that
+could not be made here). Notes on what was done and what is left:
+
+| Item | Done | Notes |
+|---|---|---|
+| A1 closed-in spots | yes | `reach()`; refused with "No road can get to this spot"; also not marked as sites |
+| A2 town plans | yes | large spots kept free, workshops near their suppliers; on the 3 test maps people +1% to +17%, buildings -7% to +3% (mixed) |
+| A3 road carriers | yes, as a new-game option | goods wait at flags on busy roads, donkeys help on busy stretches; realms grow 10-20% slower than with porters (rivals do not plan roads for it yet) |
+| A4 store transfers | yes | per-store setting Normal / Gather here / Send away |
+| A5 better attacks | yes | target value, a guard kept near the HQ, rivals call failing attacks back |
+| A6 toolsmith waits | yes | helped research on all 3 maps |
+| A7 bigger auto maps | yes | the old sizes did worse on all 3 maps |
+| A8 small ideas | yes | inputs kept 1/2/4 cycles, arrival times, "+N land" hints, store setting |
+| B1 store searches | yes | searches pause at the tile asked about and carry on later |
+| B2 fewer trips | yes | a second input fills a part load |
+| B3 C++ | no | skipped |
+| B4 drawing | partly | carriers drawn in batches by picture; the software renderer here shows no change, a real graphics card should |
+| C1-C5 | yes | git, `run_all.py`, `check_data.py`, checksums, files split |
+| C6 languages | the interface | German included; messages from the game (event log, building info) are still English |
+| D1 raised ground | yes | hills drawn raised (2.5D), can be switched off in Settings; ground details (tufts, reeds) not added |
+| D2 guide | yes | eight steps, ticked off by themselves |
+| D3 small touches | yes | save pictures, keys in Settings, a bell for building sites, entrance pennants on sites |
+
+Still open: rivals laying roads with road carriers in mind (A3), translating the game's messages (C6), more ground detail (D1),
+and B3 if 8x speed in huge games matters.
 
 ---
 

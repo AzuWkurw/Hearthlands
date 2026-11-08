@@ -626,7 +626,7 @@ func arrive_at_store(t: Sim.Trip, p: Sim.Player) -> void:
 ## - a store nearly full of a good (85%) sends a load to the nearest store with little of it (30%).
 func transfers() -> void:
 	for p in sim.players:
-		if not p.alive or porters_free(p) <= 1:
+		if not p.alive or (porters_free(p) <= 1 and not road_carriers_on()):
 			continue
 		var list := stores_of(p)
 		if list.size() < 2:
@@ -814,18 +814,21 @@ func _clamp_stock(_p: Sim.Player) -> void:
 
 ## Porters free right now: those employed by the stores plus idle peasants, minus those out on the road.
 func porters_free(p: Sim.Player) -> int:
-	return p.store_porters + maxi(0, p.peasant - p.used_peasant) - p.busy_porters - p.road_carriers
+	return p.store_porters + maxi(0, p.peasant - p.used_peasant) - p.busy_porters
 
 
 # --- Road carriers (a new-game option, The Settlers style) --------------------------------------------
 # Every stretch of road between two flags has its own carrier. Flags stand at buildings, where roads
 # meet, and at least every FLAG_EVERY tiles. A load is handed from carrier to carrier at the flags; a
 # carrier takes one load at a time and walks back before the next, so goods queue at the flags of busy
-# stretches. Each load's whole journey is worked out when it sets off: on each stretch it starts when
-# the load is at the flag and that stretch's carrier is free.
+# stretches; when a stretch is busy a donkey helps (a second slot). Each load's whole journey is worked
+# out when it sets off: on each stretch it starts when the load is at the flag and that stretch's carrier
+# (or donkey) is free. A load that would queue too long is not sent yet. As in The Settlers, the stretch
+# carriers come from the headquarters and do not use up porters; road_carriers only counts them.
 
-const FLAG_EVERY := 6
-const STRETCH_IDLE := 90.0     # a stretch unused this long gives its carrier back
+const FLAG_EVERY := 4
+const STRETCH_IDLE := 45.0     # a stretch unused this long gives its carrier back
+const MAX_QUEUE := 30.0       # a load that would wait longer than this at flags in all is not sent yet
 
 
 func road_carriers_on() -> bool:
@@ -850,7 +853,8 @@ func _is_flag(path: PackedInt32Array, k: int, pid: int) -> bool:
 
 
 ## Plans a load's journey along path (goods going from path[0] to the end when forward, else back):
-## [arrival time, legs] or [] when a stretch has no carrier and no porter is free to take it on.
+## [arrival time, legs], or [] when it would wait more than MAX_QUEUE at flags (the roads are too busy
+## now). Stretch carriers come from the headquarters as in The Settlers: they do not use up porters.
 ## commit: book the stretches (their carriers are busy until the load is through).
 func plan_chain(p: Sim.Player, path: PackedInt32Array, forward: bool, commit: bool) -> Array:
 	var n := path.size()
@@ -867,6 +871,7 @@ func plan_chain(p: Sim.Player, path: PackedInt32Array, forward: bool, commit: bo
 			flags.append(order[j]); since = 0
 	var spd := 1.0 + sim.mod(p, "carry")
 	var tnow := sim.time + 0.5
+	var waited := 0.0
 	var legs := PackedFloat32Array()
 	var need := 0
 	var books := []
@@ -881,19 +886,32 @@ func plan_chain(p: Sim.Player, path: PackedInt32Array, forward: bool, commit: bo
 			cost += step_cost(path[k], path[k + step])
 			k += step
 		cost /= spd
-		var free_at := -1e9
+		# the stretch's carrier, and on a busy stretch a donkey too (as in The Settlers): two slots, each
+		# the time it is free again
+		var slots := Vector2(-1e9, -1e9)
 		if p.segs.has(key):
-			free_at = float(p.segs[key])
-		if free_at < sim.time - STRETCH_IDLE:
-			need += 1                # an idle stretch: a porter has to take it on
+			slots = p.segs[key]
+		var slot := 0
+		var free_at := slots.x
+		if slots.x > tnow + 2.0 and slots.y < slots.x:
+			slot = 1
+			free_at = slots.y
 		var start := maxf(tnow, free_at)
+		waited += start - tnow
+		if maxf(slots.x, slots.y) < sim.time - STRETCH_IDLE:
+			need += 1                # a stretch nobody used for a while gets its carrier back
 		var end := start + cost
 		legs.append_array(PackedFloat32Array([a, b, start, end]))
 		# the carrier walks back before he takes the next load (half way on average: he often
 		# meets the next one at the far flag)
-		books.append([key, end + cost * 0.5])
+		if slot == 0:
+			slots.x = end + cost * 0.5
+		else:
+			slots.y = end + cost * 0.5
+		books.append([key, slots])
 		tnow = end
-	if need > 0 and porters_free(p) < need:
+	# roads this busy take no more loads for now: they go when the queue has shrunk
+	if waited > MAX_QUEUE:
 		return []
 	if commit:
 		for bk in books:
@@ -911,7 +929,8 @@ func road_carrier_tick(p: Sim.Player) -> void:
 	keys.sort()
 	var n := 0
 	for k in keys:
-		if float(p.segs[k]) < sim.time - STRETCH_IDLE:
+		var sl: Vector2 = p.segs[k]
+		if maxf(sl.x, sl.y) < sim.time - STRETCH_IDLE:
 			p.segs.erase(k)
 		else:
 			n += 1
@@ -977,7 +996,7 @@ func _dispatch_supply() -> void:
 		list.sort_custom(func(a, c): return a.id < c.id)
 		for b: Sim.Bld in list:
 			var p := sim.players[b.p - 1]
-			if porters_free(p) <= 0 and (_stations[b.p - 1] as Array).is_empty():
+			if porters_free(p) <= 0 and (_stations[b.p - 1] as Array).is_empty() and not road_carriers_on():
 				continue
 			# a site holds only a few loads at a time, so materials go where work can go on
 			var waiting := 0
@@ -1214,7 +1233,7 @@ func _dispatch_inputs() -> void:
 			if out_of_carriers:
 				break
 			for b: Sim.Bld in list:
-				if porters_free(p) <= 0 and (_stations[p.id - 1] as Array).is_empty():
+				if porters_free(p) <= 0 and (_stations[p.id - 1] as Array).is_empty() and not road_carriers_on():
 					out_of_carriers = true     # this realm's carriers are all out; the next realm's turn
 					break
 				var inp: Dictionary = b.def["in"]
@@ -1284,7 +1303,7 @@ func _dispatch() -> void:
 			sim._pending.erase(id)
 			continue
 		var p := sim.players[b.p - 1]
-		if porters_free(p) <= 0 and (_stations[b.p - 1] as Array).is_empty():
+		if porters_free(p) <= 0 and (_stations[b.p - 1] as Array).is_empty() and not road_carriers_on():
 			continue
 		var path := store_path(b)
 		if path.is_empty():

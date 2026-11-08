@@ -60,7 +60,9 @@ The game is split cleanly into a **simulation** that knows nothing about drawing
                                             │
             ┌────────────────────────── Sim (sim.gd) ─────────────────────────┐
             │ state: map arrays, players, buildings, carriers, attacks        │
-            │ rules: production, people, construction, saves                  │
+            │ rules: saves, placing, the tick; the rest in its parts:         │
+            │   production (sim_production.gd) work cycles, building sites    │
+            │   people     (sim_people.gd)     jobs, homes, walkers, needs    │
             │   logistics  (sim_logistics.gd)  roads, stores, carriers        │
             │   military   (sim_military.gd)   territory, soldiers, battles   │
             │   research   (sim_research.gd)   points, techs, ages            │
@@ -136,6 +138,13 @@ after 5 more minutes: true"). The rules that keep it so:
   the conversions for older saves (look for comments starting "saves from before build ...").
 - Files are written with `FileAccess.open_compressed(..., COMPRESSION_ZSTD)` and `store_var`
   (`ui_saves.gd`).
+- Road searches round each distance to 32-bit precision and break ties by the lower tile number
+  (`SimLogistics._f32`), so a network built in one go (after loading) finds exactly the same ways as one
+  that grew road by road. Without that, equal-length ways differed after a load.
+- `Sim.checksum()` hashes the whole saved state. Start the game with `-- checksums` to print it every game
+  minute; `tools/checksum_run.gd` prints it for a rivals-only game (two versions of a pure code move must
+  print the same numbers), and `tools/checksum_diff.gd` finds the first field that differs between a game
+  and the same game saved and loaded. `save_test.gd` checks the checksums too.
 
 ### 3.4 How goods flow
 
@@ -147,18 +156,31 @@ after 5 more minutes: true"). The rules that keep it so:
    start_check(): inputs here? store room for the output? worker at work? work area OK?
 ```
 
-- **Production** (`sim.gd`: `prod_tick`, `start_check`, `finish_prod`, `deliver`). A building starts a
+- **Production** (`sim_production.gd`: `prod_tick`, `start_check`, `finish_prod`, `deliver`; `sim.gd`
+  keeps one-line wrappers with the same names, so callers use `sim.prod_tick(...)` as before). A building starts a
   cycle when `start_check` returns `""`. Otherwise its message (`b.msg`, shown in the info box) says
   why, and it checks again a little later (`b.retry`, with a back-off in `b.fails`).
 - **Carriers** (`sim_logistics.gd`). Porters come from the stores' own porters plus idle peasants
   (`porters_free`); mule stations and ox cart yards add faster carriers within their range.
   `carry_to()` is the one place a load leaves a store for a building, either to a construction site
-  (`_dispatch_supply`) or as inputs (`_dispatch_inputs`).
+  (`_dispatch_supply`) or as inputs (`_dispatch_inputs`); a carrier fills a part load with a second input
+  the same building is short of (`Trip.res2`, `n2`). Each workshop keeps inputs for `b.keep` work cycles
+  (0 means two). Stores pass goods on to each other (`transfers`, every 5 s) by their setting `b.policy`.
+- **Road carriers** (a new-game option, `opts.road_carriers`, `plan_chain` in `sim_logistics.gd`): one
+  carrier per stretch of road between flags (buildings, junctions, at least every 4 tiles), plus a donkey on
+  a busy stretch. A load's whole
+  journey is planned when it sets off: on each stretch it starts when it is at the flag and that
+  stretch's carrier is free (`p.segs`: two free-again times per stretch), so loads wait at flags on busy
+  roads; a load that would wait over `MAX_QUEUE` is held back. `Trip.legs` holds the plan for drawing.
+  `tools/carriers_compare.gd` plays the same game with and without the option.
 - **The road network**. For each realm, `_build_net` runs a Dijkstra search from all its stores at once
   over its roads, giving every road tile its walking time to the nearest store (`_net_dist`) and the way
   there (`_net_par`). `_relax_net` updates it cheaply when roads are only added. `store_field(s)` does
   the same search from one store, for fetching goods from a particular store. Walking time per step is
-  `step_cost(a, b)`: dirt or paved, times a slope factor (`SLOPE_MUL`).
+  `step_cost(a, b)`: dirt or paved, times a slope factor (`SLOPE_MUL`). `store_field` is worked out only as
+  far as the tile asked about and carried on later (the search is paused, never changed), so a nearby
+  building costs little. `reach(pid)` floods out from the network over land a road may cross: a building
+  spot whose entrance is not reached is refused ("No road can get to this spot").
 - **Entrances and plots**. A building joins the road only at its entrance tile (`door_tile`; `links(a, b)`
   enforces it everywhere roads are searched). Its plot (`PLOTS`, by size: small, medium, large, mine) is
   kept free of other buildings, roads and trees, with one free tile all round (`plot_check`).
@@ -215,6 +237,13 @@ Every few seconds each rival runs `ai_think(p)`:
    artisans free to train soldiers, and when completely boxed in (`p.crowded`) mans its front and
    attacks (`ai_attack`) and goes to war more readily (`Diplomacy.ai_tick`).
 
+Since build 33 a rival also plans its town a little: it keeps one or two large spots free for farms and
+the like (`p.reserved`, `_plan_town`; other buildings stay two tiles off them), and places workshops
+near the buildings they trade goods with (`_kin`, `_kin_score`). When attacking it weighs what a target
+is worth (`_attack_value`: the land it holds and the mines and workshops on that land), keeps one more
+soldier home in buildings near its headquarters, and calls an attack back once over half have fallen
+while the gate still holds (`Attack.n0`, in `attack_tick`).
+
 `tools/ai_bench.gd` is the yardstick for AI changes: seven rivals for 30 minutes on one map, ending with
 a `SUMMARY` line (buildings, people, research, soldiers, smallest rival, how many stalled or went
 hungry). Run it on two or three maps (`-- seed=valley`, `ridge`, `perf`) before and after a change; one
@@ -247,12 +276,22 @@ usually just data edits. After changing buildings, goods or techs, run `tools/re
 ## 4. The interface
 
 - **`main.gd`**: builds the whole interface in code (`_build_ui`), runs the game loop (`_process`),
-  handles keys (`_unhandled_input`), placing buildings and roads (`_on_tile`, `_use_tool`), the
-  building info box (`_refresh_sel`), the side panel, saving and loading, and the new-game screen.
-  It is the biggest file (about 2,100 lines); the windows are split out into `ui_*.gd` helpers, each a
-  small class that holds a reference to `main` (`ui_research`, `ui_settings`, `ui_saves`,
-  `ui_diplomacy`, `ui_demolish`, `ui_targets`, `ui_textures`, `ui_log`, `ui_toolbar`).
-- **`map_view.gd`** draws the world each frame in tile units (one tile = 1.0, scaled by `zoom`):
+  handles keys (`_unhandled_input`; keys the player changed in Settings are mapped back to the default
+  keys first, `_translate_key`), placing buildings and roads (`_on_tile`, `_use_tool`), and the new-game
+  screen. The rest is split out into `ui_*.gd` helpers, each a small class that holds a reference to
+  `main`: `ui_info` (the building info box, `_refresh_sel`), `ui_side` (the side panel), `ui_research`,
+  `ui_settings`, `ui_saves` (with map pictures), `ui_diplomacy`, `ui_demolish`, `ui_targets`,
+  `ui_textures`, `ui_log`, `ui_toolbar` and `ui_guide` (the first-game checklist).
+- **Languages** (`i18n.gd`): `data/lang_<code>.json` maps English text to a translation and is loaded as a
+  Godot translation, so labels and buttons whose text is a key show translated; text with numbers goes
+  through `tr("... %d ...")`. `tools/extract_strings.py` collects new text into the files. German is
+  included. Messages from the simulation (event log, building info) are still English.
+- **`map_view.gd`** draws the world each frame in tile units (one tile = 1.0, scaled by `zoom`). With
+  raised ground (2.5D, on by default) every tile corner is lifted by the height there (`_lift`,
+  `lift_at`); the ground is drawn as grid meshes through those corners (`_chunk_grid`, and
+  `draw_map_texture` for whole-map pictures such as fog and seasons), things standing on the ground are
+  drawn raised (`_lift_to` / `_unlift`), and `screen_to_tile` traces a click back through the raised
+  ground. It draws:
   ground from baked chunks, site markers, buildings sorted back to front with townsfolk between them,
   entrance flags, carriers and walkers, soldiers and battles, the placement ghost, selection rings.
   It turns mouse input into tile clicks for `main`.
@@ -288,7 +327,11 @@ There are about 75 scripts. The ones to know:
 
 | Script | Run it when |
 |---|---|
-| `save_test.gd` | after **any** simulation change: save, load, play on, compare (must say `true` twice) |
+| `run_all.py` | runs every test below and says which passed (`python3 tools/run_all.py quick` for the fast ones) |
+| `check_data.py` | after editing `data/*.json` or a mod: unknown goods, techs, sizes, research loops |
+| `save_test.gd` | after **any** simulation change: save, load, play on, compare (must say `true` three times) |
+| `checksum_run.gd`, `checksum_diff.gd` | proving a code move changed nothing; finding what differs after a load |
+| `reach_test.gd`, `transfer_test.gd`, `stretch_test.gd` | closed-in spots, goods between stores, road carriers |
 | `stores_test.gd` | after touching goods: every realm's stock must equal the sum of its stores |
 | `ai_bench.gd` | before and after AI changes, on 2-3 maps |
 | `perf_test.gd` | to see where simulation time goes (`-- foes=7 mins=60 seed=...`) |
@@ -333,13 +376,18 @@ to `Bld`/`Player` (saved automatically) with a default that works for old saves.
 | road laying for new buildings | `SimLogistics._path_to_net_inner` |
 | carriers and what they carry | `SimLogistics._dispatch`, `_dispatch_supply`, `_dispatch_inputs`, `carry_to` |
 | goods in stores | `SimLogistics.give`, `take`, `store_add`, `stores_of` |
-| who works where | `Sim.staffing`, `Sim.home_avail`, `Sim.send_from_home` |
+| who works where | `SimPeople.staffing`, `home_avail`, `send_from_home` |
 | territory | `SimMilitary.recompute_territory` |
 | attacks and duels | `SimMilitary.launch_attack`, `attack_tick`, `_field_battles` |
 | rival building plan | `SimAI.ai_think` (`steps`) |
 | saving and loading | `Sim.to_save`, `Sim.from_save`, `ui_saves.gd` |
 | the toolbar and build menus | `ui_toolbar.gd`, `Main._rebuild_build_list` |
-| the info box | `Main._refresh_sel` |
+| the info box | `UiInfo._refresh_sel` (`ui_info.gd`) |
+| work cycles and sites | `sim_production.gd` |
+| jobs, homes, walking people | `sim_people.gd` |
+| road carriers | `SimLogistics.plan_chain`, `_chain_trip` |
+| raised ground | `MapView._ensure_lift`, `lift_at`, `_grid_mesh` |
+| translations | `i18n.gd`, `data/lang_*.json`, `tools/extract_strings.py` |
 | drawing buildings, people, carriers | `MapView._draw`, `_draw_building`, `_collect_folk` |
 | renderer and display settings | `settings.gd`, `ui_settings.gd`, `Main._probe_vulkan` |
 
