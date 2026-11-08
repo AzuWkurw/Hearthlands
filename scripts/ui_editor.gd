@@ -234,17 +234,41 @@ func _paint(t: Vector2i, first: bool) -> void:
 				"ore":
 					if sim.ter[i] == Sim.MOUNT:
 						sim.ore[i] = val
-						sim.amt[i] = 20 if val > 0 else 0
+						sim.amt[i] = 0
+						# a vein of its own for now, so it shows at once (joined up when the stroke ends)
+						if val > 0:
+							sim.vein[i] = sim.vein_amt.size()
+							sim.vein_amt.append(20)
+							sim.vein_tiles.append(PackedInt32Array([i]))
+						else:
+							sim.vein[i] = 0
+			if sim.ore[i] == 0:
+				sim.vein[i] = 0
 			_touched[i] = true
 			sim.changed_tiles.append(i)
 
 
-## After a stroke: the heights and the raised ground follow the new shape of the land.
+## After a stroke: the ore joins up into veins, and the heights and the raised ground follow the new
+## shape of the land. Only the parts of the map that changed are drawn again.
 func _paint_done() -> void:
 	if _touched.is_empty():
 		return
 	_touched = {}
 	var sim: Sim = main.sim
+	var what: String = BRUSHES[brush][1]
+	if what == "ore" or what == "ter":
+		var g := {"w": sim.w, "h": sim.h, "ore": sim.ore, "amt": sim.amt}
+		var rng := RandomNumberGenerator.new()
+		rng.seed = hash(sim.seed_str + "veins")
+		WorldGen._make_veins(g, rng)
+		sim.vein = g.vein; sim.vein_amt = g.vein_amt; sim.vein_tiles = g.vein_tiles
+	if what != "ter":
+		return
+	var old := sim.height
 	sim.height = WorldGen.heights(sim.seed_str, sim.ter, sim.w, sim.h)
-	main.view.reset_world()
-	main.minimap.reset()
+	var moved := PackedInt32Array()
+	for i in sim.height.size():
+		if i >= old.size() or old[i] != sim.height[i]:
+			moved.append(i)
+	sim.changed_tiles.append_array(moved)
+	main.view.ground_changed()

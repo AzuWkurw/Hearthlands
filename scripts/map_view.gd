@@ -270,6 +270,13 @@ func refresh_textures() -> void:
 
 
 ## A new or loaded game: forget everything baked for the old map.
+## The map editor changed the ground's shape: heights and the water's depth again, without throwing
+## away the baked map (the tiles that changed are re-baked as usual).
+func ground_changed() -> void:
+	_lift_key = ""
+	_make_variation()
+
+
 func reset_world() -> void:
 	chunks.sim = sim
 	chunks.clear()
