@@ -13,6 +13,7 @@ const COLS := [Color("2f6d9c"), Color("d8c58c"), Color("6c9d47"), Color("7d786a"
 const TREE := Color("34602c")
 const ROAD := Color("a88b5e")
 var _ver := -1
+var alerts: Array = []         # [tile, colour]: problems blinking on the map (see UiProblems)
 var _t := 99.0
 
 
@@ -133,6 +134,14 @@ func _draw() -> void:
 			draw_rect(Rect2(Vector2(b.x, b.y) * s - Vector2(1, 1), Vector2(3, 3)), sim.players[b.p - 1].color.lightened(0.3))
 	if fog != null and fog.tex != null:
 		draw_texture_rect(fog.tex, r, false)
+	# problems blink: red where you are attacked, amber where a building is stuck
+	var blink := 0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.008)
+	for a in alerts:
+		var p: Vector2 = Vector2(a[0]) * s + s * 0.5
+		var c: Color = a[1]
+		draw_circle(p, 2.5, c)
+		if c.r > 0.8 and c.g < 0.4:
+			draw_arc(p, 4.0 + 3.0 * blink, 0, TAU, 16, Color(c, 0.4 + 0.5 * blink), 1.5)
 	if view:
 		var half := view.size / 2.0 / view.zoom
 		draw_rect(Rect2((view.cam - half) * s, half * 2.0 * s), Color.WHITE, false, 1.0)

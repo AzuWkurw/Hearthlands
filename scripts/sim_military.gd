@@ -208,7 +208,8 @@ func _defender_gains_xp(t: Sim.Bld) -> void:
 		b.sxp += 3.0 / maxf(1.0, b.garrison)
 
 
-func launch_attack(src: Sim.Bld, tgt: Sim.Bld) -> String:
+## want: at most this many march (-1: as many as can); kinds: only these soldier kinds march (empty: any).
+func launch_attack(src: Sim.Bld, tgt: Sim.Bld, want := -1, kinds: Array = []) -> String:
 	var p := sim.players[src.p - 1]
 	if src.p == tgt.p or not sim.is_mil(tgt) or tgt.state != "ready" or src.state != "ready":
 		return "Pick an enemy military building"
@@ -221,6 +222,8 @@ func launch_attack(src: Sim.Bld, tgt: Sim.Bld) -> String:
 	if avail < 1:
 		return "Not enough soldiers here"
 	var n := mini(avail, 16)
+	if want >= 0:
+		n = mini(n, want)
 	# the best soldiers march; the oldest stay to hold the building, or one of the kind the player
 	# chose to keep home
 	var m := mix_of(src)
@@ -228,9 +231,24 @@ func launch_attack(src: Sim.Bld, tgt: Sim.Bld) -> String:
 	if src.keep_kind >= 0 and src.keep_kind < m.size() and int(m[src.keep_kind]) > 0:
 		kept = src.keep_kind
 		m[kept] -= 1
-	var sent := Sim.mix_take_best(m, n)
+	var sent: Array
+	if kinds.is_empty():
+		sent = Sim.mix_take_best(m, n)
+	else:
+		var m2 := m.duplicate()
+		for k in m2.size():
+			if not kinds.has(k):
+				m2[k] = 0
+		sent = Sim.mix_take_best(m2, n)
+		for k in mini(m.size(), sent.size()):
+			m[k] -= int(sent[k])
+		n = 0
+		for v in sent:
+			n += int(v)
 	if kept >= 0:
 		m[kept] += 1
+	if n < 1:
+		return "None of the chosen kinds can go from here"
 	if src.ty == "hq": p.reserve -= n
 	else: src.garrison -= n
 	var a := Sim.Attack.new()

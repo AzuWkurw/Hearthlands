@@ -98,6 +98,9 @@ var _gar_sig := ""                 # what the garrison settings were last drawn 
 var rivals_label: RichTextLabel
 
 
+var problems_ui := UiProblems.new(self)  # the Problems list (ui_problems.gd)
+var attack_ui := UiAttack.new(self)      # the attack window (ui_attack.gd)
+var problems_btn: Button
 var guide_ui := UiGuide.new(self)  # the first-game checklist (ui_guide.gd)
 var side_ui := UiSide.new(self)
 var info_ui := UiInfo.new(self)
@@ -678,6 +681,9 @@ func _build_ui() -> void:
 	tb.add_child(_button("Save / Load", _open_saves))
 	tb.add_child(_button("Settings", _open_settings))
 	tb.add_child(_button("Events", func(): log_ui.toggle()))
+	problems_btn = _button("Problems", func(): problems_ui.toggle())
+	problems_btn.tooltip_text = "Your buildings that cannot work, and why (O)"
+	tb.add_child(problems_btn)
 	tb.add_child(_button("New game", func(): setup.visible = true; paused = true))
 
 	minimap = Minimap.new()
@@ -792,6 +798,8 @@ func _build_ui() -> void:
 
 	log_ui.build()
 	guide_ui.build()
+	problems_ui.build()
+	attack_ui.build()
 
 	var tx := _section(col, "Textures and mods")
 	var info := _label("Put PNG files in the texture folder to replace any picture. Use Export defaults to get every current texture as a starting point, then Reload.", 13, DIM)
@@ -815,7 +823,7 @@ func _build_ui() -> void:
 		OS.shell_open(ProjectSettings.globalize_path("user://"))))
 
 	var hp := _section(col, "How to play")
-	var help := _label("Start with woodcutters, a sawmill and a quarry. Add houses, then food: fishers, hunters, farms with a mill, well and bakery. Guard huts and towers push your border out and need a soldier each. Mines go on mountain deposits and need food. Smelt iron for a toolsmith: every trade's new workers need their own tool (axes, pickaxes, farm tools...), while a returning specialist brings his own. Set production targets (T) to keep stocks where you want them. Weapons let barracks train soldiers. Armor makes veterans. Goods are carried along roads to the nearest store: build storehouses near busy areas, mule stations and cart yards for faster transport, and pave busy roads. Each store tier adds room for every good. Scriptoriums, libraries and universities produce research; open the research tree to pick what to study next, from Roman times to the Industrial Revolution. Beer, clothes, jewelry and furniture keep artisans and nobles content, which speeds up workshops and raises gold tax.\n\nDrag to pan, wheel to zoom, right click or Esc cancels. Hold Shift to place several. Pick buildings from the toolbar along the bottom; a building's entrance (the flag) faces south and R turns it while placing; then lay its road from the flag (or switch on Auto roads). Select one of your military buildings, then click an enemy one in range to attack. Space pauses, 1 to 4 set speed, R opens research, T production targets, G diplomacy, F3 shows performance, F5 quick saves and F9 quick loads.", 13, DIM)
+	var help := _label("Start with woodcutters, a sawmill and a quarry. Add houses, then food: fishers, hunters, farms with a mill, well and bakery. Guard huts and towers push your border out and need a soldier each. Mines go on mountain deposits and need food. Smelt iron for a toolsmith: every trade's new workers need their own tool (axes, pickaxes, farm tools...), while a returning specialist brings his own. Set production targets (T) to keep stocks where you want them. Weapons let barracks train soldiers. Armor makes veterans. Goods are carried along roads to the nearest store: build storehouses near busy areas, mule stations and cart yards for faster transport, and pave busy roads. Each store tier adds room for every good. Scriptoriums, libraries and universities produce research; open the research tree to pick what to study next, from Roman times to the Industrial Revolution. Beer, clothes, jewelry and furniture keep artisans and nobles content, which speeds up workshops and raises gold tax.\n\nDrag to pan, wheel to zoom, right click or Esc cancels. Hold Shift to place several. Pick buildings from the toolbar along the bottom; a building's entrance (the flag) faces south and R turns it while placing; then lay its road from the flag (or switch on Auto roads). Click an enemy military building in range of yours to attack: a window asks how many soldiers march, and which kinds. Space pauses, 1 to 4 set speed, R opens research, T production targets, G diplomacy, F3 shows performance, F5 quick saves and F9 quick loads.", 13, DIM)
 	help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	help.custom_minimum_size = Vector2(SIDE_W - 40, 0)
 	hp.add_child(help)
@@ -1188,12 +1196,13 @@ func _on_tile(t: Vector2i) -> void:
 			sel_res = ""
 			_refresh_sel()
 			return
-	var cur: Sim.Bld = sim.by_id.get(view.sel_id)
-	if cur != null and cur.p == 1 and sim.is_mil(cur) and b != null and b.p != 1 and sim.is_mil(b):
-		var r2 := sim.launch_attack(cur, b)
+	# an enemy military building at war: the attack window (who marches, how many)
+	if b != null and b.p != 1 and sim.is_mil(b) and b.state == "ready" and Diplomacy.at_war(sim, 1, b.p) and not attack_ui.sources(b).is_empty():
+		var r2 := attack_ui.open(b)
 		if r2 != "":
 			_show_hint(r2, 2.5)
-		_refresh_all()
+		view.sel_id = b.id
+		_refresh_sel()
 		return
 	view.sel_id = b.id if b != null else 0
 	sel_res = ""
@@ -1274,6 +1283,7 @@ func _show_hint(text: String, secs: float) -> void:
 ## Keys the player can change in Settings: [action, what it does, the key it has by default].
 const KEY_ACTIONS := [
 	["events", "Show or hide the event log", KEY_E],
+	["problems", "Show or hide the Problems list", KEY_O],
 	["sites", "Show free building spots", KEY_B],
 	["turn", "Turn the entrance (research when not placing)", KEY_R],
 	["diplomacy", "Diplomacy", KEY_G],
@@ -1364,6 +1374,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.keycode == KEY_E and not setup.visible:
 		log_ui.toggle()
 		return
+	if event.keycode == KEY_O and not setup.visible:
+		problems_ui.toggle()
+		return
 	if event.keycode == KEY_B and not setup.visible and not save_panel.visible:
 		toolbar.toggle_sites()
 		return
@@ -1393,7 +1406,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_F10: _open_settings()
 		KEY_T: _open_targets()
 		KEY_ESCAPE:
-			if set_panel.visible: set_panel.visible = false
+			if attack_ui.panel.visible: attack_ui.close()
+			elif set_panel.visible: set_panel.visible = false
 			elif targets_panel.visible: targets_panel.visible = false
 			elif tex_panel.visible: tex_panel.visible = false
 			elif tech_panel.visible: tech_panel.visible = false
@@ -1528,6 +1542,7 @@ func _refresh_all() -> void:
 	_refresh_sel()
 	_refresh_rivals()
 	guide_ui.refresh()
+	problems_ui.refresh()
 	_check_watch()
 	if log_dirty:
 		log_dirty = false
