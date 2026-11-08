@@ -1122,6 +1122,9 @@ func _begin() -> void:
 func _after_world_change() -> void:
 	view.sim = sim
 	watch = {}
+	problems_ui.hidden = {}
+	problems_ui.since = {}
+	problems_ui.show_hidden = false
 	_rebuild_feature_ui()
 	minimap.reset()
 	view.reset_world()
