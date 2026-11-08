@@ -28,12 +28,10 @@ var _owners := PackedByteArray()   # the owner of every tile when the chunks wer
 var _ter: Array = []
 var _road: Array = []
 var _paved: Array = []
-var _tree: Array = []
-var _rock: Array = []
 var _clay: Image
 var _ore: Dictionary = {}
 var _tint: Array = []
-var _peak: Array = []
+var ver := 0               # goes up whenever every chunk is to be baked again (the map view's scenery follows)
 var _edge: Dictionary = {}  # ground kind * 256 + neighbour mask -> soft edge overlay, made when first needed
 
 
@@ -44,7 +42,7 @@ func load_images() -> void:
 		twin.smooth = smooth
 		twin.details = details
 		twin.load_images()
-	_ter.clear(); _road.clear(); _paved.clear(); _tree.clear(); _rock.clear(); _ore.clear(); _edge.clear(); _snow.clear()
+	_ter.clear(); _road.clear(); _paved.clear(); _ore.clear(); _edge.clear(); _snow.clear()
 	for t in Tex.TERRAIN:
 		for v in Tex.VARIANTS:
 			var img := _img("terrain_%s_%d" % [t, v], TS, TS)
@@ -57,9 +55,6 @@ func load_images() -> void:
 	for m in 16:
 		_road.append(_img("road_%d" % m, TS, TS))
 		_paved.append(_img("road_paved_%d" % m, TS, TS))
-	_tree = [_img("deco_tree_0", TS, TS * 3 / 2), _img("deco_tree_1", TS, TS * 3 / 2), _img("deco_tree_2", TS, TS * 3 / 2)]
-	_peak = [_img("deco_peak_0", TS, TS * 3 / 2), _img("deco_peak_1", TS, TS * 3 / 2)]
-	_rock = [_img("deco_rock_0", TS, TS), _img("deco_rock_1", TS, TS)]
 	_clay = _img("deco_clay", TS, TS)
 	for o in GameData.ORE_NAMES:
 		_ore[o] = _img("ore_%d" % o, TS / 2, TS / 2)
@@ -84,6 +79,7 @@ func _img(id: String, w: int, h: int) -> Image:
 
 ## Forgets every baked chunk (new game, loaded game, new textures).
 func clear() -> void:
+	ver += 1
 	if twin != null:
 		twin.sim = sim
 		twin.smooth = smooth
@@ -97,6 +93,7 @@ func clear() -> void:
 
 
 func mark_all() -> void:
+	ver += 1
 	if twin != null:
 		twin.sim = sim
 		twin.smooth = smooth
@@ -226,8 +223,10 @@ func _bake(cx: int, cy: int, k: int) -> void:
 				var sl := sim.road_slope(i, int(sim.road[i]))
 				if sl > 0:
 					_slope_marks(img, pos, sl)
-	# scenery; one extra row below, because trees standing there reach up into this chunk
-	for ly in CH + 1:
+	# what lies flat on the ground: clay pits and ore. Trees, peaks and boulders stand up from the
+	# ground, so the map view draws them itself (MapView._scenery_mesh) instead of baking them in, where
+	# the raised ground would bend them.
+	for ly in CH:
 		var y := y0 + ly
 		if y >= h:
 			break
@@ -238,17 +237,12 @@ func _bake(cx: int, cy: int, k: int) -> void:
 			var i := y * w + x
 			var d := sim.deco[i]
 			var pos := Vector2i(lx * TS, ly * TS)
-			if d == Sim.D_TREE:
-				img.blend_rect(_tree[(x * 7 + y * 13) % 3], Rect2i(0, 0, TS, TS * 3 / 2), pos - Vector2i(0, TS / 2))
-			elif d == 0 and _has_peak(x, y, i):
-				img.blend_rect(_peak[(x + y) % 2], Rect2i(0, 0, TS, TS * 3 / 2), pos - Vector2i(0, TS / 2))
-			elif ly < CH:
-				if d == Sim.D_ROCK:
-					img.blend_rect(_rock[(x + y) % 2], full, pos)
-				elif d == Sim.D_CLAY:
-					img.blend_rect(_clay, full, pos)
-				elif sim.ore[i] != 0 and _ore.has(int(sim.ore[i])) and sim.vein_left(i) > 0 and sim.ore_known(1, i):
-					img.blend_rect(_ore[int(sim.ore[i])], Rect2i(0, 0, TS / 2, TS / 2), pos + Vector2i(TS / 4, TS * 7 / 16))
+			if d == Sim.D_TREE or d == Sim.D_ROCK or (d == 0 and _has_peak(x, y, i)):
+				continue
+			if d == Sim.D_CLAY:
+				img.blend_rect(_clay, full, pos)
+			elif sim.ore[i] != 0 and _ore.has(int(sim.ore[i])) and sim.vein_left(i) > 0 and sim.ore_known(1, i):
+				img.blend_rect(_ore[int(sim.ore[i])], Rect2i(0, 0, TS / 2, TS / 2), pos + Vector2i(TS / 4, TS * 7 / 16))
 	# borders: a 2-pixel line in the owner's colour wherever the next tile belongs to someone else
 	for ly in CH:
 		var y := y0 + ly

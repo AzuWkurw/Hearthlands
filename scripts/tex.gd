@@ -146,7 +146,7 @@ static func all_ids() -> Array:
 		out.append("road_%d" % m)
 	for m in 16:
 		out.append("road_paved_%d" % m)
-	out.append_array(["deco_tree_0", "deco_tree_1", "deco_tree_2", "deco_rock_0", "deco_rock_1", "deco_clay", "deco_peak_0", "deco_peak_1"])
+	out.append_array(["deco_tree_0", "deco_tree_1", "deco_tree_2", "deco_tree_3", "deco_tree_4", "deco_rock_0", "deco_rock_1", "deco_clay", "deco_peak_0", "deco_peak_1"])
 	for o in GameData.ORE_NAMES:
 		out.append("ore_%d" % o)
 	for r in GameData.resources:

@@ -78,6 +78,10 @@ var _ground_mat: ShaderMaterial
 var _origin := Vector2.ZERO
 var _folk_roads: Dictionary = {}   # house id -> [game time worked out, straight runs of road nearby: [from, to]]
 var _vary: ImageTexture            # ground variation (see _make_variation)
+var _scn_atlas: ImageTexture       # trees, peaks and boulders side by side (see _make_scenery_atlas)
+var _scn_size: Array = []          # per SCENERY entry: [uv rect in the atlas, size in tiles]
+var _scn_mesh := {}                # chunk key -> ArrayMesh of the scenery standing in it (null: none)
+var _scn_ver := -1                 # chunks.ver the meshes were made for
 
 # --- Raised ground (2.5D) ---------------------------------------------------------------------------
 # Each tile corner is raised by the height of the ground around it (LIFT tiles per height step, the sea
@@ -102,6 +106,7 @@ func _ensure_lift() -> void:
 		return
 	_lift_key = key
 	_chunk_mesh = {}
+	_scn_mesh = {}
 	_map_mesh = null
 	var W := sim.w + 1
 	_lift = PackedFloat32Array(); _lift.resize(W * (sim.h + 1))
@@ -260,6 +265,7 @@ func refresh_textures() -> void:
 	for b in GameData.bld:
 		_bld_tex[b] = Tex.get_tex(GameData.bld_tex_id(b))
 	_res_tex.clear()
+	_scn_atlas = null
 	for r in GameData.resources:
 		_res_tex[r.id] = Tex.get_tex("res_" + String(r.id))
 	_constr = Tex.get_tex("fx_construction")
@@ -348,6 +354,14 @@ func _make_variation() -> void:
 func tiles_changed(tiles: PackedInt32Array) -> void:
 	for i in tiles:
 		chunks.mark_tile(i)
+		# the scenery of this tile's chunk, and of its neighbours' (a peak needs mountain all round)
+		var x := i % sim.w
+		var y := i / sim.w
+		for d in [Vector2i(0, 0), Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var xx: int = x + d.x
+			var yy: int = y + d.y
+			if xx >= 0 and yy >= 0 and xx < sim.w and yy < sim.h:
+				_scn_mesh.erase((yy / MapChunks.CH) * 1000 + xx / MapChunks.CH)
 
 
 func screen_to_tile(pos: Vector2) -> Vector2i:
@@ -520,6 +534,8 @@ func _draw() -> void:
 		draw_map_texture(self, minimap.own_tex())
 	if _vary != null:
 		draw_map_texture(self, _vary)
+	if z >= DETAIL_ZOOM:
+		_draw_scenery(x0, x1, y0, y1)
 	# features draw on the ground (season colours, snow) under the buildings
 	if not sim.features.is_empty():
 		var vr := Rect2i(x0, y0, x1 - x0 + 1, y1 - y0 + 1)
@@ -1583,3 +1599,147 @@ func _draw_newcomer(hq: Sim.Bld) -> void:
 	var from := door + Vector2(cos(ang), sin(ang) * 0.6) * 7.0
 	var pos := from.lerp(door, u)
 	_folk_add("unit_folk_newcomer", pos, 0.4, int(u * 7.0 * 8.0) % 8, door.x < from.x)
+
+
+# --- Scenery standing on the map -------------------------------------------------------------------
+# Trees, mountain peaks and boulders stand upright at the height of the ground under their foot. They
+# are not baked into the ground pictures, where the raised ground would bend and stretch them. Each
+# chunk's scenery is one mesh of upright pictures from one atlas, made when the chunk changes, so
+# thousands of trees cost a few draw calls a frame. Each object is a little bigger or smaller, a little
+# lighter or darker and a little off the tile's centre (from a hash of its tile), and woods keep to one
+# kind of tree in patches (firs here, broad-leaved trees there), so forests don't look stamped.
+
+const SCENERY := ["deco_tree_0", "deco_tree_1", "deco_tree_2", "deco_tree_3", "deco_tree_4",
+	"deco_peak_0", "deco_peak_1", "deco_rock_0", "deco_rock_1"]
+const SCN_PX := 64                 # atlas pixels per tile
+const SCN_PEAK := 5
+const SCN_ROCK := 7
+
+
+func _make_scenery_atlas() -> void:
+	var n := SCENERY.size()
+	var cw := SCN_PX + 4
+	var chh := SCN_PX * 3 / 2 + 4
+	var img := Image.create(cw * n, chh, false, Image.FORMAT_RGBA8)
+	_scn_size = []
+	for k in n:
+		var id: String = SCENERY[k]
+		var tall := not id.begins_with("deco_rock")
+		var tw := SCN_PX
+		var th := SCN_PX * 3 / 2 if tall else SCN_PX
+		var t := Tex.get_tex(id)
+		var src: Image = t.get_image() if t != null else null
+		if src == null:
+			src = Image.create(tw, th, false, Image.FORMAT_RGBA8)
+		else:
+			src = src.duplicate()
+			if src.is_compressed():
+				src.decompress()
+			src.clear_mipmaps()
+			src.convert(Image.FORMAT_RGBA8)
+		if src.get_width() != tw or src.get_height() != th:
+			src.resize(tw, th, Image.INTERPOLATE_LANCZOS if src.get_width() > tw else Image.INTERPOLATE_BILINEAR)
+		var at := Vector2i(k * cw + 2, chh - 2 - th)
+		img.blit_rect(src, Rect2i(0, 0, tw, th), at)
+		var isz := Vector2(img.get_size())
+		_scn_size.append([Rect2(Vector2(at) / isz, Vector2(tw, th) / isz), Vector2(1.0, float(th) / SCN_PX)])
+	img.fix_alpha_edges()
+	img.generate_mipmaps()
+	_scn_atlas = ImageTexture.create_from_image(img)
+	_scn_mesh = {}
+
+
+## Which picture stands on tile (x, y), or -1: a tree, a peak (on mountain inside a range) or a boulder.
+func _scenery_kind(x: int, y: int, i: int) -> int:
+	var d := sim.deco[i]
+	if d == Sim.D_TREE:
+		# patches of woods about five tiles across lean to firs or to broad-leaved trees
+		var patch := MapChunks._hash(x / 5 + 101, y / 5 + 37)
+		var hh := MapChunks._hash(x, y)
+		if patch % 3 == 0:
+			return [0, 3, 0, 3, 1][hh % 5]
+		return [1, 4, 2, 1, 4, 0][hh % 6]
+	if d == Sim.D_ROCK:
+		return SCN_ROCK + (x + y) % 2
+	if d == 0 and chunks._has_peak(x, y, i):
+		return SCN_PEAK + (x + y) % 2
+	return -1
+
+
+func _scenery_mesh(cx: int, cy: int) -> ArrayMesh:
+	var verts := PackedVector2Array()
+	var uvs := PackedVector2Array()
+	var cols := PackedColorArray()
+	var idx := PackedInt32Array()
+	var CHN := MapChunks.CH
+	for ly in CHN:
+		var y := cy * CHN + ly
+		if y >= sim.h:
+			break
+		for lx in CHN:
+			var x := cx * CHN + lx
+			if x >= sim.w:
+				break
+			var i := y * sim.w + x
+			var k := _scenery_kind(x, y, i)
+			if k < 0:
+				continue
+			var hh := MapChunks._hash(x, y)
+			var sc := 1.0
+			var off := Vector2.ZERO
+			if k < SCN_PEAK:
+				sc = 0.9 + float(hh % 25) / 100.0
+				off = Vector2(float((hh >> 5) % 21 - 10), float((hh >> 10) % 11 - 5)) / 100.0
+			elif k < SCN_ROCK:
+				sc = 1.0 + float(hh % 13) / 100.0
+			else:
+				sc = 0.85 + float(hh % 21) / 100.0
+				off = Vector2(float((hh >> 5) % 13 - 6), 0.0) / 100.0
+			var cell: Array = _scn_size[k]
+			var uv: Rect2 = cell[0]
+			var sz: Vector2 = (cell[1] as Vector2) * sc
+			var foot := Vector2(x + 0.5, y + 1.0) + off
+			var lift := lift_at(foot.x, foot.y - 0.2) if raised else 0.0
+			var tl := Vector2(foot.x - sz.x / 2.0, foot.y - sz.y - lift)
+			var n := verts.size()
+			verts.append_array(PackedVector2Array([tl, tl + Vector2(sz.x, 0), tl + sz, tl + Vector2(0, sz.y)]))
+			uvs.append_array(PackedVector2Array([uv.position, uv.position + Vector2(uv.size.x, 0), uv.end, uv.position + Vector2(0, uv.size.y)]))
+			var b := 0.9 + float((hh >> 3) % 15) / 100.0
+			var c := Color(b, b, b)
+			cols.append_array(PackedColorArray([c, c, c, c]))
+			idx.append_array(PackedInt32Array([n, n + 1, n + 2, n, n + 2, n + 3]))
+	if verts.is_empty():
+		return null
+	var arr := []
+	arr.resize(Mesh.ARRAY_MAX)
+	arr[Mesh.ARRAY_VERTEX] = verts
+	arr[Mesh.ARRAY_TEX_UV] = uvs
+	arr[Mesh.ARRAY_COLOR] = cols
+	arr[Mesh.ARRAY_INDEX] = idx
+	var m := ArrayMesh.new()
+	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+	return m
+
+
+## Draws the scenery of the chunks in view, top row first so what stands lower down is in front.
+## Meshes missing or out of date are made while time is left this frame (2 ms, at least one).
+func _draw_scenery(x0: int, x1: int, y0: int, y1: int) -> void:
+	if _scn_atlas == null:
+		_make_scenery_atlas()
+	if _scn_ver != chunks.ver:
+		_scn_ver = chunks.ver
+		_scn_mesh = {}
+	var CHN := MapChunks.CH
+	var deadline := Time.get_ticks_usec() + 2000
+	var made := 0
+	for cy in range(y0 / CHN, mini(sim.h - 1, y1 + 2) / CHN + 1):
+		for cx in range(x0 / CHN, x1 / CHN + 1):
+			var k := cy * 1000 + cx
+			if not _scn_mesh.has(k):
+				if made > 0 and Time.get_ticks_usec() > deadline:
+					continue
+				_scn_mesh[k] = _scenery_mesh(cx, cy)
+				made += 1
+			var m: ArrayMesh = _scn_mesh[k]
+			if m != null:
+				draw_mesh(m, _scn_atlas)

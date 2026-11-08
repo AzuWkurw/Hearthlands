@@ -331,53 +331,11 @@ def terrain():
 
 
 def decos():
-    # trees: 32x48, trunk base near the bottom; drawn with light from the upper left
-    shadow = (0, 0, 0, 70)
-    # 0: pine
-    p = Pen(32, 48)
-    p.ellipse([6, 40, 26, 47], fill=shadow)
-    p.rectangle([14, 34, 17, 44], fill=(92, 62, 34, 255))
-    for (y0, wd) in [(2, 6), (9, 9), (17, 11), (25, 13)]:
-        p.polygon([(16, y0), (16 + wd, y0 + 14), (16 - wd, y0 + 14)], fill=(38, 82, 44, 255), outline=(24, 56, 30, 255))
-        p.polygon([(16, y0), (16, y0 + 14), (16 - wd, y0 + 14)], fill=(56, 112, 58, 255))
-        p.line([(16 - wd + 2, y0 + 13), (16 - 1, y0 + 4)], fill=(86, 146, 80, 255), width=1)
-    save(p.done(), "deco_tree_0")
-    # 1: broad-leaved tree, a crown of overlapping clumps
-    p = Pen(32, 48)
-    p.ellipse([5, 40, 27, 47], fill=shadow)
-    p.polygon([(14, 44), (15, 26), (18, 26), (19, 44)], fill=(98, 66, 38, 255))
-    p.line([(16, 30), (11, 24)], fill=(98, 66, 38, 255), width=2)
-    p.line([(17, 30), (22, 23)], fill=(98, 66, 38, 255), width=2)
-    for (x, y, r) in [(10, 22, 7), (22, 21, 7), (16, 14, 8), (16, 25, 8), (9, 15, 6), (23, 14, 6)]:
-        p.disc(x, y, r, (40, 92, 40, 255))
-    for (x, y, r) in [(10, 20, 6), (21, 19, 6), (15, 12, 7), (15, 23, 6), (9, 13, 5), (22, 12, 5)]:
-        p.disc(x, y, r, (62, 122, 52, 255))
-    for (x, y, r) in [(9, 18, 3), (14, 10, 4), (20, 16, 3), (12, 22, 2)]:
-        p.disc(x, y, r, (98, 156, 72, 255))
-    save(p.done(), "deco_tree_1")
-    # 2: birch, white bark with dark marks and a light, airy crown
-    p = Pen(32, 48)
-    p.ellipse([8, 41, 24, 47], fill=shadow)
-    p.rectangle([15, 20, 17, 44], fill=(232, 228, 216, 255))
-    for y in (24, 29, 33, 38, 42):
-        p.line([(15, y), (16, y)], fill=(50, 46, 40, 255))
-    for (x, y, r) in [(16, 10, 7), (11, 17, 6), (21, 17, 6), (16, 22, 6)]:
-        p.disc(x, y, r, (96, 146, 58, 255))
-    for (x, y, r) in [(15, 8, 5), (10, 15, 4), (20, 15, 4), (15, 19, 4)]:
-        p.disc(x, y, r, (138, 182, 78, 255))
-    for (x, y) in [(13, 6), (9, 13), (18, 12), (14, 17)]:
-        p.disc(x, y, 2, (180, 210, 110, 255))
-    save(p.done(), "deco_tree_2")
-    # rocks: shaded boulders
-    for v in range(2):
-        p = Pen(32, 32)
-        p.ellipse([4, 24, 29, 31], fill=(0, 0, 0, 60))
-        stones = [(6, 12, 26, 29)] if v == 0 else [(4, 15, 19, 29), (15, 19, 28, 30)]
-        for (x0, y0, x1, y1) in stones:
-            p.ellipse([x0, y0, x1, y1], fill=(116, 114, 106, 255), outline=(70, 68, 62, 255))
-            p.ellipse([x0 + 2, y0 + 1, (x0 + x1) // 2 + 2, (y0 + y1) // 2], fill=(160, 158, 148, 255))
-            p.ellipse([x0 + 3, y0 + 2, x0 + 6, y0 + 4], fill=(200, 198, 190, 255))
-        save(p.done(), f"deco_rock_{v}")
+    # trees, boulders and mountain peaks: lit, rounded shapes at 64 px a tile (make_scenery.py)
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import make_scenery
+    make_scenery.FORCE = FORCE
+    make_scenery.build_all()
     # clay: a dug pit with layers of wet clay
     p = Pen(32, 32)
     p.ellipse([3, 9, 28, 28], fill=(150, 92, 48, 255), outline=(104, 62, 30, 255))
@@ -385,20 +343,6 @@ def decos():
     p.ellipse([9, 15, 22, 23], fill=(140, 84, 44, 255))
     p.ellipse([10, 14, 16, 18], fill=(214, 160, 104, 255))
     save(p.done(), "deco_clay")
-    # mountain peaks: 32x48 like trees, lit on the left, dark on the right, with snow
-    for v in range(2):
-        p = Pen(32, 48)
-        top = (15 + v * 3, 6 + v * 5)
-        p.polygon([(0, 46), top, (31, 46)], fill=(118, 112, 98, 255))
-        p.polygon([top, (31, 46), (top[0] + 3, 46)], fill=(86, 81, 70, 255))
-        p.polygon([(0, 46), top, (top[0] - 2, 46)], fill=(148, 142, 126, 255))
-        for k in range(3):
-            y = top[1] + 10 + k * 9
-            p.line([(top[0] - (y - top[1]) * 0.5 + 3, y), (top[0] - 2, y + 3)], fill=(110, 104, 92, 255))
-        p.polygon([top, (top[0] - 6, top[1] + 10), (top[0] - 2, top[1] + 8), (top[0] + 1, top[1] + 11),
-                   (top[0] + 5, top[1] + 9)], fill=(236, 238, 240, 255))
-        p.polygon([top, (top[0] + 1, top[1] + 11), (top[0] + 5, top[1] + 9)], fill=(196, 202, 210, 255))
-        save(p.done(), f"deco_peak_{v}")
     # ore deposits: a few rocks with glinting coloured nuggets
     ores = {1: (34, 34, 36), 2: (176, 100, 70), 3: (246, 206, 70), 4: (220, 220, 210), 5: (206, 116, 58)}
     for k, c in ores.items():

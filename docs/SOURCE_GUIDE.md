@@ -415,6 +415,7 @@ to `Bld`/`Player` (saved automatically) with a default that works for old saves.
 | raised ground | `MapView._ensure_lift`, `lift_at`, `_grid_mesh` |
 | translations | `i18n.gd`, `data/lang_*.json`, `tools/extract_strings.py` |
 | drawing buildings, people, carriers | `MapView._draw`, `_draw_building`, `_collect_folk` |
+| trees, peaks and boulders | `MapView._draw_scenery`, `_scenery_mesh` (pictures from `tools/make_scenery.py`) |
 | renderer and display settings | `settings.gd`, `ui_settings.gd`, `Main._probe_vulkan` |
 
 ---
