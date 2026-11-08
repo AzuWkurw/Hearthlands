@@ -1,5 +1,11 @@
 # Changelog
 
+## Build 36 (v0.31.0, 2026-11-08)
+
+- Boundary stones (Military group): claim free land 4 tiles around without any soldier, for 3 stone and a plank. A stone must stand on land your soldiers hold, so stones can't be chained across the map. It holds only land no soldiers hold: a rival's military building that reaches its land takes that land, and the stone falls if its own tile goes. Rivals with no soldiers to spare set them too.
+- Problems list: hide a warning with its x, or all of them with Hide all. A hidden warning stays out of the list, the count and the minimap until its reason changes (changing numbers, like "29 of 30", don't count); Show hidden and Unhide all bring them back.
+- Infirmaries with no patients are no longer listed as a problem.
+
 ## Build 35 (v0.30.0, 2026-11-08)
 
 - Trees, mountain peaks and boulders stand upright on the hills instead of being bent and stretched with the raised ground.
