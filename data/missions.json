@@ -1,0 +1,63 @@
+[
+	{
+		"id": "first_harvest",
+		"name": "1. The First Harvest",
+		"story": "A green valley, a quiet neighbour, and hungry settlers. Grow grain, grind it and bake bread before the first winter's end.",
+		"seed": "first harvest",
+		"foes": 1, "strength": 2,
+		"opts": {"peace_min": 40, "start_goods": 1.5},
+		"minutes": 40,
+		"goals": [
+			{"kind": "build", "ty": "farm", "n": 2, "text": "Build two farms"},
+			{"kind": "build", "ty": "mill", "n": 1, "text": "Build a mill"},
+			{"kind": "build", "ty": "bakery", "n": 1, "text": "Build a bakery"},
+			{"kind": "stock", "res": "bread", "n": 80, "text": "Store 80 bread"},
+			{"kind": "pop", "n": 60, "text": "Grow to 60 people"}
+		]
+	},
+	{
+		"id": "iron_road",
+		"name": "2. The Iron Road",
+		"story": "The hills are full of ore, and two rivals know it. Dig iron and coal, smelt it, and arm your men before they come.",
+		"seed": "iron road",
+		"foes": 2, "strength": 4,
+		"opts": {"peace_min": 20},
+		"minutes": 60,
+		"goals": [
+			{"kind": "build", "ty": "iron_mine", "n": 1, "text": "Open an iron mine"},
+			{"kind": "build", "ty": "coal_mine", "n": 1, "text": "Open a coal mine"},
+			{"kind": "build", "ty": "iron_smelter", "n": 1, "text": "Build an iron smelter"},
+			{"kind": "build", "ty": "weaponsmith", "n": 1, "text": "Build a weaponsmith"},
+			{"kind": "soldiers", "n": 20, "text": "Have 20 soldiers"}
+		]
+	},
+	{
+		"id": "iron_coast",
+		"name": "3. The Iron Coast",
+		"story": "A hand-made coast: your village in the south, a rich iron ridge in the middle, Aldric's legions to the north. Hold the ridge and take one rival realm.",
+		"map": "res://data/map_iron_coast.json",
+		"foes": 2, "strength": 5,
+		"opts": {"peace_min": 10},
+		"minutes": 90,
+		"goals": [
+			{"kind": "land", "n": 1500, "text": "Hold 1500 tiles of land"},
+			{"kind": "soldiers", "n": 25, "text": "Have 25 soldiers"},
+			{"kind": "defeat", "n": 1, "text": "Defeat one rival realm"}
+		]
+	},
+	{
+		"id": "scholars",
+		"name": "4. The Scholars' Race",
+		"story": "No war this time: three realms race for learning. Be the first to master the heavy plough, watermills and the three-field system.",
+		"seed": "scholars",
+		"foes": 2, "strength": 6,
+		"opts": {"peace_min": 90, "research": 1.5},
+		"minutes": 75,
+		"goals": [
+			{"kind": "build", "ty": "scriptorium", "n": 2, "text": "Build two scriptoriums"},
+			{"kind": "tech", "id": "heavy_plough", "text": "Study the heavy plough"},
+			{"kind": "tech", "id": "watermills", "text": "Study watermills"},
+			{"kind": "tech", "id": "three_field", "text": "Study the three-field system"}
+		]
+	}
+]

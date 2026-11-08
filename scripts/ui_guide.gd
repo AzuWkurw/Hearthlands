@@ -10,6 +10,7 @@ var box: PanelContainer
 var list: VBoxContainer
 var shown := false
 var _last := ""
+var title_lbl: Label
 
 ## [what to do, how it is checked, the tip shown under the step being worked on]
 const STEPS := [
@@ -39,6 +40,7 @@ func build() -> void:
 	var top := HBoxContainer.new()
 	v.add_child(top)
 	var title := Label.new()
+	title_lbl = title
 	title.text = "First steps"
 	title.add_theme_font_size_override("font_size", 15)
 	title.add_theme_color_override("font_color", Color("e8c870"))
@@ -61,15 +63,55 @@ func build() -> void:
 
 ## Called when a new game starts.
 func start() -> void:
-	shown = main.settings.guide
+	var mission: bool = not main.sim.mission.is_empty()
+	shown = main.settings.guide or mission
 	box.visible = shown
+	title_lbl.text = String(main.sim.mission.get("name", "")) if mission else "First steps"
 	_last = ""
 	refresh()
+
+
+## A mission's goals instead of the first steps: each with how far it is, ticked when done.
+func _mission() -> void:
+	var sim: Sim = main.sim
+	var goals: Array = sim.mission.get("goals", [])
+	var lines := []
+	for k in goals.size():
+		var g: Dictionary = goals[k]
+		var gp := sim.goal_progress(g)
+		var done: bool = k < sim.mission_done.size() and bool(sim.mission_done[k])
+		var prog := "" if int(gp[1]) <= 1 else " (%d of %d)" % [mini(int(gp[0]), int(gp[1])), int(gp[1])]
+		if done:
+			lines.append("[color=#86ad5c]✔[/color] [color=#9a9c88]%s[/color]" % String(g.get("text", "")))
+		else:
+			lines.append("[color=#e8c870]▶[/color] %s[color=#b8b8a8]%s[/color]" % [String(g.get("text", "")), prog])
+	var mins := float(sim.mission.get("minutes", 0))
+	if mins > 0.0:
+		var left := maxf(0.0, mins * 60.0 - sim.time)
+		lines.append("[color=%s]Time left: %d:%02d[/color]" % ["#d9483d" if left < 300.0 else "#b8b8a8", int(left) / 60, int(left) % 60])
+	var key := "\n".join(lines)
+	if key == _last:
+		return
+	_last = key
+	for c in list.get_children():
+		c.queue_free()
+	var l := RichTextLabel.new()
+	l.bbcode_enabled = true
+	l.fit_content = true
+	l.scroll_active = false
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.custom_minimum_size = Vector2(320, 0)
+	l.add_theme_font_size_override("normal_font_size", 13)
+	l.text = key
+	list.add_child(l)
 
 
 ## Ticks off what is done; called once a second.
 func refresh() -> void:
 	if box == null or not box.visible or main.sim == null or main.sim.w == 0:
+		return
+	if not main.sim.mission.is_empty():
+		_mission()
 		return
 	var done: Array = []
 	var all := true

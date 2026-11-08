@@ -557,11 +557,17 @@ var _stamp := 0
 
 # ================================================================ setup
 
-func new_game(p_seed: String, p_foes: int, p_strength: int, p_mix: bool, p_size := 0, p_research_victory := true, p_opts := {}) -> bool:
+func new_game(p_seed: String, p_foes: int, p_strength: int, p_mix: bool, p_size := 0, p_research_victory := true, p_opts := {}, p_map := {}, p_mission := {}) -> bool:
 	GameData.ensure()
-	var g := WorldGen.generate(p_seed, p_foes, p_size)
+	# a hand-made map (map editor, missions) or one made from the seed
+	var g := WorldGen.from_map(p_map, p_foes + 1) if not p_map.is_empty() else WorldGen.generate(p_seed, p_foes, p_size)
 	if g.is_empty():
 		return false
+	if not p_map.is_empty():
+		p_seed = String(g.seed)
+		p_size = int(g.w)
+	mission = p_mission.duplicate(true)
+	mission_done = []
 	seed_str = p_seed; foes = p_foes; strength = p_strength; mix = p_mix; map_size = p_size; research_victory = p_research_victory
 	opts = DEFAULT_OPTS.duplicate()
 	opts.merge(p_opts, true)
@@ -1879,6 +1885,68 @@ func tick(dt: float) -> void:
 ## minute; two runs (or a run and a reload) that print different numbers went apart in that minute.
 static var log_checksums := false
 
+# --- Missions -------------------------------------------------------------------------------------------
+# A mission (data/missions.json) is a game with goals: {name, story, goals: [...], minutes (a deadline,
+# 0 for none), ...}. Each goal is {"kind": ..., ...}: "pop" (n people), "build" (ty, n ready buildings),
+# "soldiers" (n), "tech" (id studied), "land" (n tiles), "stock" (res, n in store), "defeat" (n rival
+# realms gone; 0 or missing: all of them). All goals done: won. The deadline passes first: lost.
+var mission := {}
+var mission_done: Array = []      # one flag per goal; a goal once done stays done
+
+
+## How far goal g is: [now, needed].
+func goal_progress(g: Dictionary) -> Array:
+	var me := human()
+	var n := int(g.get("n", 1))
+	match String(g.get("kind", "")):
+		"pop":
+			return [pop_total(me), n]
+		"build":
+			var c := 0
+			for b in realm_blds(me):
+				if b.ty == String(g.get("ty", "")) and b.state == "ready":
+					c += 1
+			return [c, n]
+		"soldiers":
+			return [soldiers(me), n]
+		"tech":
+			return [1 if me.techs.has(String(g.get("id", ""))) else 0, 1]
+		"land":
+			return [owned(me.id)[0].size(), n]
+		"stock":
+			return [int(float(me.stock.get(String(g.get("res", "")), 0.0))), n]
+		"defeat":
+			var gone := 0
+			for p in players:
+				if p.ai and not p.alive:
+					gone += 1
+			return [gone, n if n > 0 else players.size() - 1]
+	return [0, 1]
+
+
+func _mission_check() -> void:
+	var goals: Array = mission.get("goals", [])
+	if mission_done.size() != goals.size():
+		mission_done.resize(goals.size())
+		mission_done.fill(false)
+	var all := true
+	for k in goals.size():
+		if not mission_done[k]:
+			var gp := goal_progress(goals[k])
+			if int(gp[0]) >= int(gp[1]):
+				mission_done[k] = true
+				emit_log("Goal reached: %s" % String(goals[k].get("text", "")), Color("86ad5c"))
+		all = all and bool(mission_done[k])
+	if all:
+		over = true
+		emit_log("Mission complete: %s" % String(mission.get("name", "")), Color("d8aa4a"))
+		ended.emit(true)
+	elif float(mission.get("minutes", 0)) > 0.0 and time > float(mission.minutes) * 60.0:
+		over = true
+		emit_log("Time is up: the mission is lost.", Color("d9483d"))
+		ended.emit(false)
+
+
 ## A number for the whole game state, for comparing two runs minute by minute (log_checksums). Caches
 ## that a loaded game rebuilds differently but that change nothing (path_ver) are left out, so a game
 ## and the same game saved and loaded give the same numbers.
@@ -1893,6 +1961,8 @@ func checksum() -> int:
 
 
 func _secondly() -> void:
+	if not mission.is_empty() and not over:
+		_mission_check()
 	if log_checksums and int(time) % 60 == 0:
 		print("minute %d checksum %d" % [int(time) / 60, checksum()])
 	_rebuild_realm_lists()
@@ -2024,6 +2094,7 @@ func to_save() -> Dictionary:
 		"rng_seed": rng.seed, "rng_state": rng.state, "players": pl, "blds": bl, "trips": tr, "attacks": at,
 		"vein": vein, "vein_amt": vein_amt, "vein_tiles": vein_tiles, "pave": pave,
 		"rel": rel, "rel_since": rel_since, "proposals": proposals, "prop_id": _prop_id,
+		"mission": mission, "mission_done": mission_done, "ticks": _ticks,
 	}
 
 
@@ -2047,6 +2118,10 @@ func from_save(d: Dictionary) -> String:
 	time = d.time; over = d.over; logs = d.logs; _bid = d.bid; _acc1 = d.acc1
 	rng.seed = d.rng_seed; rng.state = d.rng_state
 	rel = d.get("rel", {}); rel_since = d.get("rel_since", {}); proposals = d.get("proposals", []); _prop_id = int(d.get("prop_id", 0))
+	mission = d.get("mission", {}); mission_done = d.get("mission_done", [])
+	# the tick count decides which ticks hand out work (every 2nd, 3rd...): a loaded game must go on in
+	# the same rhythm (saves from before build 34 did not keep it; the time gives it closely enough)
+	_ticks = int(d.get("ticks", roundi(time / TICK)))
 	if d.has("vein"):
 		vein = d.vein; vein_amt = d.vein_amt; vein_tiles = d.vein_tiles
 	else:

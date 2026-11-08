@@ -102,6 +102,8 @@ var problems_ui := UiProblems.new(self)  # the Problems list (ui_problems.gd)
 var attack_ui := UiAttack.new(self)
 var chain_ui := UiChain.new(self)        # the production chain window (ui_chain.gd)      # the attack window (ui_attack.gd)
 var problems_btn: Button
+var editor_ui := UiEditor.new(self)  # the map editor (ui_editor.gd)
+var missions_ui := UiMissions.new(self)  # the missions list (ui_missions.gd)
 var guide_ui := UiGuide.new(self)  # the first-game checklist (ui_guide.gd)
 var side_ui := UiSide.new(self)
 var info_ui := UiInfo.new(self)
@@ -799,6 +801,8 @@ func _build_ui() -> void:
 
 	log_ui.build()
 	guide_ui.build()
+	editor_ui.build()
+	missions_ui.build()
 	problems_ui.build()
 	attack_ui.build()
 	chain_ui.build()
@@ -873,6 +877,12 @@ func _build_setup() -> void:
 	for s in SIZES:
 		size_opt.add_item(String(s[0]))
 	r2.add_child(size_opt)
+	# a hand-made map instead of one from the seed
+	var mr := HBoxContainer.new(); v.add_child(mr)
+	mr.add_child(_label("Map"))
+	map_opt = OptionButton.new(); map_opt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	mr.add_child(map_opt)
+	_fill_maps()
 	rv_check = CheckBox.new(); rv_check.text = "Research victory: first to the Industrial Revolution wins"; rv_check.button_pressed = true; v.add_child(rv_check)
 	_build_difficulty(v)
 	foes_slider.value_changed.emit(foes_slider.value)
@@ -882,6 +892,11 @@ func _build_setup() -> void:
 		var n := int(foes_slider.value) + 1
 		if sz > 0 and sz < WorldGen.min_size(n):
 			_show_hint(tr("A %d-tile map is too small for %d realms. Pick at least %d tiles or fewer rivals.") % [sz, n, WorldGen.min_size(n)], 6.0)
+			return
+		if map_opt.selected > 0:
+			var m := WorldGen.load_map(String(map_opt.get_item_metadata(map_opt.selected)))
+			if m.is_empty() or not start_map(m, int(foes_slider.value)):
+				_show_hint("That map could not be started.", 5.0)
 			return
 		var o := _difficulty_opts()
 		o["features"] = settings.enabled_features()
@@ -893,7 +908,34 @@ func _build_setup() -> void:
 		_set_speed(1.0))
 	go.custom_minimum_size = Vector2(0, 44)
 	v.add_child(go)
+	var er := HBoxContainer.new(); v.add_child(er)
+	var me_b := _button("Map editor", func():
+		var sz: int = SIZES[size_opt.selected][1]
+		if not editor_ui.start(seed_edit.text if seed_edit.text != "" else "hearth", int(foes_slider.value) + 1, sz):
+			_show_hint("Could not make that map. Try another seed or a bigger map.", 5.0))
+	me_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	er.add_child(me_b)
+	var mi_b := _button("Missions", func(): missions_ui.show())
+	mi_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	er.add_child(mi_b)
 	v.add_child(_button("Load a saved game", _open_saves))
+
+
+var map_opt: OptionButton
+
+
+## The new-game screen's map list: made from the seed, or one of the maps saved in the editor.
+func _fill_maps() -> void:
+	map_opt.clear()
+	map_opt.add_item("Made from the seed")
+	var da := DirAccess.open(UiEditor.MAP_DIR)
+	if da == null:
+		return
+	var files := Array(da.get_files()).filter(func(f): return String(f).ends_with(".json"))
+	files.sort()
+	for f in files:
+		map_opt.add_item(String(f).get_basename())
+		map_opt.set_item_metadata(map_opt.item_count - 1, UiEditor.MAP_DIR + "/" + String(f))
 
 
 ## Difficulty choices: [label, option key, [[shown text, value], ...]].
@@ -1021,6 +1063,51 @@ func _start(seed_str: String, foes: int, strength: int, mix: bool, size := 0, rv
 	return true
 
 
+## Starts a game on a hand-made map (the map editor, or one picked on the new-game screen), with the
+## new-game screen's strength and options. foes: rivals wanted (at most one per start but yours).
+func start_map(m: Dictionary, foes: int, mission := {}) -> bool:
+	var o := _difficulty_opts()
+	o["features"] = settings.enabled_features()
+	o.merge(mission.get("opts", {}), true)
+	var strength := int(mission.get("strength", str_slider.value))
+	if not sim.new_game(String(m.get("seed", "map")), clampi(foes, 1, (m.starts as Array).size() - 1), strength, mix_check.button_pressed if mission.is_empty() else true, 0, rv_check.button_pressed if mission.is_empty() else false, o, m, mission):
+		return false
+	_begin()
+	return true
+
+
+## Starts a mission from data/missions.json: its own map file, or a map made from its seed.
+func start_mission(ms: Dictionary) -> bool:
+	if ms.has("map"):
+		var m := WorldGen.load_map(String(ms.map))
+		if m.is_empty():
+			_show_hint("The mission's map %s is missing." % String(ms.map), 5.0)
+			return false
+		return start_map(m, int(ms.get("foes", 1)), ms)
+	var o := DEFAULT_MISSION_OPTS.duplicate()
+	o["features"] = settings.enabled_features()
+	o.merge(ms.get("opts", {}), true)
+	if not sim.new_game(String(ms.get("seed", "mission")), int(ms.get("foes", 1)), int(ms.get("strength", 5)), true, int(ms.get("size", 0)), false, o, {}, ms):
+		return false
+	_begin()
+	return true
+
+
+const DEFAULT_MISSION_OPTS := {"start_goods": 1.0, "peace_min": 0, "research": 1.0, "build": 1.0}
+
+
+## After a new game on a map or a mission: the same as _start, then into the game.
+func _begin() -> void:
+	_after_world_change()
+	guide_ui.start()
+	var hq0 := sim.human().hq
+	view.center_on(Vector2(hq0.x + 0.5, hq0.y + 0.5))
+	view.zoom = 32.0
+	setup.visible = false
+	paused = false
+	_set_speed(1.0)
+
+
 func _after_world_change() -> void:
 	view.sim = sim
 	watch = {}
@@ -1053,6 +1140,8 @@ func _on_end(win: bool) -> void:
 
 
 func _toggle_pause() -> void:
+	if editor_ui.open:
+		return
 	if sim.over or setup.visible:
 		return
 	paused = not paused
@@ -1467,7 +1556,7 @@ func _process(delta: float) -> void:
 				research_ui.tree.pan(mv * 700.0 * delta)
 			else:
 				view.pan(mv * 600.0 * delta / view.zoom)
-	if not paused and not sim.over and not setup.visible and not save_panel.visible and not tech_panel.visible and not dip_panel.visible:
+	if not paused and not editor_ui.open and not sim.over and not setup.visible and not save_panel.visible and not tech_panel.visible and not dip_panel.visible:
 		autosave_t += delta * speed
 		if autosave_t >= 300.0:
 			autosave_t = 0.0

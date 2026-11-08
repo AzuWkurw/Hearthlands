@@ -385,3 +385,70 @@ static func _dist(ter: PackedByteArray, w: int, h: int, test: Callable, cap: int
 					d[yy * w + xx] = nd
 					q.append(yy * w + xx)
 	return d
+
+
+# --- Hand-made maps (the map editor, missions) -------------------------------------------------------
+# A map is a dictionary: w, h, seed (for the ground's heights), ter, deco, amt, ore, shade (one byte
+# per tile) and starts (the headquarters' places, the player's first). Files hold it as JSON with the
+# tile arrays packed (compressed, then base64), so they can sit in data/ and in the mods folder.
+
+const MAP_KEYS := ["ter", "deco", "amt", "ore", "shade"]
+
+
+## A game world from a hand-made map: the start places are cleared as in a generated world and the
+## ore is grouped into veins. Only the first n starts are used. {} when the map has too few starts.
+static func from_map(m: Dictionary, n: int) -> Dictionary:
+	var starts: Array = m.get("starts", [])
+	if starts.size() < n or n < 1:
+		return {}
+	var g := {"w": int(m.w), "h": int(m.h), "starts": []}
+	for k in MAP_KEYS:
+		g[k] = (m[k] as PackedByteArray).duplicate()
+	for k in n:
+		g.starts.append(Vector2i(starts[k]))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = String(m.get("seed", "map")).hash()
+	for p in g.starts:
+		_stamp(g, p.x, p.y, rng)
+	_make_veins(g, rng)
+	g["seed"] = String(m.get("seed", "map"))
+	return g
+
+
+static func map_to_json(m: Dictionary) -> String:
+	var out := {"format": 1, "name": String(m.get("name", "")), "w": m.w, "h": m.h, "seed": String(m.get("seed", "map")),
+		"starts": (m.starts as Array).map(func(s): return [s.x, s.y])}
+	for k in MAP_KEYS:
+		var raw: PackedByteArray = m[k]
+		out[k] = Marshalls.raw_to_base64(raw.compress(FileAccess.COMPRESSION_ZSTD))
+	return JSON.stringify(out)
+
+
+## Reads a map file (res://, user:// or a full path); {} if it cannot be read.
+static func load_map(path: String) -> Dictionary:
+	if not FileAccess.file_exists(path):
+		return {}
+	var d = JSON.parse_string(FileAccess.get_file_as_string(path))
+	if not (d is Dictionary) or not d.has("ter"):
+		return {}
+	var w := int(d.w)
+	var h := int(d.h)
+	var m := {"name": String(d.get("name", path.get_file().get_basename())), "w": w, "h": h, "seed": String(d.get("seed", "map")), "starts": []}
+	for s in d.get("starts", []):
+		m.starts.append(Vector2i(int(s[0]), int(s[1])))
+	for k in MAP_KEYS:
+		var raw := Marshalls.base64_to_raw(String(d[k])).decompress(w * h, FileAccess.COMPRESSION_ZSTD)
+		if raw.size() != w * h:
+			return {}
+		m[k] = raw
+	return m
+
+
+static func save_map(m: Dictionary, path: String) -> String:
+	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	if f == null:
+		return "Could not write %s" % path
+	f.store_string(map_to_json(m))
+	f.close()
+	return ""

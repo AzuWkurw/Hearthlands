@@ -8,6 +8,8 @@ extends Control
 
 signal tile_clicked(tile: Vector2i)
 signal cancel_requested
+signal paint(tile: Vector2i, first: bool)   # map editor: the left button is down over this tile
+signal paint_done                           # map editor: the left button was let go
 
 const DETAIL_ZOOM := 10.0        # below this many pixels per tile, the map is drawn from the minimap image
 const ANIM_ZOOM := 14.0          # below this, small details (smoke, workers, animals) are skipped
@@ -33,6 +35,11 @@ var cam := Vector2(40, 40)       # camera centre in tiles
 var zoom := 32.0                 # screen pixels per tile
 var place_type := ""             # a building id, or a tool: "@road", "@pave", "@unroad", "@work"
 var ghost := Vector2i(-1, -1)
+var editor := false            # the map editor is open: left button paints (see UiEditor)
+var editor_starts: Array = []  # the map editor's start places, drawn as numbered banners
+var editor_brush := 1          # the map editor's brush size, drawn around the mouse
+var _painting := false
+var _paint_last := Vector2i(-1, -1)
 var _tool_labels: Array = []   # text drawn over the map for the tool in hand (land a military building would claim)
 var _gain := {}                # while placing a military building: the best spots and how much new land each claims
 var sel_id := 0
@@ -266,6 +273,7 @@ func refresh_textures() -> void:
 func reset_world() -> void:
 	chunks.sim = sim
 	chunks.clear()
+	_lift_key = ""          # the ground's heights may have changed (map editor)
 	road_start = Vector2i(-1, -1)
 	_preview = PackedInt32Array()
 	_make_variation()
@@ -375,6 +383,15 @@ func _gui_input(event: InputEvent) -> void:
 			zoom_at(mb.position, 1.12)
 		elif mb.button_index == MOUSE_BUTTON_WHEEL_DOWN and mb.pressed:
 			zoom_at(mb.position, 1.0 / 1.12)
+		elif editor and mb.button_index == MOUSE_BUTTON_LEFT:
+			# the map editor paints with the left button (the middle button still moves the map)
+			if mb.pressed:
+				_painting = true
+				_paint_last = screen_to_tile(mb.position)
+				paint.emit(_paint_last, true)
+			elif _painting:
+				_painting = false
+				paint_done.emit()
 		elif mb.button_index == MOUSE_BUTTON_LEFT or mb.button_index == MOUSE_BUTTON_MIDDLE:
 			if mb.pressed:
 				_drag = true; _moved = mb.button_index == MOUSE_BUTTON_MIDDLE; _press = mb.position
@@ -388,6 +405,9 @@ func _gui_input(event: InputEvent) -> void:
 	elif event is InputEventMouseMotion:
 		var mm := event as InputEventMouseMotion
 		ghost = screen_to_tile(mm.position)
+		if _painting and ghost != _paint_last:
+			_paint_last = ghost
+			paint.emit(ghost, false)
 		if _drag:
 			if not _moved and mm.position.distance_to(_press) > 6.0:
 				_moved = true
@@ -761,6 +781,19 @@ func _draw_selection_and_tools() -> void:
 				var c := Vector2(o.x + 0.5, o.y + 0.4)
 				draw_line(c + Vector2(-0.45, -0.45), c + Vector2(0.45, 0.45), Color("ff4a3a"), 0.14)
 				draw_line(c + Vector2(0.45, -0.45), c + Vector2(-0.45, 0.45), Color("ff4a3a"), 0.14)
+	if editor:
+		for k in editor_starts.size():
+			var st: Vector2i = editor_starts[k]
+			var c := Vector2(st.x + 0.5, st.y + 0.5 - lift_at(st.x + 0.5, st.y + 0.5))
+			draw_rect(Rect2(c.x - 3.5, c.y - 3.5, 7, 7), Color(Sim.PCOL[k % Sim.PCOL.size()], 0.18))
+			draw_rect(Rect2(c.x - 3.5, c.y - 3.5, 7, 7), Sim.PCOL[k % Sim.PCOL.size()], false, 0.1)
+			draw_circle(c, 0.7, Sim.PCOL[k % Sim.PCOL.size()])
+			_tool_labels.append([c + Vector2(0, -0.9), "Start %d%s" % [k + 1, " (you)" if k == 0 else ""], Color.WHITE])
+		if sim.inb(ghost.x, ghost.y):
+			var r := editor_brush / 2
+			var gl := lift_at(ghost.x + 0.5, ghost.y + 0.5)
+			draw_rect(Rect2(ghost.x - r, ghost.y - r - gl, editor_brush, editor_brush), Color(1, 1, 1, 0.9), false, 0.08)
+		return
 	var sel: Sim.Bld = sim.by_id.get(sel_id)
 	if sel != null:
 		if raised: _lift_to(sel.x + 0.5, sel.y + 0.5)

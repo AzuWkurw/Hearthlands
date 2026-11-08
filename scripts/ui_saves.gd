@@ -88,7 +88,10 @@ func _load_game(slot: String) -> void:
 		return
 	main.turn_on_new_features()
 	main._after_world_change()
-	main.guide_ui.box.visible = false
+	if main.sim.mission.is_empty():
+		main.guide_ui.box.visible = false
+	else:
+		main.guide_ui.start()
 	var hq := main.sim.human().hq
 	if hq != null:
 		main.view.center_on(Vector2(hq.x + 0.5, hq.y + 0.5))
