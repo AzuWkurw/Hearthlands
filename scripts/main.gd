@@ -143,6 +143,7 @@ var end_panel: Control
 
 
 var end_title: Label
+var end_watch: Button
 
 
 var end_text: Label
@@ -1038,6 +1039,14 @@ func _build_end() -> void:
 	var v := _body(end_panel)
 	end_title = _label("Victory", 28, BRASS); v.add_child(end_title)
 	end_text = _label("", 15, DIM); v.add_child(end_text)
+	var watch_b := _button("Watch the borders", func():
+		var st = sim.get_feature("statistics")
+		if st != null:
+			end_panel.visible = false
+			st.replay())
+	watch_b.tooltip_text = "Everyone's land, minute by minute, from the start (in Statistics, Borders)."
+	end_watch = watch_b
+	v.add_child(watch_b)
 	v.add_child(_button("New game", func(): end_panel.visible = false; setup.visible = true))
 	end_panel.visible = false
 
@@ -1132,7 +1141,10 @@ func _on_end(win: bool) -> void:
 	end_title.text = "Victory" if win else "Defeat"
 	var m := int(sim.time) / 60
 	var last := String(sim.logs[-1][1]) if sim.logs.size() > 0 else ""
-	if "Industrial Revolution" in last:
+	end_watch.visible = sim.get_feature("statistics") != null
+	if not sim.mission.is_empty():
+		end_text.text = ("%s: every goal reached in %d minutes." if win else "%s: %s (%d minutes)") % ([String(sim.mission.get("name", "")), m] if win else [String(sim.mission.get("name", "")), "the goals were not reached in time" if sim.players[0].alive else "your headquarters was captured", m])
+	elif "Industrial Revolution" in last:
 		end_text.text = ("Your realm reached the Industrial Revolution first, after %d minutes." if win else last + " (%d minutes)") % m
 	else:
 		end_text.text = ("Every rival realm has fallen. Your reign took %d minutes." if win else "Your headquarters was captured after %d minutes.") % m
@@ -1384,6 +1396,7 @@ func _show_hint(text: String, secs: float) -> void:
 const KEY_ACTIONS := [
 	["events", "Show or hide the event log", KEY_E],
 	["problems", "Show or hide the Problems list", KEY_O],
+	["copy", "Build another of the building under the mouse", KEY_Q],
 	["sites", "Show free building spots", KEY_B],
 	["turn", "Turn the entrance (research when not placing)", KEY_R],
 	["diplomacy", "Diplomacy", KEY_G],
@@ -1474,6 +1487,15 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 	if event.keycode == KEY_E and not setup.visible:
 		log_ui.toggle()
+		return
+	if event.keycode == KEY_Q and not setup.visible and not editor_ui.open:
+		# copy: place another of the building under the mouse
+		var cb := sim.bld_at(view.ghost.x, view.ghost.y)
+		if cb != null and cb.p == 1 and cb.ty != "hq" and sim.bld_enabled(cb.ty) and (not cb.def.has("tech") or sim.human().techs.has(cb.def.tech)):
+			if view.place_type != cb.ty:
+				_pick_build(cb.ty)
+			view.door = cb.door if sim.door_ok(cb.ty, cb.door) else view.door
+			_show_hint("Placing another %s (Q copies the building under the mouse)." % String(cb.def.name).to_lower(), 2.5)
 		return
 	if event.keycode == KEY_O and not setup.visible:
 		problems_ui.toggle()

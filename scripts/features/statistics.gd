@@ -15,6 +15,17 @@ var chart: LineChart
 var table: RichTextLabel
 var realm_metric: OptionButton
 var realm_chart: LineChart
+# --- Border replay: a small picture of who holds what, once a game minute (BORDER_W tiles across)
+const BORDER_W := 96
+var borders: Array = []   # one compressed picture (a byte per cell: the owner) per game minute
+var bw := 0               # cells across in those pictures (the map's own width if smaller)
+var tab_box: TabContainer
+var border_pic: TextureRect
+var border_slider: HSlider
+var border_lbl: Label
+var play_btn: Button
+var playing := false
+var _play_t := 0.0
 var realm_legend: RichTextLabel
 var sel_good := "planks"
 
@@ -62,6 +73,8 @@ func on_second() -> void:
 		b["bld"] = sim.realm_blds(p).size()
 		b["sol"] = sim.soldiers(p)
 		b["rp"] = p.rp_total
+		b["land"] = sim.owned(p.id)[0].size()
+		b["techs"] = p.techs.size()
 		b["alive"] = p.alive
 		var made_total := 0.0
 		for k in b.made:
@@ -74,18 +87,21 @@ func on_second() -> void:
 		if (hist[p.id] as Array).size() > KEEP:
 			(hist[p.id] as Array).pop_front()
 		cur[p.id] = {"made": {}, "used": {}}
+	_snapshot_borders()
 	if win != null and win.visible:
 		refresh()
 
 
 func save_state() -> Dictionary:
-	return {"hist": hist, "cur": cur, "minute": minute}
+	return {"hist": hist, "cur": cur, "minute": minute, "borders": borders, "bw": bw}
 
 
 func load_state(d: Dictionary) -> void:
 	hist = d.get("hist", {})
 	cur = d.get("cur", {})
 	minute = int(d.get("minute", -1))
+	borders = d.get("borders", [])
+	bw = int(d.get("bw", 0))
 
 
 func build_ui(main: Main) -> void:
@@ -128,7 +144,7 @@ func build_ui(main: Main) -> void:
 	realms.name = "Realms"
 	tabs.add_child(realms)
 	realm_metric = OptionButton.new()
-	for t in ["Population", "Buildings", "Soldiers", "Goods made per minute", "Research points (total)"]:
+	for t in ["Population", "Buildings", "Soldiers", "Goods made per minute", "Research points (total)", "Land (tiles)", "Techs studied"]:
 		realm_metric.add_item(t)
 	realm_metric.item_selected.connect(func(_i): refresh())
 	realms.add_child(realm_metric)
@@ -139,6 +155,39 @@ func build_ui(main: Main) -> void:
 	realm_legend.bbcode_enabled = true
 	realm_legend.fit_content = true
 	realms.add_child(realm_legend)
+	# borders: everyone's land minute by minute, to play back
+	var bt := VBoxContainer.new()
+	bt.name = "Borders"
+	tabs.add_child(bt)
+	tab_box = tabs
+	border_pic = TextureRect.new()
+	border_pic.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	border_pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	border_pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	border_pic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	bt.add_child(border_pic)
+	var row := HBoxContainer.new()
+	bt.add_child(row)
+	play_btn = Button.new()
+	play_btn.text = "Play"
+	play_btn.pressed.connect(func():
+		playing = not playing
+		if playing and border_slider.value >= border_slider.max_value:
+			border_slider.value = 0
+		play_btn.text = "Pause" if playing else "Play")
+	row.add_child(play_btn)
+	border_slider = HSlider.new()
+	border_slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	border_slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	border_slider.value_changed.connect(func(_v): _show_border(int(border_slider.value)))
+	row.add_child(border_slider)
+	border_lbl = Label.new()
+	row.add_child(border_lbl)
+	var tm := Timer.new()
+	tm.wait_time = 0.2
+	tm.autostart = true
+	tm.timeout.connect(_play_step)
+	win.add_child(tm)
 
 
 func open() -> void:
@@ -178,7 +227,7 @@ func refresh() -> void:
 			var net := (m - u) / maxf(1.0, last.size())
 			rows.append("%s: made [color=#86c55c]%.1f[/color], used [color=#e07a5f]%.1f[/color] per minute (%s), %d in store" % [r.name, m / maxf(1.0, last.size()), u / maxf(1.0, last.size()), ("[color=#86c55c]%+.1f[/color]" if net >= 0.0 else "[color=#e07a5f]%+.1f[/color]") % net, int(p.stock.get(r.id, 0.0))])
 	table.text = tr("[b]%s[/b]: green made, red used, per game minute.\n[b]Last 10 minutes[/b]\n%s") % [GameData.res_name(sel_good), "\n".join(rows) if rows.size() > 0 else "nothing counted yet"]
-	var key: String = ["pop", "bld", "sol", "made_total", "rp"][realm_metric.selected]
+	var key: String = ["pop", "bld", "sol", "made_total", "rp", "land", "techs"][realm_metric.selected]
 	var ser := []
 	var legend := []
 	for q: Sim.Player in sim.players:
@@ -189,4 +238,89 @@ func refresh() -> void:
 		ser.append({"name": q.name, "color": q.color, "values": vals})
 		legend.append("[color=#%s]■ %s[/color]" % [q.color.to_html(false), q.name])
 	realm_chart.set_series(ser)
-	realm_legend.text = "   ".join(legend)
+	# where you stand now against each rival
+	var rank := ["[table=6][cell][b]Realm[/b]  [/cell][cell][b]People[/b]  [/cell][cell][b]Buildings[/b]  [/cell][cell][b]Soldiers[/b]  [/cell][cell][b]Land[/b]  [/cell][cell][b]Techs[/b][/cell]"]
+	for q: Sim.Player in sim.players:
+		var cells := [sim.pop_total(q), sim.realm_blds(q).size(), sim.soldiers(q), sim.owned(q.id)[0].size(), q.techs.size()]
+		rank.append("[cell][color=#%s]■ %s%s[/color]  [/cell]" % [q.color.to_html(false), q.name, "" if q.alive else " (gone)"] + "".join(cells.map(func(v): return "[cell]%d  [/cell]" % v)))
+	realm_legend.text = "   ".join(legend) + "\n\n" + "".join(rank) + "[/table]"
+	_refresh_borders()
+
+
+## Takes this minute's picture of everyone's land (downscaled to at most BORDER_W cells across).
+func _snapshot_borders() -> void:
+	if sim.w == 0:
+		return
+	bw = mini(BORDER_W, sim.w)
+	var bh := maxi(1, sim.h * bw / sim.w)
+	var px := PackedByteArray()
+	px.resize(bw * bh)
+	for y in bh:
+		for x in bw:
+			px[y * bw + x] = sim.owner[(y * sim.h / bh) * sim.w + x * sim.w / bw]
+	borders.append(px.compress(FileAccess.COMPRESSION_DEFLATE))
+	borders.append(bh)   # (the height goes with each picture)
+
+
+func _border_count() -> int:
+	return borders.size() / 2
+
+
+func _refresh_borders() -> void:
+	if border_slider == null:
+		return
+	var n := _border_count()
+	border_slider.max_value = maxi(0, n - 1)
+	if not playing and n > 0:
+		border_slider.value = n - 1
+	_show_border(int(border_slider.value))
+
+
+## Draws picture k: water dark blue, land nobody holds grey-green, each realm in its colour.
+func _show_border(k: int) -> void:
+	var n := _border_count()
+	if n == 0 or bw == 0:
+		border_lbl.text = "no minutes yet"
+		return
+	k = clampi(k, 0, n - 1)
+	var bh := int(borders[k * 2 + 1])
+	var px: PackedByteArray = (borders[k * 2] as PackedByteArray).decompress(bw * bh, FileAccess.COMPRESSION_DEFLATE)
+	var img := Image.create(bw, bh, false, Image.FORMAT_RGB8)
+	# while the game goes on, land you have not seen stays dark (no peeking past the fog)
+	var fog = sim.get_feature("fog")
+	var hide: bool = fog != null and not sim.over
+	for y in bh:
+		for x in bw:
+			var o := px[y * bw + x]
+			var ti := (y * sim.h / bh) * sim.w + x * sim.w / bw
+			if hide and not fog.seen.has(ti) and not fog.visible_at(ti):
+				img.set_pixel(x, y, Color("101210"))
+				continue
+			var t := sim.ter[ti]
+			var c := Color("1d3550") if t == Sim.WATER else (Color("5a5a52") if t == Sim.MOUNT else Color("3c4a30"))
+			if o > 0 and o <= sim.players.size():
+				c = sim.players[o - 1].color.darkened(0.15)
+			img.set_pixel(x, y, c)
+	border_pic.texture = ImageTexture.create_from_image(img)
+	border_lbl.text = "  minute %d of %d" % [k + 1, n]
+
+
+## While playing: one minute every fifth of a second (a timer calls this).
+func _play_step() -> void:
+	if not playing or win == null or not win.visible:
+		return
+	if border_slider.value >= border_slider.max_value:
+		playing = false
+		play_btn.text = "Play"
+		return
+	border_slider.value += 1
+
+
+## Opens the window on the border replay and plays it from the start (the end-of-game screen).
+func replay() -> void:
+	win.visible = true
+	refresh()
+	tab_box.current_tab = 2
+	border_slider.value = 0
+	playing = true
+	play_btn.text = "Pause"
