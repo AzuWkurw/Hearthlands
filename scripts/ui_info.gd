@@ -71,6 +71,8 @@ func _refresh_sel() -> void:
 	if Crops.is_farm(b):
 		var cn := Crops.now(main.sim, b)
 		var co: Dictionary = Crops.LIST[cn].out
+		if b.state == "ready":
+			t += Crops.fields_line(main.sim, b) + "\n"
 		t += "Sows: [b]%s[/b]%s, %s a harvest\n[color=#9a9c88]Growth by season: %s[/color]\n" % [String(Crops.LIST[cn].name), " (winter rotation)" if cn != Crops.chosen(b) else "", ", ".join(co.keys().map(func(k): return "%d %s" % [int(co[k]), GameData.res_name(k).to_lower()])), Crops.season_text(cn)]
 	elif d.has("out"):
 		t += "Makes: %s\n" % ", ".join((d.out as Dictionary).keys().map(func(k): return "%d %s" % [int(d.out[k]), GameData.res_name(k).to_lower()]))

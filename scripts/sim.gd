@@ -226,6 +226,7 @@ class Bld:
 	var sally := false                     # its soldiers march out to meet an attack instead of waiting
 	var crop := ""                         # a farm's crop (Crops.LIST; "" = wheat)
 	var rotate := false                    # a farm sows winter rye while its own crop is out of season
+	var sowing := false                    # a farm's work cycle sows a new field (else it harvests one)
 	var town := ""                         # a store's town name (shown on the map and in messages)
 	var blunt := 0                         # soldiers here whose weapons are worn out (re-armed from the stores)
 	var dry_t := -1.0                      # a mine: game time its vein was found to have run dry (-1: not dry)
@@ -443,6 +444,7 @@ var plot := PackedInt32Array()      # per tile: the building standing there (all
 
 
 var bmap := PackedInt32Array()
+var fields := {}                    # farm fields: tile -> [farm id, crop, growth seconds] (see Crops)
 
 
 var players: Array[Player] = []
@@ -595,6 +597,7 @@ func new_game(p_seed: String, p_foes: int, p_strength: int, p_mix: bool, p_size 
 	height = WorldGen.heights(p_seed, ter, w, h)
 	vein = g.vein; vein_amt = g.vein_amt; vein_tiles = g.vein_tiles
 	pave = PackedByteArray(); pave.resize(w * h)
+	fields = {}
 	changed_tiles = PackedInt32Array()
 	_pending = {}; _supply = {}; _reno = {}; reno_queue = {}; _mil_dirty = true; _tick_dirty = true
 	owner = PackedByteArray(); owner.resize(w * h)
@@ -942,7 +945,7 @@ func find_near(cx: int, cy: int, r: int, mode: String, arg := 0, pid := 0) -> in
 				"fish": ok = ter[i] == WATER and amt[i] > 0
 				"clay": ok = deco[i] == D_CLAY and amt[i] > 0
 				"ore": ok = ore[i] == arg and vein_left(i) > 0
-				"plant": ok = ter[i] == GRASS and deco[i] == 0 and bmap[i] == 0 and plot[i] == 0 and road[i] == 0 and owner[i] == pid and rng.randf() < 0.35
+				"plant": ok = ter[i] == GRASS and deco[i] == 0 and bmap[i] == 0 and plot[i] == 0 and road[i] == 0 and owner[i] == pid and not fields.has(i) and rng.randf() < 0.35
 			if ok:
 				var dd := absi(dx) + absi(dy)
 				if dd < bd:
@@ -1198,13 +1201,10 @@ func can_place(ty: String, x: int, y: int, pid: int, door := -1) -> String:
 			any_way = true
 			break
 		# the way to it must not lead through the new building's own plot
-		for dd in 4:
-			var nx: int = t2 % w + DOOR_DX[dd]
-			var ny: int = t2 / w + DOOR_DY[dd]
-			if inb(nx, ny) and rr[ny * w + nx] == 1 and not own_plot.has(ny * w + nx) and ny * w + nx != idx(x, y):
-				any_way = true
-				break
-		if any_way:
+		var blocked := own_plot.duplicate()
+		blocked.append(idx(x, y))
+		if logistics.reach_avoiding(pid, t2, blocked):
+			any_way = true
 			break
 	if not any_way:
 		return "No road can get to this spot (closed in by buildings, water or rocks)" if door < 0 else "No road can get to this entrance (try turning it with R)"
@@ -2055,6 +2055,7 @@ func _secondly() -> void:
 	if log_checksums and int(time) % 60 == 0:
 		print("minute %d checksum %d" % [int(time) / 60, checksum()])
 	_rebuild_realm_lists()
+	Crops.grow(self)
 	if logistics.road_carriers_on():
 		for p in players:
 			logistics.road_carrier_tick(p)
@@ -2185,7 +2186,7 @@ func to_save() -> Dictionary:
 		"features_known": Features.available().map(func(e): return e.id), "build": Version.BUILD, "reno_queue": reno_queue.duplicate(true), "w": w, "h": h, "ter": ter, "deco": deco, "amt": amt, "ore": ore, "shade": shade,
 		"owner": owner, "road": road, "bmap": bmap, "time": time, "over": over, "logs": logs, "bid": _bid, "acc1": _acc1,
 		"rng_seed": rng.seed, "rng_state": rng.state, "players": pl, "blds": bl, "trips": tr, "attacks": at,
-		"vein": vein, "vein_amt": vein_amt, "vein_tiles": vein_tiles, "pave": pave,
+		"vein": vein, "vein_amt": vein_amt, "vein_tiles": vein_tiles, "pave": pave, "fields": fields,
 		"rel": rel, "rel_since": rel_since, "proposals": proposals, "standing": standing, "prop_id": _prop_id,
 		"mission": mission, "mission_done": mission_done, "ticks": _ticks,
 	}
@@ -2261,6 +2262,10 @@ func from_save(d: Dictionary) -> String:
 	pave = d.get("pave", PackedByteArray())
 	if pave.size() != w * h:
 		pave = PackedByteArray(); pave.resize(w * h)
+	fields = {}
+	var fd: Dictionary = d.get("fields", {})
+	for k in fd:
+		fields[int(k)] = [int(fd[k][0]), String(fd[k][1]), float(fd[k][2])]
 	_alloc_path_buffers()
 	_reset_nets()
 	_pending = {}

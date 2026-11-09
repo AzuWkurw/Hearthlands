@@ -214,6 +214,10 @@ number and updates `scripts/version.gd`, `project.godot`, the Windows export set
   weapon fights about 12% worse until a new weapon comes from the stores (one a second per building).
   Bows break now and then after a volley; the archer takes a new one. Tools already wear out the same
   way (each tool lasts a number of work cycles, longer the better it is made).
+- **Fields.** A farm sows up to 6 fields on open grass in its work area (7 tiles across; Move work area
+  moves it), then harvests each when ripe and sows it again. A field takes a minute to ripen, faster
+  in summer; a crop out of season does not grow, so a field sown late waits for spring. Building or
+  laying a road on a field ends it. Fields show as furrows, then green rows, then the ripe crop.
 - **Crops and seeds.** A farm sows one crop, chosen in its info box: wheat from the start, winter rye
   (Heavy plough), vegetables (Open-field farming), potatoes (New World crops), flax (Wool trade, with
   clothes on) and hops (Monasteries). Each crop has its seasons: wheat and vegetables stand idle in

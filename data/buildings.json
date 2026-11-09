@@ -259,11 +259,16 @@
   "time": 12,
   "worker": "peasant",
   "cycle": 26,
+  "act": "farm",
   "out": {
    "grain": 3
   },
+  "work": {
+   "radius": 3,
+   "move": 5
+  },
   "site": "open:4:2",
-  "info": "Crops from the open fields around it: wheat at first, more seeds through research. Choose what it sows below.",
+  "info": "Sows up to 6 fields on open grass around it and harvests them when ripe (a minute of growing, faster in summer). Wheat at first, more seeds through research: choose what it sows below.",
   "art": {
    "style": "barn",
    "wall": "#c3a64a",

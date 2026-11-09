@@ -87,9 +87,14 @@ func start_check(b: Sim.Bld, p: Sim.Player) -> String:
 		return "Enough nobles for now"
 	if d.has("makes_tools") and sim.wanted_tool(p) == "":
 		return "Every tool is in stock (see production targets)"
-	var cb := Crops.block(sim, b)
-	if cb != "":
-		return cb
+	if Crops.is_farm(b):
+		var fw := Crops.farm_start(sim, b)
+		if fw != "":
+			return fw
+	else:
+		var cb := Crops.block(sim, b)
+		if cb != "":
+			return cb
 	var outs: Dictionary = Crops.out_of(sim, b)
 	if outs.size() > 0:
 		# goods already on their way (waiting at buildings, on a carrier's back, or being made) count
@@ -235,6 +240,12 @@ func finish_prod(b: Sim.Bld, p: Sim.Player) -> void:
 	var tg := b.target
 	if d.has("siege"):
 		_siege_hit(b, p)
+		return
+	if Crops.is_farm(b):
+		var got := Crops.farm_finish(sim, b)
+		var fx := int(sim.mod(p, "out:" + b.ty))
+		for k in got:
+			deliver(b, p, k, int(got[k]) + fx)
 		return
 	match String(d.get("act", "")):
 		"cut_tree":

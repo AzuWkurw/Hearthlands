@@ -15,7 +15,7 @@ const DETAIL_ZOOM := 10.0        # below this many pixels per tile, the map is d
 const ANIM_ZOOM := 14.0          # below this, small details (smoke, workers, animals) are skipped
 const LORES_ZOOM := 16.0         # below this, the ground comes from chunks baked at half resolution
 ## Tools that outdoor workers carry, by the building's "act".
-const TOOL := {"cut_tree": "axe", "cut_rock": "pick", "dig_clay": "shovel", "fish": "rod", "plant": "seed"}
+const TOOL := {"cut_tree": "axe", "cut_rock": "pick", "dig_clay": "shovel", "fish": "rod", "plant": "seed", "farm": "seed"}
 ## Where effects sit on each building style, as fractions of the picture's width and height.
 ## A building can override these in buildings.json with "art": {"smoke": [u, v], "glow": [u, v], "hub": [u, v]}.
 const ANCHORS := {
@@ -619,6 +619,7 @@ func _draw() -> void:
 		draw_map_texture(self, minimap.own_tex())
 	if _vary != null:
 		draw_map_texture(self, _vary)
+	_draw_fields(x0, x1, y0, y1)
 	if z >= DETAIL_ZOOM:
 		_draw_scenery(x0, x1, y0, y1)
 	if traffic_ui != null and traffic_ui.on:
@@ -1441,6 +1442,52 @@ func _draw_building(b: Sim.Bld, labels: Array, detail: bool) -> void:
 		labels.append([Vector2(b.x + 0.5, rect.position.y - 0.05), str(sim.own_def(b)), pc.lightened(0.5)])
 	if b.p == 1 and b.prio != Sim.PRIO_NORMAL:
 		_prio_badge(b)
+
+
+## The colour of each crop when ripe.
+const CROP_COL := {"wheat": Color("d9b44a"), "rye": Color("b8a066"), "vegetables": Color("6fae46"), "potatoes": Color("9aa65a"), "flax": Color("8aa6dc"), "hops": Color("7fae3c")}
+
+## Farm fields: bare furrowed soil when just sown, green as they grow, the crop's colour when ripe.
+func _draw_fields(x0: int, x1: int, y0: int, y1: int) -> void:
+	if sim.fields.is_empty():
+		return
+	var soil := Color("6e4c2e")
+	var green := Color("5c8c36")
+	var detail := zoom >= DETAIL_ZOOM
+	for i in sim.fields:
+		var x: int = i % sim.w
+		var y: int = i / sim.w
+		if x < x0 or x > x1 or y < y0 or y > y1:
+			continue
+		var f: Array = sim.fields[i]
+		var g := float(f[2]) / Crops.GROW
+		var ripe: Color = CROP_COL.get(String(f[1]), Color("d9b44a"))
+		var top := green.lerp(ripe, clampf((g - 0.6) / 0.4, 0.0, 1.0)) if g < 1.0 else ripe
+		var cover := clampf(g * 1.4, 0.0, 1.0)
+		var pts := PackedVector2Array()
+		for c in [Vector2(0.06, 0.06), Vector2(0.94, 0.06), Vector2(0.94, 0.94), Vector2(0.06, 0.94)]:
+			var q: Vector2 = Vector2(x, y) + c
+			if raised:
+				q.y -= lift_at(q.x, q.y)
+			pts.append(q)
+		draw_colored_polygon(pts, soil)
+		if not detail:
+			if cover > 0.0:
+				var cc := top; cc.a = cover
+				draw_colored_polygon(pts, cc)
+			continue
+		# rows: furrows on bare soil, then plants along them, taller and riper as the field grows
+		for r in 4:
+			var v := 0.18 + r * 0.21
+			var a := pts[0].lerp(pts[3], v)
+			var b := pts[1].lerp(pts[2], v)
+			draw_line(a, b, soil.darkened(0.35), 0.05)
+			if cover > 0.05:
+				var pc := top
+				pc.a = 0.5 + 0.5 * cover
+				draw_line(a + Vector2(0, -0.02), b + Vector2(0, -0.02), pc, 0.04 + 0.12 * cover)
+		if g >= 1.0:
+			draw_polyline(PackedVector2Array([pts[0], pts[1], pts[2], pts[3], pts[0]]), ripe.lightened(0.35), 0.03)
 
 
 ## An outdoor worker: walks out to the tree, rock, clay or water, works there, and walks home with

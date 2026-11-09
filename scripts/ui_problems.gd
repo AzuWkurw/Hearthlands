@@ -156,7 +156,7 @@ func _why(b: Sim.Bld) -> String:
 		return ""
 	if b.working or b.msg == "" or b.msg == "Working" or b.msg == "The worker is on his way":
 		return ""
-	if b.fails >= 12 and b.def.has("act"):
+	if b.fails >= 12 and b.def.has("act") and String(b.def.act) != "farm":
 		return tr("Nothing left to gather nearby")
 	if "no patients" in b.msg.to_lower():
 		return ""

@@ -273,7 +273,8 @@ func reach(pid: int) -> PackedByteArray:
 	r.resize(sim.w * sim.h)
 	var q := PackedInt32Array()
 	for i in sim.owned(pid)[0]:
-		if net_dist(pid, i) < INF and (sim.road[i] == pid or sim.bmap[i] != 0):
+		# a new road can join a road or a store, not another building
+		if net_dist(pid, i) < INF and (sim.road[i] == pid or (sim.bmap[i] != 0 and is_store(sim.by_id.get(sim.bmap[i])))):
 			r[i] = 1
 			q.append(i)
 	var head := 0
@@ -312,6 +313,45 @@ func reach(pid: int) -> PackedByteArray:
 			q.append(ni)
 	_reach[pid] = [key, r]
 	return r
+
+
+## Whether a road from tile start can get to realm pid's roads or stores without crossing the tiles in
+## blocked (a new building's own plot), over tiles reach() marks. Looks at up to 150 tiles; an area that
+## large is taken as open.
+func reach_avoiding(pid: int, start: int, blocked: Array) -> bool:
+	var rr := reach(pid)
+	var seen := {start: true}
+	var q := [start]
+	var head := 0
+	while head < q.size():
+		if head > 150:
+			return true
+		var cur: int = q[head]
+		head += 1
+		if sim.road[cur] == pid or (sim.bmap[cur] != 0 and is_store(sim.by_id.get(sim.bmap[cur]))):
+			return true
+		var cx := cur % sim.w
+		var cy := cur / sim.w
+		for dd in 4:
+			var nx := cx + (1 if dd == 0 else (-1 if dd == 1 else 0))
+			var ny := cy + (1 if dd == 2 else (-1 if dd == 3 else 0))
+			if nx < 0 or ny < 0 or nx >= sim.w or ny >= sim.h:
+				continue
+			var ni := ny * sim.w + nx
+			if seen.has(ni) or blocked.has(ni):
+				continue
+			if sim.ter[ni] == Sim.WATER and sim.road[ni] != pid:
+				if sim.ter[cur] != Sim.WATER:
+					var land := bridge_landing(cur, ni, pid)
+					if land >= 0 and rr[land] == 1 and not seen.has(land) and not blocked.has(land):
+						seen[land] = true
+						q.append(land)
+				continue
+			if rr[ni] != 1 and not (sim.bmap[ni] != 0 and is_store(sim.by_id.get(sim.bmap[ni]))):
+				continue
+			seen[ni] = true
+			q.append(ni)
+	return false
 
 
 # Road searches round each new distance to the precision they are stored in, and on equal distances

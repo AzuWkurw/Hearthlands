@@ -1,5 +1,15 @@
 # Changelog
 
+## Build 39 (v0.34.0, 2026-11-09)
+
+Farms work real fields.
+
+- A farm sows up to 6 fields on open grass in its work area (7 tiles across; Move work area moves it) and harvests each when ripe, sowing it again. A field takes about a minute to ripen, faster in summer and slower in autumn; a crop out of season does not grow, so a field sown late waits for spring.
+- Fields show on the map: furrowed soil when sown, green rows as they grow, the crop's colour when ripe. The farmer walks out to them.
+- A farm's info box says how many fields are sown and ripe, and when the next will be ripe.
+- A building or road put on a field ends it; foresters don't plant trees on fields.
+- Fixed: a building spot could be offered where the only way for a road went through the new building's own plot.
+
 ## Build 38 (v0.33.0, 2026-11-09)
 
 Weapons that wear out, and farms that choose their crop.

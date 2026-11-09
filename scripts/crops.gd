@@ -28,6 +28,14 @@ const ORDER := ["wheat", "rye", "vegetables", "potatoes", "flax", "hops"]
 const WINTER_IDLE := ["orchard", "hop_farm", "vineyard", "flax_farm", "apiary"]
 const ROTATE_TECH := "three_field"
 
+# ---------------------------------------------------------------- fields
+## A farm works fields around it, in its work area. A work cycle either sows a free tile (no harvest
+## yet) or harvests a ripe field and sows it again. A field ripens after GROW seconds of growth; the
+## season speeds or slows that (a crop out of season does not grow at all, so a field sown in late
+## autumn waits for spring). A building or road put on a field, or the land lost, ends the field.
+const GROW := 60.0
+const MAX_FIELDS := 6
+
 
 static func is_farm(b: Sim.Bld) -> bool:
 	return b.ty == "farm"
@@ -91,6 +99,146 @@ static func block(sim: Sim, b: Sim.Bld) -> String:
 	elif s == 3 and b.ty in WINTER_IDLE:
 		return "Out of season: nothing grows here in winter"
 	return ""
+
+
+## Growth a second of crop id now (1 = normal).
+static func rate(sim: Sim, id: String) -> float:
+	var s := season_now(sim)
+	if s < 0:
+		return 1.0
+	var v := float(LIST[id].season[s])
+	return 0.0 if v <= OFF else maxf(0.2, 1.0 + v)
+
+
+## Once a second: fields grow; fields under a building or road, of a gone farm or on lost land end.
+static func grow(sim: Sim) -> void:
+	if sim.fields.is_empty():
+		return
+	var rates := {}
+	for i in sim.fields.keys():
+		var f: Array = sim.fields[i]
+		var b: Sim.Bld = sim.by_id.get(int(f[0]))
+		if b == null or b.dead or sim.bmap[i] != 0 or sim.plot[i] != 0 or sim.road[i] != 0 or sim.deco[i] != 0 or sim.owner[i] != b.p:
+			sim.fields.erase(i)
+			continue
+		var c := String(f[1])
+		if not rates.has(c):
+			rates[c] = rate(sim, c)
+		f[2] = minf(GROW, float(f[2]) + float(rates[c]))
+
+
+## Whether tile i can take a new field of a farm of realm pid.
+static func free_for_field(sim: Sim, i: int, pid: int) -> bool:
+	return sim.ter[i] == Sim.GRASS and sim.deco[i] == 0 and sim.bmap[i] == 0 and sim.plot[i] == 0 and sim.road[i] == 0 \
+		and sim.owner[i] == pid and not sim.fields.has(i)
+
+
+## Fields of farm b: [all, ripe].
+static func count(sim: Sim, b: Sim.Bld) -> Vector2i:
+	var n := 0
+	var r := 0
+	for i in sim.fields:
+		var f: Array = sim.fields[i]
+		if int(f[0]) == b.id:
+			n += 1
+			if float(f[2]) >= GROW: r += 1
+	return Vector2i(n, r)
+
+
+## The nearest ripe field of farm b, or -1.
+static func ripe_field(sim: Sim, b: Sim.Bld) -> int:
+	var best := -1
+	var bd := 1 << 30
+	for i in sim.fields:
+		var f: Array = sim.fields[i]
+		if int(f[0]) == b.id and float(f[2]) >= GROW:
+			var dd := absi(i % sim.w - b.x) + absi(i / sim.w - b.y)
+			if dd < bd or (dd == bd and i < best):
+				bd = dd; best = i
+	return best
+
+
+## The nearest free tile in farm b's work area for a new field, or -1. Tiles next to its fields come
+## first, so they lie together.
+static func free_tile(sim: Sim, b: Sim.Bld, wc: Vector2i, r: int) -> int:
+	var best := -1
+	var bs := 1e9
+	for y in range(maxi(0, wc.y - r), mini(sim.h - 1, wc.y + r) + 1):
+		for x in range(maxi(0, wc.x - r), mini(sim.w - 1, wc.x + r) + 1):
+			var dx := x - wc.x
+			var dy := y - wc.y
+			if dx * dx + dy * dy > r * r + 1:
+				continue
+			var i := y * sim.w + x
+			if not free_for_field(sim, i, b.p):
+				continue
+			var sc := float(absi(x - b.x) + absi(y - b.y))
+			for o in [1, -1, sim.w, -sim.w]:
+				var j: int = i + o
+				if j >= 0 and j < sim.w * sim.h and sim.fields.has(j):
+					sc -= 0.6
+			if sc < bs:
+				bs = sc; best = i
+	return best
+
+
+## The start of a farm's work cycle: the ripe field to harvest, or a free tile to sow. Returns why it
+## cannot work ("" when it can); sets b.target and b.sowing.
+static func farm_start(sim: Sim, b: Sim.Bld) -> String:
+	var rf := ripe_field(sim, b)
+	if rf >= 0:
+		b.target = rf
+		b.sowing = false
+		return ""
+	var why := block(sim, b)
+	if why != "":
+		return why
+	var c := count(sim, b)
+	if c.x >= MAX_FIELDS:
+		return "Waiting for the fields to ripen"
+	var t := free_tile(sim, b, sim.work_center(b), sim.work_radius(b))
+	if t < 0:
+		return "Waiting for the fields to ripen" if c.x > 0 else "No room for fields in the work area"
+	b.target = t
+	b.sowing = true
+	return ""
+
+
+## The end of a farm's work cycle: sows the tile, or harvests the field (and sows it again while the
+## crop is in season). Returns what the harvest gives ({} when it sowed).
+static func farm_finish(sim: Sim, b: Sim.Bld) -> Dictionary:
+	var tg := b.target
+	if tg < 0:
+		return {}
+	if b.sowing:
+		if free_for_field(sim, tg, b.p):
+			sim.fields[tg] = [b.id, now(sim, b), 0.0]
+		return {}
+	var f = sim.fields.get(tg)
+	if f == null or int(f[0]) != b.id or float(f[2]) < GROW:
+		return {}
+	var got: Dictionary = LIST[String(f[1])].out
+	var c := now(sim, b)
+	if grows(c, season_now(sim)):
+		sim.fields[tg] = [b.id, c, 0.0]
+	else:
+		sim.fields.erase(tg)
+	return got
+
+
+## What farm b's info box says about its fields.
+static func fields_line(sim: Sim, b: Sim.Bld) -> String:
+	var c := count(sim, b)
+	var growing := 0.0
+	for i in sim.fields:
+		var f: Array = sim.fields[i]
+		if int(f[0]) == b.id and float(f[2]) < GROW:
+			growing = maxf(growing, float(f[2]))
+	var t := "Fields: %d of %d sown, %d ripe" % [c.x, MAX_FIELDS, c.y]
+	if c.x > c.y and c.y == 0:
+		var r := rate(sim, now(sim, b))
+		t += (", the next ripe in about %d s" % ceili((GROW - growing) / r)) if r > 0.0 else ", not growing now (out of season)"
+	return t
 
 
 ## Seeds tech id unlocks (names).
