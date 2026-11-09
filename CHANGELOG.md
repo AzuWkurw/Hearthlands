@@ -1,5 +1,28 @@
 # Changelog
 
+## Build 37 (v0.32.0, 2026-11-09)
+
+The second list of ideas (all but blueprints), and fixes.
+
+- Trade: build a market, then trade in the Diplomacy window, which says whether the realm would accept and how long the carts take. Goods go by cart market to market and are lost if war breaks out on the way. "Repeat every 5 minutes" makes a standing offer. Rivals build markets and trade with each other.
+- Bridges: roads cross up to 3 tiles of water straight across, 2 planks a tile; paving makes a stone bridge. The far shore counts as reachable, so rivals and auto roads build bridges too.
+- Taverns and chapels: homes near a working tavern (beer and bread) or chapel (candles) are content, and content people work up to 10% faster; hunger and sickness pull the other way. Taverns hold festivals (+10% work for 3 minutes). Unhappy realms lose idle peasants.
+- Archers and sallies: a bowyer makes bows. Set how many of a military building's soldiers are archers; they shoot attackers from 6 tiles out but fight worse at the gate. "March out to meet attackers" sends soldiers to fight a column in the open.
+- Traffic map (F7, or Traffic): roads coloured free, busy or jammed; click a road for what is stuck there and what might help.
+- Campaign: 8 chapters on a map with a story before and after each; a won chapter opens the next and carries soldiers or goods over; best time and score are kept.
+- Spreading fires: fire jumps between wooden buildings and burns them down. Wells nearby send a person with a bucket, a fire station three. Stone and brick buildings don't catch; catapult stones can start fires.
+- Ctrl+Z undoes the last building, road or demolition within 10 seconds. I goes to the next building with nobody working, then the next stuck one.
+- A building's info box shows what it made in the last 30 minutes, a bar a minute.
+- The minimap can show only roads, only land and forts, or only the buildings making one good.
+- Click a carrier, cart, ship or soldier column to follow it with the camera.
+- 15 achievements, kept between games (Achievements on the new-game screen).
+- 16x speed (key 5). Colour-blind colours in Settings.
+- Rivals warn you before war, thank you for trades, and a much stronger rival may demand tribute.
+- Every store is a town with a name on the map and in messages; rename it in its info box.
+- Snow slows carriers on unpaved roads in winter.
+- Maps and missions can be exported and imported as .hlpack files (map editor and Missions window).
+- Fixed: a captured harbour's goods stayed counted with the old owner; land not updated when a military building burned; reaching over bridges longer than one tile.
+
 ## Build 36 (v0.31.0, 2026-11-08)
 
 - Boundary stones (Military group): claim free land 4 tiles around without any soldier, for 3 stone and a plank. A stone must stand on land your soldiers hold, so stones can't be chained across the map. It holds only land no soldiers hold: a rival's military building that reaches its land takes that land, and the stone falls if its own tile goes. Rivals with no soldiers to spare set them too.
