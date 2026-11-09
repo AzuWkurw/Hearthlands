@@ -100,6 +100,9 @@ var rivals_label: RichTextLabel
 
 var problems_ui := UiProblems.new(self)  # the Problems list (ui_problems.gd)
 var traffic_ui := UiTraffic.new(self)    # the traffic map, F7 (ui_traffic.gd)
+var undo_ui := UiUndo.new(self)          # Ctrl+Z (ui_undo.gd)
+var minimap_filter: OptionButton
+var achievements := Achievements.new(self)
 var attack_ui := UiAttack.new(self)
 var chain_ui := UiChain.new(self)        # the production chain window (ui_chain.gd)      # the attack window (ui_attack.gd)
 var problems_btn: Button
@@ -678,8 +681,10 @@ func _build_ui() -> void:
 	lbl_foes = _label(""); tb.add_child(lbl_foes)
 	lbl_feat = _label("", 14, BRASS); tb.add_child(lbl_feat)
 	btn_pause = _button("Pause", _toggle_pause); tb.add_child(btn_pause)
-	for s in [1, 2, 4, 8]:
+	for s in [1, 2, 4, 8, 16]:
 		var b := _button(tr("%dx") % s, _set_speed.bind(float(s)))
+		if s == 16:
+			b.tooltip_text = "16 times as fast (key 5), for long games when the computer keeps up"
 		b.toggle_mode = true
 		speed_btns[s] = b
 		tb.add_child(b)
@@ -706,6 +711,29 @@ func _build_ui() -> void:
 	minimap.offset_left = 8; minimap.offset_right = 196
 	minimap.offset_top = -196 - UiToolbar.BAR_H - 10; minimap.offset_bottom = -8 - UiToolbar.BAR_H - 10
 	add_child(minimap)
+	# what the minimap shows: everything, roads, land, or the buildings of one good
+	var mf := OptionButton.new()
+	mf.focus_mode = Control.FOCUS_NONE
+	mf.add_theme_font_size_override("font_size", 12)
+	mf.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+	mf.offset_left = 8; mf.offset_right = 196
+	mf.offset_top = -196 - UiToolbar.BAR_H - 10 - 30; mf.offset_bottom = -196 - UiToolbar.BAR_H - 10 - 4
+	mf.tooltip_text = "What the minimap shows"
+	mf.add_item("Minimap: everything"); mf.set_item_metadata(0, "")
+	mf.add_item("Only roads"); mf.set_item_metadata(1, "roads")
+	mf.add_item("Only land and forts"); mf.set_item_metadata(2, "land")
+	for r in GameData.resources:
+		var made := false
+		for bid in GameData.bld:
+			if (GameData.bld[bid].get("out", {}) as Dictionary).has(String(r.id)):
+				made = true
+		if made:
+			mf.add_item(tr("Where %s is made") % String(r.name).to_lower())
+			mf.set_item_metadata(mf.item_count - 1, "good:" + String(r.id))
+			mf.set_item_icon(mf.item_count - 1, Tex.get_tex("res_" + String(r.id)))
+	mf.item_selected.connect(func(i): minimap.set_filter(String(mf.get_item_metadata(i))))
+	minimap_filter = mf
+	add_child(mf)
 
 	hint = _label("", 15)
 	var hs := _panel_style()
@@ -933,6 +961,9 @@ func _build_setup() -> void:
 	var ca_b := _button("Campaign", func(): campaign_ui.show())
 	ca_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	er.add_child(ca_b)
+	var ac_b := _button("Achievements", _show_achievements)
+	ac_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	er.add_child(ac_b)
 	v.add_child(_button("Load a saved game", _open_saves))
 
 
@@ -1159,6 +1190,7 @@ func _after_world_change() -> void:
 	watch = {}
 	problems_ui.hidden = {}
 	traffic_ui.reset()
+	achievements.new_game()
 	problems_ui.since = {}
 	problems_ui.show_hidden = false
 	_rebuild_feature_ui()
@@ -1190,6 +1222,8 @@ func _on_end(win: bool) -> void:
 	else:
 		end_text.text = ("Every rival realm has fallen. Your reign took %d minutes." if win else "Your headquarters was captured after %d minutes.") % m
 	end_text.text += campaign_ui.on_end(win)
+	achievements.on_end(win)
+	end_text.text += achievements.earned_text()
 	end_next.visible = win and campaign_ui.has_next()
 	end_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	end_text.custom_minimum_size = Vector2(560, 0)
@@ -1312,10 +1346,12 @@ func _on_tile(t: Vector2i) -> void:
 		return
 	if view.place_type != "":
 		var ty := view.place_type
+		sim.logistics.last_laid = PackedInt32Array(); sim.logistics.last_bridge_planks = 0
 		var r := sim.place(ty, t.x, t.y, sim.human(), view.door, settings.auto_roads)
 		if r != "":
 			_show_hint(r, 2.5)
 		else:
+			undo_ui.placed(sim.bld_at(t.x, t.y))
 			sim.emit_log("Building a %s." % String(GameData.bld[ty].name).to_lower(), DIM, Vector2i(t.x, t.y))
 			var short := sim.missing(sim.human(), GameData.bld[ty].get("cost", {}))
 			if short != "":
@@ -1352,6 +1388,17 @@ func _on_tile(t: Vector2i) -> void:
 		view.sel_id = b.id
 		_refresh_sel()
 		return
+	# a carrier, cart, ship or column of soldiers under the mouse: the camera follows it
+	if b == null and view.place_type == "":
+		var mv = view.pick_mover(Vector2(t) + Vector2(0.5, 0.6))
+		if mv != null:
+			view.follow = mv
+			var what: String = "column of soldiers" if mv is Sim.Attack else {"ship": "ship", "trade": "trade cart", "cart": "cart", "mule": "mule", "builder": "builder", "soldier": "soldier", "worker": "worker"}.get(String(mv.kind), "carrier")
+			_show_hint(tr("Following a %s. Drag the map, click the minimap or press Esc to stop.") % what, 3.0)
+			view.sel_id = 0
+			view.sel_tile = -1
+			_refresh_sel()
+			return
 	view.sel_id = b.id if b != null else 0
 	sel_res = ""
 	view.sel_tile = -1
@@ -1378,6 +1425,8 @@ func _use_tool(t: Vector2i) -> void:
 				return
 			var joins := sim.inb(t.x, t.y) and (sim.road[sim.idx(t.x, t.y)] == 1 or sim.bld_at(t.x, t.y) != null or sim.door_owner(t.x, t.y, 1) != null)
 			var r := sim.build_road(view.road_start.x, view.road_start.y, t.x, t.y, 1)
+			if r == "":
+				undo_ui.road_built()
 			if r != "":
 				_show_hint(r, 2.5)
 			elif view.road_after and joins:
@@ -1458,6 +1507,48 @@ var key_wait := ""   # an action waiting for its new key (Settings, Keys)
 
 
 ## Rings the bell for watched building sites that are finished (or gone).
+## The I key: goes to the next of your buildings with nobody working in it, then to the next stuck one
+## (as in the Problems list), round and round.
+var _idle_i := 0
+
+func _jump_idle() -> void:
+	var list := []
+	for b: Sim.Bld in sim.realm_blds(sim.human()):
+		if b.state == "ready" and not b.dead and b.def.has("worker") and not b.staffed and b.prio >= 0:
+			list.append([b.id, "nobody works here"])
+	for p in problems_ui.shown(problems_ui.problems()):
+		var id := int(p[4])
+		if not list.any(func(e): return int(e[0]) == id):
+			list.append([id, String(p[1])])
+	if list.is_empty():
+		_show_hint("Every building of yours is staffed and working.", 2.5)
+		return
+	_idle_i = _idle_i % list.size()
+	var e: Array = list[_idle_i]
+	_idle_i += 1
+	var b: Sim.Bld = sim.by_id.get(int(e[0]))
+	if b == null:
+		return
+	view.center_on(Vector2(b.x + 0.5, b.y + 0.5))
+	view.sel_id = b.id
+	_refresh_sel()
+	_show_hint(tr("%d of %d: %s (I for the next)") % [(_idle_i - 1) % list.size() + 1, list.size(), String(e[1]) if String(e[1]).contains(":") else String(b.def.name) + ": " + String(e[1])], 3.0)
+
+
+func _show_achievements() -> void:
+	var w := AcceptDialog.new()
+	w.title = "Achievements"
+	w.theme = UiLog.window_theme()
+	var l := _rich()
+	l.custom_minimum_size = Vector2(560, 420)
+	l.text = achievements.list_text()
+	w.add_child(l)
+	add_child(w)
+	w.confirmed.connect(w.queue_free)
+	w.canceled.connect(w.queue_free)
+	w.popup_centered()
+
+
 func _check_watch() -> void:
 	for id in watch.keys():
 		var b: Sim.Bld = sim.by_id.get(id)
@@ -1545,6 +1636,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.keycode == KEY_O and not setup.visible:
 		problems_ui.toggle()
 		return
+	if event.keycode == KEY_Z and event.ctrl_pressed and not setup.visible and not editor_ui.open:
+		undo_ui.undo()
+		return
+	if event.keycode == KEY_I and not setup.visible and not editor_ui.open:
+		_jump_idle()
+		return
 	if event.keycode == KEY_F7 and not setup.visible:
 		traffic_ui.toggle()
 		return
@@ -1577,7 +1674,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_F10: _open_settings()
 		KEY_T: _open_targets()
 		KEY_ESCAPE:
-			if attack_ui.panel.visible: attack_ui.close()
+			if view.follow != null: view.follow = null
+			elif attack_ui.panel.visible: attack_ui.close()
 			elif chain_ui.panel.visible: chain_ui.close()
 			elif set_panel.visible: set_panel.visible = false
 			elif targets_panel.visible: targets_panel.visible = false
@@ -1604,6 +1702,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_2: _set_speed(2.0)
 		KEY_3: _set_speed(4.0)
 		KEY_4: _set_speed(8.0)
+		KEY_5: _set_speed(16.0)
 		KEY_EQUAL, KEY_KP_ADD:
 			if tech_panel.visible: research_ui.tree.set_zoom(research_ui.tree.zoom * 1.25)
 			else: view.zoom_at(view.size / 2.0, 1.15)
@@ -1616,6 +1715,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _process(delta: float) -> void:
 	_hide_windows_under_panels()
+	if not paused and not setup.visible:
+		achievements.check(delta)
 	_place_sel_box()
 	# floating windows keep their title bar (drawn above the window) below the top bar
 	var min_y := int(top_bar.get_parent().size.y + 8 + 30)
@@ -1640,11 +1741,11 @@ func _process(delta: float) -> void:
 			_save_game("autosave", true)
 		acc += delta * speed
 		var n := 0
-		while acc >= Sim.TICK and n < 80:
+		while acc >= Sim.TICK and n < 120:
 			sim.tick(Sim.TICK)
 			acc -= Sim.TICK
 			n += 1
-		if n >= 80:
+		if n >= 120:
 			acc = 0.0
 	if sim.map_dirty:
 		view.chunks.mark_all()

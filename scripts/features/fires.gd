@@ -16,6 +16,7 @@ const CATCH := 0.025         # chance a second, at full heat, for each wooden ne
 
 var burning := {}            # building id -> {"heat": 0..1, "dmg": 0..1, "t": since}
 var lost := {}               # realm id -> buildings burned down
+var put_out := {}            # realm id -> fires put out
 var rng := RandomNumberGenerator.new()
 
 
@@ -83,6 +84,7 @@ func on_second() -> void:
 		f.dmg = float(f.dmg) + BURN * float(f.heat)
 		if float(f.heat) <= 0.0:
 			burning.erase(bid)
+			put_out[b.p] = int(put_out.get(b.p, 0)) + 1
 			if b.p == 1:
 				sim.emit_log("The fire at your %s is out." % String(b.def.name).to_lower(), Color("86ad5c"), Vector2i(b.x, b.y))
 			continue
@@ -179,7 +181,7 @@ func ai_steps(p: Sim.Player, _have: Callable) -> Array:
 
 
 func save_state() -> Dictionary:
-	return {"burning": burning, "lost": lost, "rng": rng.state, "seed": rng.seed}
+	return {"burning": burning, "lost": lost, "put_out": put_out, "rng": rng.state, "seed": rng.seed}
 
 
 func load_state(d: Dictionary) -> void:
@@ -189,5 +191,8 @@ func load_state(d: Dictionary) -> void:
 	lost = {}
 	for k in d.get("lost", {}):
 		lost[int(k)] = int(d.lost[k])
+	put_out = {}
+	for k in d.get("put_out", {}):
+		put_out[int(k)] = int(d.put_out[k])
 	rng.seed = int(d.get("seed", 0))
 	rng.state = int(d.get("rng", 0))

@@ -160,7 +160,9 @@ func _do_demolish() -> void:
 	if b == null or b.p != 1:
 		main._show_hint("That building is already gone.", 3.0)
 		return
+	var rec := main.undo_ui.before_demolish(b)
 	main.sim.demolish(b)
+	main.undo_ui.demolished(rec)
 	if main.sound != null:
 		main.sound.play("demolish", 0.8)
 	if main.view.sel_id == b.id:

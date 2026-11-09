@@ -23,6 +23,9 @@ func _init(p_sim: Sim) -> void:
 const BRIDGE_MAX := 3
 const BRIDGE_PLANKS := 2
 
+var last_laid := PackedInt32Array()   # the tiles the last road laid made new (for undo)
+var last_bridge_planks := 0
+
 ## From land tile cur onto water tile ni: the land tile where a bridge straight on would come ashore,
 ## or -1 when there is none close enough (or it is not a place for a road).
 func bridge_landing(cur: int, ni: int, pid: int) -> int:
@@ -160,11 +163,16 @@ func bridge_cost_ok(path: PackedInt32Array, pid: int) -> String:
 func lay_road(path: PackedInt32Array, pid: int) -> void:
 	var p := sim.players[pid - 1]
 	var nb := bridge_tiles(path, pid)
+	last_bridge_planks = 0
 	if nb > 0 and not sim.creative(p):
 		take(p, "planks", float(nb * BRIDGE_PLANKS), path[0])
+		last_bridge_planks = nb * BRIDGE_PLANKS
+	last_laid = PackedInt32Array()
 	for i in path:
 		if sim.bmap[i] != 0:
 			continue
+		if sim.road[i] != pid:
+			last_laid.append(i)
 		sim.road[i] = pid
 		if sim.deco[i] == Sim.D_TREE:
 			sim.deco[i] = 0

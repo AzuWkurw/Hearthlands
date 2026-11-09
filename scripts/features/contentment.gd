@@ -20,6 +20,7 @@ var festival := {}         # realm id -> end time of the festival
 var next_fest := {}        # realm id -> earliest time of the next festival
 var low_since := {}        # realm id -> since when it has been unhappy (or absent)
 var left := {}             # realm id -> peasants who left
+var feasts := {}           # realm id -> festivals held
 var _t := 0
 
 
@@ -102,6 +103,7 @@ func on_second() -> void:
 			sim.used(p, "beer", FEST_COST)
 			sim.used(p, "bread", FEST_COST)
 			festival[p.id] = sim.time + FESTIVAL
+			feasts[p.id] = int(feasts.get(p.id, 0)) + 1
 			next_fest[p.id] = sim.time + FESTIVAL + 300.0 + float((p.id * 97 + _t) % 180)
 			if not p.ai:
 				sim.emit_log("A festival at the tavern! Everyone works 10% faster for 3 minutes.", Color("e8c870"))
@@ -173,14 +175,14 @@ func ai_steps(p: Sim.Player, have: Callable) -> Array:
 
 
 func save_state() -> Dictionary:
-	return {"served": served, "festival": festival, "next_fest": next_fest, "low_since": low_since, "left": left, "t": _t, "mood": mood_of, "cover": cover}
+	return {"served": served, "festival": festival, "next_fest": next_fest, "low_since": low_since, "left": left, "feasts": feasts, "t": _t, "mood": mood_of, "cover": cover}
 
 
 func load_state(d: Dictionary) -> void:
 	served = {}
 	for k in d.get("served", {}):
 		served[int(k)] = float(d.served[k])
-	for key in ["festival", "next_fest", "low_since", "left", "mood_of", "cover"]:
+	for key in ["festival", "next_fest", "low_since", "left", "feasts", "mood_of", "cover"]:
 		var dst: Dictionary = get(key)
 		dst.clear()
 		var src: Dictionary = d.get({"mood_of": "mood", "cover": "cover"}.get(key, key), {})

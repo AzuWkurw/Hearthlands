@@ -28,6 +28,8 @@ var playing := false
 var _play_t := 0.0
 var realm_legend: RichTextLabel
 var sel_good := "planks"
+var bhist := {}           # your building id -> {"last": minute, "c": made in each of the last 30 minutes}
+const BKEEP := 30
 
 
 func _init() -> void:
@@ -54,6 +56,53 @@ func _bucket(p: Sim.Player) -> Dictionary:
 func on_made(p: Sim.Player, res: String, n: float) -> void:
 	var m: Dictionary = _bucket(p).made
 	m[res] = float(m.get(res, 0.0)) + n
+
+
+## What each of your buildings made, minute by minute, for the chart in its info box.
+func on_made_at(b: Sim.Bld, p: Sim.Player, res: String, n: float) -> void:
+	if p.id != 1 or res == "research":
+		return
+	var m := int(sim.time / 60.0)
+	var e: Dictionary = bhist.get(b.id, {})
+	if e.is_empty():
+		e = {"last": m, "c": []}
+		(e.c as Array).resize(BKEEP)
+		(e.c as Array).fill(0.0)
+		bhist[b.id] = e
+	_roll(e, m)
+	var c: Array = e.c
+	c[m % BKEEP] = float(c[m % BKEEP]) + n
+
+
+func _roll(e: Dictionary, m: int) -> void:
+	var c: Array = e.c
+	var last := int(e.last)
+	for k in range(last + 1, mini(m, last + BKEEP) + 1):
+		c[k % BKEEP] = 0.0
+	e.last = maxi(last, m)
+
+
+const BARS := "▁▂▃▄▅▆▇█"
+
+func building_lines(b: Sim.Bld) -> PackedStringArray:
+	if not bhist.has(b.id):
+		return PackedStringArray()
+	var e: Dictionary = bhist[b.id]
+	var m := int(sim.time / 60.0)
+	_roll(e, m)
+	var c: Array = e.c
+	var vals := []
+	var total := 0.0
+	var top := 0.0
+	for k in range(m - BKEEP + 1, m + 1):
+		var v := float(c[posmod(k, BKEEP)]) if k >= 0 else 0.0
+		vals.append(v)
+		total += v
+		top = maxf(top, v)
+	var line := ""
+	for v in vals:
+		line += " " if v <= 0.0 else BARS[clampi(int(v / maxf(top, 0.01) * 7.99), 0, 7)]
+	return PackedStringArray(["Made in the last 30 minutes: [b]%d[/b]\n[color=#86ad5c]%s[/color] [color=#9a9c88](a bar a minute, now on the right)[/color]" % [roundi(total), line]])
 
 
 func on_used(p: Sim.Player, res: String, n: float) -> void:
@@ -88,12 +137,15 @@ func on_second() -> void:
 			(hist[p.id] as Array).pop_front()
 		cur[p.id] = {"made": {}, "used": {}}
 	_snapshot_borders()
+	for id in bhist.keys():
+		if not sim.by_id.has(id):
+			bhist.erase(id)
 	if win != null and win.visible:
 		refresh()
 
 
 func save_state() -> Dictionary:
-	return {"hist": hist, "cur": cur, "minute": minute, "borders": borders, "bw": bw}
+	return {"hist": hist, "cur": cur, "minute": minute, "borders": borders, "bw": bw, "bhist": bhist}
 
 
 func load_state(d: Dictionary) -> void:
@@ -102,6 +154,7 @@ func load_state(d: Dictionary) -> void:
 	minute = int(d.get("minute", -1))
 	borders = d.get("borders", [])
 	bw = int(d.get("bw", 0))
+	bhist = d.get("bhist", {})
 
 
 func build_ui(main: Main) -> void:

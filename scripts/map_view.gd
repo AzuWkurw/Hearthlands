@@ -243,6 +243,14 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	_ground.queue_redraw()
+	if follow != null:
+		var fp := follow_pos()
+		if fp.x < 0.0:
+			follow = null
+			following_ended.emit()
+		else:
+			cam = fp
+			_clamp()
 
 
 func set_animate(on: bool) -> void:
@@ -377,8 +385,71 @@ func screen_to_tile(pos: Vector2) -> Vector2i:
 
 
 func center_on(tile: Vector2) -> void:
+	follow = null
 	cam = tile
 	_clamp()
+
+
+# ---------------------------------------------------------------- the follow camera
+var follow = null            # a Sim.Trip (carrier, cart, ship, walker) or Sim.Attack the camera follows
+signal following_ended
+
+## Where trip t is now, in tiles (the middle of the tile it is crossing).
+func trip_pos(t: Sim.Trip) -> Vector2:
+	var n := t.path.size() - 1
+	if n < 1:
+		return Vector2(-1, -1)
+	if not t.legs.is_empty():
+		var lp := _leg_pos(t)
+		var a := int(lp.x)
+		var c := int(lp.y)
+		return Vector2(a % sim.w, a / sim.w).lerp(Vector2(c % sim.w, c / sim.w), absf(lp.z)) + Vector2(0.5, 0.75)
+	var prog := 0.0
+	if not t.delivered:
+		prog = clampf((sim.time - t.t0) / maxf(0.01, t.t1 - t.t0), 0.0, 0.999)
+	else:
+		prog = 1.0 - clampf((sim.time - t.t1) / maxf(0.01, t.t2 - t.t1), 0.0, 1.0)
+	if (t.site != 0 or t.dest != 0) and t.kind != "ship" and t.kind != "trade":
+		prog = 1.0 - prog
+	var f := prog * n
+	var k := mini(floori(f), n - 1)
+	var a2 := t.path[k]
+	var c2 := t.path[k + 1]
+	return Vector2(a2 % sim.w, a2 / sim.w).lerp(Vector2(c2 % sim.w, c2 / sim.w), f - k) + Vector2(0.5, 0.75)
+
+
+func follow_pos() -> Vector2:
+	if follow is Sim.Trip:
+		if not sim.trips.has(follow):
+			return Vector2(-1, -1)
+		return trip_pos(follow)
+	if follow is Sim.Attack:
+		if not sim.attacks.has(follow):
+			return Vector2(-1, -1)
+		return sim.military.column_pos(follow) + Vector2(0.5, 0.5)
+	return Vector2(-1, -1)
+
+
+## Something moving near map point at (within a tile): a carrier, cart, ship, walker or a column of
+## soldiers, or null.
+func pick_mover(at: Vector2):
+	var best = null
+	var bd := 0.9
+	var fog = sim.get_feature("fog")
+	for t in sim.trips:
+		var p := trip_pos(t)
+		if p.x < 0.0:
+			continue
+		if fog != null and t.p != 1 and not fog.visible_at(sim.idx(clampi(int(p.x), 0, sim.w - 1), clampi(int(p.y), 0, sim.h - 1))):
+			continue
+		var d := p.distance_to(at)
+		if d < bd:
+			bd = d; best = t
+	for a in sim.attacks:
+		var d2 := (sim.military.column_pos(a) + Vector2(0.5, 0.5)).distance_to(at)
+		if d2 < bd:
+			bd = d2; best = a
+	return best
 
 
 func zoom_at(pos: Vector2, f: float) -> void:
@@ -434,6 +505,7 @@ func _gui_input(event: InputEvent) -> void:
 			if not _moved and mm.position.distance_to(_press) > 6.0:
 				_moved = true
 			if _moved:
+				follow = null
 				pan(-mm.relative / zoom)
 		accept_event()
 	elif event is InputEventMagnifyGesture:

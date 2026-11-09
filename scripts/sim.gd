@@ -261,6 +261,8 @@ class Player:
 	var die_t := 0
 	var used_peasant := 0
 	var trades := 0         # trades made with other realms (a mission goal)
+	var attacks_made := 0   # attacks this realm launched
+	var colonies := 0       # harbours its expeditions founded
 	var used_artisan := 0
 	var hq: Bld = null
 	var start := Vector2i.ZERO

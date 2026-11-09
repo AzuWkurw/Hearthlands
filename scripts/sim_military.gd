@@ -345,6 +345,7 @@ func launch_attack(src: Sim.Bld, tgt: Sim.Bld, want := -1, kinds: Array = [], sa
 	sim._bid += 1
 	a.uid = sim._bid
 	sim.attacks.append(a)
+	p.attacks_made += 1
 	Diplomacy.on_attacked(sim, tgt.p, src.p)
 	if not sally:
 		_sally(a, tgt)

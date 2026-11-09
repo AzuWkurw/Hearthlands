@@ -153,6 +153,7 @@ func ship_arrival(t: Sim.Trip, p: Sim.Player) -> void:
 		var y := t.aim / sim.w
 		if p.alive and landing_ok(x, y, p.id) == "":
 			var b := sim.add_bld("harbour", x, y, p, true, -1)
+			p.colonies += 1
 			b.garrison = 1
 			b.gmix = []          # (filled with a soldier of the realm's age, see mix_fix)
 			for k in EXPEDITION:
