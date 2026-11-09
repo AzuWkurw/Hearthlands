@@ -160,6 +160,90 @@ static func fair_amount(sim: Sim, p: Sim.Player, from: int, give: Dictionary, wa
 	return best
 
 
+# ---------------------------------------------------------------- carts
+const CART_SPEED := 1.2      # tiles a second, overland
+
+## Where realm p's trade carts leave from and arrive: its first market, else (for the far end of a
+## trade only) its headquarters. null when it has neither.
+static func market(sim: Sim, p: Sim.Player, or_hq := false) -> Sim.Bld:
+	for b in sim.blds:
+		if b.ty == "market" and b.p == p.id and b.state == "ready" and not b.dead:
+			return b
+	if or_hq and p.hq != null and not p.hq.dead:
+		return p.hq
+	return null
+
+
+## The tiles of a straight line from a to b (the way a trade cart goes, overland).
+static func _line(sim: Sim, a: Vector2i, b: Vector2i) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	var n := maxi(absi(b.x - a.x), absi(b.y - a.y))
+	for k in n + 1:
+		var t := float(k) / maxf(1.0, n)
+		out.append(sim.idx(roundi(lerpf(a.x, b.x, t)), roundi(lerpf(a.y, b.y, t))))
+	return out
+
+
+## Sends n of res from realm a to realm b by cart: a Trip of kind "trade" from a's market to b's.
+static func send_cart(sim: Sim, a: Sim.Player, b: Sim.Player, res: String, n: float) -> void:
+	if n <= 0.0:
+		return
+	var src := market(sim, a, true)
+	var dst := market(sim, b, true)
+	if src == null or dst == null:
+		sim.give(b, res, n)
+		return
+	var t := Sim.Trip.new()
+	t.p = a.id; t.kind = "trade"; t.res = res; t.n = roundi(n); t.dest = dst.id; t.site = src.id; t.aim = b.id
+	t.path = _line(sim, Vector2i(src.x, src.y), Vector2i(dst.x, dst.y))
+	var tt := maxf(4.0, float(t.path.size()) / CART_SPEED)
+	t.t0 = sim.time; t.t1 = sim.time + tt; t.t2 = t.t1 + tt
+	sim.trips.append(t)
+
+
+## A trade cart arrived: its goods go into the market (or headquarters) it went to. If the two
+## realms went to war meanwhile, the goods are lost on the way.
+static func cart_arrival(sim: Sim, t: Sim.Trip) -> void:
+	var to := sim.players[t.aim - 1]
+	if at_war(sim, t.p, t.aim) or not to.alive:
+		if t.p == 1 or t.aim == 1:
+			sim.emit_log("A trade cart with %d %s was lost: you are at war now." % [t.n, GameData.res_name(t.res).to_lower()], Color("e0b060"))
+		return
+	var dest: Sim.Bld = sim.by_id.get(t.dest)
+	if dest != null and not dest.dead and dest.p == to.id and dest.def.has("store"):
+		sim.logistics.store_add(dest, to, t.res, float(t.n))
+	else:
+		sim.give(to, t.res, float(t.n))
+	if t.aim == 1:
+		sim.emit_log("A trade cart from %s brought %d %s." % [sim.players[t.p - 1].name, t.n, GameData.res_name(t.res).to_lower()], Color("8fc0ff"))
+
+
+# ---------------------------------------------------------------- standing offers
+## Your standing offers: the same trade proposed again every `every` seconds. Each is
+## {"to", "give", "want", "every", "next", "done"}.
+static func add_standing(sim: Sim, to: int, give: Dictionary, want: Dictionary, every: float) -> void:
+	sim.standing.append({"to": to, "give": give, "want": want, "every": every, "next": sim.time + every, "done": 1})
+	sim.diplomacy_changed.emit()
+
+
+static func standing_tick(sim: Sim) -> void:
+	for so in sim.standing.duplicate():
+		if sim.time < float(so.next):
+			continue
+		so.next = sim.time + float(so.every)
+		var q := sim.players[int(so.to) - 1]
+		if not q.alive:
+			sim.standing.erase(so)
+			continue
+		var kind := "gift" if (so.want as Dictionary).is_empty() else "trade"
+		var why := propose(sim, 1, q.id, kind, so.give, so.want)
+		if why == "":
+			so.done = int(so.done) + 1
+		elif why != "pending":
+			sim.emit_log("Standing offer to %s not made this time: %s" % [q.name, why], Color("e0b060"))
+	sim.diplomacy_changed.emit()
+
+
 # ---------------------------------------------------------------- deciding
 ## Would AI realm p accept this proposal from realm `from`? Returns "" for yes, or why not.
 static func ai_answer(sim: Sim, p: Sim.Player, kind: String, from: int, give: Dictionary, want: Dictionary) -> String:
@@ -183,6 +267,8 @@ static func ai_answer(sim: Sim, p: Sim.Player, kind: String, from: int, give: Di
 		"trade", "gift":
 			if rel == WAR:
 				return "%s will not trade while you are at war." % p.name
+			if market(sim, q) == null:
+				return "You need a market to trade: build one (Stores and roads)." if not q.ai else "%s has no market." % q.name
 			if not has_goods(q, give):
 				return "You do not have that much to give."
 			if not has_goods(p, want):
@@ -208,12 +294,14 @@ static func execute(sim: Sim, kind: String, from: int, to: int, give: Dictionary
 			set_relation(sim, from, to, ALLY)
 			adjust(a, to, 10.0); adjust(b, from, 10.0)
 		"trade", "gift":
+			# the goods leave now and go by cart, market to market (or to the headquarters of a realm
+			# that has no market)
 			for k in give:
 				var g := sim.take(a, k, float(give[k]))
-				sim.give(b, k, g)
+				send_cart(sim, a, b, k, g)
 			for k in want:
 				var g2 := sim.take(b, k, float(want[k]))
-				sim.give(a, k, g2)
+				send_cart(sim, b, a, k, g2)
 			var got := total(b, give, true)
 			adjust(b, from, clampf(got * (1.5 if want.is_empty() else 0.3), 1.0, 20.0))
 			adjust(a, to, 3.0)
@@ -222,9 +310,9 @@ static func execute(sim: Sim, kind: String, from: int, to: int, give: Dictionary
 				var gave := give if from == 1 else want
 				var received := want if from == 1 else give
 				if received.is_empty():
-					sim.emit_log("You gave %s to %s." % [goods_text(gave), other.name], Color("8fc0ff"))
+					sim.emit_log("You gave %s to %s. The carts are on their way." % [goods_text(gave), other.name], Color("8fc0ff"))
 				else:
-					sim.emit_log("Trade with %s: you gave %s and received %s." % [other.name, goods_text(gave), goods_text(received)], Color("8fc0ff"))
+					sim.emit_log("Trade with %s: you give %s for %s. The carts are on their way." % [other.name, goods_text(gave), goods_text(received)], Color("8fc0ff"))
 	sim.diplomacy_changed.emit()
 
 
@@ -354,7 +442,7 @@ static func ai_tick(sim: Sim, p: Sim.Player) -> void:
 			if op >= need and since(sim, p.id, q.id) > 240.0 and sim.rng.randf() < 0.4:
 				propose(sim, p.id, q.id, "alliance")
 				return
-		if rel != WAR and not q.ai and sim.rng.randf() < 0.3 and _ai_offer_trade(sim, p, q):
+		if rel != WAR and sim.rng.randf() < (0.3 if not q.ai else 0.15) and _ai_offer_trade(sim, p, q):
 			return
 
 
@@ -372,7 +460,7 @@ static func _ai_offer_trade(sim: Sim, p: Sim.Player, q: Sim.Player) -> bool:
 		if float(p.stock.get(r, 0.0)) < 6.0 and float(q.stock.get(r, 0.0)) >= 25.0:
 			need = r
 			break
-	if need == "":
+	if need == "" or market(sim, p) == null:
 		return false
 	var surplus := ""
 	var best := 0.0
@@ -386,4 +474,5 @@ static func _ai_offer_trade(sim: Sim, p: Sim.Player, q: Sim.Player) -> bool:
 	m = mini(m, int(best) - 20)
 	if m < 1:
 		return false
-	return propose(sim, p.id, q.id, "trade", {surplus: m}, {need: 10}) == "pending"
+	var r := propose(sim, p.id, q.id, "trade", {surplus: m}, {need: 10})
+	return r == "pending" or r == ""

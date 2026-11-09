@@ -490,6 +490,7 @@ var rel_since: Dictionary = {}    # "a:b" -> time the relation last changed
 
 
 var proposals: Array = []         # offers waiting for your answer
+var standing: Array = []          # your standing trade offers (Diplomacy.standing_tick)
 
 
 var _prop_id := 0
@@ -589,7 +590,7 @@ func new_game(p_seed: String, p_foes: int, p_strength: int, p_mix: bool, p_size 
 	plot = PackedInt32Array(); plot.resize(w * h)
 	_avail = {}; _avail_at = {}
 	players.clear(); blds.clear(); by_id.clear(); trips.clear(); attacks.clear(); logs.clear()
-	rel = {}; rel_since = {}; proposals = []; _prop_id = 0
+	rel = {}; rel_since = {}; proposals = []; standing = []; _prop_id = 0
 	time = 0.0; over = false; _bid = 0; _acc1 = 0.0; _owned_dirty = true
 	_alloc_path_buffers()
 	rng.seed = seed_str.hash()
@@ -1875,6 +1876,8 @@ func tick(dt: float) -> void:
 			var p := players[t.p - 1]
 			if t.kind == "ship":
 				sea.ship_arrival(t, p)
+			elif t.kind == "trade":
+				Diplomacy.cart_arrival(self, t)
 			elif t.kind == "builder" or t.kind == "soldier" or t.kind == "worker":
 				_walker_arrival(t, p)
 			elif t.dest != 0:
@@ -1994,6 +1997,8 @@ func _secondly() -> void:
 		logistics.transfers()
 		sea.sea_transfers()
 	Diplomacy.expire(self)
+	if not standing.is_empty() and int(time) % 5 == 0:
+		Diplomacy.standing_tick(self)
 	for f: Feature in features:
 		f.on_second()
 	if not over:
@@ -2115,7 +2120,7 @@ func to_save() -> Dictionary:
 		"owner": owner, "road": road, "bmap": bmap, "time": time, "over": over, "logs": logs, "bid": _bid, "acc1": _acc1,
 		"rng_seed": rng.seed, "rng_state": rng.state, "players": pl, "blds": bl, "trips": tr, "attacks": at,
 		"vein": vein, "vein_amt": vein_amt, "vein_tiles": vein_tiles, "pave": pave,
-		"rel": rel, "rel_since": rel_since, "proposals": proposals, "prop_id": _prop_id,
+		"rel": rel, "rel_since": rel_since, "proposals": proposals, "standing": standing, "prop_id": _prop_id,
 		"mission": mission, "mission_done": mission_done, "ticks": _ticks,
 	}
 
@@ -2139,7 +2144,7 @@ func from_save(d: Dictionary) -> String:
 	height = WorldGen.heights(String(d.get("seed", "")), ter, int(d.w), int(d.h))
 	time = d.time; over = d.over; logs = d.logs; _bid = d.bid; _acc1 = d.acc1
 	rng.seed = d.rng_seed; rng.state = d.rng_state
-	rel = d.get("rel", {}); rel_since = d.get("rel_since", {}); proposals = d.get("proposals", []); _prop_id = int(d.get("prop_id", 0))
+	rel = d.get("rel", {}); rel_since = d.get("rel_since", {}); proposals = d.get("proposals", []); standing = d.get("standing", []); _prop_id = int(d.get("prop_id", 0))
 	mission = d.get("mission", {}); mission_done = d.get("mission_done", [])
 	# the tick count decides which ticks hand out work (every 2nd, 3rd...): a loaded game must go on in
 	# the same rhythm (saves from before build 34 did not keep it; the time gives it closely enough)

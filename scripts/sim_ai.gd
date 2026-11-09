@@ -376,6 +376,8 @@ func ai_think(p: Sim.Player) -> void:
 		["scriptorium", (mini(2 if war else 4, 1 + pop / 45) if mins > 3 else 0)], ["library", mini(2 if war else 3, 1 + pop / 90)], ["paper_mill", 1 + pop / 150], ["university", 1 if S.beer > 2 else 0],
 		["fortress", c.call("fortress") + 1 if mins > 25 and unocc == 0 and p.reserve > 6 else 0],
 		["battery", c.call("battery") + 1 if war and unocc == 0 and p.reserve > 4 and c.call("battery") < 4 else 0],
+		# a market once it is at peace with someone, to trade
+		["market", 1 if mins > 12 and _at_peace(p) else 0],
 		["donkey_farm", 1 if mins > 10 and bool(sim.opts.get("road_carriers", false)) else 0],
 		# crowded realms by the sea look for land across the water
 		["harbour", 1 if mins > 18 and p.crowded else 0], ["shipyard", 1 if c.call("harbour") > 0 else 0],
@@ -638,3 +640,10 @@ func ai_attack(p: Sim.Player) -> bool:
 	for s in best[0]:
 		sim.launch_attack(s, best[1])
 	return true
+
+
+func _at_peace(p: Sim.Player) -> bool:
+	for q in sim.players:
+		if q.alive and q.id != p.id and not Diplomacy.at_war(sim, p.id, q.id):
+			return true
+	return false

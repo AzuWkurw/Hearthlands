@@ -899,6 +899,21 @@ def make_building(style, wall, roof, cat, res_icon, W=64, H=64):
             p.rounded_rectangle([x, y, x + 7, y + 5], 1.5, fill=(222, 192, 92, 255), outline=(170, 136, 52, 255), width=0.5)
             p.line([(x + 2, y), (x + 2, y + 5)], fill=(170, 136, 52, 255), width=0.4)
         g.sign(44, top + 3, res_icon)
+    elif style == "market":
+        # a small hall behind three stalls with striped awnings, crates and sacks of goods
+        top = b - 20
+        g.walls(14, 50, top - 4, "planks")
+        g.roof_gable(14, 50, top - 4, 12)
+        for k, (x0, col) in enumerate([(3, (196, 64, 52, 255)), (23, (60, 110, 170, 255)), (43, (212, 170, 60, 255))]):
+            p.rectangle([x0 + 1, b - 9, x0 + 17, b], fill=(140, 98, 58, 255), outline=(80, 54, 30, 255), width=0.5)
+            p.line([(x0 + 2, b - 9), (x0 + 2, b - 17)], fill=WOOD, width=0.9)
+            p.line([(x0 + 16, b - 9), (x0 + 16, b - 17)], fill=WOOD, width=0.9)
+            for s2 in range(4):
+                c = col if s2 % 2 == 0 else (236, 228, 210, 255)
+                p.polygon([(x0 + s2 * 4.5, b - 17), (x0 + s2 * 4.5 + 4.5, b - 17), (x0 + s2 * 4.5 + 5.2, b - 13), (x0 + s2 * 4.5 + 0.7, b - 13)], fill=c)
+            # goods on the counter
+            p.disc(x0 + 6, b - 10, 1.8, (222, 192, 92, 255))
+            p.disc(x0 + 11, b - 10.5, 1.8, (176, 72, 52, 255) if k != 1 else (110, 150, 70, 255))
     elif style == "mine":
         # a mountain side with a timbered entrance and a cart of ore on rails
         p.polygon([(1, b), (12, b - 28), (30, b - 38), (50, b - 26), (63, b)], fill=(118, 112, 98, 255))

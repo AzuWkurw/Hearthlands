@@ -1712,6 +1712,24 @@
   },
   "porters": 8
  },
+ "market": {
+  "name": "Market",
+  "cat": "logistics",
+  "size": "medium",
+  "cost": {
+   "planks": 5,
+   "stone": 3
+  },
+  "time": 20,
+  "store": 20,
+  "porters": 3,
+  "info": "Trade with realms at peace with you (Diplomacy window). Carts carry the goods from your market to theirs, and theirs back, so a trade takes a while; goods on the way are lost if war breaks out. A small store too.",
+  "art": {
+   "style": "market",
+   "wall": "#b08a5a",
+   "sw": 2.0
+  }
+ },
  "warehouse": {
   "name": "Warehouse",
   "cat": "logistics",

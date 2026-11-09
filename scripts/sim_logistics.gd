@@ -1420,8 +1420,8 @@ func _free_carrier(t: Sim.Trip) -> void:
 		var sp := sim.players[t.p - 1]
 		sp.ships_out = maxi(0, sp.ships_out - 1)   # the ship is home again
 		return
-	if t.kind == "builder" or t.kind == "soldier" or t.kind == "worker":
-		return                     # builders, soldiers and workers on their way are not carriers
+	if t.kind == "builder" or t.kind == "soldier" or t.kind == "worker" or t.kind == "trade":
+		return                     # builders, soldiers, workers and trade carts are not carriers
 	if t.station < 0:
 		return                     # road carriers mode: the carriers stay on their stretches
 	if t.station != 0:

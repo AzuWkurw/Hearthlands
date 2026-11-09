@@ -605,7 +605,7 @@ func _draw() -> void:
 		else:
 			prog = 1.0 - clampf((sim.time - t.t1) / maxf(0.01, t.t2 - t.t1), 0.0, 1.0)
 		# carriers bringing materials walk the other way: from the store out to the site
-		if (t.site != 0 or t.dest != 0) and t.kind != "ship":
+		if (t.site != 0 or t.dest != 0) and t.kind != "ship" and t.kind != "trade":
 			prog = 1.0 - prog
 		var f := prog * n
 		var k := mini(floori(f), n - 1)
@@ -643,7 +643,7 @@ func _draw() -> void:
 				_batch_layer = 0
 			continue
 		# facing: the way along the path it is walking (backwards on the way home)
-		var dx := (c % w - a % w) * (-1 if t.delivered else 1) * (-1 if (t.site != 0 or t.dest != 0) and t.kind != "ship" else 1)
+		var dx := (c % w - a % w) * (-1 if t.delivered else 1) * (-1 if (t.site != 0 or t.dest != 0) and t.kind != "ship" and t.kind != "trade" else 1)
 		if not t.legs.is_empty():
 			dx = c % w - a % w
 		var step := int(f * 8.0) if animate else 0

@@ -9,6 +9,9 @@ var main: Main
 var dip_props: VBoxContainer
 var dip_web: RichTextLabel
 var trade_want_n: SpinBox
+var trade_repeat: CheckBox
+var trade_hint: Label
+var standing_box: VBoxContainer
 
 
 func _init(p_owner: Main) -> void:
@@ -52,10 +55,24 @@ func _build_diplomacy_panel() -> void:
 	trade_want_n = SpinBox.new(); trade_want_n.min_value = 1; trade_want_n.max_value = 999; trade_want_n.value = 5; tr2.add_child(trade_want_n)
 	tr2.add_child(main._button("Ask a fair amount", _trade_quote))
 	tr2.add_child(main._button("Make the offer", _trade_offer))
+	var tr3 := HBoxContainer.new(); v.add_child(tr3)
+	trade_repeat = CheckBox.new()
+	trade_repeat.text = "Repeat every 5 minutes (a standing offer)"
+	tr3.add_child(trade_repeat)
+	trade_hint = main._label("", 13, Main.DIM)
+	trade_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	trade_hint.custom_minimum_size = Vector2(760, 0)
+	v.add_child(trade_hint)
+	for w in [main.trade_who, main.trade_give, main.trade_want]:
+		(w as OptionButton).item_selected.connect(func(_i): _update_hint())
+	for sb in [main.trade_give_n, trade_want_n]:
+		(sb as SpinBox).value_changed.connect(func(_v): _update_hint())
 	main.trade_result = main._label("", 13, Main.DIM)
 	main.trade_result.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	main.trade_result.custom_minimum_size = Vector2(760, 0)
 	v.add_child(main.trade_result)
+	v.add_child(main._label("Standing offers", 16, Main.BRASS))
+	standing_box = VBoxContainer.new(); v.add_child(standing_box)
 	v.add_child(main._label("Between rivals", 16, Main.BRASS))
 	dip_web = main._rich(); dip_web.custom_minimum_size = Vector2(760, 0); v.add_child(dip_web)
 	main.dip_panel.visible = false
@@ -137,7 +154,53 @@ func _fill_diplomacy() -> void:
 			if a.ai and b.ai and a.alive and b.alive and a.id < b.id and Diplomacy.relation(main.sim, a.id, b.id) != Diplomacy.WAR:
 				web.append("%s and %s: %s" % [a.name, b.name, Diplomacy.NAMES[Diplomacy.relation(main.sim, a.id, b.id)].to_lower()])
 	dip_web.text = "\n".join(web) if web.size() > 0 else "[color=#9a9c88]All rivals are at war with each other.[/color]"
+	for c in standing_box.get_children():
+		c.queue_free()
+	if main.sim.standing.is_empty():
+		standing_box.add_child(main._label("None. Tick \"Repeat every 5 minutes\" before making an offer.", 13, Main.DIM))
+	for so in main.sim.standing:
+		var q2 := main.sim.players[int(so.to) - 1]
+		var row3 := HBoxContainer.new()
+		var w := "" if (so.want as Dictionary).is_empty() else tr(" for %s") % Diplomacy.goods_text(so.want)
+		var l3 := main._label(tr("To %s: %s%s, every %d min, next in %d s (made %d times)") % [q2.name, Diplomacy.goods_text(so.give), w, int(float(so.every) / 60.0), maxi(0, int(float(so.next) - main.sim.time)), int(so.done)], 14)
+		l3.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row3.add_child(l3)
+		row3.add_child(main._button("Stop", func():
+			main.sim.standing.erase(so)
+			_fill_diplomacy()))
+		standing_box.add_child(row3)
+	_update_hint()
 	_update_dip_button()
+
+
+## Under the trade: whether you have a market, the carts' way, and whether the realm would take it.
+func _update_hint() -> void:
+	if trade_hint == null or main.sim.players.is_empty():
+		return
+	var me := main.sim.human()
+	var parts := _trade_parts()
+	if Diplomacy.market(main.sim, me) == null:
+		trade_hint.text = "You need a market to trade: build one (Stores and roads). Carts carry the goods from it."
+		trade_hint.add_theme_color_override("font_color", Color("e0b060"))
+		return
+	if int(parts[0]) == 0:
+		trade_hint.text = "Make peace with a realm to trade with it."
+		trade_hint.add_theme_color_override("font_color", Main.DIM)
+		return
+	var q := main.sim.players[int(parts[0]) - 1]
+	var kind := "gift" if (parts[2] as Dictionary).is_empty() else "trade"
+	var why := Diplomacy.ai_answer(main.sim, q, kind, 1, parts[1], parts[2])
+	var a := Diplomacy.market(main.sim, me)
+	var b := Diplomacy.market(main.sim, q, true)
+	var way := ""
+	if a != null and b != null:
+		way = tr(" Carts take about %d s each way.") % int(maxf(4.0, Vector2(a.x - b.x, a.y - b.y).length() / Diplomacy.CART_SPEED))
+	if why == "":
+		trade_hint.text = tr("%s would accept.") % q.name + way
+		trade_hint.add_theme_color_override("font_color", Color("86ad5c"))
+	else:
+		trade_hint.text = why + way
+		trade_hint.add_theme_color_override("font_color", Color("e0b060"))
 
 
 func _dip_propose(who: int, kind: String) -> void:
@@ -191,6 +254,8 @@ func _trade_offer() -> void:
 	var kind := "gift" if (parts[2] as Dictionary).is_empty() else "trade"
 	var q := main.sim.players[int(parts[0]) - 1]
 	var r := Diplomacy.propose(main.sim, 1, q.id, kind, parts[1], parts[2])
+	if trade_repeat.button_pressed and (r == "" or r == "pending"):
+		Diplomacy.add_standing(main.sim, q.id, parts[1], parts[2], 300.0)
 	if r == "":
 		main.trade_result.text = tr("%s accepted. Their opinion of you is now %d.") % [q.name, roundi(Diplomacy.opinion(q, 1))]
 	else:
