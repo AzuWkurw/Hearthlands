@@ -27,6 +27,25 @@ records the version that made it. `CHANGELOG.md` lists what changed in each buil
 run `python3 tools/bump_build.py "What changed"` (add `--minor` for new features): it raises the build
 number and updates `scripts/version.gd`, `project.godot`, the Windows export settings and the changelog.
 
+### Making a build
+
+One command makes a whole release:
+
+```
+python3 tools/make_build.py --minor "Farms work real fields."     # new features
+python3 tools/make_build.py "Fixed the bridge bug."               # fixes only
+```
+
+It raises the build number, writes the notes into `CHANGELOG.md`, checks the game data, exports
+Windows and Linux, starts the exported game for 120 frames to check it runs without a script error,
+and writes `Hearthlands-v<version>-build<N>-Windows.zip` and `...-Source.zip` into `../build`, then
+commits. The Windows zip's `READ_ME_FIRST.txt` comes from `dist/windows/` with the version, date and
+build filled in. Add `--tests` to run every test first, `--dry-run` to see the steps only, and
+`--help` for the rest.
+
+On Windows: `py tools\make_build.py --godot "C:\Godot\Godot_v4.3-stable_win64.exe" --minor "..."`.
+Exporting needs Godot 4.3's export templates (in the editor: Editor > Manage Export Templates).
+
 ## Controls
 
 | Action | Input |
@@ -819,6 +838,7 @@ tools/
   shot_scenery.gd, shot_editor.gd   screenshots of the scenery and the map editor
   make_sounds.py     regenerates the sounds
   bump_build.py      raises the build number before a release
+  make_build.py      makes a whole release: version, checks, exports, zips, commit
   readme_tables.py   rebuilds the resource, building and research tables in this README from the data
   bench.gd           performance benchmark (add "-- draw" to measure drawing too)
   sim_test.gd        headless AI-vs-AI balance run

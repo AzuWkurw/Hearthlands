@@ -2,7 +2,7 @@
 
 Every source file with what it is for, grouped by part. Written by `tools/file_list.py` from the comment at the
 top of each file; run it again after adding files. For how the parts work together, read
-`docs/SOURCE_GUIDE.md`. Besides these 198 files there are 969 pictures in `textures/` (made by
+`docs/SOURCE_GUIDE.md`. Besides these 199 files there are 969 pictures in `textures/` (made by
 `tools/make_textures.py` and `tools/make_scenery.py`, or your own) and 29 sounds in `sounds/` (made by
 `tools/make_sounds.py`). Godot's `.import` files next to them are made by the editor.
 
@@ -240,6 +240,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `tools/extract_strings.py` | 76 | Collect the interface text from the scripts into the translation files. |
 | `tools/file_list.py` | 134 | Writes docs/FILES.md: every source file of the project with what it is for. |
 | `tools/folk_sprites.py` | 382 | Townsfolk, porters, workers, pack mules and ox carts, drawn in detail. Run on its own (python3 tools/folk_sprites.py) or from make_textures.py; it writes the unit_folk_*, unit_porter*, unit_worker_*, unit_mule, unit_cart and unit_load_* strips into textures/. Everything is drawn in design pixels with make_textures' Pen, so edges come out smooth. Strips that the game tints with the realm's colour come with a *_tint companion: the tunic alone, in grey, drawn over the picture in the realm's colour. |
+| `tools/make_build.py` | 224 | Make a release build of Hearthlands in one go. |
 | `tools/make_scenery.py` | 251 | Trees, mountain peaks and boulders for the map, drawn with light and shade so they look round. |
 | `tools/make_sounds.py` | 247 | Generate Hearthlands' sound effects and ambience loops into ../sounds (16-bit mono WAV). |
 | `tools/make_textures.py` | 1580 | Generate Hearthlands' default textures into ../textures. |
@@ -250,7 +251,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 | File | Lines | What it is |
 |---|---:|---|
 | `CHANGELOG.md` | 489 | What changed in each build. |
-| `README.md` | 848 | How to play, the rules, controls, settings, modding and the project layout. |
+| `README.md` | 868 | How to play, the rules, controls, settings, modding and the project layout. |
 | `docs/FILES.md` | 260 | This list (written by tools/file_list.py). |
 | `docs/SOURCE_GUIDE.md` | 439 | A tour of the code for programmers: the parts, how a game tick runs, where things live. |
 | `docs/SUGGESTIONS.md` | 203 | Ideas and their status after each round of work. |
