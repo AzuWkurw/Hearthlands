@@ -87,7 +87,10 @@ func start_check(b: Sim.Bld, p: Sim.Player) -> String:
 		return "Enough nobles for now"
 	if d.has("makes_tools") and sim.wanted_tool(p) == "":
 		return "Every tool is in stock (see production targets)"
-	var outs: Dictionary = d.get("out", {})
+	var cb := Crops.block(sim, b)
+	if cb != "":
+		return cb
+	var outs: Dictionary = Crops.out_of(sim, b)
 	if outs.size() > 0:
 		# goods already on their way (waiting at buildings, on a carrier's back, or being made) count
 		# as in store, so the stores never take more than they hold
@@ -146,7 +149,7 @@ func coming(p: Sim.Player, res: String) -> float:
 
 
 func _count_cycle(b: Sim.Bld, p: Sim.Player, c: Dictionary) -> void:
-	var out: Dictionary = b.def.get("out", {})
+	var out: Dictionary = Crops.out_of(sim, b)
 	var extra := _extra_out(p, b.ty)
 	for k in out:
 		if k != "research" and k != "ship":
@@ -307,7 +310,7 @@ func finish_prod(b: Sim.Bld, p: Sim.Player) -> void:
 				p.peasant -= 1; p.scout += 1
 				if not p.ai: sim.emit_log("A new scout is ready. Send him exploring, or he will man a watch tower.", Color("86ad5c"), Vector2i(p.hq.x, p.hq.y) if p.hq != null else Vector2i(-1, -1))
 			return
-	var out: Dictionary = d.get("out", {})
+	var out: Dictionary = Crops.out_of(sim, b)
 	var extra := int(sim.mod(p, "out:" + b.ty))
 	for k in out:
 		deliver(b, p, k, int(out[k]) + (extra if k != "research" else 0))

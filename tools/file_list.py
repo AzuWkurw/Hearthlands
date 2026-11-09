@@ -32,7 +32,7 @@ HAND = {
 }
 
 GROUPS = [
-    ("Game: simulation", lambda p: p.startswith("scripts/sim") or p in ("scripts/diplomacy.gd", "scripts/world_gen.gd", "scripts/game_data.gd")),
+    ("Game: simulation", lambda p: p.startswith("scripts/sim") or p in ("scripts/diplomacy.gd", "scripts/world_gen.gd", "scripts/game_data.gd", "scripts/crops.gd")),
     ("Game: features (switchable in Settings)", lambda p: p.startswith("scripts/features/")),
     ("Game: map drawing", lambda p: p in ("scripts/map_view.gd", "scripts/map_chunks.gd", "scripts/minimap.gd", "scripts/tex.gd", "scripts/tech_tree_view.gd", "scripts/line_chart.gd")),
     ("Game: interface", lambda p: p.startswith("scripts/")),

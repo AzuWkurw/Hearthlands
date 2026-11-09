@@ -455,6 +455,12 @@ def icon(shape, c, size=24):
         d.ellipse([3, 8, 17, 17], fill=c, outline=dk); d.polygon([(16, 12), (22, 7), (22, 18)], fill=c, outline=dk); d.point((7, 11), fill=(0, 0, 0, 255))
     elif shape == "ham":
         d.ellipse([3, 6, 17, 20], fill=c, outline=dk); d.rectangle([15, 11, 21, 15], fill=(240, 230, 210, 255), outline=dk); d.ellipse([6, 9, 11, 13], fill=lt)
+    elif shape == "veg":
+        # a carrot and a turnip
+        d.polygon([(4, 6), (9, 4), (15, 20)], fill=c, outline=dk)
+        for x in (4, 6, 8): d.line([(x + 1, 5), (x - 1, 1)], fill=(80, 150, 60, 255), width=1)
+        d.ellipse([11, 9, 21, 19], fill=(236, 228, 214, 255), outline=(120, 100, 110, 255)); d.pieslice([11, 9, 21, 19], 180, 360, fill=(170, 90, 150, 255))
+        d.line([(16, 9), (15, 4)], fill=(80, 150, 60, 255), width=2); d.line([(16, 9), (19, 5)], fill=(80, 150, 60, 255), width=2)
     elif shape == "apple":
         d.ellipse([4, 6, 20, 21], fill=c, outline=dk); d.line([(12, 7), (13, 3)], fill=(90, 60, 30, 255), width=2); d.ellipse([13, 2, 19, 6], fill=(90, 160, 60, 255)); d.ellipse([7, 9, 10, 13], fill=lt)
     elif shape == "mug":

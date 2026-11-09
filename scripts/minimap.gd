@@ -163,7 +163,7 @@ func _draw() -> void:
 		if filter.begins_with("good:"):
 			var res := filter.substr(5)
 			for b in sim.blds:
-				if b.p == 1 and not b.dead and (b.def.get("out", {}) as Dictionary).has(res):
+				if b.p == 1 and not b.dead and Crops.out_of(sim, b).has(res):
 					draw_rect(Rect2(Vector2(b.x, b.y) * s - Vector2(2, 2), Vector2(5, 5)), Color("f0d060") if b.state == "ready" else Color("a09060"))
 		if filter == "land":
 			for b in sim.blds:

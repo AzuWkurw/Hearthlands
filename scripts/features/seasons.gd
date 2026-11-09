@@ -175,9 +175,12 @@ func on_second() -> void:
 			"Spring has come. Fields start growing again.",
 			"Summer: crops grow fastest. Heat waves are likely in the south.",
 			"Autumn: orchards and vineyards bring in the harvest; hunters do well.",
-			"Winter has come: crops all but stop, fishing and building slow down, people eat more, and snow slows carriers on unpaved roads.",
+			"Winter has come: wheat, vegetables and orchards stand idle; only winter rye grows. Fishing and building slow down, people eat more, and snow slows carriers on unpaved roads.",
 		]
-		sim.emit_log(lines[s], Color("9fd0e8"))
+		var line: String = lines[s]
+		if s == 3 and not sim.players.is_empty() and not Crops.known(sim, sim.human(), "rye"):
+			line += " (Study Heavy plough for winter rye seed.)"
+		sim.emit_log(line, Color("9fd0e8"))
 	var home := biome_of(sim.human()) if not sim.players.is_empty() else TEMPERATE
 	for k in 4:
 		if sim.time >= float(weather_until[k]):
@@ -272,12 +275,14 @@ func speed_bonus(_p: Sim.Player, b: Sim.Bld) -> float:
 		return 0.0
 	var k: int = biome[b.y * sim.w + b.x]
 	var c: Dictionary = _cache[k]
-	if not c.has(b.ty):
-		c[b.ty] = _bonus(b.ty, k)
-	return float(c[b.ty])
+	var key := b.ty if b.ty != "farm" else "farm:" + Crops.now(sim, b)
+	if not c.has(key):
+		c[key] = _bonus(key, k)
+	return float(c[key])
 
 
-func _bonus(ty: String, k: int) -> float:
+func _bonus(key: String, k: int) -> float:
+	var ty := key.get_slice(":", 0)
 	var s := season()
 	var wx: String = weather[k]
 	var crop := ty in CROPS
@@ -285,7 +290,9 @@ func _bonus(ty: String, k: int) -> float:
 	var outdoor := crop or animal or ty in WOODS or ty in OUTDOOR or ty == "fisher" or ty == "hunter"
 	var bonus := 0.0
 	# the season
-	if crop:
+	if key.begins_with("farm:"):
+		bonus += maxf(-0.6, float(Crops.LIST[key.get_slice(":", 1)].season[s]))
+	elif crop:
 		bonus += [0.10, 0.25, 0.10, -0.60][s]
 		if s == 2 and (ty == "orchard" or ty == "vineyard"):
 			bonus += 0.25

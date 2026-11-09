@@ -38,6 +38,8 @@ TESTS = [
 	("bridges",           "bridge_test", [], False, True, [r"bridge test: ok"]),
 	("taverns and contentment", "content_test", [], False, True, [r"content test: ok"]),
 	("archers and sallies", "archer_test", [], False, True, [r"archer test: ok"]),
+	("weapons wear out",  "weapon_test", [], False, True, [r"WEAPON TEST: PASS"]),
+	("crops and seeds",   "crop_test", [], False, True, [r"CROP TEST: PASS"]),
 	("campaign",          "campaign_test", [], True, False, [r"campaign test: ok"]),
 	("spreading fires",   "fire_test", [], False, True, [r"fire test: ok"]),
 	("small touches",     "touches_test", [], True, False, [r"touches test: ok"]),

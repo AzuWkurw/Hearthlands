@@ -159,6 +159,14 @@
   "food": 0.6
  },
  {
+  "id": "vegetables",
+  "name": "Vegetables",
+  "abbr": "Vg",
+  "color": "#d9822b",
+  "icon": "veg",
+  "food": 0.8
+ },
+ {
   "id": "beer",
   "name": "Beer",
   "abbr": "Be",

@@ -1477,7 +1477,7 @@ func _draw_worker(b: Sim.Bld, pc: Color) -> void:
 	elif k > total - walk:
 		var p2 := spot.lerp(home, (k - (total - walk)) / walk)
 		var hh := _person(id, p2, int(spot.distance_to(p2) * 8.0) % nw, home.x < spot.x, col)
-		var outs: Dictionary = b.def.get("out", {})
+		var outs: Dictionary = Crops.out_of(sim, b)
 		if outs.size() > 0 and _res_tex.has(outs.keys()[0]):
 			draw_texture_rect(_res_tex[outs.keys()[0]], Rect2(p2.x - 0.13, p2.y - hh - 0.2, 0.26, 0.26), false)
 	else:

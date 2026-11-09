@@ -68,7 +68,11 @@ func _refresh_sel() -> void:
 		t += "[color=#9a9c88]%s[/color]\n" % String(d.info)
 	if d.has("in"):
 		t += "Uses: %s\n" % ", ".join((d["in"] as Dictionary).keys().map(func(k): return "%d %s" % [int(d["in"][k]), GameData.res_name(k).to_lower()]))
-	if d.has("out"):
+	if Crops.is_farm(b):
+		var cn := Crops.now(main.sim, b)
+		var co: Dictionary = Crops.LIST[cn].out
+		t += "Sows: [b]%s[/b]%s, %s a harvest\n[color=#9a9c88]Growth by season: %s[/color]\n" % [String(Crops.LIST[cn].name), " (winter rotation)" if cn != Crops.chosen(b) else "", ", ".join(co.keys().map(func(k): return "%d %s" % [int(co[k]), GameData.res_name(k).to_lower()])), Crops.season_text(cn)]
+	elif d.has("out"):
 		t += "Makes: %s\n" % ", ".join((d.out as Dictionary).keys().map(func(k): return "%d %s" % [int(d.out[k]), GameData.res_name(k).to_lower()]))
 	# goods carried here from the stores for its work
 	if d.has("in") and b.state == "ready" and b.p == 1:
@@ -202,6 +206,9 @@ func _refresh_sel() -> void:
 			kb.set_pressed_no_signal((b.keep if b.keep > 0 else 2) == k)
 			kb.tooltip_text = tr("Carriers bring enough for %d work cycle%s (food for %d). More keeps it working through gaps; less leaves more in the stores for others.") % [k, "s" if k > 1 else "", maxi(1, k / 2)]
 			main.prio_row.add_child(kb)
+	# a farm: which crop it sows (seeds come from research)
+	if b.p == 1 and Crops.is_farm(b) and b.state != "dead":
+		_crop_ui(b)
 	# a harbour: ships, and an expedition to another coast
 	if b.p == 1 and b.ty == "harbour" and b.state == "ready":
 		var me := main.sim.human()
@@ -277,6 +284,43 @@ func _xp_line(who: String, xp: float, table: Array, unit: String, pct: int) -> S
 	return "%s level [b]%d[/b] (%s), %+d%% %s\n" % [who, lv, nxt, (lv - 1) * pct, "win chance" if table == Sim.SOLDIER_XP else "speed"]
 
 
+## The crop choice of your farm b: a button for each seed, locked ones greyed with the study that
+## unlocks them, and the winter rye rotation.
+func _crop_ui(b: Sim.Bld) -> void:
+	var me := main.sim.human()
+	main.prio_row.add_child(main._label("Crop", 14, Main.DIM))
+	for id in Crops.ORDER:
+		var cd: Dictionary = Crops.LIST[id]
+		if String(cd.need) != "" and main.sim.get_feature(String(cd.need)) == null:
+			continue
+		var ok := Crops.known(main.sim, me, id)
+		var cb := main._button(String(cd.name), func():
+			var bb: Sim.Bld = main.sim.by_id.get(main.view.sel_id)
+			if bb:
+				bb.crop = id
+				main._click()
+				_refresh_sel())
+		cb.toggle_mode = true
+		cb.set_pressed_no_signal(Crops.chosen(b) == id)
+		cb.disabled = not ok
+		var tip := "%s\n%s\nGrowth by season: %s" % [String(cd.name), String(cd.info), Crops.season_text(id)]
+		if not ok:
+			tip += "\nLocked: study %s to get the seed." % String(GameData.techs[String(cd.tech)].name)
+		cb.tooltip_text = tip
+		main.prio_row.add_child(cb)
+	var rk := CheckBox.new()
+	rk.text = "Winter rye when out of season"
+	rk.button_pressed = b.rotate
+	rk.disabled = not (me.techs.has(Crops.ROTATE_TECH) and Crops.known(main.sim, me, "rye"))
+	rk.tooltip_text = "While its crop does not grow, the farm sows winter rye instead of standing idle." + ("" if not rk.disabled else "\nNeeds Winter rye seed and the Three-field system.")
+	rk.toggled.connect(func(on):
+		var bb: Sim.Bld = main.sim.by_id.get(main.view.sel_id)
+		if bb:
+			bb.rotate = on
+			_refresh_sel())
+	main.prio_row.add_child(rk)
+
+
 ## The garrison settings of your military building b: how many soldiers, which kinds, and who stays
 ## home when it attacks.
 func _garrison_ui(b: Sim.Bld) -> void:
@@ -286,7 +330,7 @@ func _garrison_ui(b: Sim.Bld) -> void:
 	var rm := main.sim.rmix_of(p)
 	var gm := main.sim.gmix_of(b)
 	# rebuilt only when something it shows changes, so a menu that is open stays open
-	var sig := "%d|%d|%s|%d|%s|%s|%d|%d|%d|%s|%d" % [b.id, b.want_n, str(b.want_kinds), b.keep_kind, str(rm), str(gm), p.age, b.archer_want, b.archers, str(b.sally), int(p.stock.get("bows", 0.0))]
+	var sig := "%d|%d|%s|%d|%s|%s|%d|%d|%d|%s|%d|%d|%d" % [b.id, b.want_n, str(b.want_kinds), b.keep_kind, str(rm), str(gm), p.age, b.archer_want, b.archers, str(b.sally), int(p.stock.get("bows", 0.0)), b.blunt, int(p.stock.get("weapons", 0.0))]
 	if sig == main._gar_sig:
 		return
 	main._gar_sig = sig
@@ -400,6 +444,11 @@ func _garrison_ui(b: Sim.Bld) -> void:
 	row4.add_child(ap)
 	row4.add_child(main._label(tr("  bows in store: %d") % int(p.stock.get("bows", 0.0)), 12, Main.DIM))
 	main.garrison_box.add_child(row4)
+	# weapons wear out in fights; worn ones are swapped for new ones from the stores
+	var bl := b.blunt if b.ty != "hq" else p.blunt
+	var wl := main._label(tr("Weapons: all sharp") if bl == 0 else (tr("Weapons: %d soldiers fight with worn weapons (%s)") % [bl, tr("new ones on the way") if float(p.stock.get("weapons", 0.0)) >= 1.0 else tr("no weapons in store!")]), 13, Main.DIM if bl == 0 else Color("e0b060"))
+	wl.tooltip_text = "Each fight may wear out a soldier's weapon (1 in 10). Worn weapons fight about 12% worse until a new one comes from the stores, one a second. Bows break now and then too."
+	main.garrison_box.add_child(wl)
 	var sc := CheckBox.new()
 	sc.text = "March out to meet attackers"
 	sc.tooltip_text = "When an enemy attacks this building, its soldiers (all but one) go out to fight the column in the open before it reaches the walls."

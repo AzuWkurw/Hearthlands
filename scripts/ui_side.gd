@@ -25,6 +25,11 @@ func _refresh_folk() -> void:
 	t += "Artisans  [b]%d[/b] (%d at work)  content %d%%\n" % [p.artisan, p.used_artisan, roundi(float(p.sat.get("artisan", 0.0)) * 100)]
 	t += "Nobles  [b]%d[/b]  content %d%%\n" % [p.noble, roundi(float(p.sat.get("noble", 0.0)) * 100)]
 	t += "Soldiers  [b]%d[/b] (%d in HQ, %d veterans): %s\n" % [main.sim.soldiers(p), p.reserve, int(p.vets), Sim.mix_text(main.sim.soldier_mix(p))]
+	var worn := p.blunt
+	for wb: Sim.Bld in main.sim.realm_blds(p):
+		worn += wb.blunt
+	if worn > 0:
+		t += "[color=#e0b060]  %d soldiers have worn weapons; new ones come from the stores (%d weapons there)[/color]\n" % [worn, int(p.stock.get("weapons", 0.0))]
 	t += "Housing  [b]%d / %d[/b]\n" % [main.sim.pop_total(p), main.sim.housing(p)]
 	# specialists: workers level up only in their own trade
 	var ts := main.sim.trade_summary(p)

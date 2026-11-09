@@ -346,8 +346,12 @@ func _fill_detail(p: Sim.Player) -> void:
 	if eff != "":
 		s += "\n\n[color=#9a9c88]EFFECTS[/color]\n" + eff
 	var ub := tree.unlocks(id)
-	if not ub.is_empty():
-		s += "\n\n[color=#9a9c88]UNLOCKS[/color]\n" + ", ".join(ub.map(func(b): return String(GameData.bld[b].name)))
+	var seeds := Crops.seeds_of(id)
+	if not ub.is_empty() or not seeds.is_empty():
+		var names: Array = ub.map(func(b): return String(GameData.bld[b].name))
+		for sd in seeds:
+			names.append(("%s seed" % sd) if not sd.contains("rotation") else sd)
+		s += "\n\n[color=#9a9c88]UNLOCKS[/color]\n" + ", ".join(names)
 	var req: Array = t.get("requires", [])
 	s += "\n\n[color=#9a9c88]NEEDS[/color]\n" + ("  ".join(req.map(func(r): return _chip(p, r))) if not req.is_empty() else "nothing: open from the start")
 	var ks: Array = tree.kids.get(id, [])

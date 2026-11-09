@@ -49,6 +49,7 @@ number and updates `scripts/version.gd`, `project.godot`, the Windows export set
 | Follow | Click a carrier, cart, ship or column of soldiers: the camera follows it until you drag the map, click the minimap or press Esc |
 | Trade | Diplomacy window, with a market built: pick what you give and ask for (the window says whether the realm would accept); tick Repeat for a standing offer |
 | Archers and sallies | Select one of your military buildings: Archers - / + (they take bows from the stores) and March out to meet attackers |
+| Farm crops | Select a farm: Crop buttons (greyed ones show which study unlocks the seed) and Winter rye when out of season |
 | Rename a town | Select a store: Rename (each store is a town; the name shows on the map and in messages) |
 | Minimap | Click or drag to move the camera. The list above it shows only roads, only land and forts, or only the buildings that make one good |
 | Research tree | R, or the Research button |
@@ -209,6 +210,16 @@ number and updates `scripts/version.gd`, `project.godot`, the Windows export set
 - **Archers and sallies.** A bowyer makes bows from wood. Soldiers in a military building take them up
   to be archers: they shoot attackers from 6 tiles out but fight worse at the gate. A building set to
   march out sends its soldiers to meet an attack in the open.
+- **Weapons wear out.** Each fight may wear out a soldier's weapon (1 in 10). A soldier with a worn
+  weapon fights about 12% worse until a new weapon comes from the stores (one a second per building).
+  Bows break now and then after a volley; the archer takes a new one. Tools already wear out the same
+  way (each tool lasts a number of work cycles, longer the better it is made).
+- **Crops and seeds.** A farm sows one crop, chosen in its info box: wheat from the start, winter rye
+  (Heavy plough), vegetables (Open-field farming), potatoes (New World crops), flax (Wool trade, with
+  clothes on) and hops (Monasteries). Each crop has its seasons: wheat and vegetables stand idle in
+  winter, hops grow only in summer and autumn, rye grows all year but gives less. With the Three-field
+  system a farm can sow winter rye while its own crop is out of season. Orchards, vineyards, hop and
+  flax farms and apiaries rest in winter. Vegetables and potatoes are food straight from the field.
 - **Spreading fires.** A fire (a random event, or a catapult's stone) grows and jumps to wooden
   neighbours within 3 tiles, and burns buildings down. Working wells within 10 tiles send a person with
   a bucket each, a fire station within 14 sends three. Stone and brick buildings don't catch.

@@ -137,9 +137,57 @@ const ARCHER_RELOAD := 4.0
 const ARCHER_HIT := 0.3
 const ARCHER_DUEL := 0.15   # an archer at the gate fights this much worse
 
+# ---------------------------------------------------------------- weapons wear out
+## A soldier's weapon wears out: after each fight there is a WEAPON_WEAR chance it is worn (blunt). A
+## soldier with a worn weapon fights BLUNT_DUEL worse until he takes new weapons from the stores (one
+## each, a building at a time, every second). A bow breaks after a volley with BOW_WEAR chance; the
+## archer takes a new bow from the stores.
+const WEAPON_WEAR := 0.1
+const BLUNT_DUEL := 0.12
+const BOW_WEAR := 0.04
+
+
+func _blunt_of(b: Sim.Bld) -> int:
+	return sim.players[b.p - 1].blunt if b.ty == "hq" else b.blunt
+
+
+func _add_blunt(b: Sim.Bld, n: int) -> void:
+	if b.ty == "hq":
+		var p := sim.players[b.p - 1]
+		p.blunt = clampi(p.blunt + n, 0, p.reserve)
+	else:
+		b.blunt = clampi(b.blunt + n, 0, b.garrison)
+
+
+## Is the soldier who fights now one with a worn weapon? (more likely the more there are)
+func _picks_blunt(blunt: int, n: int) -> bool:
+	return blunt > 0 and sim.rng.randf() < float(blunt) / maxf(1.0, n)
+
+
+## Every second: soldiers with worn weapons take new ones from the stores, one per building.
+func rearm_tick() -> void:
+	for p in sim.players:
+		if not p.alive:
+			continue
+		p.blunt = clampi(p.blunt, 0, p.reserve)
+		if p.blunt > 0 and float(p.stock.get("weapons", 0.0)) >= 1.0:
+			sim.take(p, "weapons", 1.0)
+			sim.used(p, "weapons", 1.0)
+			p.blunt -= 1
+	for b: Sim.Bld in sim.mil_list():
+		if b.ty == "hq" or b.dead:
+			continue
+		b.blunt = clampi(b.blunt, 0, b.garrison)
+		var p2 := sim.players[b.p - 1]
+		if b.blunt > 0 and b.state == "ready" and float(p2.stock.get("weapons", 0.0)) >= 1.0:
+			sim.take(p2, "weapons", 1.0, sim.idx(b.x, b.y))
+			sim.used(p2, "weapons", 1.0)
+			b.blunt -= 1
+
 ## Every second: soldiers in military buildings take up bows (one from the stores each) or put them
 ## down, to match each building's archer setting.
 func archers_tick() -> void:
+	rearm_tick()
 	for b: Sim.Bld in sim.mil_list():
 		if b.ty == "hq" or b.state != "ready" or b.dead:
 			continue
@@ -170,11 +218,17 @@ func _arrows(a: Sim.Attack, p: Sim.Player, t: Sim.Bld, left: float) -> void:
 		return
 	a.dvt[3] = sim.time + ARCHER_RELOAD
 	a.dshot_t = sim.time
+	var broke := 0
 	for s in n:
 		if a.n > 0 and sim.rng.randf() < ARCHER_HIT:
 			Sim.mix_remove(a.amix, Sim.mix_pick(a.amix, sim.rng))
 			a.n -= 1
+			a.blunt = mini(a.blunt, a.n)
 			p.vets = maxf(0.0, p.vets - a.vet)
+		if sim.rng.randf() < BOW_WEAR:
+			broke += 1
+	# broken bows: those archers take new ones from the stores (archers_tick)
+	t.archers = maxi(0, t.archers - broke)
 	a.era = Sim.mix_avg(a.amix)
 
 
@@ -206,11 +260,16 @@ func kill_defender(t: Sim.Bld, k := -1) -> void:
 	var m := mix_of(b)
 	Sim.mix_remove(m, k if k >= 0 else Sim.mix_pick(m, sim.rng))
 	if b.ty == "hq":
-		sim.players[b.p - 1].reserve -= 1
-		sim.players[b.p - 1].res_era = Sim.mix_avg(m)
+		var hp := sim.players[b.p - 1]
+		hp.reserve -= 1
+		hp.res_era = Sim.mix_avg(m)
+		if hp.blunt > hp.reserve or _picks_blunt(hp.blunt, hp.reserve + 1):
+			hp.blunt = maxi(0, hp.blunt - 1)
 	else:
 		b.garrison -= 1
 		b.sera = Sim.mix_avg(m)
+		if b.blunt > b.garrison or _picks_blunt(b.blunt, b.garrison + 1):
+			b.blunt = maxi(0, b.blunt - 1)
 		# an archer falls first when most of the garrison are archers
 		if b.archers > b.garrison or (b.archers > 0 and sim.rng.randf() < float(b.archers) / maxf(1.0, b.garrison + 1)):
 			b.archers -= 1
@@ -329,10 +388,14 @@ func launch_attack(src: Sim.Bld, tgt: Sim.Bld, want := -1, kinds: Array = [], sa
 		m[kept] += 1
 	if n < 1:
 		return "None of the chosen kinds can go from here"
+	var sb := _blunt_of(src)
+	var go_blunt := mini(sb, roundi(float(sb) * n / maxf(1.0, own_def(src))))
+	_add_blunt(src, -go_blunt)
 	if src.ty == "hq": p.reserve -= n
 	else:
 		src.garrison -= n
 		src.archers = mini(src.archers, src.garrison)
+		src.blunt = mini(src.blunt, src.garrison)
 	var a := Sim.Attack.new()
 	a.p = src.p; a.src = src.id; a.tgt = tgt.id; a.n = n; a.n0 = n; a.t0 = sim.time; a.t1 = sim.time + dist * 1.1 + 1.0
 	a.from = Vector2(src.x, src.y); a.to = Vector2(tgt.x, tgt.y)
@@ -342,6 +405,7 @@ func launch_attack(src: Sim.Bld, tgt: Sim.Bld, want := -1, kinds: Array = [], sa
 	a.era = Sim.mix_avg(sent)
 	a.vt = [a.t0, a.t0]
 	a.dvt = [a.t0, a.t0]
+	a.blunt = mini(go_blunt, n)
 	sim._bid += 1
 	a.uid = sim._bid
 	sim.attacks.append(a)
@@ -420,12 +484,26 @@ func attack_tick(dt: float) -> void:
 			var db2 := _defending(t)
 			if db2.ty != "hq" and db2.archers > 0 and sim.rng.randf() < float(db2.archers) / maxf(1.0, own_def(db2)):
 				dw -= ARCHER_DUEL
+			# worn weapons on either side
+			var a_blunt := _picks_blunt(a.blunt, a.n)
+			var d_blunt := _picks_blunt(_blunt_of(db2), own_def(db2))
+			if a_blunt: dw += BLUNT_DUEL
+			if d_blunt: dw -= BLUNT_DUEL
+			# each fight may wear out the weapons of the two who fought
+			if not a_blunt and sim.rng.randf() < WEAPON_WEAR:
+				a.blunt = mini(a.blunt + 1, a.n)
+				a_blunt = true
+			if not d_blunt and sim.rng.randf() < WEAPON_WEAR:
+				_add_blunt(db2, 1)
 			if sim.rng.randf() < dw:
 				# men-at-arms' armour turns half the blows that would fell them (not pikes or bullets)
 				if ak == 2 and dk < 3 and sim.rng.randf() < 0.5:
 					continue
 				Sim.mix_remove(a.amix, ak)
 				a.n -= 1
+				if a_blunt:
+					a.blunt = maxi(0, a.blunt - 1)
+				a.blunt = mini(a.blunt, a.n)
 				a.era = Sim.mix_avg(a.amix)
 				p.vets = maxf(0.0, p.vets - a.vet)
 				_defender_gains_xp(t)
@@ -520,6 +598,14 @@ func _field_battles(dt: float) -> void:
 			aw += 0.03 * (Sim.level(a.sxp, Sim.SOLDIER_XP) - Sim.level(b.sxp, Sim.SOLDIER_XP))
 			aw += 0.035 * (ak - bk) + COUNTER * (int(ADV[ak][bk]) - int(ADV[bk][ak]))
 			aw += _melee_edge(ak, false) - _melee_edge(bk, false)
+			var ab := _picks_blunt(a.blunt, a.n)
+			var bb := _picks_blunt(b.blunt, b.n)
+			if ab: aw -= BLUNT_DUEL
+			if bb: aw += BLUNT_DUEL
+			if not ab and sim.rng.randf() < WEAPON_WEAR:
+				a.blunt = mini(a.blunt + 1, a.n)
+			if not bb and sim.rng.randf() < WEAPON_WEAR:
+				b.blunt = mini(b.blunt + 1, b.n)
 			if sim.rng.randf() < aw:
 				if bk == 2 and ak < 3 and sim.rng.randf() < 0.5:
 					continue
@@ -542,6 +628,9 @@ func _field_battles(dt: float) -> void:
 func _fall(a: Sim.Attack, p: Sim.Player, k: int) -> void:
 	Sim.mix_remove(a.amix, k)
 	a.n -= 1
+	if _picks_blunt(a.blunt, a.n + 1):
+		a.blunt -= 1
+	a.blunt = clampi(a.blunt, 0, a.n)
 	a.era = Sim.mix_avg(a.amix)
 	p.vets = maxf(0.0, p.vets - a.vet)
 
@@ -588,11 +677,13 @@ func _retreat(a: Sim.Attack, p: Sim.Player) -> void:
 		s.sxp = Sim.mix_xp(s.sxp, s.garrison, a.sxp, a.n)
 		Sim.mix_add(sim.gmix_of(s), a.amix)
 		s.garrison += a.n
+		s.blunt = mini(s.blunt + a.blunt, s.garrison)
 		s.sera = Sim.mix_avg(s.gmix)
 	else:
 		p.res_xp = Sim.mix_xp(p.res_xp, p.reserve, a.sxp, a.n)
 		Sim.mix_add(sim.rmix_of(p), a.amix)
 		p.reserve += a.n
+		p.blunt = mini(p.blunt + a.blunt, p.reserve)
 		p.res_era = Sim.mix_avg(p.rmix)
 
 
@@ -602,6 +693,7 @@ func _capture(a: Sim.Attack, t: Sim.Bld, p: Sim.Player, op: Sim.Player) -> void:
 		p.res_xp = Sim.mix_xp(p.res_xp, p.reserve, a.sxp, a.n)
 		Sim.mix_add(sim.rmix_of(p), a.amix)
 		p.reserve += a.n
+		p.blunt = mini(p.blunt + a.blunt, p.reserve)
 		p.res_era = Sim.mix_avg(p.rmix)
 		eliminate(op, p)
 		return
@@ -613,6 +705,8 @@ func _capture(a: Sim.Attack, t: Sim.Bld, p: Sim.Player, op: Sim.Player) -> void:
 		for k in plunder:
 			sim.logistics.store_add(t, op, k, -float(plunder[k]))
 	t.p = p.id; t.garrison = 1; t.staffed = false; t.path = PackedInt32Array(); t.out_buf = {}
+	t.blunt = 0; t.archers = 0; t.archer_want = 0; t.sally = false
+	p.blunt = mini(p.blunt + a.blunt, p.reserve + a.n - 1)
 	if t.def.has("store"):
 		for k in plunder:
 			sim.logistics.store_add(t, p, k, float(plunder[k]))

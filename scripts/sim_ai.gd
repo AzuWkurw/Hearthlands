@@ -182,7 +182,7 @@ func _kin(p: Sim.Player, ty: String) -> Array:
 		return out
 	for b: Sim.Bld in sim.realm_blds(p):
 		var bi: Dictionary = b.def.get("in", {})
-		var bo: Dictionary = b.def.get("out", {})
+		var bo: Dictionary = Crops.out_of(sim, b)
 		var related := false
 		for k in ins:
 			if bo.has(k) or (k == "food" and b.def.get("cat", "") == "food" and not bo.is_empty()):
@@ -317,6 +317,8 @@ func ai_think(p: Sim.Player) -> void:
 				b.prio = want
 		if b.state != "ready":
 			continue
+		if b.ty == "farm":
+			_ai_crop(p, b)
 		if b.fails >= 12 and _used_up(b):
 			# its trees, rocks, fish or game have long been gone: pull it down (some of its cost comes back)
 			# so that a new one goes up where there still are some
@@ -494,6 +496,22 @@ func ai_think(p: Sim.Player) -> void:
 
 
 ## Military buildings of realm p still waiting for their first soldier.
+## What a rival's farm sows: mostly wheat, one in three food crops once it has the seed; winter rye
+## while its crop is out of season (by hand, or the rotation once it knows the Three-field system).
+func _ai_crop(p: Sim.Player, b: Sim.Bld) -> void:
+	var base := "wheat"
+	if b.id % 3 == 0:
+		if Crops.known(sim, p, "potatoes"): base = "potatoes"
+		elif Crops.known(sim, p, "vegetables"): base = "vegetables"
+	var rye := Crops.known(sim, p, "rye")
+	b.rotate = rye and p.techs.has(Crops.ROTATE_TECH)
+	var s := Crops.season_now(sim)
+	if not b.rotate and rye and not Crops.grows(base, s):
+		b.crop = "rye"
+	else:
+		b.crop = base
+
+
 func _empty_mil(p: Sim.Player) -> int:
 	var n := 0
 	for b: Sim.Bld in sim.realm_blds(p):

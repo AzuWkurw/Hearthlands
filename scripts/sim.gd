@@ -224,7 +224,10 @@ class Bld:
 	var archer_want := 0                   # how many of its soldiers should be archers (they take up bows)
 	var archers := 0                       # how many are archers now (never more than its garrison)
 	var sally := false                     # its soldiers march out to meet an attack instead of waiting
+	var crop := ""                         # a farm's crop (Crops.LIST; "" = wheat)
+	var rotate := false                    # a farm sows winter rye while its own crop is out of season
 	var town := ""                         # a store's town name (shown on the map and in messages)
+	var blunt := 0                         # soldiers here whose weapons are worn out (re-armed from the stores)
 	var dry_t := -1.0                      # a mine: game time its vein was found to have run dry (-1: not dry)
 
 
@@ -265,6 +268,7 @@ class Player:
 	var attacks_made := 0   # attacks this realm launched
 	var colonies := 0       # harbours its expeditions founded
 	var warned := {}        # realm id -> when this rival last warned it before going to war
+	var blunt := 0          # soldiers at headquarters whose weapons are worn out
 	var used_artisan := 0
 	var hq: Bld = null
 	var start := Vector2i.ZERO
@@ -353,6 +357,7 @@ class Attack:
 	var n0 := 0                  # how many set out (a rival pulls back when over half have fallen and the gate still holds)
 	var field := 0               # uid of the enemy column it is fighting in the open (0: none)
 	var fstep := 0.0
+	var blunt := 0               # marching soldiers whose weapons are worn out
 
 
 class MinHeap:

@@ -263,7 +263,7 @@
    "grain": 3
   },
   "site": "open:4:2",
-  "info": "Grain from open fields around it.",
+  "info": "Crops from the open fields around it: wheat at first, more seeds through research. Choose what it sows below.",
   "art": {
    "style": "barn",
    "wall": "#c3a64a",

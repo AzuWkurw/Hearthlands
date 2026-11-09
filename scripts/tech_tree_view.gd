@@ -275,6 +275,8 @@ func _matches(id: String) -> bool:
 	var txt := String(d.name) + " " + GameData.effect_text(d.get("effects", {}))
 	for b in unlocks(id):
 		txt += " " + String(GameData.bld[b].name)
+	for sd in Crops.seeds_of(id):
+		txt += " " + sd + " seed"
 	return search in txt.to_lower()
 
 

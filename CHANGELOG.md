@@ -1,5 +1,16 @@
 # Changelog
 
+## Build 38 (v0.33.0, 2026-11-09)
+
+Weapons that wear out, and farms that choose their crop.
+
+- Weapons wear out: each fight may wear out a soldier's weapon (1 in 10). Worn weapons fight about 12% worse until new ones come from the stores, one a second per building. A military building's info box and the People panel say how many are worn. Bows break now and then after a volley; the archer takes a new one.
+- Farms choose their crop in the info box: wheat from the start; winter rye, vegetables, potatoes, flax and hops come as seeds from research (Heavy plough, Open-field farming, New World crops, Wool trade, Monasteries). The research window lists the seeds a study unlocks.
+- Crops have seasons: wheat, vegetables and potatoes stand idle in winter, hops grow only in summer and autumn, rye grows all year but gives less. Orchards, vineyards, hop and flax farms and apiaries rest in winter.
+- With the Three-field system a farm can sow winter rye while its own crop is out of season.
+- Vegetables: a new food straight from the field, no mill or bakery needed.
+- Rivals sow food crops on some farms and switch to rye in winter.
+
 ## Build 37 (v0.32.0, 2026-11-09)
 
 The second list of ideas (all but blueprints), and fixes.
