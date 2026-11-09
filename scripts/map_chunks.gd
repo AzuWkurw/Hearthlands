@@ -27,6 +27,7 @@ var _territory := -1       # territory version the chunks were baked with
 var _owners := PackedByteArray()   # the owner of every tile when the chunks were last brought up to date
 var _ter: Array = []
 var _road: Array = []
+var _bridge: Array = []     # [wooden E-W, wooden N-S, stone E-W, stone N-S]
 var _paved: Array = []
 var _clay: Image
 var _ore: Dictionary = {}
@@ -36,12 +37,39 @@ var _edge: Dictionary = {}  # ground kind * 256 + neighbour mask -> soft edge ov
 
 
 ## Reads every texture the chunks use, as plain images at chunk resolution. Call after textures change.
+## A bridge deck for one tile: boards across the way (or dressed stone), with a rail on each side and
+## a shadow on the water below them. ns: the road runs north-south.
+func _bridge_img(ns: bool, stone: bool) -> Image:
+	var img := Image.create(TS, TS, false, Image.FORMAT_RGBA8)
+	var a := int(TS * 0.2)
+	var b := int(TS * 0.8)
+	var deck := Color("8a6038") if not stone else Color("9c968a")
+	var seam := Color("5e3f22") if not stone else Color("6e6a60")
+	var rail := Color("6b4526") if not stone else Color("7c776c")
+	for u in TS:
+		for v in range(a - 2, b + 3):
+			var c: Color
+			if v < a or v > b:
+				c = Color(0, 0, 0, 0.28)          # shadow on the water
+			elif v <= a + 1 or v >= b - 1:
+				c = rail
+			else:
+				var board := (u % 5 == 0) if not stone else ((u + (v / 6) * 4) % 8 == 0 or v % 6 == 0)
+				c = seam if board else deck.lightened(0.04 * float((u / 5 + v) % 3) if not stone else 0.03 * float((u * 7 + v * 3) % 4))
+			if ns:
+				img.set_pixel(v, u, c)
+			else:
+				img.set_pixel(u, v, c)
+	return img
+
+
 func load_images() -> void:
 	if twin != null:
 		twin.sim = sim
 		twin.smooth = smooth
 		twin.details = details
 		twin.load_images()
+	_bridge = [_bridge_img(false, false), _bridge_img(true, false), _bridge_img(false, true), _bridge_img(true, true)]
 	_ter.clear(); _road.clear(); _paved.clear(); _ore.clear(); _edge.clear(); _snow.clear()
 	for t in Tex.TERRAIN:
 		for v in Tex.VARIANTS:
@@ -213,7 +241,12 @@ func _bake(cx: int, cy: int, k: int) -> void:
 				if x < w - 1 and (sim.road[i + 1] != 0 or (sim.bmap[i + 1] != 0 and sim.links(i, i + 1))): m |= 2
 				if y < h - 1 and (sim.road[i + w] != 0 or (sim.bmap[i + w] != 0 and sim.links(i, i + w))): m |= 4
 				if x > 0 and (sim.road[i - 1] != 0 or (sim.bmap[i - 1] != 0 and sim.links(i, i - 1))): m |= 8
-				img.blend_rect(_paved[m] if sim.pave[i] == 1 else _road[m], full, pos)
+				if t == 0:
+					# a road over water is a bridge: planks (or stone, once paved) across the way it runs
+					var ns := (m & 5) != 0 and (m & 10) == 0
+					img.blend_rect(_bridge[(1 if ns else 0) + (2 if sim.pave[i] == 1 else 0)], full, pos)
+				else:
+					img.blend_rect(_paved[m] if sim.pave[i] == 1 else _road[m], full, pos)
 			var o := sim.owner[i]
 			if o != 0 and o <= _tint.size():
 				img.blend_rect(_tint[o - 1], full, pos)

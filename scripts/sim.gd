@@ -1205,6 +1205,9 @@ func place(ty: String, x: int, y: int, p: Player, door := -1, road := true) -> S
 			if plot[t] == -1: plot[t] = 0
 		if path.is_empty():
 			return "No road route to your roads or a store"
+		var bw := logistics.bridge_cost_ok(path, p.id)
+		if bw != "":
+			return bw
 		if door < 0 and path.size() > 1:
 			door = side_of(path[0], path[1])
 	# nothing is taken from the stores now: carriers bring the materials to the site as it needs them

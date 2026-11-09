@@ -17,6 +17,52 @@ func _init(p_sim: Sim) -> void:
 	sim = p_sim
 
 
+## Bridges. A road may cross water only straight across, from land to land, over at most
+## BRIDGE_MAX water tiles inside the realm. Each new bridge tile costs BRIDGE_PLANKS planks (paving it
+## with stone makes it a stone bridge). Ships pass under them.
+const BRIDGE_MAX := 3
+const BRIDGE_PLANKS := 2
+
+## From land tile cur onto water tile ni: the land tile where a bridge straight on would come ashore,
+## or -1 when there is none close enough (or it is not a place for a road).
+func bridge_landing(cur: int, ni: int, pid: int) -> int:
+	var d := ni - cur
+	var c := ni
+	for k in BRIDGE_MAX:
+		var nx := c % sim.w + (d if absi(d) == 1 else 0)
+		var nxt := c + d
+		if nxt < 0 or nxt >= sim.w * sim.h or nx < 0 or nx >= sim.w:
+			return -1
+		if sim.ter[nxt] != Sim.WATER:
+			if sim.owner[nxt] != pid or sim.deco[nxt] == Sim.D_ROCK or sim.deco[nxt] == Sim.D_CLAY or (sim.plot[nxt] != 0 and sim.bmap[nxt] == 0):
+				return -1
+			return nxt
+		if sim.owner[nxt] != pid:
+			return -1
+		c = nxt
+	return -1
+
+
+## In a road search: may the road step from cur onto water tile ni? Along a bridge already there, or
+## starting a new one from land with a landing in reach, or carrying straight on over the water.
+func bridge_step(cur: int, ni: int, pid: int) -> bool:
+	if sim.road[ni] == pid:
+		return true
+	if sim.ter[cur] == Sim.WATER:
+		var prev := sim._came[cur]
+		return prev >= 0 and cur - prev == ni - cur
+	return bridge_landing(cur, ni, pid) >= 0
+
+
+## New bridge tiles on path (water tiles not yet carrying a road of pid).
+func bridge_tiles(path: PackedInt32Array, pid: int) -> int:
+	var n := 0
+	for i in path:
+		if sim.ter[i] == Sim.WATER and sim.road[i] != pid:
+			n += 1
+	return n
+
+
 func find_path(sx: int, sy: int, gx: int, gy: int, pid: int) -> PackedInt32Array:
 	sim._stamp += 1
 	var st := sim._stamp
@@ -54,12 +100,17 @@ func find_path(sx: int, sy: int, gx: int, gy: int, pid: int) -> PackedInt32Array
 			if sim._closed[ni] == st:
 				continue
 			if ni != g:
-				if sim.owner[ni] != pid or sim.ter[ni] == Sim.WATER or sim.deco[ni] == Sim.D_ROCK or sim.deco[ni] == Sim.D_CLAY or sim.bmap[ni] != 0 or sim.plot[ni] != 0:
+				if sim.owner[ni] != pid or sim.deco[ni] == Sim.D_ROCK or sim.deco[ni] == Sim.D_CLAY or sim.bmap[ni] != 0 or sim.plot[ni] != 0:
 					continue
+				if sim.ter[ni] == Sim.WATER and not bridge_step(cur, ni, pid):
+					continue
+			# off a bridge only straight on
+			if sim.ter[cur] == Sim.WATER and sim._came[cur] >= 0 and cur - sim._came[cur] != ni - cur:
+				continue
 			# a road leaves or reaches a building only at its entrance
 			if (sim.bmap[cur] != 0 or sim.bmap[ni] != 0) and not sim.links(cur, ni):
 				continue
-			var tc := 0.35 if sim.road[ni] == pid else (4.0 if sim.deco[ni] == Sim.D_TREE else (2.5 if sim.ter[ni] == Sim.MOUNT else 1.0))
+			var tc := 0.35 if sim.road[ni] == pid else (4.0 if sim.deco[ni] == Sim.D_TREE else (2.5 if sim.ter[ni] == Sim.MOUNT else (3.0 if sim.ter[ni] == Sim.WATER else 1.0)))
 			tc *= float(Sim.SLOPE_MUL[sim.slope_level(cur, ni)])
 			var ng := sim._gs[cur] + tc
 			if sim._seen[ni] != st or ng < sim._gs[ni]:
@@ -95,7 +146,22 @@ func take_ore(i: int, kind: int, keep := false) -> bool:
 	return true
 
 
+## "" when the realm has the planks for the new bridge tiles on path, else why not.
+func bridge_cost_ok(path: PackedInt32Array, pid: int) -> String:
+	var n := bridge_tiles(path, pid)
+	if n == 0 or sim.creative(sim.players[pid - 1]):
+		return ""
+	var need := n * BRIDGE_PLANKS
+	if float(sim.players[pid - 1].stock.get("planks", 0.0)) < need:
+		return "A bridge here needs %d planks." % need
+	return ""
+
+
 func lay_road(path: PackedInt32Array, pid: int) -> void:
+	var p := sim.players[pid - 1]
+	var nb := bridge_tiles(path, pid)
+	if nb > 0 and not sim.creative(p):
+		take(p, "planks", float(nb * BRIDGE_PLANKS), path[0])
 	for i in path:
 		if sim.bmap[i] != 0:
 			continue
@@ -216,11 +282,23 @@ func reach(pid: int) -> PackedByteArray:
 			var ni := ny * sim.w + nx
 			if r[ni] == 1 or sim.owner[ni] != pid:
 				continue
-			if sim.ter[ni] == Sim.WATER or sim.deco[ni] == Sim.D_ROCK or sim.deco[ni] == Sim.D_CLAY:
+			if sim.deco[ni] == Sim.D_ROCK or sim.deco[ni] == Sim.D_CLAY:
 				continue
 			if sim.plot[ni] != 0 or sim.bmap[ni] != 0:
 				continue
 			if sim.bmap[cur] != 0 and not sim.links(cur, ni):
+				continue
+			if sim.ter[ni] == Sim.WATER:
+				# a road could cross here on a bridge (or one is there): the far shore can be reached
+				if sim.ter[cur] == Sim.WATER:
+					continue
+				var land := ni if sim.road[ni] == pid else bridge_landing(cur, ni, pid)
+				if sim.road[ni] == pid:
+					r[ni] = 1
+					q.append(ni)
+				elif land >= 0 and r[land] == 0:
+					r[land] = 1
+					q.append(land)
 				continue
 			r[ni] = 1
 			q.append(ni)
@@ -481,10 +559,14 @@ func _path_to_net_inner(sx: int, sy: int, pid: int, door := -1, doors: Array = [
 					continue
 				if not sim.links(ni, cur):
 					continue
-			elif sim.ter[ni] == Sim.WATER or sim.deco[ni] == Sim.D_ROCK or sim.deco[ni] == Sim.D_CLAY:
+			elif sim.deco[ni] == Sim.D_ROCK or sim.deco[ni] == Sim.D_CLAY:
 				continue
-			# a new road tile costs its walk plus the work of laying it; mountains and trees cost more
-			var tc := Sim.DIRT_COST if sim.road[ni] == pid else Sim.NEW_ROAD_COST + Sim.DIRT_COST + (3.0 if sim.deco[ni] == Sim.D_TREE else (1.5 if sim.ter[ni] == Sim.MOUNT else 0.0))
+			elif sim.ter[ni] == Sim.WATER and not bridge_step(cur, ni, pid):
+				continue
+			if sim.ter[cur] == Sim.WATER and sim._came[cur] >= 0 and cur - sim._came[cur] != ni - cur:
+				continue
+			# a new road tile costs its walk plus the work of laying it; mountains, trees and bridges cost more
+			var tc := Sim.DIRT_COST if sim.road[ni] == pid else Sim.NEW_ROAD_COST + Sim.DIRT_COST + (3.0 if sim.deco[ni] == Sim.D_TREE else (1.5 if sim.ter[ni] == Sim.MOUNT else (4.0 if sim.ter[ni] == Sim.WATER else 0.0)))
 			# slopes slow the carriers for good, so new roads go round hills where they can
 			tc *= float(Sim.SLOPE_MUL[sim.slope_level(cur, ni)])
 			var ng := sim._gs[cur] + tc
@@ -1470,6 +1552,9 @@ func build_road(sx: int, sy: int, gx: int, gy: int, pid: int) -> String:
 	var path := find_path(sx, sy, gx, gy, pid)
 	if path.is_empty():
 		return "There is no way through for a road."
+	var why := bridge_cost_ok(path, pid)
+	if why != "":
+		return why
 	lay_road(path, pid)
 	return ""
 

@@ -1623,7 +1623,11 @@ func _process(delta: float) -> void:
 	elif view.place_type.begins_with("@"):
 		match view.place_type:
 			"@demolish": hint.text = "Demolish: click one of your buildings (Esc to stop)"
-			"@road": hint.text = "Build road: " + ("click where the road should go (Esc to stop)" if view.road_start.x >= 0 else "click one of your roads or buildings to start")
+			"@road":
+				hint.text = "Build road: " + ("click where the road should go (Esc to stop)" if view.road_start.x >= 0 else "click one of your roads or buildings to start")
+				var nb := sim.logistics.bridge_tiles(view.road_preview(), 1) if view.road_start.x >= 0 else 0
+				if nb > 0:
+					hint.text += tr(". A bridge over %d tiles of water: %d planks") % [nb, nb * SimLogistics.BRIDGE_PLANKS]
 			"@pave": hint.text = "Pave road: click a road (1 stone per tile, up to 12 tiles)"
 			"@flag": hint.text = "Flag: click one of your roads to set or take away a flag (Esc to stop)"
 			"@expedition": hint.text = "Expedition: click a free coast across the water (Esc to stop)"
@@ -1764,6 +1768,8 @@ func _tile_info(i: int) -> String:
 			var sl := sim.road_slope(i, int(sim.road[i]))
 			t += ". Road: %s%s" % [Sim.SLOPE_NAMES[sl], (" (carriers take %.1f times as long)" % float(Sim.SLOPE_MUL[sl])) if sl > 0 else ""]
 		t += "\n"
+	if sim.ter[i] == Sim.WATER and sim.road[i] != 0:
+		t += ("A stone bridge.\n" if sim.pave[i] == 1 else "A wooden bridge (pave it to make it stone).\n")
 	if sim.deco[i] == Sim.D_TREE:
 		t += "A tree: one log for a woodcutter.\n"
 	elif sim.deco[i] == Sim.D_ROCK:
