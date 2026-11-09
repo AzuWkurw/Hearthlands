@@ -78,6 +78,7 @@ var _ground_mat: ShaderMaterial
 var _origin := Vector2.ZERO
 var _folk_roads: Dictionary = {}   # house id -> [game time worked out, straight runs of road nearby: [from, to]]
 var _vary: ImageTexture            # ground variation (see _make_variation)
+var traffic_ui = null             # the traffic map (UiTraffic), drawn over the roads when on
 var _scn_atlas: ImageTexture       # trees, peaks and boulders side by side (see _make_scenery_atlas)
 var _scn_size: Array = []          # per SCENERY entry: [uv rect in the atlas, size in tiles]
 var _scn_mesh := {}                # chunk key -> ArrayMesh of the scenery standing in it (null: none)
@@ -536,6 +537,8 @@ func _draw() -> void:
 		draw_map_texture(self, _vary)
 	if z >= DETAIL_ZOOM:
 		_draw_scenery(x0, x1, y0, y1)
+	if traffic_ui != null and traffic_ui.on:
+		traffic_ui.draw(self, x0, x1, y0, y1)
 	# features draw on the ground (season colours, snow) under the buildings
 	if not sim.features.is_empty():
 		var vr := Rect2i(x0, y0, x1 - x0 + 1, y1 - y0 + 1)

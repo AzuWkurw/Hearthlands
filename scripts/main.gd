@@ -99,6 +99,7 @@ var rivals_label: RichTextLabel
 
 
 var problems_ui := UiProblems.new(self)  # the Problems list (ui_problems.gd)
+var traffic_ui := UiTraffic.new(self)    # the traffic map, F7 (ui_traffic.gd)
 var attack_ui := UiAttack.new(self)
 var chain_ui := UiChain.new(self)        # the production chain window (ui_chain.gd)      # the attack window (ui_attack.gd)
 var problems_btn: Button
@@ -689,6 +690,9 @@ func _build_ui() -> void:
 	problems_btn = _button("Problems", func(): problems_ui.toggle())
 	problems_btn.tooltip_text = "Your buildings that cannot work, and why (O)"
 	tb.add_child(problems_btn)
+	var trb := _button("Traffic", func(): traffic_ui.toggle())
+	trb.tooltip_text = "Colour your roads by how busy they are (F7)"
+	tb.add_child(trb)
 	tb.add_child(_button("New game", func(): setup.visible = true; paused = true))
 
 	minimap = Minimap.new()
@@ -807,6 +811,8 @@ func _build_ui() -> void:
 	editor_ui.build()
 	missions_ui.build()
 	problems_ui.build()
+	traffic_ui.build()
+	view.traffic_ui = traffic_ui
 	attack_ui.build()
 	chain_ui.build()
 
@@ -1123,6 +1129,7 @@ func _after_world_change() -> void:
 	view.sim = sim
 	watch = {}
 	problems_ui.hidden = {}
+	traffic_ui.reset()
 	problems_ui.since = {}
 	problems_ui.show_hidden = false
 	_rebuild_feature_ui()
@@ -1505,6 +1512,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.keycode == KEY_O and not setup.visible:
 		problems_ui.toggle()
 		return
+	if event.keycode == KEY_F7 and not setup.visible:
+		traffic_ui.toggle()
+		return
 	if event.keycode == KEY_B and not setup.visible and not save_panel.visible:
 		toolbar.toggle_sites()
 		return
@@ -1678,6 +1688,7 @@ func _refresh_all() -> void:
 	_refresh_rivals()
 	guide_ui.refresh()
 	problems_ui.refresh()
+	traffic_ui.update()
 	_check_watch()
 	if log_dirty:
 		log_dirty = false
@@ -1756,7 +1767,7 @@ func _res_info(id: String) -> String:
 
 
 func _tile_has_info(i: int) -> bool:
-	return sim.deco[i] != 0 or (sim.ter[i] == Sim.MOUNT and sim.get_feature("geology") != null) or (sim.ore[i] != 0 and sim.vein_left(i) > 0 and sim.ore_known(1, i)) or (sim.ter[i] == Sim.WATER and sim.amt[i] > 0)
+	return sim.deco[i] != 0 or (traffic_ui.on and sim.road[i] == 1) or (sim.ter[i] == Sim.MOUNT and sim.get_feature("geology") != null) or (sim.ore[i] != 0 and sim.vein_left(i) > 0 and sim.ore_known(1, i)) or (sim.ter[i] == Sim.WATER and sim.amt[i] > 0)
 
 
 func _tile_info(i: int) -> String:
@@ -1768,6 +1779,7 @@ func _tile_info(i: int) -> String:
 			var sl := sim.road_slope(i, int(sim.road[i]))
 			t += ". Road: %s%s" % [Sim.SLOPE_NAMES[sl], (" (carriers take %.1f times as long)" % float(Sim.SLOPE_MUL[sl])) if sl > 0 else ""]
 		t += "\n"
+	t += traffic_ui.tile_text(i)
 	if sim.ter[i] == Sim.WATER and sim.road[i] != 0:
 		t += ("A stone bridge.\n" if sim.pave[i] == 1 else "A wooden bridge (pave it to make it stone).\n")
 	if sim.deco[i] == Sim.D_TREE:
