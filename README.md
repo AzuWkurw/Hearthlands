@@ -751,6 +751,7 @@ Copy it into the mods folder to try it.
 ## Project layout
 
 `docs/SOURCE_GUIDE.md` explains how the code works, system by system, and how to make common changes;
+`docs/FILES.md` lists every source file with what it is for (`python3 tools/file_list.py` rewrites it);
 `docs/SUGGESTIONS.md` lists what could be improved next.
 
 ```

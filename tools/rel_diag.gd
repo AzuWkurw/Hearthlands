@@ -1,4 +1,7 @@
 extends SceneTree
+## Diagnosis of how rivals see each other after 22 minutes on the valley map: crowding, reserve,
+## strength, and the nearest distance between their military buildings (why they go to war or not).
+## godot --headless --script res://tools/rel_diag.gd
 func _init() -> void:
 	GameData.ensure()
 	var sim := Sim.new()
