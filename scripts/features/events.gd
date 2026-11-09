@@ -157,6 +157,11 @@ func _apply(p: Sim.Player, k: String) -> String:
 			var b := _pick_bld(p, func(b): return b.ty != "hq" and not sim.is_mil(b) and not sim.is_store(b) and b.cyc > 0.0)
 			if b == null:
 				return ""
+			# with spreading fires on, it is a real fire (see fires.gd)
+			var fires = sim.get_feature("fires")
+			if fires != null and fires.flammable(b):
+				fires.ignite(b)
+				return "a fire broke out in the %s!" % String(b.def.name).to_lower()
 			blocked[b.id] = [sim.time + 90.0, "Repairing fire damage"]
 			var pl := minf(2.0, float(p.stock.get("planks", 0.0)))
 			if pl > 0.0:

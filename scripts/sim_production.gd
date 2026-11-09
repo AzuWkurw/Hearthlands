@@ -221,6 +221,10 @@ func _siege_hit(b: Sim.Bld, p: Sim.Player) -> void:
 		elif t.p == 1:
 			sim.emit_log("A catapult of %s hit your %s: one defender fell (%d left)." % [p.name, String(t.def.name), sim.own_def(t)], Color("e0603a"), Vector2i(t.x, t.y))
 		Diplomacy.on_attacked(sim, t.p, b.p)
+	# a stone through a wooden roof may start a fire
+	var fires = sim.get_feature("fires")
+	if fires != null and not t.dead and sim.rng.randf() < 0.15 and fires.ignite(t) and b.p == 1:
+		sim.emit_log("Your catapult set the %s of %s on fire!" % [String(t.def.name), sim.players[t.p - 1].name], Color("d8aa4a"), Vector2i(t.x, t.y))
 
 
 func finish_prod(b: Sim.Bld, p: Sim.Player) -> void:

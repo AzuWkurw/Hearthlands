@@ -1299,6 +1299,27 @@
   "trade": "healing",
   "feature": "contentment"
  },
+ "fire_station": {
+  "name": "Fire station",
+  "cat": "folk",
+  "size": "small",
+  "cost": {
+   "planks": 2,
+   "stone": 3
+  },
+  "time": 12,
+  "worker": "peasant",
+  "info": "Its crew of three runs with buckets to any fire within 14 tiles (wells nearby send one person each). Fires spread between wooden buildings.",
+  "art": {
+   "style": "workshop",
+   "wall": "#b04a3a",
+   "sw": 1.6,
+   "sign": "pail",
+   "sign_color": "#5a9ad0"
+  },
+  "trade": "healing",
+  "feature": "fires"
+ },
  "boundary_stone": {
   "name": "Boundary stone",
   "cat": "mil",
