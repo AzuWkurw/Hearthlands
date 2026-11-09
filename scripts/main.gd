@@ -105,6 +105,8 @@ var chain_ui := UiChain.new(self)        # the production chain window (ui_chain
 var problems_btn: Button
 var editor_ui := UiEditor.new(self)  # the map editor (ui_editor.gd)
 var missions_ui := UiMissions.new(self)  # the missions list (ui_missions.gd)
+var campaign_ui := UiCampaign.new(self)  # the campaign map (ui_campaign.gd)
+var end_next: Button
 var guide_ui := UiGuide.new(self)  # the first-game checklist (ui_guide.gd)
 var side_ui := UiSide.new(self)
 var info_ui := UiInfo.new(self)
@@ -810,6 +812,7 @@ func _build_ui() -> void:
 	guide_ui.build()
 	editor_ui.build()
 	missions_ui.build()
+	campaign_ui.build()
 	problems_ui.build()
 	traffic_ui.build()
 	view.traffic_ui = traffic_ui
@@ -927,6 +930,9 @@ func _build_setup() -> void:
 	var mi_b := _button("Missions", func(): missions_ui.show())
 	mi_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	er.add_child(mi_b)
+	var ca_b := _button("Campaign", func(): campaign_ui.show())
+	ca_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	er.add_child(ca_b)
 	v.add_child(_button("Load a saved game", _open_saves))
 
 
@@ -1055,6 +1061,11 @@ func _build_end() -> void:
 	watch_b.tooltip_text = "Everyone's land, minute by minute, from the start (in Statistics, Borders)."
 	end_watch = watch_b
 	v.add_child(watch_b)
+	end_next = _button("Next chapter", func():
+		end_panel.visible = false
+		campaign_ui.play_next())
+	end_next.visible = false
+	v.add_child(end_next)
 	v.add_child(_button("New game", func(): end_panel.visible = false; setup.visible = true))
 	end_panel.visible = false
 
@@ -1110,12 +1121,30 @@ func start_mission(ms: Dictionary) -> bool:
 	return true
 
 
+## A campaign chapter can carry veteran soldiers and goods over from the chapter before.
+func _mission_bonus() -> void:
+	var b: Dictionary = sim.mission.get("bonus", {})
+	if b.is_empty() or sim.time > 1.0:
+		return
+	var me := sim.human()
+	var n := int(b.get("soldiers", 0))
+	if n > 0:
+		me.reserve += n
+		me.vets += n * 0.5
+		me.res_xp = maxf(me.res_xp, 20.0)
+		Sim.mix_fix(me.rmix, me.reserve, roundi(maxf(0.0, me.res_era)))
+	for k in b.get("goods", {}):
+		sim.give(me, String(k), float(b.goods[k]))
+	_show_hint("From the chapter before: " + campaign_ui._bonus_text(b) + ".", 6.0)
+
+
 const DEFAULT_MISSION_OPTS := {"start_goods": 1.0, "peace_min": 0, "research": 1.0, "build": 1.0}
 
 
 ## After a new game on a map or a mission: the same as _start, then into the game.
 func _begin() -> void:
 	_after_world_change()
+	_mission_bonus()
 	guide_ui.start()
 	var hq0 := sim.human().hq
 	view.center_on(Vector2(hq0.x + 0.5, hq0.y + 0.5))
@@ -1160,6 +1189,10 @@ func _on_end(win: bool) -> void:
 		end_text.text = ("Your realm reached the Industrial Revolution first, after %d minutes." if win else last + " (%d minutes)") % m
 	else:
 		end_text.text = ("Every rival realm has fallen. Your reign took %d minutes." if win else "Your headquarters was captured after %d minutes.") % m
+	end_text.text += campaign_ui.on_end(win)
+	end_next.visible = win and campaign_ui.has_next()
+	end_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	end_text.custom_minimum_size = Vector2(560, 0)
 	end_panel.visible = true
 
 

@@ -302,6 +302,9 @@ static func execute(sim: Sim, kind: String, from: int, to: int, give: Dictionary
 			for k in want:
 				var g2 := sim.take(b, k, float(want[k]))
 				send_cart(sim, b, a, k, g2)
+			if kind == "trade":
+				a.trades += 1
+				b.trades += 1
 			var got := total(b, give, true)
 			adjust(b, from, clampf(got * (1.5 if want.is_empty() else 0.3), 1.0, 20.0))
 			adjust(a, to, 3.0)

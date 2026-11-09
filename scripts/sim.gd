@@ -260,6 +260,7 @@ class Player:
 	var imm_t := 0
 	var die_t := 0
 	var used_peasant := 0
+	var trades := 0         # trades made with other realms (a mission goal)
 	var used_artisan := 0
 	var hq: Bld = null
 	var start := Vector2i.ZERO
@@ -1945,6 +1946,8 @@ func goal_progress(g: Dictionary) -> Array:
 			return [owned(me.id)[0].size(), n]
 		"stock":
 			return [int(float(me.stock.get(String(g.get("res", "")), 0.0))), n]
+		"trades":
+			return [me.trades, n]
 		"defeat":
 			var gone := 0
 			for p in players:

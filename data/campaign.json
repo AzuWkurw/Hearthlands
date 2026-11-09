@@ -1,0 +1,397 @@
+{
+ "name": "The Hearthlands Chronicle",
+ "chapters": [
+  {
+   "id": "c1",
+   "pos": [
+    0.08,
+    0.8
+   ],
+   "new": "Farms, mills and bakeries",
+   "intro": "Your people have crossed the mountains with little more than seed grain and hope. The valley is green, the neighbour quiet, and the first winter is coming. See that there is bread.",
+   "outro": "The granaries are full. Word of a valley that feeds its people spreads over the passes, and more settlers come.",
+   "carry": {
+    "goods": {
+     "bread": 20,
+     "grain": 20
+    }
+   },
+   "mission": {
+    "id": "first_harvest",
+    "name": "Chapter 1: The First Winter",
+    "story": "A green valley, a quiet neighbour, and hungry settlers. Grow grain, grind it and bake bread before the first winter's end.",
+    "seed": "first harvest",
+    "foes": 1,
+    "strength": 2,
+    "opts": {
+     "peace_min": 40,
+     "start_goods": 1.5
+    },
+    "minutes": 40,
+    "goals": [
+     {
+      "kind": "build",
+      "ty": "farm",
+      "n": 2,
+      "text": "Build two farms"
+     },
+     {
+      "kind": "build",
+      "ty": "mill",
+      "n": 1,
+      "text": "Build a mill"
+     },
+     {
+      "kind": "build",
+      "ty": "bakery",
+      "n": 1,
+      "text": "Build a bakery"
+     },
+     {
+      "kind": "stock",
+      "res": "bread",
+      "n": 80,
+      "text": "Store 80 bread"
+     },
+     {
+      "kind": "pop",
+      "n": 60,
+      "text": "Grow to 60 people"
+     }
+    ]
+   }
+  },
+  {
+   "id": "c2",
+   "pos": [
+    0.22,
+    0.62
+   ],
+   "new": "Mines, smelters and weapons",
+   "intro": "The hills above the valley are full of ore, and two rival lords have seen it too. Dig, smelt and arm your men before they come for the hills.",
+   "outro": "Iron rings from your forges. Your best soldiers march with you into the next chapter.",
+   "carry": {
+    "soldiers": 6
+   },
+   "mission": {
+    "id": "iron_road",
+    "name": "Chapter 2: The Iron Road",
+    "story": "The hills are full of ore, and two rivals know it. Dig iron and coal, smelt it, and arm your men before they come.",
+    "seed": "iron road",
+    "foes": 2,
+    "strength": 4,
+    "opts": {
+     "peace_min": 20
+    },
+    "minutes": 60,
+    "goals": [
+     {
+      "kind": "build",
+      "ty": "iron_mine",
+      "n": 1,
+      "text": "Open an iron mine"
+     },
+     {
+      "kind": "build",
+      "ty": "coal_mine",
+      "n": 1,
+      "text": "Open a coal mine"
+     },
+     {
+      "kind": "build",
+      "ty": "iron_smelter",
+      "n": 1,
+      "text": "Build an iron smelter"
+     },
+     {
+      "kind": "build",
+      "ty": "weaponsmith",
+      "n": 1,
+      "text": "Build a weaponsmith"
+     },
+     {
+      "kind": "soldiers",
+      "n": 20,
+      "text": "Have 20 soldiers"
+     }
+    ]
+   }
+  },
+  {
+   "id": "c3",
+   "pos": [
+    0.36,
+    0.46
+   ],
+   "new": "Markets, trade and bridges",
+   "intro": "A broad river splits the land, and the realm across it is at peace with you. Build a market, trade what you have plenty of for what you lack, and bridge the river.",
+   "outro": "Carts roll both ways over your bridges. Trade has made friends of strangers, and some of them follow you.",
+   "carry": {
+    "soldiers": 4,
+    "goods": {
+     "planks": 30
+    }
+   },
+   "mission": {
+    "name": "Chapter 3: Markets and Bridges",
+    "story": "Trade with a peaceful neighbour across the river.",
+    "seed": "two rivers",
+    "foes": 2,
+    "strength": 4,
+    "opts": {
+     "peace_min": 60,
+     "start_goods": 1.3
+    },
+    "minutes": 60,
+    "goals": [
+     {
+      "kind": "build",
+      "ty": "market",
+      "n": 1,
+      "text": "Build a market"
+     },
+     {
+      "kind": "trades",
+      "n": 3,
+      "text": "Make 3 trades with another realm"
+     },
+     {
+      "kind": "build",
+      "ty": "storehouse",
+      "n": 2,
+      "text": "Build two storehouses"
+     },
+     {
+      "kind": "pop",
+      "n": 100,
+      "text": "Grow to 100 people"
+     }
+    ]
+   }
+  },
+  {
+   "id": "c4",
+   "pos": [
+    0.5,
+    0.62
+   ],
+   "new": "Harbours and ships",
+   "intro": "Aldric's legions hold the north of the iron coast. The sea is your road: hold the ridge, and take a rival realm.",
+   "outro": "The coast is yours. Ships carry your banner along every shore.",
+   "carry": {
+    "soldiers": 8
+   },
+   "mission": {
+    "id": "iron_coast",
+    "name": "Chapter 4: The Iron Coast",
+    "story": "A hand-made coast: your village in the south, a rich iron ridge in the middle, Aldric's legions to the north. Hold the ridge and take one rival realm.",
+    "map": "res://data/map_iron_coast.json",
+    "foes": 2,
+    "strength": 5,
+    "opts": {
+     "peace_min": 10
+    },
+    "minutes": 90,
+    "goals": [
+     {
+      "kind": "land",
+      "n": 1500,
+      "text": "Hold 1500 tiles of land"
+     },
+     {
+      "kind": "soldiers",
+      "n": 25,
+      "text": "Have 25 soldiers"
+     },
+     {
+      "kind": "defeat",
+      "n": 1,
+      "text": "Defeat one rival realm"
+     }
+    ]
+   }
+  },
+  {
+   "id": "c5",
+   "pos": [
+    0.63,
+    0.4
+   ],
+   "new": "Taverns, chapels and festivals",
+   "intro": "A long war leaves people weary. Give them taverns and chapels, and a festival or two, and see the town work with a will again.",
+   "outro": "Music from the taverns carries over the rooftops. Content people work harder, and your realm has never been richer.",
+   "carry": {
+    "goods": {
+     "beer": 20,
+     "bread": 30
+    }
+   },
+   "mission": {
+    "name": "Chapter 5: Feast Days",
+    "story": "Make your people content.",
+    "seed": "feast days",
+    "foes": 2,
+    "strength": 5,
+    "opts": {
+     "peace_min": 30,
+     "start_goods": 1.4
+    },
+    "minutes": 75,
+    "goals": [
+     {
+      "kind": "build",
+      "ty": "brewery",
+      "n": 1,
+      "text": "Build a brewery"
+     },
+     {
+      "kind": "build",
+      "ty": "tavern",
+      "n": 2,
+      "text": "Build two taverns"
+     },
+     {
+      "kind": "build",
+      "ty": "chapel",
+      "n": 1,
+      "text": "Build a chapel"
+     },
+     {
+      "kind": "pop",
+      "n": 150,
+      "text": "Grow to 150 people"
+     }
+    ]
+   }
+  },
+  {
+   "id": "c6",
+   "pos": [
+    0.72,
+    0.18
+   ],
+   "new": "Research",
+   "intro": "Peace, and three realms racing for learning. Be first to master the new ways of farming.",
+   "outro": "Your scholars are the wonder of the age. What they learned goes with you.",
+   "carry": {
+    "soldiers": 6
+   },
+   "mission": {
+    "id": "scholars",
+    "name": "Chapter 6: The Scholars' Race",
+    "story": "No war this time: three realms race for learning. Be the first to master the heavy plough, watermills and the three-field system.",
+    "seed": "scholars",
+    "foes": 2,
+    "strength": 6,
+    "opts": {
+     "peace_min": 90,
+     "research": 1.5
+    },
+    "minutes": 75,
+    "goals": [
+     {
+      "kind": "build",
+      "ty": "scriptorium",
+      "n": 2,
+      "text": "Build two scriptoriums"
+     },
+     {
+      "kind": "tech",
+      "id": "heavy_plough",
+      "text": "Study the heavy plough"
+     },
+     {
+      "kind": "tech",
+      "id": "watermills",
+      "text": "Study watermills"
+     },
+     {
+      "kind": "tech",
+      "id": "three_field",
+      "text": "Study the three-field system"
+     }
+    ]
+   }
+  },
+  {
+   "id": "c7",
+   "pos": [
+    0.8,
+    0.5
+   ],
+   "new": "Archers, catapults and sallies",
+   "intro": "Hartmut has walled himself in behind towers and palisades. Make bows and catapults, and break his realm.",
+   "outro": "Hartmut's banner is down. Only one realm still stands between you and the crown.",
+   "carry": {
+    "soldiers": 10
+   },
+   "mission": {
+    "name": "Chapter 7: Siege of Hartmut",
+    "story": "Break a strong rival.",
+    "seed": "siege",
+    "foes": 1,
+    "strength": 7,
+    "opts": {
+     "peace_min": 15,
+     "start_goods": 1.3
+    },
+    "minutes": 90,
+    "goals": [
+     {
+      "kind": "build",
+      "ty": "bowyer",
+      "n": 1,
+      "text": "Build a bowyer"
+     },
+     {
+      "kind": "build",
+      "ty": "catapult",
+      "n": 1,
+      "text": "Build a catapult"
+     },
+     {
+      "kind": "defeat",
+      "n": 1,
+      "text": "Defeat Hartmut"
+     }
+    ]
+   }
+  },
+  {
+   "id": "c8",
+   "pos": [
+    0.88,
+    0.2
+   ],
+   "new": "Everything",
+   "intro": "Three realms remain, and only one crown. Hold the Hearthlands.",
+   "outro": "The Hearthlands are one realm under your banner. The chronicle ends here, but the land will remember.",
+   "carry": {},
+   "mission": {
+    "name": "Chapter 8: The Crown of the Hearthlands",
+    "story": "Win the Hearthlands.",
+    "seed": "crown",
+    "foes": 3,
+    "strength": 7,
+    "size": 160,
+    "opts": {
+     "peace_min": 20,
+     "start_goods": 1.2
+    },
+    "minutes": 150,
+    "goals": [
+     {
+      "kind": "land",
+      "n": 4000,
+      "text": "Hold 4000 tiles of land"
+     },
+     {
+      "kind": "defeat",
+      "n": 2,
+      "text": "Defeat two rival realms"
+     }
+    ]
+   }
+  }
+ ]
+}
