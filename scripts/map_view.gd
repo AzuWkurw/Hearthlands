@@ -373,6 +373,17 @@ func tiles_changed(tiles: PackedInt32Array) -> void:
 				_scn_mesh.erase((yy / MapChunks.CH) * 1000 + xx / MapChunks.CH)
 
 
+## The map point under screen position pos (in tiles, not rounded), on the ground.
+func screen_to_world(pos: Vector2) -> Vector2:
+	var wpos := (pos - size / 2.0) / zoom + cam
+	if raised and sim != null and _lift.size() == (sim.w + 1) * (sim.h + 1):
+		var y := wpos.y
+		for k in 4:
+			y = wpos.y + lift_at(wpos.x, y)
+		return Vector2(wpos.x, y)
+	return wpos
+
+
 func screen_to_tile(pos: Vector2) -> Vector2i:
 	var wpos := (pos - size / 2.0) / zoom + cam
 	if raised and sim != null and _lift.size() == (sim.w + 1) * (sim.h + 1):
@@ -434,7 +445,7 @@ func follow_pos() -> Vector2:
 ## soldiers, or null.
 func pick_mover(at: Vector2):
 	var best = null
-	var bd := 0.9
+	var bd := 0.45
 	var fog = sim.get_feature("fog")
 	for t in sim.trips:
 		var p := trip_pos(t)
@@ -442,11 +453,12 @@ func pick_mover(at: Vector2):
 			continue
 		if fog != null and t.p != 1 and not fog.visible_at(sim.idx(clampi(int(p.x), 0, sim.w - 1), clampi(int(p.y), 0, sim.h - 1))):
 			continue
-		var d := p.distance_to(at)
+		# the figure stands a little above its feet
+		var d := (p + Vector2(0, -0.3)).distance_to(at)
 		if d < bd:
 			bd = d; best = t
 	for a in sim.attacks:
-		var d2 := (sim.military.column_pos(a) + Vector2(0.5, 0.5)).distance_to(at)
+		var d2 := (sim.military.column_pos(a) + Vector2(0.5, 0.3)).distance_to(at)
 		if d2 < bd:
 			bd = d2; best = a
 	return best

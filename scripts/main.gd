@@ -1415,7 +1415,7 @@ func _on_tile(t: Vector2i) -> void:
 		return
 	# a carrier, cart, ship or column of soldiers under the mouse: the camera follows it
 	if b == null and view.place_type == "":
-		var mv = view.pick_mover(Vector2(t) + Vector2(0.5, 0.6))
+		var mv = view.pick_mover(view.screen_to_world(view.get_local_mouse_position()))
 		if mv != null:
 			view.follow = mv
 			var what: String = "column of soldiers" if mv is Sim.Attack else {"ship": "ship", "trade": "trade cart", "cart": "cart", "mule": "mule", "builder": "builder", "soldier": "soldier", "worker": "worker"}.get(String(mv.kind), "carrier")

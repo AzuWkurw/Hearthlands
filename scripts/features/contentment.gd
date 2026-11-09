@@ -111,7 +111,7 @@ func on_second() -> void:
 		if m < LOW:
 			if not low_since.has(p.id):
 				low_since[p.id] = sim.time
-			elif sim.time - float(low_since[p.id]) >= 180.0 and _t % 60 == 0 and p.peasant - p.used_peasant - p.away > 0:
+			elif sim.time - float(low_since[p.id]) >= 180.0 and _t % 60 == 0 and p.peasant - p.used_peasant - p.away > 0 and p.peasant > 4:
 				p.peasant -= 1
 				left[p.id] = int(left.get(p.id, 0)) + 1
 				if not p.ai:
@@ -169,7 +169,7 @@ func ai_steps(p: Sim.Player, have: Callable) -> Array:
 	var mins := sim.time / 60.0
 	var pop := sim.pop_total(p)
 	return [
-		["tavern", (1 + pop / 90) if mins > 14 and int(have.call("brewery")) > 0 and float(p.stock.get("bread", 0.0)) > 12.0 else 0],
+		["tavern", (1 + pop / 150) if mins > 14 and int(have.call("brewery")) > 0 and float(p.stock.get("bread", 0.0)) > 12.0 and float(p.stock.get("beer", 0.0)) >= 4.0 else 0],
 		["chapel", (1 + pop / 120) if mins > 18 and int(have.call("chandler")) > 0 and float(p.stock.get("candles", 0.0)) > 6.0 else 0],
 	]
 

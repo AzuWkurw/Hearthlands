@@ -606,7 +606,20 @@ func _capture(a: Sim.Attack, t: Sim.Bld, p: Sim.Player, op: Sim.Player) -> void:
 		eliminate(op, p)
 		return
 	var old_p := t.p
+	# a captured store (a harbour) keeps its goods: they are the winner's now
+	var plunder := {}
+	if t.def.has("store"):
+		plunder = t.inv.duplicate()
+		for k in plunder:
+			sim.logistics.store_add(t, op, k, -float(plunder[k]))
 	t.p = p.id; t.garrison = 1; t.staffed = false; t.path = PackedInt32Array(); t.out_buf = {}
+	if t.def.has("store"):
+		for k in plunder:
+			sim.logistics.store_add(t, p, k, float(plunder[k]))
+		sim.logistics._store_ver += 1
+		sim._recount_stores(p)
+		sim._recount_stores(op)
+		sim._clamp_stock(op)
 	# the loser's roads lost a building (a full rebuild); the winner gained one
 	sim.net_dirty(old_p)
 	sim._after_building_change(t)

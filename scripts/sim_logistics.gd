@@ -297,16 +297,16 @@ func reach(pid: int) -> PackedByteArray:
 			if sim.bmap[cur] != 0 and not sim.links(cur, ni):
 				continue
 			if sim.ter[ni] == Sim.WATER:
-				# a road could cross here on a bridge (or one is there): the far shore can be reached
-				if sim.ter[cur] == Sim.WATER:
-					continue
-				var land := ni if sim.road[ni] == pid else bridge_landing(cur, ni, pid)
+				# along a bridge that is there, or from the shore over water a bridge could cross: the
+				# far shore can be reached
 				if sim.road[ni] == pid:
 					r[ni] = 1
 					q.append(ni)
-				elif land >= 0 and r[land] == 0:
-					r[land] = 1
-					q.append(land)
+				elif sim.ter[cur] != Sim.WATER:
+					var land := bridge_landing(cur, ni, pid)
+					if land >= 0 and r[land] == 0:
+						r[land] = 1
+						q.append(land)
 				continue
 			r[ni] = 1
 			q.append(ni)

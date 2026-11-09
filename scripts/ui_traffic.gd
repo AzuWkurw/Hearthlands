@@ -17,6 +17,7 @@ var busy := PackedFloat32Array()   # carrier-seconds per tile, fading
 var wait := PackedFloat32Array()   # goods-seconds waiting at a flag on the tile, fading
 var _last := -1
 var legend: PanelContainer
+var _swatches: Array = []
 
 
 func _init(p_owner: Main) -> void:
@@ -31,10 +32,12 @@ func build() -> void:
 	var v := VBoxContainer.new()
 	legend.add_child(v)
 	v.add_child(main._label("TRAFFIC (F7)", 14, Main.BRASS))
-	for row in [[Main.col("bad"), "jammed: goods waiting"], [Main.col("warn"), "busy"], [Main.col("good"), "free"]]:
+	for row in [["bad", "jammed: goods waiting"], ["warn", "busy"], ["good", "free"]]:
 		var h := HBoxContainer.new()
 		var sw := ColorRect.new()
-		sw.color = row[0]
+		sw.color = Main.col(row[0])
+		sw.set_meta("col", row[0])
+		_swatches.append(sw)
 		sw.custom_minimum_size = Vector2(16, 6)
 		sw.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		h.add_child(sw)
@@ -54,6 +57,8 @@ func reset() -> void:
 func toggle() -> void:
 	on = not on
 	legend.visible = on
+	for sw: ColorRect in _swatches:
+		sw.color = Main.col(String(sw.get_meta("col")))
 	main.view.queue_redraw()
 
 

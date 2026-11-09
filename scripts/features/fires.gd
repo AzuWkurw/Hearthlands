@@ -9,10 +9,10 @@ extends Feature
 const SPREAD_R := 3.0
 const WELL_R := 10.0
 const STATION_R := 14.0
-const GROW := 0.012          # heat a second, unfought
+const GROW := 0.009          # heat a second, unfought
 const FIGHT := 0.03          # heat a second taken off by each bucket carrier
 const BURN := 0.02           # damage a second at full heat (the building is gone at 1)
-const CATCH := 0.025         # chance a second, at full heat, for each wooden neighbour to catch
+const CATCH := 0.012         # chance a second, at full heat, for each wooden neighbour to catch
 
 var burning := {}            # building id -> {"heat": 0..1, "dmg": 0..1, "t": since}
 var lost := {}               # realm id -> buildings burned down
@@ -91,7 +91,10 @@ func on_second() -> void:
 		if float(f.dmg) >= 1.0:
 			burning.erase(bid)
 			lost[b.p] = int(lost.get(b.p, 0)) + 1
+			var mil: bool = sim.is_mil(b) or bool(b.def.get("claim_only", false))
 			sim.destroy(b, "burned down.")
+			if mil:
+				sim.recompute_territory()
 			continue
 		# sparks: each wooden building near it may catch
 		for o: Sim.Bld in sim.realm_blds(sim.players[b.p - 1]):
@@ -177,7 +180,10 @@ func draw_top(view: CanvasItem, rect: Rect2i) -> void:
 
 
 func ai_steps(p: Sim.Player, _have: Callable) -> Array:
-	return [["fire_station", 1 if sim.pop_total(p) > 90 else 0]]
+	# a fire station once the town is middling, a second for a big one; one after any fire
+	var pop: int = sim.pop_total(p)
+	var had := int(lost.get(p.id, 0)) + int(put_out.get(p.id, 0)) > 0
+	return [["fire_station", (1 if pop > 50 or had else 0) + (1 if pop > 160 else 0)]]
 
 
 func save_state() -> Dictionary:

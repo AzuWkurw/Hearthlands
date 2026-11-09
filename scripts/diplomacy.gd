@@ -245,6 +245,10 @@ static func standing_tick(sim: Sim) -> void:
 		if not q.alive:
 			sim.standing.erase(so)
 			continue
+		if at_war(sim, 1, q.id):
+			sim.standing.erase(so)
+			sim.emit_log("Your standing offer to %s has stopped: you are at war." % q.name, Color("e0b060"))
+			continue
 		var kind := "gift" if (so.want as Dictionary).is_empty() else "trade"
 		var why := propose(sim, 1, q.id, kind, so.give, so.want)
 		if why == "":
