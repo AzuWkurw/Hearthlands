@@ -13,7 +13,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SIZES = {"small", "medium", "large", "mine"}
 CATS = {"raw", "food", "industry", "crafts", "folk", "science", "logistics", "mil", "special"}  # special: the headquarters
 WORKERS = {"peasant", "artisan", "noble", "scout"}
-FEATURES = {"statistics", "seasons", "clothing", "diseases", "events", "tool_quality", "fog", "geology", "wildlife"}
+FEATURES = {"statistics", "seasons", "clothing", "diseases", "events", "tool_quality", "fog", "geology", "wildlife", "contentment"}
 VIRTUAL = {"food", "research", "ship"}  # "ship": a ship for the realm (sim_sea.gd)  # "food" in an input means any food; "research" out means research points
 
 

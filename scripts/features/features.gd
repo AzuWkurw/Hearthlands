@@ -12,6 +12,7 @@ const BUILT_IN := [
 	"res://scripts/features/fog.gd",
 	"res://scripts/features/geology.gd",
 	"res://scripts/features/wildlife.gd",
+	"res://scripts/features/contentment.gd",
 ]
 const MOD_DIR := "user://mods"
 

@@ -1221,6 +1221,57 @@
   "trade": "healing",
   "feature": "diseases"
  },
+ "tavern": {
+  "name": "Tavern",
+  "cat": "folk",
+  "size": "medium",
+  "cost": {
+   "planks": 4,
+   "stone": 2
+  },
+  "time": 16,
+  "worker": "peasant",
+  "cycle": 30,
+  "in": {
+   "beer": 1,
+   "bread": 1
+  },
+  "info": "Serves beer and bread to the homes within 9 tiles: people there are more content, and content people work faster. With beer and bread to spare it holds a festival now and then: everyone works 10% faster for 3 minutes.",
+  "art": {
+   "style": "workshop",
+   "wall": "#b08458",
+   "sw": 2.0,
+   "sign": "mug",
+   "sign_color": "#d8a040"
+  },
+  "trade": "victuals",
+  "feature": "contentment"
+ },
+ "chapel": {
+  "name": "Chapel",
+  "cat": "folk",
+  "size": "medium",
+  "cost": {
+   "planks": 3,
+   "stone": 4
+  },
+  "time": 18,
+  "worker": "peasant",
+  "cycle": 40,
+  "in": {
+   "candles": 1
+  },
+  "info": "Calms the homes within 10 tiles: people there are more content, and content people work faster. Burns candles.",
+  "art": {
+   "style": "school",
+   "wall": "#d8d0bc",
+   "sw": 2.0,
+   "sign": "candle",
+   "sign_color": "#f0e0a0"
+  },
+  "trade": "healing",
+  "feature": "contentment"
+ },
  "boundary_stone": {
   "name": "Boundary stone",
   "cat": "mil",

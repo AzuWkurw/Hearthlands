@@ -8,8 +8,11 @@ func _init() -> void:
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("seed="): seed = a.substr(5)
 		if a.begins_with("mins="): mins = int(a.substr(5))
+	var feats := Features.default_ids()
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("nofeat="): feats.erase(a.substr(7))
 	var sim := Sim.new()
-	sim.new_game(seed, 7, 6, true)
+	sim.new_game(seed, 7, 6, true, 0, true, {"features": feats})
 	var at20 := {}
 	var hungry := {}
 	var seen := {}
