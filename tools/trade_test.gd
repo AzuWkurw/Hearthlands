@@ -10,8 +10,8 @@ func _init() -> void:
 	var ok := true
 	Diplomacy.set_relation(sim, 1, 2, Diplomacy.PEACE)
 	sim.give(me, "planks", 60.0)
-	sim.give(q, "iron_ore", 40.0)
-	var why := Diplomacy.propose(sim, 1, 2, "trade", {"planks": 10}, {"iron_ore": 1})
+	sim.give(q, "ore_iron", 40.0)
+	var why := Diplomacy.propose(sim, 1, 2, "trade", {"planks": 10}, {"ore_iron": 1})
 	print("without a market: ", why)
 	if not why.begins_with("You need a market"): ok = false; print("FAIL: a market should be needed")
 	# a market next to the headquarters
@@ -22,17 +22,17 @@ func _init() -> void:
 				if m == null and sim.can_place("market", me.hq.x + dx, me.hq.y + dy, 1) == "":
 					m = sim.add_bld("market", me.hq.x + dx, me.hq.y + dy, me, true, 0)
 	print("market at ", Vector2i(m.x, m.y))
-	var ore0 := float(me.stock.get("iron_ore", 0.0))
+	var ore0 := float(me.stock.get("ore_iron", 0.0))
 	var planks0 := float(me.stock.get("planks", 0.0))
-	why = Diplomacy.propose(sim, 1, 2, "trade", {"planks": 10}, {"iron_ore": 1})
+	why = Diplomacy.propose(sim, 1, 2, "trade", {"planks": 10}, {"ore_iron": 1})
 	print("with a market: '", why, "'")
 	var carts := sim.trips.filter(func(t): return t.kind == "trade")
 	print("carts on the way: ", carts.size(), ", planks now ", float(me.stock.get("planks", 0.0)), " (were ", planks0, ")")
 	if why != "" or carts.size() != 2: ok = false; print("FAIL: the trade should go by two carts")
 	var arrive: float = carts[0].t1
 	while sim.time < arrive + 1.0: sim.tick(Sim.TICK)
-	print("iron ore after the carts: ", float(me.stock.get("iron_ore", 0.0)), " (was ", ore0, ")")
-	if float(me.stock.get("iron_ore", 0.0)) < ore0 + 1.0: ok = false; print("FAIL: the ore should have arrived")
+	print("iron ore after the carts: ", float(me.stock.get("ore_iron", 0.0)), " (was ", ore0, ")")
+	if float(me.stock.get("ore_iron", 0.0)) < ore0 + 1.0: ok = false; print("FAIL: the ore should have arrived")
 	# a standing offer every 60 s: made again by itself
 	Diplomacy.add_standing(sim, 2, {"planks": 5}, {}, 60.0)
 	var t0 := sim.time

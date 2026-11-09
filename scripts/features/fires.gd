@@ -108,7 +108,7 @@ func work_block(_p: Sim.Player, b: Sim.Bld) -> String:
 func building_lines(b: Sim.Bld) -> PackedStringArray:
 	if burning.has(b.id):
 		var f: Dictionary = burning[b.id]
-		return PackedStringArray(["[color=#e0603a]On fire: %d%% burned, %d people with buckets.[/color]" % [roundi(float(f.dmg) * 100.0), fighters(b)]])
+		return PackedStringArray(["[color=#e0603a]On fire: %d%% burned, %s.[/color]" % [roundi(float(f.dmg) * 100.0), "nobody to fight it (no well or fire station near)" if fighters(b) == 0 else ("1 person with a bucket" if fighters(b) == 1 else "%d people with buckets" % fighters(b))]])
 	if b.ty == "fire_station":
 		return PackedStringArray(["Sends 3 people with buckets to fires within %d tiles." % int(STATION_R)])
 	if not flammable(b) and b.state == "ready" and b.ty != "hq":
@@ -142,19 +142,19 @@ func draw_top(view: CanvasItem, rect: Rect2i) -> void:
 			continue
 		var f: Dictionary = burning[bid]
 		var h := float(f.heat)
-		var base := Vector2(b.x + 0.5, b.y + 0.2)
+		var base := Vector2(b.x + 0.5, b.y - 0.15)
 		if mv.raised:
 			base.y -= mv.lift_at(base.x, base.y + 0.3)
 		# smoke
 		for k in 4:
 			var ph := fmod(tm * 0.35 + k * 0.25, 1.0)
-			view.draw_circle(base + Vector2(sin(k * 1.7 + tm) * 0.2 + ph * 0.3, -0.6 - ph * 1.6), 0.18 + ph * 0.35, Color(0.3, 0.3, 0.3, 0.45 * (1.0 - ph)))
+			view.draw_circle(base + Vector2(sin(k * 1.7 + tm) * 0.2 + ph * 0.4, -0.7 - ph * 2.0), 0.22 + ph * 0.45, Color(0.28, 0.28, 0.28, 0.5 * (1.0 - ph)))
 		# flames
 		for k in 5:
 			var x := -0.45 + k * 0.22
-			var fl := (0.35 + 0.45 * h) * (0.75 + 0.25 * sin(tm * 9.0 + k * 2.1))
+			var fl := (0.45 + 0.75 * h) * (0.75 + 0.25 * sin(tm * 9.0 + k * 2.1)) * (1.0 - 0.25 * absf(k - 2) / 2.0)
 			var p0 := base + Vector2(x, 0.0)
-			view.draw_colored_polygon(PackedVector2Array([p0 + Vector2(-0.12, 0), p0 + Vector2(0.0, -fl), p0 + Vector2(0.12, 0)]), Color(0.95, 0.45, 0.1, 0.9))
+			view.draw_colored_polygon(PackedVector2Array([p0 + Vector2(-0.14, 0.1), p0 + Vector2(-0.05, -fl * 0.55), p0 + Vector2(0.0, -fl), p0 + Vector2(0.06, -fl * 0.5), p0 + Vector2(0.14, 0.1)]), Color(0.95, 0.42, 0.08, 0.92))
 			view.draw_colored_polygon(PackedVector2Array([p0 + Vector2(-0.06, 0), p0 + Vector2(0.0, -fl * 0.6), p0 + Vector2(0.06, 0)]), Color(1.0, 0.85, 0.3, 0.95))
 		# bucket carriers: little blue figures running between the fire and the nearest well
 		var src := Vector2(-1, -1)

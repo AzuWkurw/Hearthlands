@@ -169,6 +169,9 @@ func _draw() -> void:
 			for b in sim.blds:
 				if sim.is_mil(b):
 					draw_rect(Rect2(Vector2(b.x, b.y) * s - Vector2(1.5, 1.5), Vector2(4, 4)), sim.players[b.p - 1].color.lightened(0.4))
+		var fog2 = sim.get_feature("fog")
+		if fog2 != null and fog2.tex != null:
+			draw_texture_rect(fog2.tex, r, false)
 		if view:
 			var half2 := view.size / 2.0 / view.zoom
 			draw_rect(Rect2((view.cam - half2) * s, half2 * 2.0 * s), Color.WHITE, false, 1.0)

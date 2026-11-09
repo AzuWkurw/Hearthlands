@@ -412,6 +412,15 @@ to `Bld`/`Player` (saved automatically) with a default that works for old saves.
 | missions | `Sim._mission_check`, `goal_progress`, `data/missions.json`, `ui_missions.gd` |
 | maps and the editor | `WorldGen.load_map`, `save_map`, `from_map`, `ui_editor.gd` |
 | statistics and border replay | `features/statistics.gd` |
+| trade by cart, standing offers, rivals' words | `Diplomacy.send_cart`, `cart_arrival`, `standing_tick`, `say`, `_warn_first` |
+| bridges | `SimLogistics.bridge_landing`, `bridge_step`, `bridge_cost_ok` |
+| taverns, chapels, contentment | `features/contentment.gd` |
+| archers and sallies | `SimMilitary.archers_tick`, `_arrows`, `_sally` |
+| spreading fires | `features/fires.gd` |
+| campaign | `ui_campaign.gd`, `data/campaign.json` |
+| traffic map, undo, follow camera | `ui_traffic.gd`, `ui_undo.gd`, `MapView.follow` / `pick_mover` |
+| achievements, packs, town names | `achievements.gd`, `share_pack.gd`, `Sim.new_town_name` |
+| snow on the roads | `seasons.gd carry_factor`, `Sim.carry_factor` |
 | raised ground | `MapView._ensure_lift`, `lift_at`, `_grid_mesh` |
 | translations | `i18n.gd`, `data/lang_*.json`, `tools/extract_strings.py` |
 | drawing buildings, people, carriers | `MapView._draw`, `_draw_building`, `_collect_folk` |

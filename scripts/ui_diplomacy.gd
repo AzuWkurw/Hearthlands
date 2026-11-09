@@ -163,7 +163,7 @@ func _fill_diplomacy() -> void:
 		var q2 := main.sim.players[int(so.to) - 1]
 		var row3 := HBoxContainer.new()
 		var w := "" if (so.want as Dictionary).is_empty() else tr(" for %s") % Diplomacy.goods_text(so.want)
-		var l3 := main._label(tr("To %s: %s%s, every %d min, next in %d s (made %d times)") % [q2.name, Diplomacy.goods_text(so.give), w, int(float(so.every) / 60.0), maxi(0, int(float(so.next) - main.sim.time)), int(so.done)], 14)
+		var l3 := main._label(tr("To %s: %s%s, every %d min, next in %d s (made %d so far)") % [q2.name, Diplomacy.goods_text(so.give), w, int(float(so.every) / 60.0), maxi(0, int(float(so.next) - main.sim.time)), int(so.done)], 14)
 		l3.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row3.add_child(l3)
 		row3.add_child(main._button("Stop", func():

@@ -752,7 +752,7 @@ func _build_ui() -> void:
 			if (GameData.bld[bid].get("out", {}) as Dictionary).has(String(r.id)):
 				made = true
 		if made:
-			mf.add_item(tr("Where %s is made") % String(r.name).to_lower())
+			mf.add_item(tr("Only buildings making %s") % String(r.name).to_lower())
 			mf.set_item_metadata(mf.item_count - 1, "good:" + String(r.id))
 			mf.set_item_icon(mf.item_count - 1, Tex.get_tex("res_" + String(r.id)))
 	mf.item_selected.connect(func(i): minimap.set_filter(String(mf.get_item_metadata(i))))

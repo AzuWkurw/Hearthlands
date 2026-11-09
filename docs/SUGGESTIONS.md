@@ -52,6 +52,15 @@ Build 34 did the eight ideas that came next, and the smaller ones with them:
 
 Still open: translating the game's messages (C6), and B3.
 
+## Status after build 37
+
+The second ideas page (all but blueprints): trade by cart with markets and standing offers, bridges,
+taverns, chapels and festivals, archers and sallies, the traffic map, a campaign of eight chapters,
+spreading fires with bucket carriers, and the smaller touches: undo, jump to idle buildings, building
+history, minimap filters, follow camera, achievements, 16x speed, colour-blind colours, rivals' words
+(warnings, thanks, tribute), town names, snow on unpaved roads and map and mission packs. Not done:
+frozen rivers that can be crossed in winter (snow only slows carriers), and blueprints.
+
 ---
 
 ## A. Gameplay and the rival AI

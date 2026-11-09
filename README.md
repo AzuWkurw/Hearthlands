@@ -42,8 +42,15 @@ number and updates `scripts/version.gd`, `project.godot`, the Windows export set
 | Flags | Toolbar: Flag, then click one of your roads to set or take away a flag (it matters with road carriers: each flag splits a stretch) |
 | Expedition | Select a harbour with a free ship: Send an expedition, then click a free coast across the water |
 | Garrison | Select one of your military buildings: set how many soldiers it wants (- / + / Full), tick the kinds that may serve there, and choose which kind stays home when it attacks |
-| Pause / speed | Space, and 1 to 4 for 1x, 2x, 4x, 8x |
-| Minimap | Click or drag to move the camera |
+| Pause / speed | Space, and 1 to 5 for 1x, 2x, 4x, 8x, 16x |
+| Undo | Ctrl+Z takes back the last building placed, road laid or building demolished, within 10 seconds, with everything paid back |
+| Idle buildings | I goes to the next building with nobody working in it, then to the next stuck one, round and round |
+| Traffic map | F7, or the Traffic button: roads coloured free, busy or jammed over the last minutes; click a road to hear what goes on and what might help |
+| Follow | Click a carrier, cart, ship or column of soldiers: the camera follows it until you drag the map, click the minimap or press Esc |
+| Trade | Diplomacy window, with a market built: pick what you give and ask for (the window says whether the realm would accept); tick Repeat for a standing offer |
+| Archers and sallies | Select one of your military buildings: Archers - / + (they take bows from the stores) and March out to meet attackers |
+| Rename a town | Select a store: Rename (each store is a town; the name shows on the map and in messages) |
+| Minimap | Click or drag to move the camera. The list above it shows only roads, only land and forts, or only the buildings that make one good |
 | Research tree | R, or the Research button |
 | In the research tree | Drag or the wheel to move, Ctrl + wheel / pinch / + and - to zoom, 0 for the whole tree; click a tech for details, double-click to study it or queue the way to it |
 | Diplomacy | G, or the Diplomacy button (it shows how many offers are waiting) |
@@ -189,6 +196,32 @@ number and updates `scripts/version.gd`, `project.godot`, the Windows export set
   little. Crowded rivals sail too.
 - **Catapults.** A catapult near the border throws a stone at an enemy military building in range every
   work cycle; a hit may kill a defender.
+- **Trade.** A market lets you trade with realms at peace with you (Diplomacy window). The goods leave
+  your stores at once and go by cart, market to market, so a trade takes a while; goods on the way are
+  lost if war breaks out. A standing offer repeats the trade every 5 minutes. Rivals build markets and
+  trade with each other too.
+- **Bridges.** Roads cross water straight across, up to 3 tiles, for 2 planks a tile; paving makes it a
+  stone bridge. Far shores then count as reachable, so rivals and auto roads use bridges as well.
+- **Taverns and contentment.** Taverns (beer and bread) and chapels (candles) make the homes near them
+  content, and content people work up to 10% faster; hunger and sickness do the opposite. A tavern with
+  beer and bread to spare holds a festival now and then (everyone 10% faster for 3 minutes). An unhappy
+  realm loses idle peasants, one a minute.
+- **Archers and sallies.** A bowyer makes bows from wood. Soldiers in a military building take them up
+  to be archers: they shoot attackers from 6 tiles out but fight worse at the gate. A building set to
+  march out sends its soldiers to meet an attack in the open.
+- **Spreading fires.** A fire (a random event, or a catapult's stone) grows and jumps to wooden
+  neighbours within 3 tiles, and burns buildings down. Working wells within 10 tiles send a person with
+  a bucket each, a fire station within 14 sends three. Stone and brick buildings don't catch.
+- **Campaign.** Eight chapters on a map, each a mission with a story before and after; a chapter opens
+  when the one before is won and can carry veteran soldiers or goods over. Best time and score are kept.
+- **Achievements.** Fifteen goals across all your games (a town of 200, a bridge, ten trades, a colony,
+  winning without attacking...), kept between games and listed on the new-game screen.
+- **Rivals' words.** Rivals warn you before they go to war, thank you for trades, and a much stronger
+  rival may demand tribute (refuse, and war may follow).
+- **Snow on the roads.** In winter, where it is cold, carriers walk up to a quarter slower on unpaved
+  roads.
+- **Sharing maps and missions.** The map editor's Export to share, and Export my missions / Import a
+  shared pack in the Missions window, write and read .hlpack files with maps and missions.
 - **Boundary stones** (Military group). Claim free land 4 tiles around without any soldier, for 3 stone and
   a plank. A stone must stand on land your soldiers hold (so stones can't be chained), and it holds only
   land no soldiers hold: a rival's military building that reaches its land takes it, and the stone falls if
@@ -726,7 +759,8 @@ scripts/
   main.gd        UI, input and game loop
   ui_*.gd        one part each: info box, side panel, research, settings, demolish, saves, diplomacy,
                  targets, textures, event log, toolbar, first-game guide (and mission goals), problems,
-                 attack, production chain, map editor, missions
+                 attack, production chain, map editor, missions, campaign, traffic map, undo
+  achievements.gd, share_pack.gd   achievements; map and mission packs
   i18n.gd        interface languages (data/lang_*.json)
   line_chart.gd  the chart in the statistics window
   map_view.gd    world renderer
@@ -739,7 +773,7 @@ scripts/
   sim_logistics.gd   roads, the road network and carriers
   sim_research.gd    research
   sim_sea.gd     ships, harbours, expeditions and sea transport
-  features/      optional features (feature.gd base, features.gd list, statistics.gd, seasons.gd, clothing.gd, diseases.gd, events.gd, tool_quality.gd, fog.gd, geology.gd, wildlife.gd)
+  features/      optional features (feature.gd base, features.gd list, statistics.gd, seasons.gd, clothing.gd, diseases.gd, events.gd, tool_quality.gd, fog.gd, geology.gd, wildlife.gd, contentment.gd, fires.gd)
   world_gen.gd   random maps
   game_data.gd   loads and merges the JSON data
   diplomacy.gd   relations, opinions, trade values and rival diplomacy
@@ -765,6 +799,7 @@ tools/
   shot_missions.gd, shot_sea.gd, shot_stats.gd, shot_b34.gd   screenshots of the build 34 additions
   make_textures.py   regenerates default textures (--force to overwrite them all)
   make_scenery.py    the shaded trees, peaks and boulders (called by make_textures.py)
+  shot_b37.gd, shot_traffic.gd, shot_bridge.gd   screenshots of the build 37 additions
   shot_scenery.gd, shot_editor.gd   screenshots of the scenery and the map editor
   make_sounds.py     regenerates the sounds
   bump_build.py      raises the build number before a release
