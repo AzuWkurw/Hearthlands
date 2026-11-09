@@ -175,7 +175,7 @@ func on_second() -> void:
 			"Spring has come. Fields start growing again.",
 			"Summer: crops grow fastest. Heat waves are likely in the south.",
 			"Autumn: orchards and vineyards bring in the harvest; hunters do well.",
-			"Winter has come: crops all but stop, fishing and building slow down, and people eat more.",
+			"Winter has come: crops all but stop, fishing and building slow down, people eat more, and snow slows carriers on unpaved roads.",
 		]
 		sim.emit_log(lines[s], Color("9fd0e8"))
 	var home := biome_of(sim.human()) if not sim.players.is_empty() else TEMPERATE
@@ -189,6 +189,35 @@ func on_second() -> void:
 	_update_realm_temps()
 	for k in 4:
 		(_cache[k] as Dictionary).clear()
+	if int(sim.time) % 60 == 0:
+		_paved.clear()
+
+
+## Snow on the roads: in winter, where the realm is cold, carriers are slower on unpaved roads (up to a
+## quarter slower when none are paved). The paved share is looked at once a game minute.
+var _paved := {}
+
+func _paved_share(p: Sim.Player) -> float:
+	var n := 0
+	var pv := 0
+	for i in sim.owned(p.id)[0]:
+		if sim.road[i] == p.id:
+			n += 1
+			if sim.pave[i] == 1:
+				pv += 1
+	return float(pv) / maxf(1.0, n)
+
+
+func snowy(p: Sim.Player) -> bool:
+	return season() == 3 and realm_temp(p) < 4.0
+
+
+func carry_factor(p: Sim.Player) -> float:
+	if not snowy(p):
+		return 1.0
+	if not _paved.has(p.id):
+		_paved[p.id] = _paved_share(p)
+	return 1.0 - 0.25 * (1.0 - float(_paved[p.id]))
 
 
 func _update_realm_temps() -> void:
@@ -347,7 +376,10 @@ func top_text(p: Sim.Player) -> String:
 func panel_lines(p: Sim.Player) -> PackedStringArray:
 	var k := biome_of(p)
 	var left := int((1.0 - fmod(phase() * 4.0, 1.0)) * YEAR / 4.0)
-	return PackedStringArray(["Climate  [b]%s[/b], %s for %d:%02d more, %s" % [String(BIOME_NAMES[k]), SEASONS[season()].to_lower(), left / 60, left % 60, String(WEATHER[weather[k]].name).to_lower()]])
+	var out := PackedStringArray(["Climate  [b]%s[/b], %s for %d:%02d more, %s" % [String(BIOME_NAMES[k]), SEASONS[season()].to_lower(), left / 60, left % 60, String(WEATHER[weather[k]].name).to_lower()]])
+	if snowy(p):
+		out.append("[color=#9fd0e8]Snow on the roads: carriers %d%% slower (paved roads stay clear)[/color]" % roundi((1.0 - carry_factor(p)) * 100.0))
+	return out
 
 
 func building_lines(b: Sim.Bld) -> PackedStringArray:
@@ -547,7 +579,7 @@ func draw_overlay(view: CanvasItem, to_tile: Callable) -> void:
 # ---------------------------------------------------------------- saving
 
 func save_state() -> Dictionary:
-	return {"weather": weather, "until": weather_until, "rng": rng.state, "seed": rng.seed, "season": last_season}
+	return {"weather": weather, "until": weather_until, "rng": rng.state, "seed": rng.seed, "season": last_season, "paved": _paved}
 
 
 func load_state(d: Dictionary) -> void:
@@ -556,3 +588,7 @@ func load_state(d: Dictionary) -> void:
 	rng.seed = int(d.get("seed", 0))
 	rng.state = int(d.get("rng", 0))
 	last_season = int(d.get("season", -1))
+	_paved = {}
+	var pv: Dictionary = d.get("paved", {})
+	for k in pv:
+		_paved[int(k)] = float(pv[k])

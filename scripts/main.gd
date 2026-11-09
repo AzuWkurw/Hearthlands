@@ -103,6 +103,30 @@ var traffic_ui := UiTraffic.new(self)    # the traffic map, F7 (ui_traffic.gd)
 var undo_ui := UiUndo.new(self)          # Ctrl+Z (ui_undo.gd)
 var minimap_filter: OptionButton
 var achievements := Achievements.new(self)
+
+## Colours for warnings and realms; with the colour-blind setting they come from a palette made to stay
+## apart for red-green colour blindness (Okabe and Ito).
+static var cb_on := false
+const CB_PCOL := [Color("0072b2"), Color("e69f00"), Color("009e73"), Color("cc79a7"), Color("56b4e9"), Color("d55e00"), Color("f0e442"), Color("ffffff"), Color("999999")]
+
+static func col(name: String) -> Color:
+	match name:
+		"bad": return Color("d55e00") if cb_on else Color("d9483d")
+		"warn": return Color("f0e442") if cb_on else Color("e0b060")
+		"good": return Color("56b4e9") if cb_on else Color("86ad5c")
+	return Color("a3a28b")
+
+
+## Realm colours and warning colours as the setting says. Every new or loaded game gets them too.
+func _apply_colors() -> void:
+	cb_on = settings.cb_colors
+	for k in sim.players.size():
+		sim.players[k].color = (CB_PCOL if cb_on else Sim.PCOL)[k % Sim.PCOL.size()]
+	view.chunks._tint.clear()
+	view.chunks._territory = -1
+	view.chunks.mark_all()
+	minimap.reset()
+	view.queue_redraw()
 var attack_ui := UiAttack.new(self)
 var chain_ui := UiChain.new(self)        # the production chain window (ui_chain.gd)      # the attack window (ui_attack.gd)
 var problems_btn: Button
@@ -1191,6 +1215,7 @@ func _after_world_change() -> void:
 	problems_ui.hidden = {}
 	traffic_ui.reset()
 	achievements.new_game()
+	_apply_colors()
 	problems_ui.since = {}
 	problems_ui.show_hidden = false
 	_rebuild_feature_ui()

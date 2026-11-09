@@ -31,7 +31,7 @@ func build() -> void:
 	var v := VBoxContainer.new()
 	legend.add_child(v)
 	v.add_child(main._label("TRAFFIC (F7)", 14, Main.BRASS))
-	for row in [[Color("d9483d"), "jammed: goods waiting"], [Color("e0b060"), "busy"], [Color("86ad5c"), "free"]]:
+	for row in [[Main.col("bad"), "jammed: goods waiting"], [Main.col("warn"), "busy"], [Main.col("good"), "free"]]:
 		var h := HBoxContainer.new()
 		var sw := ColorRect.new()
 		sw.color = row[0]
@@ -122,7 +122,7 @@ func level(i: int) -> int:
 
 
 func color_of(i: int) -> Color:
-	return [Color("86ad5c"), Color("e0b060"), Color("d9483d")][level(i)]
+	return [Main.col("good"), Main.col("warn"), Main.col("bad")][level(i)]
 
 
 ## Draws the coloured roads over the map (called by the map view, in tiles).

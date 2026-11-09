@@ -140,6 +140,7 @@ func _fill_diplomacy() -> void:
 		match String(pr.kind):
 			"peace": text = "%s offers peace." % who.name
 			"alliance": text = "%s proposes an alliance." % who.name
+			"tribute": text = "%s demands %s as tribute (refuse, and war may follow)." % [who.name, Diplomacy.goods_text(pr.want)]
 			_: text = "%s offers %s for your %s." % [who.name, Diplomacy.goods_text(pr.give), Diplomacy.goods_text(pr.want)]
 		var row2 := HBoxContainer.new()
 		var l2 := main._label(text + "  (%d s left)" % maxi(0, int(Diplomacy.PROPOSAL_LIFE - (main.sim.time - float(pr.t)))), 14)

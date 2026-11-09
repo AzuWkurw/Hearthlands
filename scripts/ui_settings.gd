@@ -119,6 +119,10 @@ func _fill_settings() -> void:
 		main.settings.details = on
 		main.view.set_details(on)
 		main.settings.save_file()))
+	_set_row(g, "", _check("Colour-blind colours (realms and warnings that stay apart for red-green colour blindness)", main.settings.cb_colors, func(on):
+		main.settings.cb_colors = on
+		main._apply_colors()
+		main.settings.save_file()))
 	_set_row(g, "", _check("Day and night (only the look changes)", main.settings.daynight, func(on):
 		main.settings.daynight = on
 		main.view.daynight = on

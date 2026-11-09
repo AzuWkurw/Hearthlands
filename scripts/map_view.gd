@@ -866,6 +866,22 @@ func _draw() -> void:
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	for f: Feature in sim.features:
 		f.draw_overlay(self, screen_to_tile)
+	# town names over the stores
+	if z >= 9.0 and not editor:
+		var tfont := get_theme_default_font()
+		var tfs := clampi(int(z * 0.5), 11, 22)
+		var fogf = sim.get_feature("fog")
+		for b in sim.blds:
+			if b.town == "" or b.dead or b.x < x0 - 2 or b.x > x1 + 2 or b.y < y0 - 2 or b.y > y1 + 3:
+				continue
+			if fogf != null and b.p != 1 and not fogf.explored_at(sim.idx(b.x, b.y)):
+				continue
+			var tp := Vector2(b.x + 0.5, b.y - 1.55)
+			if raised:
+				tp.y -= lift_at(b.x + 0.5, b.y + 0.5)
+			var sp2: Vector2 = origin + tp * z
+			draw_string_outline(tfont, sp2 + Vector2(-90, 0), b.town, HORIZONTAL_ALIGNMENT_CENTER, 180, tfs, 5, Color(0, 0, 0, 0.85))
+			draw_string(tfont, sp2 + Vector2(-90, 0), b.town, HORIZONTAL_ALIGNMENT_CENTER, 180, tfs, sim.players[b.p - 1].color.lightened(0.55))
 	if z >= 14.0:
 		var font := get_theme_default_font()
 		var fs := clampi(int(z * 0.42), 10, 20)

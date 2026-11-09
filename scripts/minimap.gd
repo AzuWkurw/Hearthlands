@@ -190,7 +190,7 @@ func _draw() -> void:
 		var p: Vector2 = Vector2(a[0]) * s + s * 0.5
 		var c: Color = a[1]
 		draw_circle(p, 2.5, c)
-		if c.r > 0.8 and c.g < 0.4:
+		if c.is_equal_approx(Main.col("bad")):
 			draw_arc(p, 4.0 + 3.0 * blink, 0, TAU, 16, Color(c, 0.4 + 0.5 * blink), 1.5)
 	if view:
 		var half := view.size / 2.0 / view.zoom

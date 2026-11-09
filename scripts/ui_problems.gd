@@ -110,7 +110,7 @@ func problems() -> Array:
 			var k := -a.uid
 			seen[k] = true
 			if not since.has(k): since[k] = now
-			out.append([1e9, tr("%s attacks your %s (%d soldiers)") % [sim.players[a.p - 1].name, String(t.def.name), a.n], Color("d9483d"), Vector2i(t.x, t.y), t.id, k])
+			out.append([1e9, tr("%s attacks your %s (%d soldiers)") % [sim.players[a.p - 1].name, String(t.def.name), a.n], Main.col("bad"), Vector2i(t.x, t.y), t.id, k])
 	for b: Sim.Bld in sim.realm_blds(sim.human()):
 		if b.dead or b.ty == "hq":
 			continue
@@ -119,7 +119,7 @@ func problems() -> Array:
 			continue
 		seen[b.id] = true
 		if not since.has(b.id): since[b.id] = now
-		var col := Color("e0b060")
+		var col := Main.col("warn")
 		if why.begins_with("Nothing left") or why.begins_with("stores are full") or b.prio == Sim.PRIO_LOW:
 			col = Color("a3a28b")
 		out.append([now - float(since[b.id]), "%s: %s" % [String(b.def.name), why], col, Vector2i(b.x, b.y), b.id, b.id])

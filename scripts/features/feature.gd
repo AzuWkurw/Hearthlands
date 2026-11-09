@@ -30,6 +30,11 @@ func speed_bonus(_p: Sim.Player, _b: Sim.Bld) -> float:
 	return 0.0
 
 
+## How fast realm p's carriers walk compared with normal (1.0); snow on the roads, say.
+func carry_factor(_p: Sim.Player) -> float:
+	return 1.0
+
+
 ## How much food realm p eats compared with normal (1.0).
 func food_factor(_p: Sim.Player) -> float:
 	return 1.0

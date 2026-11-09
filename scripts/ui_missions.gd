@@ -69,4 +69,25 @@ func show() -> void:
 				main._show_hint("This mission could not be started.", 5.0))
 		play.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 		box.add_child(play)
+	var sr := HBoxContainer.new()
+	body.add_child(sr)
+	sr.add_child(main._button("Import a shared pack", func():
+		SharePack.dialog(main, false, func(path):
+			main._show_hint(SharePack.import_pack(path), 4.0)
+			main._fill_maps()
+			show())))
+	var mine := SharePack.user_missions()
+	if not mine.is_empty():
+		sr.add_child(main._button("Export my missions", func():
+			var maps := []
+			for m in mine:
+				if m.has("map") and String(m.map).begins_with("user://"):
+					maps.append(String(m.map))
+			SharePack.dialog(main, true, func(path):
+				var err := SharePack.export_pack(path, maps, mine)
+				main._show_hint(err if err != "" else "Exported to %s" % path, 4.0))))
+	var tip := main._label("Your own missions live in %s; maps from the map editor in %s. A .hlpack file holds maps and missions to share." % [ProjectSettings.globalize_path(SharePack.USER_MISSIONS), ProjectSettings.globalize_path(UiEditor.MAP_DIR)], 12, Main.DIM)
+	tip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	tip.custom_minimum_size = Vector2(560, 0)
+	body.add_child(tip)
 	win.popup_centered()

@@ -224,6 +224,7 @@ class Bld:
 	var archer_want := 0                   # how many of its soldiers should be archers (they take up bows)
 	var archers := 0                       # how many are archers now (never more than its garrison)
 	var sally := false                     # its soldiers march out to meet an attack instead of waiting
+	var town := ""                         # a store's town name (shown on the map and in messages)
 	var dry_t := -1.0                      # a mine: game time its vein was found to have run dry (-1: not dry)
 
 
@@ -263,6 +264,7 @@ class Player:
 	var trades := 0         # trades made with other realms (a mission goal)
 	var attacks_made := 0   # attacks this realm launched
 	var colonies := 0       # harbours its expeditions founded
+	var warned := {}        # realm id -> when this rival last warned it before going to war
 	var used_artisan := 0
 	var hq: Bld = null
 	var start := Vector2i.ZERO
@@ -689,6 +691,9 @@ func emit_log(text: String, col := Color(0.85, 0.85, 0.8), at := Vector2i(-1, -1
 	var m := int(time) / 60
 	var s := int(time) % 60
 	if at.x >= 0:
+		var tn := town_near(at.x, at.y)
+		if tn != "" and not text.contains(tn):
+			text += " (near %s)" % tn
 		logs.append(["%02d:%02d" % [m, s], text, col, at.x, at.y])
 	else:
 		logs.append(["%02d:%02d" % [m, s], text, col])
@@ -748,6 +753,8 @@ func add_bld(ty: String, x: int, y: int, p: Player, instant: bool, door := -1) -
 	b.sera = float(p.age)   # (loading fills it in like this too, so a loaded game matches)
 	blds.append(b); by_id[b.id] = b
 	bmap[idx(x, y)] = b.id
+	if b.def.has("store"):
+		b.town = new_town_name(p)
 	for t in plot_tiles(ty, x, y):
 		plot[t] = b.id
 	_after_building_change(b)
@@ -790,6 +797,48 @@ func destroy(b: Bld, why := "") -> void:
 		_clamp_stock(p)
 	if why != "" and b.p == 1:
 		emit_log("%s %s" % [String(b.def.name), why], Color("e08a6a"), Vector2i(b.x, b.y))
+
+
+# ---------------------------------------------------------------- town names
+const TOWNS := ["Eastford", "Ashby", "Brackenhold", "Coldwater", "Dunmere", "Elmstead", "Fernhill", "Greywick",
+	"Harrowgate", "Ivybridge", "Kettlebrook", "Larkspur", "Millbrook", "Northam", "Oakhurst", "Pebbleton",
+	"Queensmoor", "Redhollow", "Stonebridge", "Thornbury", "Underwood", "Valemont", "Westmarch", "Yarrowdale",
+	"Amberley", "Birchmead", "Crowfield", "Dovecote", "Emberton", "Foxley", "Goldmere", "Hollins",
+	"Ironside", "Juniper", "Kingsley", "Lindenfall", "Moorcroft", "Nettlefield", "Otterburn", "Pinecrest"]
+
+## A name for a new store of realm p that no store has yet (picked from the list by the realm and how
+## many towns there are, so a game and its saved copy name them alike).
+func new_town_name(p: Player) -> String:
+	var used := {}
+	for b in blds:
+		if b.town != "":
+			used[b.town] = true
+	var start := (p.id * 7 + used.size() * 3) % TOWNS.size()
+	for k in TOWNS.size():
+		var n: String = TOWNS[(start + k) % TOWNS.size()]
+		if not used.has(n):
+			return n
+	return "%s %d" % [TOWNS[start], used.size()]
+
+
+## The name of the town whose store is nearest (x, y), within 14 tiles, or "".
+func town_near(x: int, y: int) -> String:
+	var best := ""
+	var bd := 14.0 * 14.0
+	for b in blds:
+		if b.town != "" and not b.dead:
+			var d := float((b.x - x) * (b.x - x) + (b.y - y) * (b.y - y))
+			if d <= bd:
+				bd = d; best = b.town
+	return best
+
+
+## How fast realm p's carriers walk (the features' say: snow in winter, for one).
+func carry_factor(p: Player) -> float:
+	var f := 1.0
+	for ft: Feature in features:
+		f *= ft.carry_factor(p)
+	return f
 
 
 func bld_at(x: int, y: int) -> Bld:
@@ -2217,6 +2266,10 @@ func from_save(d: Dictionary) -> String:
 			_pending[b.id] = true
 		if b.state == "build" and not b.need.is_empty():
 			_supply[b.id] = true
+	# saves from before build 37 had no town names
+	for b in blds:
+		if b.def.has("store") and b.town == "":
+			b.town = new_town_name(players[b.p - 1])
 	for p in players:
 		_recount_stores(p)
 	for t in trips:

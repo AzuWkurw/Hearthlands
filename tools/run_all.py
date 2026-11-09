@@ -40,6 +40,7 @@ TESTS = [
 	("archers and sallies", "archer_test", [], False, True, [r"archer test: ok"]),
 	("campaign",          "campaign_test", [], True, False, [r"campaign test: ok"]),
 	("spreading fires",   "fire_test", [], False, True, [r"fire test: ok"]),
+	("small touches",     "touches_test", [], True, False, [r"touches test: ok"]),
 	("fog after loading", "fogsave_test", [], True, False, [r"after 3 s: (\d+)"]),
 	("toolbar tools",     "toolbar_tool_test", [], True, False, [r"tool clicks answered: 8 of 8"]),
 ]

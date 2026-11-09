@@ -160,6 +160,16 @@ static func fair_amount(sim: Sim, p: Sim.Player, from: int, give: Dictionary, wa
 	return best
 
 
+# ---------------------------------------------------------------- rivals' words
+## A rival says something to you: in the event log, in its colour.
+static func say(sim: Sim, p: Sim.Player, text: String) -> void:
+	sim.emit_log("%s: \"%s\"" % [p.name, text], p.color.lightened(0.35))
+
+
+const THANKS := ["A fair deal. May the roads stay open between us.", "Good trading with you, neighbour.", "Our carts will come again.", "Your goods are welcome in my halls."]
+const WARNINGS := ["Your borders press on mine. Keep your soldiers back, or there will be war.", "My patience with you is wearing thin.", "I have counted your soldiers. I have more."]
+
+
 # ---------------------------------------------------------------- carts
 const CART_SPEED := 1.2      # tiles a second, overland
 
@@ -293,7 +303,7 @@ static func execute(sim: Sim, kind: String, from: int, to: int, give: Dictionary
 		"alliance":
 			set_relation(sim, from, to, ALLY)
 			adjust(a, to, 10.0); adjust(b, from, 10.0)
-		"trade", "gift":
+		"trade", "gift", "tribute":
 			# the goods leave now and go by cart, market to market (or to the headquarters of a realm
 			# that has no market)
 			for k in give:
@@ -307,7 +317,17 @@ static func execute(sim: Sim, kind: String, from: int, to: int, give: Dictionary
 				b.trades += 1
 			var got := total(b, give, true)
 			adjust(b, from, clampf(got * (1.5 if want.is_empty() else 0.3), 1.0, 20.0))
-			adjust(a, to, 3.0)
+			adjust(a, to, 15.0 if kind == "tribute" else 3.0)
+			if kind == "tribute":
+				if to == 1:
+					sim.emit_log("You pay %s as tribute to %s. The carts are on their way." % [goods_text(want), a.name], Color("e0b060"))
+					say(sim, a, "Wise. We remain at peace.")
+				sim.diplomacy_changed.emit()
+				return
+			if kind == "trade" and (from == 1 or to == 1):
+				var them := a if to == 1 else b
+				if them.ai and sim.rng.randf() < 0.6:
+					say(sim, them, THANKS[sim.rng.randi() % THANKS.size()])
 			if from == 1 or to == 1:
 				var other := b if from == 1 else a
 				var gave := give if from == 1 else want
@@ -339,6 +359,9 @@ static func propose(sim: Sim, from: int, to: int, kind: String, give := {}, want
 	sim.proposals.append({"id": sim._prop_id, "from": from, "to": to, "kind": kind, "give": give, "want": want, "t": sim.time})
 	var who := sim.players[from - 1].name
 	match kind:
+		"tribute":
+			say(sim, sim.players[from - 1], "Send me %s, or there will be war between us." % goods_text(want))
+			sim.emit_log("%s demands tribute. Answer in Diplomacy." % who, Color("e0b060"))
 		"peace": sim.emit_log("%s offers peace. Answer in Diplomacy." % who, Color("8fc0ff"))
 		"alliance": sim.emit_log("%s proposes an alliance. Answer in Diplomacy." % who, Color("8fc0ff"))
 		_: sim.emit_log("%s offers %s for %s. Answer in Diplomacy." % [who, goods_text(give), goods_text(want)], Color("8fc0ff"))
@@ -373,7 +396,13 @@ static func decline(sim: Sim, id: int) -> void:
 	for pr in sim.proposals.duplicate():
 		if int(pr.id) == id:
 			sim.proposals.erase(pr)
-			adjust(sim.players[int(pr.from) - 1], int(pr.to), -3.0)
+			var who := sim.players[int(pr.from) - 1]
+			if String(pr.kind) == "tribute":
+				adjust(who, int(pr.to), -20.0)
+				who.warned[int(pr.to)] = sim.time - 120.0
+				say(sim, who, "You will regret this.")
+			else:
+				adjust(who, int(pr.to), -3.0)
 	sim.diplomacy_changed.emit()
 
 
@@ -428,11 +457,21 @@ static func ai_tick(sim: Sim, p: Sim.Player) -> void:
 			if crowded:
 				hate += 50.0
 			if op < hate and ratio > (1.0 if crowded else (1.4 if p.pers == "warlord" else 1.2)) and sim.rng.randf() < 0.3:
+				if _warn_first(sim, p, q):
+					return
 				declare_war(sim, p.id, q.id)
+				return
+			# a much stronger rival that thinks little of you may demand tribute instead
+			if not q.ai and rel == PEACE and op < 0.0 and ratio > 1.5 and sim.time - float(p.warned.get(q.id, -1e9)) > 600.0 and sim.rng.randf() < (0.2 if p.pers == "warlord" else 0.06):
+				var what := "gold" if float(q.stock.get("gold", 0.0)) >= 10.0 else "planks"
+				p.warned[q.id] = sim.time
+				propose(sim, p.id, q.id, "tribute", {}, {what: 10 if what == "gold" else 20})
 				return
 			# crowded for a while with soldiers to spare: land has to come from somewhere, whatever it
 			# thinks of the neighbour (allies excepted)
 			if crowded and sim.time - p.crowded_t > 180.0 and p.reserve >= 6 and ratio > 0.8 and sim.rng.randf() < 0.15:
+				if _warn_first(sim, p, q):
+					return
 				declare_war(sim, p.id, q.id)
 				return
 		if rel == WAR:
@@ -447,6 +486,18 @@ static func ai_tick(sim: Sim, p: Sim.Player) -> void:
 				return
 		if rel != WAR and sim.rng.randf() < (0.3 if not q.ai else 0.15) and _ai_offer_trade(sim, p, q):
 			return
+
+
+## Before going to war with you, a rival warns you once (and waits at least a minute).
+static func _warn_first(sim: Sim, p: Sim.Player, q: Sim.Player) -> bool:
+	if q.ai:
+		return false
+	var w := float(p.warned.get(q.id, -1e9))
+	if sim.time - w > 600.0:
+		p.warned[q.id] = sim.time
+		say(sim, p, WARNINGS[sim.rng.randi() % WARNINGS.size()])
+		return true
+	return sim.time - w < 60.0
 
 
 static func _ai_offer_trade(sim: Sim, p: Sim.Player, q: Sim.Player) -> bool:

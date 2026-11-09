@@ -42,7 +42,7 @@ func _refresh_sel() -> void:
 		return
 	var d := b.def
 	var owner := main.sim.players[b.p - 1]
-	var t := "[b]%s[/b]%s\n%s\n" % [String(d.name), "" if b.p == 1 else " of " + owner.name, main.sim.status(b)]
+	var t := "[b]%s[/b]%s%s\n%s\n" % [String(d.name), (" of " + b.town) if b.town != "" else "", "" if b.p == 1 else " (" + owner.name + ")", main.sim.status(b)]
 	if b.state == "build" and b.mat_total > 0:
 		t += "Materials: %s\n[color=#9a9c88]Carriers bring them from the stores as the site needs them; nothing is set aside before.[/color]\n" % main.sim.materials_text(b)
 	# people walking here (a builder, the worker, soldiers), with how long until they arrive
@@ -150,6 +150,31 @@ func _refresh_sel() -> void:
 			pb.set_pressed_no_signal(b.prio == pr)
 			pb.tooltip_text = Main.PRIO_HELP[pr]
 			main.prio_row.add_child(pb)
+	# a store's town name, which you can change
+	if b.p == 1 and b.town != "":
+		var rn := main._button(tr("Rename %s") % b.town, func():
+			var dlg := AcceptDialog.new()
+			dlg.title = "Rename the town"
+			dlg.theme = UiLog.window_theme()
+			var le := LineEdit.new()
+			le.text = b.town
+			le.custom_minimum_size = Vector2(260, 0)
+			dlg.add_child(le)
+			main.add_child(dlg)
+			var done := func():
+				var nn := le.text.strip_edges()
+				if nn != "":
+					b.town = nn.left(24)
+				dlg.queue_free()
+				_refresh_sel()
+			dlg.confirmed.connect(done)
+			le.text_submitted.connect(func(_t): done.call())
+			dlg.canceled.connect(dlg.queue_free)
+			dlg.popup_centered()
+			le.grab_focus()
+			le.select_all())
+		rn.tooltip_text = "Each store is a town; its name shows on the map and in messages about the land around it."
+		main.prio_row.add_child(rn)
 	# a store: normal, gather goods here, or send them away
 	if b.p == 1 and main.sim.is_store(b) and b.state == "ready" and main.sim.logistics.stores_of(main.sim.human()).size() > 1:
 		main.prio_row.add_child(main._label("This store", 14, Main.DIM))

@@ -789,7 +789,7 @@ func _transfer(p: Sim.Player, a: Sim.Bld, b: Sim.Bld, res: String) -> bool:
 	store_add(a, p, res, -float(n))
 	if not chain:
 		p.busy_porters += 1
-	var one_way := d / (1.0 + sim.mod(p, "carry"))
+	var one_way := d / ((1.0 + sim.mod(p, "carry")) * sim.carry_factor(p))
 	var t := Sim.Trip.new()
 	t.p = p.id; t.res = res; t.n = n; t.t0 = sim.time; t.t1 = sim.time + one_way + 1.0; t.t2 = t.t1 + one_way
 	t.path = path; t.kind = "porter"
@@ -960,7 +960,7 @@ func plan_chain(p: Sim.Player, path: PackedInt32Array, forward: bool, commit: bo
 		since += 1
 		if j == n - 1 or since >= FLAG_EVERY or _is_flag(path, order[j], p.id):
 			flags.append(order[j]); since = 0
-	var spd := 1.0 + sim.mod(p, "carry")
+	var spd := (1.0 + sim.mod(p, "carry")) * sim.carry_factor(p)
 	var tnow := sim.time + 0.5
 	var waited := 0.0
 	var new_donkeys := 0
@@ -1322,7 +1322,7 @@ func carry_to(b: Sim.Bld, p: Sim.Player, res: String, want: int, site: bool) -> 
 		sim.used(p, res, float(n))
 	else:
 		b.incoming[res] = int(b.incoming.get(res, 0)) + n
-	var one_way := float(src[2]) / (speed * (1.0 + sim.mod(p, "carry")))
+	var one_way := float(src[2]) / (speed * ((1.0 + sim.mod(p, "carry")) * sim.carry_factor(p)))
 	var t := Sim.Trip.new()
 	t.p = p.id; t.res = res; t.n = n; t.t0 = sim.time; t.t1 = sim.time + one_way + 1.0; t.t2 = t.t1 + one_way
 	t.path = src[1]; t.kind = kind; t.station = st.id if st != null else 0
@@ -1493,7 +1493,7 @@ func _dispatch() -> void:
 			b.out_buf.erase(res)
 		else:
 			b.out_buf[res] = have - n
-		var one_way := net_dist(b.p, sim.idx(b.x, b.y)) / (speed * (1.0 + sim.mod(p, "carry")))
+		var one_way := net_dist(b.p, sim.idx(b.x, b.y)) / (speed * ((1.0 + sim.mod(p, "carry")) * sim.carry_factor(p)))
 		var t := Sim.Trip.new()
 		t.p = p.id; t.res = res; t.n = n; t.t0 = sim.time; t.t1 = sim.time + one_way + 1.0; t.t2 = t.t1 + one_way
 		t.path = path; t.kind = kind; t.station = st.id if st != null else 0

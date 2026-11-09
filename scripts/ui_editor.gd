@@ -160,6 +160,14 @@ func _fill() -> void:
 	body.add_child(br)
 	br.add_child(main._button("Save", save))
 	br.add_child(main._button("Play this map", play))
+	br.add_child(main._button("Export to share", func():
+		save()
+		var fn := map_name.strip_edges().validate_filename()
+		var mp := MAP_DIR + "/" + fn + ".json"
+		var ms := SharePack.user_missions().filter(func(m): return String(m.get("map", "")).get_file() == mp.get_file())
+		SharePack.dialog(main, true, func(path):
+			var err := SharePack.export_pack(path, [mp], ms)
+			main._show_hint(err if err != "" else "Exported to %s" % path, 4.0))))
 	br.add_child(main._button("Close", close))
 	var tip := main._label("Left button paints, the middle button or a drag with the wheel moves the map. Starts need open grass around them. Maps are kept in %s." % ProjectSettings.globalize_path(MAP_DIR), 12, Main.DIM)
 	tip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
