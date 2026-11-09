@@ -221,6 +221,9 @@ class Bld:
 	var want_n := -1                       # soldiers the player wants here (-1: as many as it holds)
 	var want_kinds: Array = []             # 6 flags: which kinds may serve here (empty: any)
 	var keep_kind := -1                    # the kind that stays home when it attacks (-1: the oldest)
+	var archer_want := 0                   # how many of its soldiers should be archers (they take up bows)
+	var archers := 0                       # how many are archers now (never more than its garrison)
+	var sally := false                     # its soldiers march out to meet an attack instead of waiting
 	var dry_t := -1.0                      # a mine: game time its vein was found to have run dry (-1: not dry)
 
 
@@ -2000,6 +2003,7 @@ func _secondly() -> void:
 		logistics.transfers()
 		sea.sea_transfers()
 	Diplomacy.expire(self)
+	military.archers_tick()
 	if not standing.is_empty() and int(time) % 5 == 0:
 		Diplomacy.standing_tick(self)
 	for f: Feature in features:

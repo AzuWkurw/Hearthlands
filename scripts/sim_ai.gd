@@ -365,7 +365,7 @@ func ai_think(p: Sim.Player) -> void:
 		["pig_farm", 1 if mins > 9 and pop > 40 else 0],
 		["gold_mine", 1 if mins > 6 else 0], ["mint", 1 if mins > 6 else 0],
 		["copper_mine", 1 if mins > 9 else 0], ["copper_smelter", 1 if mins > 9 and c.call("copper_mine") > 0 else 0],
-		["barracks", 2 if war else 1], ["weaponsmith", 2 if war else 1],
+		["barracks", 2 if war else 1], ["weaponsmith", 2 if war else 1], ["bowyer", 1 if war and mins > 15 else 0],
 		["coal_mine", 3 if mins > 10 else 2], ["iron_mine", 2 if mins > 10 else 1], ["iron_smelter", 2 if mins > 10 else 1],
 		["sheep_farm", 1 if mins > 11 and not war else 0], ["weaver", 1 if c.call("sheep_farm") > 0 else 0], ["tailor", 1 if c.call("weaver") > 0 else 0],
 		["carpenter", 1 if mins > 12 else 0], ["jeweller", 1 if mins > 14 and S.gold > 5 and c.call("copper_smelter") > 0 else 0],

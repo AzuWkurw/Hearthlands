@@ -59,6 +59,13 @@ func open(t: Sim.Bld) -> String:
 	body.add_child(main._label(tr("Attack %s's %s") % [sim.players[t.p - 1].name, String(t.def.name)], 22, Main.BRASS))
 	var dm: Array = sim.military.mix_of(sim.military._defending(t))
 	body.add_child(main._label(tr("Defenders: %d (%s)") % [sim.defenders(t), Sim.mix_text(dm)], 14, Main.DIM))
+	if t.archers > 0 or t.sally:
+		var extra := []
+		if t.archers > 0:
+			extra.append(tr("%d of them archers: they shoot from 6 tiles out") % t.archers)
+		if t.sally:
+			extra.append("they march out to meet attackers")
+		body.add_child(main._label(", ".join(extra).capitalize() if false else (", ".join(extra)[0].to_upper() + ", ".join(extra).substr(1) + "."), 13, Color("e0b060")))
 	var total := 0
 	var have := [0, 0, 0, 0, 0, 0]
 	for s in src:

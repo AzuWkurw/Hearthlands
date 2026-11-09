@@ -261,7 +261,7 @@ func _garrison_ui(b: Sim.Bld) -> void:
 	var rm := main.sim.rmix_of(p)
 	var gm := main.sim.gmix_of(b)
 	# rebuilt only when something it shows changes, so a menu that is open stays open
-	var sig := "%d|%d|%s|%d|%s|%s|%d" % [b.id, b.want_n, str(b.want_kinds), b.keep_kind, str(rm), str(gm), p.age]
+	var sig := "%d|%d|%s|%d|%s|%s|%d|%d|%d|%s|%d" % [b.id, b.want_n, str(b.want_kinds), b.keep_kind, str(rm), str(gm), p.age, b.archer_want, b.archers, str(b.sally), int(p.stock.get("bows", 0.0))]
 	if sig == main._gar_sig:
 		return
 	main._gar_sig = sig
@@ -352,5 +352,36 @@ func _garrison_ui(b: Sim.Bld) -> void:
 		main._click())
 	row3.add_child(ob)
 	main.garrison_box.add_child(row3)
+	# archers: soldiers here who take up bows from the stores
+	var row4 := HBoxContainer.new()
+	var al := main._label("Archers", 14, Main.DIM)
+	al.tooltip_text = "Soldiers here who take up a bow each from the stores. Archers shoot at attackers from 6 tiles out, but fight worse at the gate."
+	row4.add_child(al)
+	var am := main._button("-", func():
+		b.archer_want = maxi(0, b.archer_want - 1)
+		main._gar_sig = "-"
+		main._click())
+	am.disabled = b.archer_want <= 0
+	row4.add_child(am)
+	var an := main._label(tr("%d (want %d)") % [b.archers, b.archer_want], 15)
+	an.custom_minimum_size = Vector2(90, 0)
+	an.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	row4.add_child(an)
+	var ap := main._button("+", func():
+		b.archer_want = mini(cap, b.archer_want + 1)
+		main._gar_sig = "-"
+		main._click())
+	ap.disabled = b.archer_want >= cap
+	row4.add_child(ap)
+	row4.add_child(main._label(tr("  bows in store: %d") % int(p.stock.get("bows", 0.0)), 12, Main.DIM))
+	main.garrison_box.add_child(row4)
+	var sc := CheckBox.new()
+	sc.text = "March out to meet attackers"
+	sc.tooltip_text = "When an enemy attacks this building, its soldiers (all but one) go out to fight the column in the open before it reaches the walls."
+	sc.button_pressed = b.sally
+	sc.toggled.connect(func(on):
+		b.sally = on
+		main._gar_sig = "-")
+	main.garrison_box.add_child(sc)
 	main.garrison_box.add_child(main._label("Extra soldiers go back to headquarters; missing ones come from there, newest allowed kind first.", 12, Main.DIM))
 	(main.garrison_box.get_child(main.garrison_box.get_child_count() - 1) as Label).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

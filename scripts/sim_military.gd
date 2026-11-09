@@ -131,6 +131,70 @@ func defenders(t: Sim.Bld) -> int:
 	return n
 
 
+# ---------------------------------------------------------------- archers
+const ARCHER_RANGE := 6.0
+const ARCHER_RELOAD := 4.0
+const ARCHER_HIT := 0.3
+const ARCHER_DUEL := 0.15   # an archer at the gate fights this much worse
+
+## Every second: soldiers in military buildings take up bows (one from the stores each) or put them
+## down, to match each building's archer setting.
+func archers_tick() -> void:
+	for b: Sim.Bld in sim.mil_list():
+		if b.ty == "hq" or b.state != "ready" or b.dead:
+			continue
+		var p := sim.players[b.p - 1]
+		if p.ai:
+			# rivals give a third of each garrison bows once they make them (warlords fewer: they attack)
+			b.archer_want = int(b.def.garrison) / (4 if p.pers == "warlord" else 3)
+		var want := mini(b.archer_want, b.garrison)
+		if b.archers > b.garrison:
+			b.archers = b.garrison
+		if b.archers < want and float(p.stock.get("bows", 0.0)) >= 1.0:
+			sim.take(p, "bows", 1.0)
+			sim.used(p, "bows", 1.0)
+			b.archers += 1
+		elif b.archers > want and b.archers > 0 and b.archer_want < b.archers:
+			b.archers -= 1
+			sim.give(p, "bows", 1.0)
+
+
+## The archers of t shoot at an attack within ARCHER_RANGE (also at the gate).
+func _arrows(a: Sim.Attack, p: Sim.Player, t: Sim.Bld, left: float) -> void:
+	var n := mini(t.archers, own_def(t)) if t.ty != "hq" else 0
+	if n <= 0 or left > ARCHER_RANGE:
+		return
+	while a.dvt.size() < 4:
+		a.dvt.append(0.0)
+	if sim.time < float(a.dvt[3]):
+		return
+	a.dvt[3] = sim.time + ARCHER_RELOAD
+	a.dshot_t = sim.time
+	for s in n:
+		if a.n > 0 and sim.rng.randf() < ARCHER_HIT:
+			Sim.mix_remove(a.amix, Sim.mix_pick(a.amix, sim.rng))
+			a.n -= 1
+			p.vets = maxf(0.0, p.vets - a.vet)
+	a.era = Sim.mix_avg(a.amix)
+
+
+## Sally: when an attack is launched on t and t is set to march out (or a rival thinks it can win),
+## part of its soldiers go to meet the column on the way; the two columns fight in the open.
+func _sally(a: Sim.Attack, t: Sim.Bld) -> void:
+	if t.ty == "hq" or t.state != "ready" or own_def(t) < 3:
+		return
+	var op := sim.players[t.p - 1]
+	var go := t.sally if not op.ai else (own_def(t) - 1 > a.n + 1)
+	if not go:
+		return
+	var src: Sim.Bld = sim.by_id.get(a.src)
+	if src == null or src.dead:
+		return
+	var n := mini(own_def(t) - 1, maxi(1, a.n))
+	if launch_attack(t, src, n, [], true) == "" and t.p == 1:
+		sim.emit_log("Your soldiers from the %s march out to meet the attack." % String(t.def.name), Color("d8aa4a"), Vector2i(t.x, t.y))
+
+
 ## A defender of t falls: one of kind k (-1: any, picked at random) from the building defending it.
 func kill_defender(t: Sim.Bld, k := -1) -> void:
 	var op := sim.players[t.p - 1]
@@ -147,6 +211,9 @@ func kill_defender(t: Sim.Bld, k := -1) -> void:
 	else:
 		b.garrison -= 1
 		b.sera = Sim.mix_avg(m)
+		# an archer falls first when most of the garrison are archers
+		if b.archers > b.garrison or (b.archers > 0 and sim.rng.randf() < float(b.archers) / maxf(1.0, b.garrison + 1)):
+			b.archers -= 1
 
 
 ## The soldiers in building b by kind (headquarters: the realm's reserve).
@@ -222,7 +289,7 @@ func _defender_gains_xp(t: Sim.Bld) -> void:
 
 
 ## want: at most this many march (-1: as many as can); kinds: only these soldier kinds march (empty: any).
-func launch_attack(src: Sim.Bld, tgt: Sim.Bld, want := -1, kinds: Array = []) -> String:
+func launch_attack(src: Sim.Bld, tgt: Sim.Bld, want := -1, kinds: Array = [], sally := false) -> String:
 	var p := sim.players[src.p - 1]
 	if src.p == tgt.p or not sim.is_mil(tgt) or tgt.state != "ready" or src.state != "ready":
 		return "Pick an enemy military building"
@@ -263,7 +330,9 @@ func launch_attack(src: Sim.Bld, tgt: Sim.Bld, want := -1, kinds: Array = []) ->
 	if n < 1:
 		return "None of the chosen kinds can go from here"
 	if src.ty == "hq": p.reserve -= n
-	else: src.garrison -= n
+	else:
+		src.garrison -= n
+		src.archers = mini(src.archers, src.garrison)
 	var a := Sim.Attack.new()
 	a.p = src.p; a.src = src.id; a.tgt = tgt.id; a.n = n; a.n0 = n; a.t0 = sim.time; a.t1 = sim.time + dist * 1.1 + 1.0
 	a.from = Vector2(src.x, src.y); a.to = Vector2(tgt.x, tgt.y)
@@ -277,6 +346,8 @@ func launch_attack(src: Sim.Bld, tgt: Sim.Bld, want := -1, kinds: Array = []) ->
 	a.uid = sim._bid
 	sim.attacks.append(a)
 	Diplomacy.on_attacked(sim, tgt.p, src.p)
+	if not sally:
+		_sally(a, tgt)
 	if tgt.p == 1:
 		sim.emit_log("%s attacks your %s with %d soldiers!" % [p.name, String(tgt.def.name), n], Color("e0603a"), Vector2i(tgt.x, tgt.y))
 	elif src.p == 1:
@@ -312,8 +383,9 @@ func attack_tick(dt: float) -> void:
 			if sim.time >= a.t1:
 				a.fighting = true; a.step = 0.0
 			continue
-		# at the gate: the building's guns keep firing at the attackers outside the walls
+		# at the gate: the building's guns and archers keep firing at the attackers outside the walls
 		_cannon(a, p, t, 0.0)
+		_arrows(a, p, t, 0.0)
 		if a.n <= 0:
 			sim.attacks.remove_at(k)
 			if a.p == 1 or t.p == 1:
@@ -343,6 +415,10 @@ func attack_tick(dt: float) -> void:
 				dk = 1
 			dw += 0.035 * (dk - ak) + COUNTER * (int(ADV[dk][ak]) - int(ADV[ak][dk]))
 			dw += _melee_edge(dk, true) - _melee_edge(ak, false)
+			# an archer is worse at close quarters: the more archers, the likelier one has to fight
+			var db2 := _defending(t)
+			if db2.ty != "hq" and db2.archers > 0 and sim.rng.randf() < float(db2.archers) / maxf(1.0, own_def(db2)):
+				dw -= ARCHER_DUEL
 			if sim.rng.randf() < dw:
 				# men-at-arms' armour turns half the blows that would fell them (not pikes or bullets)
 				if ak == 2 and dk < 3 and sim.rng.randf() < 0.5:
@@ -638,6 +714,7 @@ func _volleys(a: Sim.Attack, p: Sim.Player, t: Sim.Bld) -> void:
 					p.vets = maxf(0.0, p.vets - a.vet)
 			a.era = Sim.mix_avg(a.amix)
 	_cannon(a, p, t, left)
+	_arrows(a, p, t, left)
 
 
 ## Forts with cannon (gun battery, star fort, redoubt) fire on an approaching attack while they

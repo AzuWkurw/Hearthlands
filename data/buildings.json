@@ -760,6 +760,33 @@
   },
   "trade": "metal"
  },
+ "bowyer": {
+  "name": "Bowyer",
+  "cat": "crafts",
+  "size": "small",
+  "cost": {
+   "planks": 3,
+   "stone": 1
+  },
+  "time": 12,
+  "worker": "artisan",
+  "cycle": 40,
+  "in": {
+   "wood": 2
+  },
+  "out": {
+   "bows": 1
+  },
+  "info": "Makes bows from wood. A military building's soldiers take up bows (set Archers in its info box): archers shoot at attackers from 6 tiles out but are weaker in a fight at the gate.",
+  "art": {
+   "style": "workshop",
+   "wall": "#9a7a50",
+   "sw": 1.6,
+   "sign": "bow",
+   "sign_color": "#c0a060"
+  },
+  "trade": "woodwork"
+ },
  "armorer": {
   "name": "Armorer",
   "cat": "crafts",

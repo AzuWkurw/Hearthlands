@@ -37,6 +37,7 @@ TESTS = [
 	("trade by cart",     "trade_test", [], False, True, [r"trade test: ok"]),
 	("bridges",           "bridge_test", [], False, True, [r"bridge test: ok"]),
 	("taverns and contentment", "content_test", [], False, True, [r"content test: ok"]),
+	("archers and sallies", "archer_test", [], False, True, [r"archer test: ok"]),
 	("fog after loading", "fogsave_test", [], True, False, [r"after 3 s: (\d+)"]),
 	("toolbar tools",     "toolbar_tool_test", [], True, False, [r"tool clicks answered: 8 of 8"]),
 ]

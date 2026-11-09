@@ -325,6 +325,14 @@
   "icon": "sword"
  },
  {
+  "id": "bows",
+  "name": "Bows",
+  "abbr": "Bw",
+  "color": "#b08a50",
+  "icon": "bow",
+  "info": "Made by the bowyer. Soldiers in a military building take them up to become archers."
+ },
+ {
   "id": "armor",
   "name": "Armor",
   "abbr": "Ar",
