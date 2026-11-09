@@ -65,7 +65,8 @@ func open(t: Sim.Bld) -> String:
 			extra.append(tr("%d of them archers: they shoot from 6 tiles out") % t.archers)
 		if t.sally:
 			extra.append("they march out to meet attackers")
-		body.add_child(main._label(", ".join(extra).capitalize() if false else (", ".join(extra)[0].to_upper() + ", ".join(extra).substr(1) + "."), 13, Color("e0b060")))
+		var et := ", ".join(extra)
+		body.add_child(main._label(et[0].to_upper() + et.substr(1) + ".", 13, Color("e0b060")))
 	var total := 0
 	var have := [0, 0, 0, 0, 0, 0]
 	for s in src:
