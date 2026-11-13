@@ -21,8 +21,10 @@ func _init() -> void:
 	print("time %d, farm %s" % [int(sim.time), str(farm != null)])
 	if farm == null:
 		quit(); return
-	main.view.center_on(Vector2(farm.x + 5.0, farm.y + 1.5)); main.view.zoom = 52.0
-	main.view.sel_id = farm.id
+	main.view.center_on(Vector2(farm.x + 1.0, farm.y + 1.5)); main.view.zoom = 64.0
+	main.view.sel_id = -1
+	main.side_box.visible = false
+	main.view.sel_id = -1
 	main._refresh_all()
 	for i in 6: await process_frame
 	await RenderingServer.frame_post_draw

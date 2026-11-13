@@ -81,6 +81,11 @@ var _glow: Texture2D
 var _sails: Texture2D
 var _ground: Control
 var _ground_mat: ShaderMaterial
+var _sway_mat: ShaderMaterial      # the map view's own shader (swaying trees and crops)
+var _shadow: Texture2D             # a soft dark ellipse, laid under buildings, people and trees
+const SWAY_TREE := 3.0 / 255.0     # colour alphas the sway shader recognises (see map_sway.gdshader)
+const SWAY_CROP := 5.0 / 255.0
+const SUN := Vector2(0.16, 0.04)   # shadows fall a little to the right: the sun stands to the upper left
 var _origin := Vector2.ZERO
 var _folk_roads: Dictionary = {}   # house id -> [game time worked out, straight runs of road nearby: [from, to]]
 var _vary: ImageTexture            # ground variation (see _make_variation)
@@ -243,12 +248,104 @@ func _ready() -> void:
 	_ground.material = _ground_mat
 	_ground.draw.connect(_draw_ground)
 	add_child(_ground)
+	# the map's own shader: trees and crops sway in the wind (see shaders/map_sway.gdshader)
+	_sway_mat = ShaderMaterial.new()
+	_sway_mat.shader = load("res://shaders/map_sway.gdshader")
+	material = _sway_mat
+	_shadow = _make_shadow()
 	set_smooth(true)
 	refresh_textures()
 
 
+## How hard the wind blows where you are looking (the weather there): trees and crops sway with it.
+const WIND := {"storm": 2.6, "blizzard": 2.8, "rain": 1.5, "snow": 1.2, "cloudy": 1.1, "fog": 0.35, "heat": 0.5, "clear": 0.8}
+
+func _wind() -> float:
+	if sim == null or sim.w == 0:
+		return 1.0
+	var s = sim.get_feature("seasons")
+	if s == null:
+		return 0.9
+	var b: int = s.biome_at(clampi(int(cam.x), 0, sim.w - 1), clampi(int(cam.y), 0, sim.h - 1))
+	if b < 0 or b >= (s.weather as Array).size():
+		return 0.9
+	return float(WIND.get(String(s.weather[b]), 1.0))
+
+
+## Birds: a few small flocks crossing the view in V shapes, flapping now and then and gliding in
+## between (fewer in rain, none in a storm or snow). Only for the eye: they follow the clock.
+func _draw_birds(x0: int, y0: int, x1: int, y1: int) -> void:
+	var cl := _cloudiness()
+	var wnd := _wind()
+	if wnd >= 2.0 or cl >= 0.95:
+		return
+	var t := Time.get_ticks_msec() / 1000.0
+	var view := Rect2(x0, y0, x1 - x0, y1 - y0)
+	var span := view.size.length() + 16.0
+	var flocks := 2 if cl < 0.6 else 1
+	for k in flocks:
+		var period := 26.0 + k * 9.0
+		var cyc := floori((t + k * 11.0) / period)
+		var f := fmod(t + k * 11.0, period) / period
+		var hh := MapChunks._hash(cyc * 7 + k, 913)
+		if hh % 3 == 0:
+			continue                  # now and then the sky stays empty
+		var ang := float(hh % 628) / 100.0
+		var dir := Vector2(cos(ang), sin(ang) * 0.6).normalized()
+		var side := Vector2(-dir.y, dir.x)
+		var mid := view.get_center() + side * (float((hh >> 8) % 100) / 100.0 - 0.5) * view.size.y * 0.7
+		var lead := mid + dir * (f - 0.5) * span
+		var n := 3 + (hh >> 4) % 5
+		var sz := clampf(7.0 / zoom, 0.12, 0.45)
+		for i in n:
+			var row := (i + 1) / 2
+			var lr := -1.0 if i % 2 == 1 else 1.0
+			var p := lead - dir * row * sz * 2.6 + side * lr * row * sz * 2.0
+			p += Vector2(sin(t * 0.9 + i * 1.7), cos(t * 1.1 + i)) * sz * 0.4
+			# flap for a while, then glide
+			var flap := sin(t * 11.0 + i * 0.9) if fmod(t + i * 0.37, 3.0) < 1.6 else 0.25
+			var wing := Vector2(sz, -sz * 0.55 * flap)
+			var col := Color(0.12, 0.12, 0.14, 0.85)
+			draw_polyline(PackedVector2Array([p - Vector2(wing.x, wing.y), p + Vector2(0, sz * 0.1), p + Vector2(wing.x, -wing.y)]), col, sz * 0.22)
+			# its shadow far below on the ground
+			draw_circle(p + Vector2(sz * 6.0, sz * 9.0), sz * 0.35, Color(0, 0, 0, 0.12))
+
+
+## How cloudy it is where you are looking: 0 clear .. 1 overcast (cloud shadows on the ground).
+const CLOUDS := {"clear": 0.12, "heat": 0.0, "cloudy": 0.7, "rain": 0.9, "storm": 1.0, "snow": 0.8, "blizzard": 1.0, "fog": 0.5}
+
+func _cloudiness() -> float:
+	if sim == null or sim.w == 0:
+		return 0.2
+	var s = sim.get_feature("seasons")
+	if s == null:
+		return 0.25
+	var b: int = s.biome_at(clampi(int(cam.x), 0, sim.w - 1), clampi(int(cam.y), 0, sim.h - 1))
+	if b < 0 or b >= (s.weather as Array).size():
+		return 0.25
+	return float(CLOUDS.get(String(s.weather[b]), 0.3))
+
+
+## A soft shadow: dark in the middle, fading out to the edge, twice as wide as high.
+static func _make_shadow() -> Texture2D:
+	var img := Image.create(64, 32, false, Image.FORMAT_RGBA8)
+	for y in 32:
+		for x in 64:
+			var d := Vector2((x + 0.5 - 32.0) / 32.0, (y + 0.5 - 16.0) / 16.0).length()
+			var a := clampf(1.0 - d, 0.0, 1.0)
+			img.set_pixel(x, y, Color(0.02, 0.03, 0.02, pow(a, 0.8) * 0.62))
+	img.generate_mipmaps()
+	return ImageTexture.create_from_image(img)
+
+
 func _process(_delta: float) -> void:
 	_ground.queue_redraw()
+	if _sway_mat != null:
+		var wnd := _wind()
+		_sway_mat.set_shader_parameter("animate", animate)
+		_sway_mat.set_shader_parameter("wind", wnd)
+		_ground_mat.set_shader_parameter("clouds", _cloudiness() if animate else 0.0)
+		_ground_mat.set_shader_parameter("drift", Vector2(0.3, 0.1) * maxf(0.5, wnd))
 	if follow != null:
 		var fp := follow_pos()
 		if fp.x < 0.0:
@@ -676,6 +773,10 @@ func _draw() -> void:
 			vis.append(b)
 	vis.sort_custom(func(a, b): return a.y < b.y or (a.y == b.y and a.x < b.x))
 	if prof_on: _pm("bld_list")
+	# soft shadows on the ground first, so no building's shadow falls over another building
+	for b in vis:
+		_building_shadow(b)
+	if prof_on: _pm("bld_shadows")
 	var labels: Array = []
 	# townsfolk about the houses and roads (close up only), drawn in turn with the buildings so a house
 	# in front hides the people behind it
@@ -887,45 +988,103 @@ func _draw() -> void:
 			_lift_to(apos.x + 0.5, apos.y + 0.9)
 		var nl2 := labels.size()
 		if a.fighting:
-			# a duel at the gate: the attacker and a defender take turns to strike
+			# the fight at the gate: the front of the column against the defenders, each pair taking
+			# turns to lunge and strike, with sparks where blades meet and dust under their feet
 			var tgt: Sim.Bld = sim.by_id.get(a.tgt)
-			var at := a.to + Vector2(0.5, 1.05)
-			var side := Vector2(0.3, 0) * (1 if left else -1)
-			var beat := int(sim.time * 3.0) if animate else 0
+			# in front of its gate (the entrance), on the side the column came from
+			var at := a.to + Vector2(0.5, 1.7)
+			if tgt != null and tgt.door >= 0:
+				var dtile := sim.door_tile(tgt)
+				if dtile >= 0:
+					at = Vector2(dtile % w + 0.5, dtile / w + 0.85)
+			var sgn := 1.0 if left else -1.0
+			var tt := sim.time * 3.0 if animate else 0.0
 			var ak := Sim.mix_newest(a.amix)
-			_sprite(_soldier_id(ak if ak >= 0 else a.era), at + side, 0.5, 4 + beat % 2, left, col)
+			var aid := _soldier_id(ak if ak >= 0 else a.era)
+			var did := aid
+			var dcol := col
+			var ndef := 0
 			if tgt != null:
 				# the defenders' best answer to the attackers' strongest kind
 				var dk: int = sim.military.best_counter(sim.military.mix_of(sim.military._defending(tgt)), maxi(0, ak))
-				_sprite(_soldier_id(dk if dk >= 0 else sim.military.defender_era(tgt)), at - side, 0.5, 4 + (beat + 1) % 2, not left, sim.players[tgt.p - 1].color.lightened(0.2))
-			if animate and beat % 2 == 1:
-				draw_circle(at + Vector2(0, -0.32), 0.05, Color(1.0, 0.9, 0.5, 0.9))
+				did = _soldier_id(dk if dk >= 0 else sim.military.defender_era(tgt))
+				dcol = sim.players[tgt.p - 1].color.lightened(0.2)
+				ndef = sim.military.own_def(sim.military._defending(tgt))
+				_track_losses(-tgt.id, ndef, at + Vector2(-0.3 * sgn, 0), did, dcol, not left)
+			var pairs := clampi(mini(a.n, maxi(1, ndef)), 1, 3)
+			for k in pairs:
+				var row := Vector2(0.08 * k, (k - (pairs - 1) / 2.0) * 0.32)
+				var ph := fmod(tt + k * 0.37, 2.0)
+				var lunge := sin(clampf(ph, 0.0, 1.0) * PI) * 0.1
+				var dl := sin(clampf(ph - 1.0, 0.0, 1.0) * PI) * 0.1
+				var apos := at + row + Vector2(0.3 * sgn - lunge * sgn, 0)
+				var dpos := at + row + Vector2(-0.3 * sgn + dl * sgn, 0)
+				_sprite(aid, apos, 0.5, 4 + int(ph) % 2, left, col)
+				if ndef > 0:
+					_sprite(did, dpos, 0.5, 4 + (int(ph) + 1) % 2, not left, dcol)
+				if animate:
+					var hit := fmod(ph, 1.0)
+					if hit > 0.45 and hit < 0.65:
+						var sp := (apos + dpos) / 2.0 + Vector2(0, -0.3)
+						var u := (hit - 0.45) / 0.2
+						for s in 4:
+							var ang := s * PI / 2.0 + 0.6 + k
+							draw_line(sp, sp + Vector2(cos(ang), sin(ang)) * (0.04 + u * 0.12), Color(1.0, 0.92, 0.55, 1.0 - u), 0.025)
+			if animate:
+				var t2 := Time.get_ticks_msec() / 1000.0
+				for k in 4:
+					var dph := fmod(t2 * 0.7 + k * 0.25, 1.0)
+					draw_circle(at + Vector2((k - 1.5) * 0.25 + sin(t2 + k) * 0.08, 0.05 - dph * 0.35), 0.1 + dph * 0.15, Color(0.75, 0.68, 0.55, 0.3 * (1.0 - dph)))
+			_track_losses(a.uid, a.n, at + Vector2(0.35 * sgn, 0), aid, col, left)
 			labels.append([at + Vector2(0, -0.85), str(a.n), Color.WHITE])
 		else:
 			var pos2: Vector2 = sim.military.column_pos(a) + Vector2(0.5, 0.75)
 			if a.field != 0:
-				# a battle in the open: crossed swords over the column
+				# a battle in the open: crossed swords over the column, dust and the flash of blades
 				var sw := pos2 + Vector2(0, -1.25)
 				draw_line(sw + Vector2(-0.22, -0.22), sw + Vector2(0.22, 0.22), Color(0.95, 0.93, 0.85), 0.07)
 				draw_line(sw + Vector2(0.22, -0.22), sw + Vector2(-0.22, 0.22), Color(0.95, 0.93, 0.85), 0.07)
+				if animate:
+					var t3 := Time.get_ticks_msec() / 1000.0 + a.uid
+					for k in 5:
+						var dph := fmod(t3 * 0.6 + k * 0.2, 1.0)
+						draw_circle(pos2 + Vector2((k - 2) * 0.3 + sin(t3 + k) * 0.1, -dph * 0.4), 0.14 + dph * 0.2, Color(0.75, 0.68, 0.55, 0.28 * (1.0 - dph)))
+					if fmod(t3 * 2.0, 1.0) < 0.15:
+						var sp2 := pos2 + Vector2(sin(t3 * 7.0) * 0.3, -0.4)
+						for s in 4:
+							draw_line(sp2, sp2 + Vector2(cos(s * 1.6), sin(s * 1.6)) * 0.12, Color(1, 0.93, 0.6, 0.9), 0.025)
+			_track_losses(a.uid, a.n, pos2 + Vector2(0, 0.2), _soldier_id(roundi(a.era)), col, left)
 			var walked := (sim.time - a.t0) * 0.9
 			var dir := cdir
-			# the column: up to three figures, one for each of its most numerous kinds
+			# the column: up to five figures in twos, its kinds shown in proportion (most numerous first)
 			var kinds := []
+			var order := []
 			for kk in range(5, -1, -1):
 				if a.amix.size() > kk and int(a.amix[kk]) > 0:
-					kinds.append(kk)
-			kinds.sort_custom(func(x, y): return int(a.amix[x]) > int(a.amix[y]))
-			kinds = kinds.slice(0, 3)
+					order.append(kk)
+			order.sort_custom(func(x, y): return int(a.amix[x]) > int(a.amix[y]))
+			var figs := clampi(a.n, 1, 5)
+			for kk in order:
+				for r in maxi(1, roundi(float(a.amix[kk]) / maxf(1.0, a.n) * figs)):
+					if kinds.size() < figs:
+						kinds.append(kk)
 			if kinds.is_empty():
 				kinds = [roundi(a.era)]
 			# the last stretch is a charge: weapons lowered, running
 			var charging := a.chase == 0 and pos2.distance_to(a.to + Vector2(0.5, 0.75)) < 1.6
 			for i in kinds.size():
-				var side2 := Vector2(-dir.y, dir.x) * (0.22 if i % 2 == 1 else -0.12 * float(i))
-				var off := -dir * 0.42 * i + side2
+				var side2 := Vector2(-dir.y, dir.x) * (0.16 if i % 2 == 1 else -0.16) * (0.0 if i == 0 else 1.0)
+				var off := -dir * 0.36 * ((i + 1) / 2) + side2
 				var fr := (4 + int(sim.time * 8.0 + i) % 2) if charging and animate else (int(walked * 5.0 + i) % 4 if animate else 0)
 				_sprite(_soldier_id(kinds[i]), pos2 + off, 0.5, fr, left, col)
+			# the column's banner, carried at its head, waving
+			var bp := pos2 + Vector2(0.12 * (-1.0 if left else 1.0), -0.02)
+			var top := bp + Vector2(0, -0.95)
+			draw_line(bp, top, Color("4a3520"), 0.035)
+			var wv := sin(Time.get_ticks_msec() / 1000.0 * 6.0 + a.uid) * 0.04 if animate else 0.0
+			var fdir := -1.0 if left else 1.0
+			draw_colored_polygon(PackedVector2Array([top, top + Vector2(0.32 * fdir, 0.05 + wv), top + Vector2(0.3 * fdir, 0.2 + wv), top + Vector2(0, 0.22)]), sim.players[a.p - 1].color)
+			draw_polyline(PackedVector2Array([top, top + Vector2(0.32 * fdir, 0.05 + wv), top + Vector2(0.3 * fdir, 0.2 + wv), top + Vector2(0, 0.22)]), Color(0, 0, 0, 0.45), 0.015)
 			# gunfire: smoke and flashes at the shooters, streaks toward the other side
 			var tgt2: Sim.Bld = sim.by_id.get(a.tgt)
 			if sim.time - a.shot_t < 0.45:
@@ -943,6 +1102,22 @@ func _draw() -> void:
 					draw_circle(gate, 0.08, Color(1.0, 0.85, 0.4, 0.95))
 					draw_line(gate, pos2 + Vector2(0, -0.3), Color(1.0, 0.95, 0.7, 0.5), 0.03)
 			labels.append([pos2 + Vector2(0, -0.85), str(a.n), Color.WHITE])
+		# arrows: a volley from a tower's archers, arcing down onto the column
+		if sim.time - a.arrow_t < 1.0 and a.arrow_n > 0:
+			var u := (sim.time - a.arrow_t) / 1.0
+			var src := a.arrow_src + Vector2(0.5, -0.6)
+			var dst: Vector2 = (a.to + Vector2(0.5, 0.8)) if a.fighting else (sim.military.column_pos(a) + Vector2(0.5, 0.5))
+			for k in mini(a.arrow_n, 6):
+				var uk := clampf(u * 1.3 - k * 0.06, 0.0, 1.0)
+				if uk <= 0.0 or uk >= 1.0:
+					continue
+				var off := Vector2((k % 3 - 1) * 0.18, (k / 3) * 0.15)
+				var p0 := src.lerp(dst + off, uk) + Vector2(0, -sin(uk * PI) * 1.2)
+				var p1 := src.lerp(dst + off, uk + 0.04) + Vector2(0, -sin((uk + 0.04) * PI) * 1.2)
+				var d := (p1 - p0).normalized() * 0.34
+				draw_line(p0 - d, p0, Color(0.28, 0.2, 0.1), 0.035)
+				draw_line(p0 - d, p0 - d * 0.72, Color(0.95, 0.95, 0.92), 0.06)
+				draw_line(p0, p0 - d.rotated(0.5) * 0.25, Color(0.5, 0.5, 0.52), 0.03)
 		for li in range(nl2, labels.size()):
 			labels[li][0] = (labels[li][0] as Vector2) + Vector2(0, -_cur_lift)
 		_unlift()
@@ -951,6 +1126,9 @@ func _draw() -> void:
 		for f: Feature in sim.features:
 			f.draw_top(self, vr2)
 	if prof_on: _pm("soldiers_top")
+	_draw_fx(x0, y0, x1, y1)
+	if animate and z >= 9.0:
+		_draw_birds(x0, y0, x1, y1)
 	_draw_night(vis, x0, y0, x1, y1)
 	if prof_on: _pm("night")
 	_draw_selection_and_tools()
@@ -1420,6 +1598,14 @@ func _sprite(id: String, foot: Vector2, wid: float, f: int, flip: bool, col := C
 	if flip:
 		# a rectangle with a negative width is drawn mirrored left to right
 		dst = Rect2(foot.x + wid / 2.0, foot.y - hgt, -wid, hgt)
+	# a little shadow under the feet of people, animals and carts (not under flags, loads or tints)
+	if wid <= 1.3 and _batch_layer == 0 and id.begins_with("unit_") and not id.begins_with("unit_flag") \
+			and not id.begins_with("unit_load") and not id.ends_with("_tint"):
+		var sr := Rect2(foot.x - wid * 0.42 + SUN.x * 0.3, foot.y - wid * 0.13, wid * 0.84, wid * 0.26)
+		if _batching:
+			_shadows.append(sr)
+		else:
+			draw_texture_rect(_shadow, sr, false)
 	if _batching:
 		_batch_add(tex, dst, src, col)
 	else:
@@ -1433,6 +1619,7 @@ func _sprite(id: String, foot: Vector2, wid: float, f: int, flip: bool, col := C
 var _batching := false
 var _batch_layer := 0
 var _batches: Array = [{}, {}, {}]
+var _shadows: Array = []          # shadows of the batched sprites, drawn first
 
 func _batch_add(tex: Texture2D, dst: Rect2, src: Rect2, col: Color) -> void:
 	var layer: Dictionary = _batches[_batch_layer]
@@ -1443,6 +1630,9 @@ func _batch_add(tex: Texture2D, dst: Rect2, src: Rect2, col: Color) -> void:
 
 func _flush_batches() -> void:
 	_batching = false
+	for sr: Rect2 in _shadows:
+		draw_texture_rect(_shadow, sr, false)
+	_shadows.clear()
 	for layer: Dictionary in _batches:
 		for tex: Texture2D in layer:
 			for c: Array in layer[tex]:
@@ -1490,6 +1680,19 @@ func bld_texture(ty: String, era: int) -> Texture2D:
 	return list[clampi(era, 0, 5)] if era >= 0 else _bld_tex.get(ty, Tex.placeholder())
 
 
+## A building's shadow on the ground: as wide as its picture, falling a little to the right.
+func _building_shadow(b: Sim.Bld) -> void:
+	var ai := _art_of(b.ty)
+	var sw: float = ai[1]
+	var w := sw * 1.22
+	var h := minf(1.15, sw * 0.52)
+	var foot := Vector2(b.x + 0.5, b.y + 0.98) + SUN * sw * 1.6
+	if raised:
+		foot.y -= lift_at(b.x + 0.5, b.y + 0.9)
+	var a := 0.55 if b.state == "build" else 1.0
+	draw_texture_rect(_shadow, Rect2(foot.x - w / 2.0, foot.y - h * 0.62, w, h), false, Color(1, 1, 1, a))
+
+
 ## What drawing a building of a type needs from its data, looked up once per type:
 ## [style, picture width, hub, glow, smoke, military, siege, flag height share by picture].
 var _art := {}
@@ -1526,8 +1729,23 @@ func _draw_building(b: Sim.Bld, labels: Array, detail: bool) -> void:
 		var cs := minf(sw, 1.6)
 		draw_texture_rect(_constr, Rect2(b.x + 0.5 - cs / 2.0, b.y + 1.0 - cs, cs, cs), false)
 		if detail and b.builder == 2:
-			var beat := int(sim.time * 4.0 + b.id)
-			_sprite("unit_worker_hammer", Vector2(b.x + 0.12, b.y + 1.0), 0.4, 4 + beat % 2, false, pc.lightened(0.35))
+			var bt := sim.time * 4.0 + b.id
+			var beat := int(bt)
+			var hp := Vector2(b.x + 0.12, b.y + 1.0)
+			_sprite("unit_worker_hammer", hp, 0.4, 4 + beat % 2, false, pc.lightened(0.35))
+			if animate:
+				# each blow: a flick of sparks where the hammer lands, and dust drifting up from the site
+				var ph := fmod(bt, 1.0)
+				if beat % 2 == 1 and ph < 0.3:
+					var sp := hp + Vector2(0.2, -0.22)
+					for k in 3:
+						var a := -0.6 - k * 0.5
+						draw_line(sp, sp + Vector2(cos(a), sin(a)) * (0.05 + ph * 0.25), Color(1.0, 0.9, 0.5, 1.0 - ph * 3.0), 0.02)
+				var tt := Time.get_ticks_msec() / 1000.0
+				for k in 3:
+					var dph := fmod(tt * 0.45 + k * 0.33 + b.id * 0.17, 1.0)
+					var dp := Vector2(b.x + 0.2 + k * 0.3 + sin(tt + k) * 0.05, b.y + 0.95 - dph * 0.7)
+					draw_circle(dp, 0.07 + dph * 0.12, Color(0.78, 0.7, 0.58, 0.32 * (1.0 - dph)))
 		# materials lying at the site, waiting to be used
 		if zoom >= 18.0 and not b.onsite.is_empty():
 			var k := 0
@@ -1601,7 +1819,12 @@ func _draw_building(b: Sim.Bld, labels: Array, detail: bool) -> void:
 		draw_rect(Rect2(b.x + 0.1, b.y + 1.02, 0.8, 0.08), Color(0, 0, 0, 0.6))
 		draw_rect(Rect2(b.x + 0.1, b.y + 1.02, 0.8 * sim.work_progress(b), 0.08), Color("86ad5c"))
 	elif b.p == 1 and b.cyc > 0.0 and b.msg != "" and b.msg != "Working":
-		draw_circle(Vector2(rect.position.x + 0.1, rect.position.y + 0.2), 0.14, Color("e0603a"))
+		# a "!" badge on the building's roof: it can't work (the reason shows when you click it)
+		var bc := Vector2(rect.position.x + rect.size.x * 0.28, rect.position.y + rect.size.y * _tex_top(tex) + 0.12)
+		draw_circle(bc, 0.15, Color(0.12, 0.08, 0.05, 0.85))
+		draw_circle(bc, 0.12, Color("e0603a"))
+		draw_line(bc + Vector2(0, -0.075), bc + Vector2(0, 0.025), Color.WHITE, 0.035)
+		draw_circle(bc + Vector2(0, 0.065), 0.02, Color.WHITE)
 	var waiting := 0
 	for r in b.out_buf:
 		waiting += int(b.out_buf[r])
@@ -1615,50 +1838,115 @@ func _draw_building(b: Sim.Bld, labels: Array, detail: bool) -> void:
 		_prio_badge(b)
 
 
-## The colour of each crop when ripe.
-const CROP_COL := {"wheat": Color("d9b44a"), "rye": Color("b8a066"), "vegetables": Color("6fae46"), "potatoes": Color("9aa65a"), "flax": Color("8aa6dc"), "hops": Color("7fae3c")}
+## Farm fields: ploughed soil with furrows, and rows of plants that grow taller as the field grows,
+## turn the crop's colour when ripe and sway in the wind (their tips are marked for the map shader).
+## All fields make one mesh, made again only when a field is sown, grows a stage or is harvested.
+var _field_mesh: ArrayMesh
+var _field_sig := ""
+var _white: Texture2D
 
-## Farm fields: bare furrowed soil when just sown, green as they grow, the crop's colour when ripe.
-func _draw_fields(x0: int, x1: int, y0: int, y1: int) -> void:
+## [how tall when grown (tiles), how wide a plant, plants per row, ripe colour, colour of the tips]
+const CROP_LOOK := {
+	"wheat": [0.21, 0.10, 9, Color("d4ab42"), Color("f4dc86")],
+	"rye": [0.24, 0.09, 9, Color("b39c62"), Color("dccb96")],
+	"vegetables": [0.12, 0.17, 5, Color("5fa443"), Color("8acb5e")],
+	"potatoes": [0.13, 0.16, 5, Color("6f9a46"), Color("a9c472")],
+	"flax": [0.22, 0.08, 9, Color("6f9d4c"), Color("94aee6")],
+	"hops": [0.36, 0.11, 4, Color("4f8a36"), Color("b6d070")],
+}
+
+func _draw_fields(_x0: int, _x1: int, _y0: int, _y1: int) -> void:
 	if sim.fields.is_empty():
 		return
-	var soil := Color("6e4c2e")
-	var green := Color("5c8c36")
-	var detail := zoom >= DETAIL_ZOOM
+	var sig := "%d|%s|%d" % [sim.fields.size(), str(raised), chunks.ver]
+	var h := 0
 	for i in sim.fields:
+		var f: Array = sim.fields[i]
+		h = (h * 31 + i * 7 + int(float(f[2]) / Crops.GROW * 8.0) + String(f[1]).length()) % 1000000007
+	sig += "|%d" % h
+	if sig != _field_sig or _field_mesh == null:
+		_field_sig = sig
+		_field_mesh = _make_field_mesh()
+	if _white == null:
+		var wi := Image.create(1, 1, false, Image.FORMAT_RGBA8)
+		wi.fill(Color.WHITE)
+		_white = ImageTexture.create_from_image(wi)
+	if _field_mesh != null:
+		draw_mesh(_field_mesh, _white)
+
+
+func _make_field_mesh() -> ArrayMesh:
+	var v := PackedVector2Array()
+	var c := PackedColorArray()
+	var soil := Color("6e4c2e")
+	var soil_dark := Color("4f3420")
+	var soil_light := Color("85603c")
+	var green := Color("5c8c36")
+	var keys: Array = sim.fields.keys()
+	keys.sort()
+	for i in keys:
 		var x: int = i % sim.w
 		var y: int = i / sim.w
-		if x < x0 or x > x1 or y < y0 or y > y1:
-			continue
 		var f: Array = sim.fields[i]
-		var g := float(f[2]) / Crops.GROW
-		var ripe: Color = CROP_COL.get(String(f[1]), Color("d9b44a"))
-		var top := green.lerp(ripe, clampf((g - 0.6) / 0.4, 0.0, 1.0)) if g < 1.0 else ripe
-		var cover := clampf(g * 1.4, 0.0, 1.0)
-		var pts := PackedVector2Array()
-		for c in [Vector2(0.06, 0.06), Vector2(0.94, 0.06), Vector2(0.94, 0.94), Vector2(0.06, 0.94)]:
-			var q: Vector2 = Vector2(x, y) + c
-			if raised:
-				q.y -= lift_at(q.x, q.y)
-			pts.append(q)
-		draw_colored_polygon(pts, soil)
-		if not detail:
-			if cover > 0.0:
-				var cc := top; cc.a = cover
-				draw_colored_polygon(pts, cc)
+		var g := clampf(float(f[2]) / Crops.GROW, 0.0, 1.0)
+		var look: Array = CROP_LOOK.get(String(f[1]), CROP_LOOK.wheat)
+		var q := tile_quad(x, y)
+		# a corner of the plot, from fractions of the tile (u across, w down)
+		var at := func(u: float, w: float) -> Vector2:
+			return q[0].lerp(q[1], u).lerp(q[3].lerp(q[2], u), w)
+		var mg := 0.05
+		var ripe := clampf((g - 0.65) / 0.35, 0.0, 1.0)
+		var body := green.lerp(look[3], ripe)
+		var tipc := body.lerp(look[4], ripe)
+		var dark := body.darkened(0.3)
+		# the ground: ploughed soil, covered by the crop as it grows
+		var cover := clampf((g - 0.25) / 0.6, 0.0, 1.0) * 0.85
+		var ground := soil.lerp(dark, cover)
+		_quad(v, c, at.call(mg, mg), at.call(1.0 - mg, mg), at.call(1.0 - mg, 1.0 - mg), at.call(mg, 1.0 - mg), ground)
+		# furrows: a dark groove with a light ridge below it
+		for r in 5:
+			var w0 := 0.13 + r * 0.17
+			_quad(v, c, at.call(mg + 0.02, w0), at.call(1.0 - mg - 0.02, w0), at.call(1.0 - mg - 0.02, w0 + 0.04), at.call(mg + 0.02, w0 + 0.04), soil_dark.lerp(dark.darkened(0.2), cover))
+			_quad(v, c, at.call(mg + 0.02, w0 + 0.04), at.call(1.0 - mg - 0.02, w0 + 0.04), at.call(1.0 - mg - 0.02, w0 + 0.065), at.call(mg + 0.02, w0 + 0.065), soil_light.lerp(body, cover))
+		if g < 0.08:
 			continue
-		# rows: furrows on bare soil, then plants along them, taller and riper as the field grows
-		for r in 4:
-			var v := 0.18 + r * 0.21
-			var a := pts[0].lerp(pts[3], v)
-			var b := pts[1].lerp(pts[2], v)
-			draw_line(a, b, soil.darkened(0.35), 0.05)
-			if cover > 0.05:
-				var pc := top
-				pc.a = 0.5 + 0.5 * cover
-				draw_line(a + Vector2(0, -0.02), b + Vector2(0, -0.02), pc, 0.04 + 0.12 * cover)
-		if g >= 1.0:
-			draw_polyline(PackedVector2Array([pts[0], pts[1], pts[2], pts[3], pts[0]]), ripe.lightened(0.35), 0.03)
+		# plants along the ridges, back rows first
+		var tall: float = float(look[0]) * (0.25 + 0.75 * g)
+		var wid: float = float(look[1]) * (0.6 + 0.4 * g)
+		var n: int = look[2]
+		for r in 5:
+			var w0 := 0.13 + r * 0.17 + 0.05
+			for k in n:
+				var hh := MapChunks._hash(i * 7 + r, k)
+				var u := mg + 0.06 + (k + 0.5) / n * (0.88 - 2.0 * mg) + float(hh % 7 - 3) / 200.0
+				var base: Vector2 = at.call(u, w0)
+				var tl := tall * (0.85 + float(hh % 30) / 100.0)
+				var tip := base + Vector2(float((hh >> 4) % 5 - 2) / 100.0, -tl)
+				# a blade: two triangles, the shaded side and the lit side; the tip sways
+				var tc := Color(tipc, SWAY_CROP)
+				v.append_array(PackedVector2Array([base + Vector2(-wid / 2.0, 0), base, tip]))
+				c.append_array(PackedColorArray([dark, dark, Color(dark, SWAY_CROP)]))
+				v.append_array(PackedVector2Array([base, base + Vector2(wid / 2.0, 0), tip]))
+				c.append_array(PackedColorArray([body, body, tc]))
+	if v.is_empty():
+		return null
+	var arr := []
+	arr.resize(Mesh.ARRAY_MAX)
+	arr[Mesh.ARRAY_VERTEX] = v
+	arr[Mesh.ARRAY_COLOR] = c
+	var uv := PackedVector2Array()
+	uv.resize(v.size())
+	arr[Mesh.ARRAY_TEX_UV] = uv
+	var m := ArrayMesh.new()
+	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+	return m
+
+
+## Two triangles (a, b, cc, d) of one colour, for a mesh being made.
+static func _quad(v: PackedVector2Array, c: PackedColorArray, a: Vector2, b: Vector2, cc: Vector2, d: Vector2, col: Color) -> void:
+	v.append_array(PackedVector2Array([a, b, cc, a, cc, d]))
+	for k in 6:
+		c.append(col)
 
 
 ## An outdoor worker: walks out to the tree, rock, clay or water, works there, and walks home with
@@ -1698,8 +1986,192 @@ func _draw_worker(b: Sim.Bld, pc: Color) -> void:
 		var outs: Dictionary = Crops.out_of(sim, b)
 		if outs.size() > 0 and _res_tex.has(outs.keys()[0]):
 			draw_texture_rect(_res_tex[outs.keys()[0]], Rect2(p2.x - 0.13, p2.y - hh - 0.2, 0.26, 0.26), false)
+	elif act == "fish" and dist > 1.2:
+		# out in his boat over the fishing ground, rocking on the water, casting now and then
+		var bp := spot.lerp(tgt, 0.6) + Vector2(0, 0.04 * sin(sim.time * 2.1 + b.id))
+		var fl := -1.0 if tgt.x < spot.x else 1.0
+		_boat(bp, fl, 0.55)
+		_person(id, bp + Vector2(0, -0.06), nw + int(sim.time * 1.5 + b.id) % 2, fl < 0, col)
+		# the line, and rings on the water where it goes in
+		var tipp := bp + Vector2(0.32 * fl, -0.42)
+		var bob := bp + Vector2(0.62 * fl, 0.08)
+		draw_line(tipp, bob, Color(0.9, 0.9, 0.85, 0.7), 0.012)
+		var rr := fmod(sim.time * 0.8 + b.id * 0.3, 1.0)
+		draw_arc(bob, 0.05 + rr * 0.18, 0, TAU, 16, Color(1, 1, 1, 0.5 * (1.0 - rr)), 0.02)
 	else:
 		_person(id, spot, nw + int(sim.time * 3.0 + b.id) % 2, tgt.x < spot.x, col)
+		_work_fx(act, b, spot, tgt)
+
+
+## Little bits flying where a worker is at work: seeds sown and chaff at the harvest in the fields,
+## wood chips at the tree, stone chips at the rock. at: where he stands; tgt: what he works on.
+func _work_fx(act: String, b: Sim.Bld, at: Vector2, tgt: Vector2) -> void:
+	if not animate or zoom < DETAIL_ZOOM:
+		return
+	var t := Time.get_ticks_msec() / 1000.0 + b.id * 0.31
+	var fl := 1.0 if tgt.x >= at.x else -1.0
+	match act:
+		"farm":
+			if b.sowing:
+				# a swing of the arm: seeds fan out onto the furrows
+				var ph := fmod(t * 1.2, 1.0)
+				for k in 5:
+					var d := Vector2(fl * (0.15 + k * 0.07), -0.25)
+					var p := at + Vector2(0, -0.28) + d * ph + Vector2(0, 0.6 * ph * ph)
+					draw_circle(p, 0.018, Color(0.85, 0.75, 0.45, 1.0 - ph * 0.6))
+			else:
+				# reaping: chaff and straw flying from the sickle
+				for k in 6:
+					var ph := fmod(t * 0.9 + k * 0.17, 1.0)
+					var p := at + Vector2(fl * (0.2 + ph * 0.3) + sin(t * 3.0 + k) * 0.05, -0.15 - sin(ph * PI) * 0.35)
+					draw_line(p, p + Vector2(0.04, -0.02).rotated(t * 4.0 + k), Color(0.95, 0.82, 0.42, 1.0 - ph), 0.02)
+		"cut_tree", "cut_rock":
+			# chips flying from each blow
+			var ph := fmod(t * 1.6, 1.0)
+			if ph < 0.6:
+				var c := Color(0.62, 0.45, 0.26) if act == "cut_tree" else Color(0.7, 0.7, 0.68)
+				var src := tgt + Vector2(-fl * 0.12, -0.35 if act == "cut_tree" else -0.15)
+				for k in 4:
+					var a := -PI / 2.0 + (k - 1.5) * 0.45 - fl * 0.6
+					var p := src + Vector2(cos(a), sin(a)) * ph * 0.45 + Vector2(0, ph * ph * 0.5)
+					draw_rect(Rect2(p, Vector2(0.04, 0.03)), Color(c, 1.0 - ph / 0.6))
+
+
+# ---------------------------------------------------------------- effects: a tree falls, a building is done
+var _fx: Array = []              # [kind, where (tiles), start time (s), extra]
+
+func fx_tree(tile: int) -> void:
+	if not animate or sim == null:
+		return
+	var x := tile % sim.w
+	var y := tile / sim.w
+	var fog = sim.get_feature("fog")
+	if fog != null and not fog.visible_at(tile):
+		return
+	_fx.append(["tree", Vector2(x + 0.5, y + 1.0), Time.get_ticks_msec() / 1000.0, _tree_kind(x, y)])
+	if _fx.size() > 120:
+		_fx.pop_front()
+
+
+func fx_done(id: int) -> void:
+	if not animate or sim == null:
+		return
+	var b: Sim.Bld = sim.by_id.get(id)
+	if b == null:
+		return
+	var fog = sim.get_feature("fog")
+	if fog != null and b.p != 1 and not fog.visible_at(sim.idx(b.x, b.y)):
+		return
+	_fx.append(["done", Vector2(b.x + 0.5, b.y + 0.9), Time.get_ticks_msec() / 1000.0, float(_art_of(b.ty)[1])])
+	if _fx.size() > 120:
+		_fx.pop_front()
+
+
+## Which tree picture stood on (x, y) (the same choice as the scenery makes).
+func _tree_kind(x: int, y: int) -> int:
+	var patch := MapChunks._hash(x / 5 + 101, y / 5 + 37)
+	var hh := MapChunks._hash(x, y)
+	if patch % 3 == 0:
+		return [0, 3, 0, 3, 1][hh % 5]
+	return [1, 4, 2, 1, 4, 0][hh % 6]
+
+
+func _draw_fx(x0: int, y0: int, x1: int, y1: int) -> void:
+	if _fx.is_empty():
+		return
+	var now := Time.get_ticks_msec() / 1000.0
+	var keep: Array = []
+	for e in _fx:
+		var age := now - float(e[2])
+		var p: Vector2 = e[1]
+		if age > 3.0:
+			continue
+		keep.append(e)
+		if p.x < x0 - 3 or p.x > x1 + 3 or p.y < y0 - 3 or p.y > y1 + 4:
+			continue
+		var lp := p
+		if raised:
+			lp.y -= lift_at(p.x, p.y - 0.2)
+		match String(e[0]):
+			"tree":
+				# it leans, then falls ever faster, lies a moment and fades; leaves and dust where it lands
+				var dirn := 1.0 if MapChunks._hash(int(p.x), int(p.y)) % 2 == 0 else -1.0
+				var fall := clampf(age / 1.1, 0.0, 1.0)
+				var ang := dirn * fall * fall * 1.5
+				var alpha := 1.0 if age < 1.6 else clampf(1.0 - (age - 1.6) / 1.2, 0.0, 1.0)
+				var tex := Tex.get_tex(String(SCENERY[int(e[3])]))
+				if tex != null:
+					draw_set_transform(_origin + lp * zoom, ang, Vector2(zoom, zoom))
+					draw_texture_rect(tex, Rect2(-0.5, -1.5, 1.0, 1.5), false, Color(1, 1, 1, alpha))
+					draw_set_transform(_origin, 0.0, Vector2(zoom, zoom))
+				# a stump stays
+				draw_rect(Rect2(lp.x - 0.06, lp.y - 0.1, 0.12, 0.1), Color(0.45, 0.3, 0.18, alpha))
+				if age > 1.0 and age < 1.8:
+					var u := (age - 1.0) / 0.8
+					var land := lp + Vector2(dirn * 1.1, -0.1)
+					for k in 7:
+						var a := -PI / 2.0 + (k - 3) * 0.4
+						draw_circle(land + Vector2(cos(a), sin(a) * 0.5) * u * 0.5, 0.05 + u * 0.08, Color(0.75, 0.68, 0.5, 0.45 * (1.0 - u)))
+						draw_circle(land + Vector2(cos(a + 0.2), sin(a + 0.2)) * u * 0.6 + Vector2(0, u * u * 0.3), 0.03, Color(0.35, 0.55, 0.25, 0.8 * (1.0 - u)))
+			"fall":
+				# a fallen soldier: he topples over, lies a while and fades
+				if age > 2.8:
+					continue
+				var info: Array = e[3]
+				var tilt := clampf(age / 0.4, 0.0, 1.0) * (PI / 2.0) * (-1.0 if bool(info[2]) else 1.0)
+				var fa := 1.0 if age < 1.8 else clampf(1.0 - (age - 1.8) / 1.0, 0.0, 1.0)
+				var ec := _spr_info(String(info[0]))
+				var stex: Texture2D = ec[0]
+				var fw: float = ec[2]
+				var src := Rect2(0, 0, fw, float(ec[3]))
+				var hgt := 0.5 * src.size.y / maxf(1.0, src.size.x)
+				draw_set_transform(_origin + lp * zoom, tilt, Vector2(zoom, zoom))
+				var cc: Color = info[1]
+				draw_texture_rect_region(stex, Rect2(-0.25, -hgt, 0.5, hgt), src, Color(cc.r, cc.g, cc.b, fa))
+				draw_set_transform(_origin, 0.0, Vector2(zoom, zoom))
+			"done":
+				# a ring of dust rolling out from the walls, and sparkles rising
+				if age > 1.8:
+					continue
+				var u := age / 1.8
+				var w: float = float(e[3]) * 0.6
+				for k in 10:
+					var a := k * TAU / 10.0
+					var d := Vector2(cos(a) * w * (0.6 + u * 0.9), sin(a) * 0.35 * (0.6 + u * 0.9))
+					draw_circle(lp + d, 0.12 + u * 0.25, Color(0.86, 0.82, 0.72, 0.5 * (1.0 - u)))
+				for k in 6:
+					var sx := lp + Vector2((k - 2.5) * w * 0.35, -0.6 - u * 1.4 - float(k % 3) * 0.2)
+					var r := 0.08 * (1.0 - u)
+					var sc := Color(1.0, 0.92, 0.55, 1.0 - u)
+					draw_line(sx - Vector2(r, 0), sx + Vector2(r, 0), sc, 0.03)
+					draw_line(sx - Vector2(0, r), sx + Vector2(0, r), sc, 0.03)
+	_fx = keep
+
+
+## Soldiers falling: when a column (key: its uid) or a garrison (key: minus the building's id) has
+## fewer than last time it was drawn, that many fall where they fight and fade out.
+var _last_n := {}
+
+func _track_losses(key: int, n: int, where: Vector2, sid: String, col: Color, flip: bool) -> void:
+	var was := int(_last_n.get(key, n))
+	_last_n[key] = n
+	if not animate or n >= was:
+		return
+	var now := Time.get_ticks_msec() / 1000.0
+	for k in mini(was - n, 4):
+		_fx.append(["fall", where + Vector2((k - 1) * 0.22, 0.05 * k), now, [sid, col, flip]])
+	if _last_n.size() > 400:
+		_last_n.clear()
+
+
+## A rowing boat with its keel at p, facing right when fl is 1 (left at -1), sz tiles long.
+func _boat(p: Vector2, fl: float, sz: float) -> void:
+	var w := sz
+	draw_colored_polygon(PackedVector2Array([p + Vector2(-w * 0.5 * fl, -0.08), p + Vector2(w * 0.55 * fl, -0.1), p + Vector2(w * 0.38 * fl, 0.04), p + Vector2(-w * 0.4 * fl, 0.04)]), Color("6b4a2a"))
+	draw_line(p + Vector2(-w * 0.5 * fl, -0.08), p + Vector2(w * 0.55 * fl, -0.1), Color("8a6440"), 0.03)
+	# its wake: two thin ripples spreading behind it
+	var rr := fmod(Time.get_ticks_msec() / 1000.0 * 0.6, 1.0)
+	draw_arc(p + Vector2(0, 0.03), w * (0.5 + rr * 0.4), 0.2, PI - 0.2, 12, Color(1, 1, 1, 0.35 * (1.0 - rr)), 0.02)
 
 
 ## A worker: the picture as it is, then the tunic in the realm's colour (an older single-layer picture
@@ -1934,6 +2406,7 @@ func _draw_newcomer(hq: Sim.Bld) -> void:
 const SCENERY := ["deco_tree_0", "deco_tree_1", "deco_tree_2", "deco_tree_3", "deco_tree_4",
 	"deco_peak_0", "deco_peak_1", "deco_rock_0", "deco_rock_1"]
 const SCN_PX := 64                 # atlas pixels per tile
+var _scn_shadow_uv := Rect2()      # where the shadow lies in the scenery atlas
 const SCN_PEAK := 5
 const SCN_ROCK := 7
 
@@ -1942,7 +2415,8 @@ func _make_scenery_atlas() -> void:
 	var n := SCENERY.size()
 	var cw := SCN_PX + 4
 	var chh := SCN_PX * 3 / 2 + 4
-	var img := Image.create(cw * n, chh, false, Image.FORMAT_RGBA8)
+	# one cell more at the end: the soft shadow laid under trees and boulders
+	var img := Image.create(cw * (n + 1), chh, false, Image.FORMAT_RGBA8)
 	_scn_size = []
 	for k in n:
 		var id: String = SCENERY[k]
@@ -1965,6 +2439,12 @@ func _make_scenery_atlas() -> void:
 		img.blit_rect(src, Rect2i(0, 0, tw, th), at)
 		var isz := Vector2(img.get_size())
 		_scn_size.append([Rect2(Vector2(at) / isz, Vector2(tw, th) / isz), Vector2(1.0, float(th) / SCN_PX)])
+	var sh := (_shadow as ImageTexture).get_image() if _shadow is ImageTexture else _make_shadow().get_image()
+	sh = sh.duplicate()
+	sh.clear_mipmaps()
+	var sat := Vector2i(n * cw + 2, chh - 2 - sh.get_height())
+	img.blit_rect(sh, Rect2i(0, 0, sh.get_width(), sh.get_height()), sat)
+	_scn_shadow_uv = Rect2(Vector2(sat) / Vector2(img.get_size()), Vector2(sh.get_size()) / Vector2(img.get_size()))
 	img.fix_alpha_edges()
 	img.generate_mipmaps()
 	_scn_atlas = ImageTexture.create_from_image(img)
@@ -1993,6 +2473,11 @@ func _scenery_mesh(cx: int, cy: int) -> ArrayMesh:
 	var uvs := PackedVector2Array()
 	var cols := PackedColorArray()
 	var idx := PackedInt32Array()
+	# shadows go in first, so every tree stands on top of its neighbours' shadows
+	var sv := PackedVector2Array()
+	var su := PackedVector2Array()
+	var suv := _scn_shadow_uv
+	var shade := Color(1, 1, 1, 1)
 	var CHN := MapChunks.CH
 	for ly in CHN:
 		var y := cy * CHN + ly
@@ -2023,15 +2508,42 @@ func _scenery_mesh(cx: int, cy: int) -> ArrayMesh:
 			var foot := Vector2(x + 0.5, y + 1.0) + off
 			var lift := lift_at(foot.x, foot.y - 0.2) if raised else 0.0
 			var tl := Vector2(foot.x - sz.x / 2.0, foot.y - sz.y - lift)
+			# its shadow (not for mountain peaks, whose shade is in the ground)
+			if k < SCN_PEAK or k >= SCN_ROCK:
+				var sw := sz.x * (0.78 if k < SCN_PEAK else 0.95)
+				var shh := sw * (0.34 if k < SCN_PEAK else 0.42)
+				var sc0 := Vector2(foot.x + SUN.x * sz.y * 0.9, foot.y - lift - 0.06)
+				var stl := sc0 - Vector2(sw / 2.0, shh * 0.55)
+				sv.append_array(PackedVector2Array([stl, stl + Vector2(sw, 0), stl + Vector2(sw, shh), stl + Vector2(0, shh)]))
+				su.append_array(PackedVector2Array([suv.position, suv.position + Vector2(suv.size.x, 0), suv.end, suv.position + Vector2(0, suv.size.y)]))
 			var n := verts.size()
 			verts.append_array(PackedVector2Array([tl, tl + Vector2(sz.x, 0), tl + sz, tl + Vector2(0, sz.y)]))
 			uvs.append_array(PackedVector2Array([uv.position, uv.position + Vector2(uv.size.x, 0), uv.end, uv.position + Vector2(0, uv.size.y)]))
 			var b := 0.9 + float((hh >> 3) % 15) / 100.0
 			var c := Color(b, b, b)
-			cols.append_array(PackedColorArray([c, c, c, c]))
+			# a tree's top corners are marked to sway in the wind (see map_sway.gdshader)
+			var ct := Color(b, b, b, SWAY_TREE) if k < SCN_PEAK else c
+			cols.append_array(PackedColorArray([ct, ct, c, c]))
 			idx.append_array(PackedInt32Array([n, n + 1, n + 2, n, n + 2, n + 3]))
 	if verts.is_empty():
 		return null
+	# the shadows first, then the trees and rocks
+	if not sv.is_empty():
+		var ns := sv.size()
+		var idx2 := PackedInt32Array()
+		for q in ns / 4:
+			var o := q * 4
+			idx2.append_array(PackedInt32Array([o, o + 1, o + 2, o, o + 2, o + 3]))
+		for v in idx.size():
+			idx[v] += ns
+		idx2.append_array(idx)
+		idx = idx2
+		sv.append_array(verts); verts = sv
+		su.append_array(uvs); uvs = su
+		var sc2 := PackedColorArray()
+		sc2.resize(ns)
+		sc2.fill(shade)
+		sc2.append_array(cols); cols = sc2
 	var arr := []
 	arr.resize(Mesh.ARRAY_MAX)
 	arr[Mesh.ARRAY_VERTEX] = verts

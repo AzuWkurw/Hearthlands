@@ -16,6 +16,9 @@ signal tech_done(pid: int, tech: String)
 
 
 signal diplomacy_changed
+# For the eye only (the map shows them; nothing in the game depends on them):
+signal tree_felled(tile: int)          # a woodcutter felled the tree on this tile
+signal building_done(id: int)          # a building site was finished
 
 ## The simulation's parts (see sim_*.gd). Each holds a reference back to this object.
 var ai := SimAI.new(self)
@@ -363,6 +366,9 @@ class Attack:
 	var dvt: Array = [0.0, 0.0]  # the same for the defenders shooting back
 	var shot_t := -99.0          # game time of the last volley by the attackers (for the picture and sound)
 	var dshot_t := -99.0         # and by the defenders
+	var arrow_t := -99.0         # game time of the last arrow volley at it (for the picture)
+	var arrow_src := Vector2.ZERO  # the building those arrows came from
+	var arrow_n := 0             # how many archers shot
 	var hits := 0                # soldiers hit by the last volley, for the picture
 	var uid := 0                 # its own number (from the building ids), so a field battle can name its foe
 	var n0 := 0                  # how many set out (a rival pulls back when over half have fallen and the gate still holds)

@@ -691,6 +691,8 @@ func _build_ui() -> void:
 	view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	view.offset_right = -SIDE_W
 	view.sim = sim
+	sim.tree_felled.connect(view.fx_tree)
+	sim.building_done.connect(view.fx_done)
 	view.tile_clicked.connect(_on_tile)
 	view.cancel_requested.connect(_cancel_place)
 	add_child(view)

@@ -7,6 +7,10 @@ shader_type canvas_item;
 
 // Turned off by the "Animations" option, which leaves the water still.
 uniform bool animate = true;
+// How cloudy it is where you look (0 clear sky .. 1 overcast): shadows of clouds drift over the land.
+uniform float clouds = 0.3;
+// Which way and how fast the clouds drift, in tiles a second.
+uniform vec2 drift = vec2(0.35, 0.12);
 
 // Position of the pixel on the map, in tiles, handed from the vertex step to the pixel step.
 varying vec2 world;
@@ -36,6 +40,13 @@ void fragment() {
 	vec4 c = COLOR;
 	// 1.0 for open water (alpha 0.5), fading to 0.0 on land (alpha 1.0) and along soft shorelines.
 	float water = clamp((1.0 - c.a) * 2.0, 0.0, 1.0);
+	// the shore: where land and water meet, foam washes in and out
+	float shore = clamp(1.0 - abs(water * 2.0 - 1.0) * 1.6, 0.0, 1.0);
+	if (animate && shore > 0.0) {
+		float wash = 0.5 + 0.5 * sin(TIME * 1.4 + world.x * 1.3 + world.y * 1.1);
+		float lace = noise(world * 7.0 + vec2(TIME * 0.4, 0.0));
+		c.rgb = mix(c.rgb, vec3(0.93, 0.96, 0.97), shore * wash * smoothstep(0.35, 0.75, lace) * 0.55);
+	}
 	if (animate && water > 0.0) {
 		float t = TIME;
 		// Wobble where the colour is read from, so the water surface seems to ripple.
@@ -47,6 +58,13 @@ void fragment() {
 		c.rgb += vec3(0.22, 0.26, 0.28) * smoothstep(0.5, 0.8, n) * water;
 		// A slow swell that brightens and darkens wide patches of water.
 		c.rgb *= 1.0 + 0.05 * sin(t * 0.9 + world.x * 0.7 + world.y * 0.5) * water;
+	}
+	// cloud shadows: big soft patches drifting with the wind (more of them on a cloudy day)
+	if (clouds > 0.01) {
+		vec2 p = world * 0.055 - drift * TIME * 0.055;
+		float n = noise(p) * 0.65 + noise(p * 2.3 + 7.1) * 0.35;
+		float cover = smoothstep(0.78 - clouds * 0.45, 0.95 - clouds * 0.35, n);
+		c.rgb *= 1.0 - (0.07 + 0.15 * clouds) * cover;
 	}
 	COLOR = vec4(c.rgb, 1.0);
 }

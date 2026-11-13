@@ -251,6 +251,7 @@ func finish_prod(b: Sim.Bld, p: Sim.Player) -> void:
 		"cut_tree":
 			if tg < 0 or sim.deco[tg] != Sim.D_TREE: return
 			sim.deco[tg] = 0; sim.changed_tiles.append(tg)
+			sim.tree_felled.emit(tg)
 		"cut_rock":
 			if tg < 0: return
 			if sim.deco[tg] == Sim.D_ROCK:
@@ -382,6 +383,7 @@ func _finish_site(b: Sim.Bld, p: Sim.Player) -> void:
 	if true:
 		b.state = "ready"; b.prog = 0.0; b.msg = ""
 		sim._after_building_change(b)
+		sim.building_done.emit(b.id)
 		if sim.is_store(b):
 			sim._recount_stores(p)
 		if b.def.has("garrison"):

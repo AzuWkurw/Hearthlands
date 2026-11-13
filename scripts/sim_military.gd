@@ -247,7 +247,9 @@ func _arrows(a: Sim.Attack, p: Sim.Player, t: Sim.Bld, left: float) -> void:
 	if sim.time < t.arrow_t:
 		return
 	t.arrow_t = sim.time + ARCHER_RELOAD
-	a.dshot_t = sim.time
+	a.arrow_t = sim.time
+	a.arrow_src = Vector2(t.x, t.y)
+	a.arrow_n = n
 	var broke := 0
 	for s in n:
 		if a.n > 0 and sim.rng.randf() < ARCHER_HIT:
