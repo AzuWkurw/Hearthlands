@@ -96,6 +96,13 @@ func staffing(p: Sim.Player) -> void:
 					b.builder = 1
 			elif not b.staffed and b.builder != 0:
 				b.builder = 0
+	# one peasant kept free for the next building site (a setting), so a new site starts at once
+	# instead of taking a worker from his job
+	var spare := 0
+	if p.spare_builder and ip > 0:
+		ip -= 1
+		spare = 1
+	var lim_n := {}
 	for b: Sim.Bld in ordered:
 		if b.state != "ready":
 			continue
@@ -103,17 +110,23 @@ func staffing(p: Sim.Player) -> void:
 			b.rate_c = rate(p, b)
 		var wk := String(b.def.get("worker", ""))
 		var was := b.staffed
+		# the player's limit on how many of this kind get workers
+		var lim_ok := true
+		if not p.job_limit.is_empty() and p.job_limit.has(b.ty):
+			lim_ok = int(lim_n.get(b.ty, 0)) < int(p.job_limit[b.ty])
 		if wk == "peasant":
-			b.staffed = b.prio != Sim.PRIO_PAUSED and ip > 0 and (was or sim._can_hire(p, b))
+			b.staffed = b.prio != Sim.PRIO_PAUSED and lim_ok and ip > 0 and (was or sim._can_hire(p, b))
 			if b.staffed: ip -= 1
 		elif wk == "artisan":
-			b.staffed = b.prio != Sim.PRIO_PAUSED and ia > 0 and (was or sim._can_hire(p, b))
+			b.staffed = b.prio != Sim.PRIO_PAUSED and lim_ok and ia > 0 and (was or sim._can_hire(p, b))
 			if b.staffed: ia -= 1
 		elif wk == "scout":
 			b.staffed = b.prio != Sim.PRIO_PAUSED and isc > 0
 			if b.staffed: isc -= 1
 		if b.staffed:
 			b.need_tool = ""
+			if wk != "":
+				lim_n[b.ty] = int(lim_n.get(b.ty, 0)) + 1
 		if was and not b.staffed:
 			_release_worker(p, b)
 		elif b.staffed and not was:
@@ -124,10 +137,10 @@ func staffing(p: Sim.Player) -> void:
 				b.worker = 2 if sim.creative(p) else 1
 		elif not b.staffed and b.worker != 0:
 			b.worker = 0
-	p.used_peasant = p.peasant - ip
+	p.used_peasant = p.peasant - ip - spare
 	p.used_artisan = p.artisan - ia
 	p.used_scout = p.scout - p.scout_out - isc
-	_trim_specialists(p, "peasant", p.peasant - p.used_peasant)
+	_trim_specialists(p, "peasant", p.peasant - p.used_peasant - spare)
 	_trim_specialists(p, "artisan", p.artisan - p.used_artisan)
 
 
@@ -416,9 +429,16 @@ func _walker_arrival(t: Sim.Trip, p: Sim.Player) -> void:
 
 func mil_fill(p: Sim.Player) -> bool:
 	var changed := false
+	var order: Array = []
 	for b: Sim.Bld in sim.mil_list():
-		if b.p != p.id or b.state != "ready" or not b.def.has("garrison"):
-			continue
+		if b.p == p.id and b.state == "ready" and b.def.has("garrison"):
+			order.append(b)
+	if p.border_first:
+		# buildings near the border first (the list keeps its order within each group)
+		var front := order.filter(func(x): return x.border)
+		var back := order.filter(func(x): return not x.border)
+		order = front + back
+	for b: Sim.Bld in order:
 		if b.def.get("needs_noble", false) and p.noble < 1:
 			continue
 		var cap := garrison_wanted(b)
@@ -438,7 +458,7 @@ func mil_fill(p: Sim.Player) -> bool:
 			b.walking += 1; p.reserve -= 1
 			p.res_era = Sim.mix_avg(sim.rmix_of(p))
 		# the player's garrison settings: extra soldiers go home, kinds not wanted are swapped
-		if b.want_n >= 0 or not b.want_kinds.is_empty():
+		if b.want_n >= 0 or not b.want_kinds.is_empty() or b.garrison > cap:
 			_garrison_settle(b, p, cap)
 	return changed
 
@@ -446,7 +466,13 @@ func mil_fill(p: Sim.Player) -> bool:
 ## Soldiers building b should hold: the player's choice, at least 1, at most what it holds.
 func garrison_wanted(b: Sim.Bld) -> int:
 	var cap := int(b.def.get("garrison", 0))
-	return cap if b.want_n < 0 else clampi(b.want_n, 1, cap)
+	if b.want_n >= 0:
+		return clampi(b.want_n, 1, cap)
+	# buildings away from the border hold the share the realm has set (at least one soldier)
+	var p := sim.players[b.p - 1]
+	if not b.border and p.inner_pct < 100 and b.ty != "hq":
+		return clampi(ceili(cap * p.inner_pct / 100.0), 1, cap)
+	return cap
 
 
 ## Whether soldiers of kind k may serve in building b.

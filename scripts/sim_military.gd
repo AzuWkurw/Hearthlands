@@ -131,6 +131,30 @@ func defenders(t: Sim.Bld) -> int:
 	return n
 
 
+## Marks each military building as near the border or not: another realm's land within BORDER_R
+## tiles of it. (Soldiers go to border buildings first, and inner ones can hold fewer.)
+const BORDER_R := 11
+
+func mark_borders() -> void:
+	for b: Sim.Bld in sim.mil_list():
+		if b.dead:
+			continue
+		var near := false
+		var y0 := maxi(0, b.y - BORDER_R)
+		var y1 := mini(sim.h - 1, b.y + BORDER_R)
+		var x0 := maxi(0, b.x - BORDER_R)
+		var x1 := mini(sim.w - 1, b.x + BORDER_R)
+		for y in range(y0, y1 + 1, 2):
+			for x in range(x0, x1 + 1, 2):
+				var o := sim.owner[y * sim.w + x]
+				if o != 0 and o != b.p:
+					near = true
+					break
+			if near:
+				break
+		b.border = near
+
+
 # ---------------------------------------------------------------- archers
 const ARCHER_RANGE := 6.0
 const ARCHER_RELOAD := 4.0
@@ -194,29 +218,35 @@ func archers_tick() -> void:
 		var p := sim.players[b.p - 1]
 		if p.ai:
 			# rivals give a third of each garrison bows once they make them (warlords fewer: they attack)
-			b.archer_want = int(b.def.garrison) / (4 if p.pers == "warlord" else 3)
-		var want := mini(b.archer_want, b.garrison)
-		if b.archers > b.garrison:
-			b.archers = b.garrison
+			b.archer_want = archer_cap(b) / (2 if p.pers == "warlord" else 1)
+		# no more archers than half the soldiers inside now (at least one while anyone is there)
+		var room := 0 if b.garrison <= 0 else maxi(1, (b.garrison + 1) / 2)
+		var want := mini(mini(b.archer_want, archer_cap(b)), room)
 		if b.archers < want and float(p.stock.get("bows", 0.0)) >= 1.0:
 			sim.take(p, "bows", 1.0)
 			sim.used(p, "bows", 1.0)
 			b.archers += 1
-		elif b.archers > want and b.archers > 0 and b.archer_want < b.archers:
+		elif b.archers > want and b.archers > 0:
 			b.archers -= 1
 			sim.give(p, "bows", 1.0)
 
 
-## The archers of t shoot at an attack within ARCHER_RANGE (also at the gate).
+## Archers a building can hold: half as many as the soldiers it holds when full (at least 1), and
+## never more than half of those inside now. They are extra to the garrison: they shoot from the
+## walls and do not fight at the gate.
+func archer_cap(b: Sim.Bld) -> int:
+	return 0 if b.ty == "hq" else maxi(1, (int(b.def.get("garrison", 0)) + 1) / 2)
+
+
+## The archers of t shoot at an attack within ARCHER_RANGE (also at the gate, and at columns that
+## only pass by on their way to another building).
 func _arrows(a: Sim.Attack, p: Sim.Player, t: Sim.Bld, left: float) -> void:
-	var n := mini(t.archers, own_def(t)) if t.ty != "hq" else 0
-	if n <= 0 or left > ARCHER_RANGE:
+	var n := t.archers if t.ty != "hq" else 0
+	if n <= 0 or left > ARCHER_RANGE or t.state != "ready":
 		return
-	while a.dvt.size() < 4:
-		a.dvt.append(0.0)
-	if sim.time < float(a.dvt[3]):
+	if sim.time < t.arrow_t:
 		return
-	a.dvt[3] = sim.time + ARCHER_RELOAD
+	t.arrow_t = sim.time + ARCHER_RELOAD
 	a.dshot_t = sim.time
 	var broke := 0
 	for s in n:
@@ -245,7 +275,9 @@ func _sally(a: Sim.Attack, t: Sim.Bld) -> void:
 	if src == null or src.dead:
 		return
 	var n := mini(own_def(t) - 1, maxi(1, a.n))
-	if launch_attack(t, src, n, [], true) == "" and t.p == 1:
+	var back := a.path.duplicate()
+	back.reverse()
+	if launch_attack(t, src, n, [], true, back) == "" and t.p == 1:
 		sim.emit_log("Your soldiers from the %s march out to meet the attack." % String(t.def.name), Color("d8aa4a"), Vector2i(t.x, t.y))
 
 
@@ -348,7 +380,106 @@ func _defender_gains_xp(t: Sim.Bld) -> void:
 
 
 ## want: at most this many march (-1: as many as can); kinds: only these soldier kinds march (empty: any).
-func launch_attack(src: Sim.Bld, tgt: Sim.Bld, want := -1, kinds: Array = [], sally := false) -> String:
+# ---------------------------------------------------------------- the way a column marches
+## Soldiers do not walk on water: a column marches round lakes and rivers and over bridges. A way
+## may be up to WAY_MAX times as long as the straight line.
+const WAY_MAX := 2.2
+
+func _walkable(i: int) -> bool:
+	return sim.ter[i] != Sim.WATER or sim.road[i] != 0
+
+
+## The tiles a column walks from (sx, sy) to (tx, ty), or empty when water bars the way.
+func land_path(sx: int, sy: int, tx: int, ty: int) -> PackedInt32Array:
+	var w := sim.w
+	var start := sy * w + sx
+	var goal := ty * w + tx
+	var straight := Vector2(tx - sx, ty - sy).length()
+	# open land between them: the straight line
+	var clear := true
+	var steps := maxi(1, ceili(straight * 2.0))
+	for k in range(1, steps):
+		var q := Vector2(sx, sy).lerp(Vector2(tx, ty), float(k) / steps).round()
+		if not _walkable(int(q.y) * w + int(q.x)):
+			clear = false
+			break
+	if clear:
+		return PackedInt32Array([start, goal])
+	var m := 14
+	var x0 := maxi(0, mini(sx, tx) - m)
+	var x1 := mini(w - 1, maxi(sx, tx) + m)
+	var y0 := maxi(0, mini(sy, ty) - m)
+	var y1 := mini(sim.h - 1, maxi(sy, ty) + m)
+	var limit := straight * WAY_MAX + 4.0
+	var g := {start: 0.0}
+	var par := {start: -1}
+	var heap := Sim.MinHeap.new()
+	heap.push(straight, start)
+	var done := {}
+	while heap.size() > 0:
+		var cur := heap.pop()
+		if done.has(cur):
+			continue
+		done[cur] = true
+		if cur == goal:
+			break
+		var cx := cur % w
+		var cy := cur / w
+		var gc: float = g[cur]
+		for dy in range(-1, 2):
+			for dx in range(-1, 2):
+				if dx == 0 and dy == 0:
+					continue
+				var nx := cx + dx
+				var ny := cy + dy
+				if nx < x0 or nx > x1 or ny < y0 or ny > y1:
+					continue
+				var ni := ny * w + nx
+				if done.has(ni) or (ni != goal and not _walkable(ni)):
+					continue
+				# no cutting a corner of the water
+				if dx != 0 and dy != 0 and (not _walkable(cy * w + nx) or not _walkable(ny * w + cx)):
+					continue
+				var ng := gc + (1.0 if dx == 0 or dy == 0 else 1.4142)
+				if ng > limit or ng >= float(g.get(ni, 1e9)):
+					continue
+				g[ni] = ng
+				par[ni] = cur
+				heap.push(ng + Vector2(tx - nx, ty - ny).length(), ni)
+	if not par.has(goal):
+		return PackedInt32Array()
+	var out := PackedInt32Array()
+	var c := goal
+	while c >= 0:
+		out.append(c)
+		c = par[c]
+	out.reverse()
+	return out
+
+
+static func path_len(sim_w: int, path: PackedInt32Array) -> float:
+	var l := 0.0
+	for k in range(1, path.size()):
+		l += Vector2(path[k] % sim_w - path[k - 1] % sim_w, path[k] / sim_w - path[k - 1] / sim_w).length()
+	return l
+
+
+## The point at share f (0..1) of the way along a path.
+func _along(path: PackedInt32Array, f: float) -> Vector2:
+	var w := sim.w
+	var total := path_len(w, path)
+	var want := clampf(f, 0.0, 1.0) * total
+	for k in range(1, path.size()):
+		var a := Vector2(path[k - 1] % w, path[k - 1] / w)
+		var b := Vector2(path[k] % w, path[k] / w)
+		var l := a.distance_to(b)
+		if want <= l or k == path.size() - 1:
+			return a.lerp(b, clampf(want / maxf(0.001, l), 0.0, 1.0))
+		want -= l
+	return Vector2(path[0] % w, path[0] / w)
+
+
+func launch_attack(src: Sim.Bld, tgt: Sim.Bld, want := -1, kinds: Array = [], sally := false, via := PackedInt32Array()) -> String:
 	var p := sim.players[src.p - 1]
 	if src.p == tgt.p or not sim.is_mil(tgt) or tgt.state != "ready" or src.state != "ready":
 		return "Pick an enemy military building"
@@ -360,6 +491,9 @@ func launch_attack(src: Sim.Bld, tgt: Sim.Bld, want := -1, kinds: Array = [], sa
 	var avail := own_def(src) - 1
 	if avail < 1:
 		return "Not enough soldiers here"
+	var way := via if via.size() >= 2 else land_path(src.x, src.y, tgt.x, tgt.y)
+	if way.is_empty():
+		return "No way there by land: water lies between. Build a bridge, or attack from another building"
 	var n := mini(avail, 16)
 	if want >= 0:
 		n = mini(n, want)
@@ -394,10 +528,11 @@ func launch_attack(src: Sim.Bld, tgt: Sim.Bld, want := -1, kinds: Array = [], sa
 	if src.ty == "hq": p.reserve -= n
 	else:
 		src.garrison -= n
-		src.archers = mini(src.archers, src.garrison)
 		src.blunt = mini(src.blunt, src.garrison)
 	var a := Sim.Attack.new()
-	a.p = src.p; a.src = src.id; a.tgt = tgt.id; a.n = n; a.n0 = n; a.t0 = sim.time; a.t1 = sim.time + dist * 1.1 + 1.0
+	a.p = src.p; a.src = src.id; a.tgt = tgt.id; a.n = n; a.n0 = n; a.t0 = sim.time
+	a.path = way
+	a.t1 = sim.time + path_len(sim.w, way) * 1.1 + 1.0
 	a.from = Vector2(src.x, src.y); a.to = Vector2(tgt.x, tgt.y)
 	a.vet = clampf(p.vets / maxf(1.0, sim.soldiers(p) + n), 0.0, 1.0)
 	a.sxp = p.res_xp if src.ty == "hq" else src.sxp
@@ -426,15 +561,25 @@ func attack_tick(dt: float) -> void:
 		var a := sim.attacks[k]
 		var p := sim.players[a.p - 1]
 		var t: Sim.Bld = sim.by_id.get(a.tgt)
-		if t == null or t.p == a.p or not p.alive or not Diplomacy.at_war(sim, a.p, t.p):
+		if a.chase == 0 and (t == null or t.p == a.p or not p.alive or not Diplomacy.at_war(sim, a.p, t.p)):
 			_retreat(a, p)
 			sim.attacks.remove_at(k)
 			continue
 		Sim.mix_fix(a.amix, a.n, roundi(a.era))
+		if a.chase != 0:
+			if not _chase_tick(a, dt):
+				sim.attacks.remove_at(k)
+			continue
 		if a.field != 0:
 			continue                  # held up by a battle in the open (see _field_battles)
 		if not a.fighting:
 			# marching in: volleys both ways, then the fight at the gate
+			_passing(a, p, column_pos(a))
+			if a.n <= 0:
+				sim.attacks.remove_at(k)
+				if a.p == 1:
+					sim.emit_log("Your column was shot to pieces on the way.", Color("e08a6a"), Vector2i(column_pos(a).round()))
+				continue
 			_volleys(a, p, t)
 			if a.n <= 0:
 				sim.attacks.remove_at(k)
@@ -480,10 +625,7 @@ func attack_tick(dt: float) -> void:
 				dk = 1
 			dw += 0.035 * (dk - ak) + COUNTER * (int(ADV[dk][ak]) - int(ADV[ak][dk]))
 			dw += _melee_edge(dk, true) - _melee_edge(ak, false)
-			# an archer is worse at close quarters: the more archers, the likelier one has to fight
 			var db2 := _defending(t)
-			if db2.ty != "hq" and db2.archers > 0 and sim.rng.randf() < float(db2.archers) / maxf(1.0, own_def(db2)):
-				dw -= ARCHER_DUEL
 			# worn weapons on either side
 			var a_blunt := _picks_blunt(a.blunt, a.n)
 			var d_blunt := _picks_blunt(_blunt_of(db2), own_def(db2))
@@ -531,9 +673,114 @@ func attack_tick(dt: float) -> void:
 
 ## Where a marching column is now, in tiles.
 func column_pos(a: Sim.Attack) -> Vector2:
+	if a.chase != 0:
+		return a.from
 	if a.fighting:
 		return a.to
-	return a.from.lerp(a.to, clampf((sim.time - a.t0) / maxf(0.01, a.t1 - a.t0), 0.0, 1.0))
+	var f := clampf((sim.time - a.t0) / maxf(0.01, a.t1 - a.t0), 0.0, 1.0)
+	if a.path.size() > 2:
+		return _along(a.path, f)
+	return a.from.lerp(a.to, f)
+
+
+## The way a column faces (a unit vector).
+func column_dir(a: Sim.Attack) -> Vector2:
+	if a.chase != 0:
+		var c := _by_uid(a.chase)
+		var d0 := (column_pos(c) - a.from) if c != null else (a.to - a.from)
+		return d0.normalized() if d0.length() > 0.01 else Vector2.RIGHT
+	if a.path.size() > 2 and not a.fighting:
+		var f := clampf((sim.time - a.t0) / maxf(0.01, a.t1 - a.t0), 0.0, 1.0)
+		var d := _along(a.path, minf(1.0, f + 0.04)) - _along(a.path, maxf(0.0, f - 0.01))
+		if d.length() > 0.01:
+			return d.normalized()
+	var d2 := a.to - a.from
+	return d2.normalized() if d2.length() > 0.01 else Vector2.RIGHT
+
+
+# ---------------------------------------------------------------- reacting to a column passing by
+const INTERCEPT_R := 5.0     # a building set to march out stops enemy columns passing this near
+const CHASE_SPEED := 1.1     # tiles a second
+
+## A column on its way to another building passes military buildings of realms it is at war with:
+## their archers shoot at it, and one set to march out (rivals: one with clearly more soldiers) sends
+## soldiers to stop it in the open.
+func _passing(a: Sim.Attack, p: Sim.Player, pos: Vector2) -> void:
+	for b: Sim.Bld in sim.mil_list():
+		if b.p == a.p or b.id == a.tgt or b.state != "ready" or b.dead or b.ty == "hq":
+			continue
+		var d := Vector2(b.x, b.y).distance_to(pos)
+		if d > ARCHER_RANGE or not Diplomacy.at_war(sim, a.p, b.p):
+			continue
+		if b.archers > 0:
+			_arrows(a, p, b, d)
+			if a.n <= 0:
+				return
+		if d <= INTERCEPT_R and a.field == 0:
+			var op := sim.players[b.p - 1]
+			var go := b.sally if not op.ai else (own_def(b) - 1 > a.n + 1)
+			if go and own_def(b) >= 3 and not _chased(a.uid, b.id):
+				_intercept(b, a)
+
+
+func _chased(uid: int, src: int) -> bool:
+	for c in sim.attacks:
+		if c.chase == uid and c.src == src:
+			return true
+	return false
+
+
+## Soldiers of b march out to stop column a in the open; afterwards they go home.
+func _intercept(b: Sim.Bld, a: Sim.Attack) -> void:
+	var n := mini(own_def(b) - 1, maxi(2, a.n + 1))
+	if n < 1:
+		return
+	var p := sim.players[b.p - 1]
+	var sent := Sim.mix_take_best(mix_of(b), n)
+	var sb := b.blunt
+	var go_blunt := mini(sb, roundi(float(sb) * n / maxf(1.0, b.garrison)))
+	b.garrison -= n
+	b.blunt = clampi(b.blunt - go_blunt, 0, b.garrison)
+	var c := Sim.Attack.new()
+	c.p = b.p; c.src = b.id; c.tgt = a.src; c.n = n; c.n0 = n
+	c.t0 = sim.time; c.t1 = sim.time + 600.0
+	c.from = Vector2(b.x, b.y); c.to = Vector2(b.x, b.y)
+	c.vet = clampf(p.vets / maxf(1.0, sim.soldiers(p) + n), 0.0, 1.0)
+	c.sxp = b.sxp
+	c.amix = sent
+	c.era = Sim.mix_avg(sent)
+	c.vt = [c.t0, c.t0]; c.dvt = [c.t0, c.t0]
+	c.blunt = mini(go_blunt, n)
+	c.chase = a.uid
+	sim._bid += 1
+	c.uid = sim._bid
+	sim.attacks.append(c)
+	if b.p == 1:
+		sim.emit_log("Your %d soldiers from the %s march out to stop %s's column." % [n, String(b.def.name).to_lower(), sim.players[a.p - 1].name], Color("d8aa4a"), Vector2i(b.x, b.y))
+	elif a.p == 1:
+		sim.emit_log("%d of %s's soldiers march out of a %s to stop your column." % [n, p.name, String(b.def.name).to_lower()], Color("e08a6a"), Vector2i(b.x, b.y))
+
+
+## A column marching out to stop another: it walks at it; when that one is gone it goes home.
+## Returns whether the column is still on the map.
+func _chase_tick(c: Sim.Attack, dt: float) -> bool:
+	var p := sim.players[c.p - 1]
+	var a := _by_uid(c.chase)
+	var home: Sim.Bld = sim.by_id.get(c.src)
+	if a == null or a.n <= 0 or a.fighting or not Diplomacy.at_war(sim, c.p, a.p) or home == null or home.p != c.p \
+			or (a.field == 0 and c.from.distance_to(Vector2(home.x, home.y)) > INTERCEPT_R + 4.0):
+		_retreat(c, p)
+		return false
+	if c.field != 0:
+		return true
+	var to := column_pos(a)
+	var d := to - c.from
+	var step := CHASE_SPEED * dt
+	var nxt := to if d.length() <= step else c.from + d.normalized() * step
+	if _walkable(int(roundf(nxt.y)) * sim.w + int(roundf(nxt.x))):
+		c.from = nxt
+	c.to = c.from
+	return true
 
 
 func _by_uid(uid: int) -> Sim.Attack:
@@ -641,7 +888,11 @@ func _field_end(won: Sim.Attack, lost: Sim.Attack) -> void:
 	if won.p == 1 or lost.p == 1:
 		var t: Sim.Bld = sim.by_id.get(won.tgt)
 		var where := String(t.def.name).to_lower() if t != null else "their target"
-		if won.p == 1:
+		if won.p == 1 and won.chase != 0:
+			sim.emit_log("Field battle won: the enemy column is stopped. %d of yours go home." % won.n, Color("86ad5c"), Vector2i(column_pos(won).round()))
+		elif lost.p == 1 and won.chase != 0:
+			sim.emit_log("Field battle lost: your column was stopped on the way and all fell.", Color("e08a6a"), Vector2i(column_pos(won).round()))
+		elif won.p == 1:
 			sim.emit_log("Field battle won: %d of yours left, marching on to the %s." % [won.n, where], Color("86ad5c"), Vector2i(column_pos(won).round()))
 		else:
 			sim.emit_log("Field battle lost: all your soldiers fell. %d of %s's march on to your %s." % [won.n, sim.players[won.p - 1].name, where], Color("e08a6a"), Vector2i(column_pos(won).round()))
@@ -721,9 +972,22 @@ func _capture(a: Sim.Attack, t: Sim.Bld, p: Sim.Player, op: Sim.Player) -> void:
 	# the best of them holds the captured building; the rest go home
 	t.gmix = Sim.mix_take_best(a.amix, 1)
 	t.sera = Sim.mix_avg(t.gmix)
-	p.res_xp = Sim.mix_xp(p.res_xp, p.reserve, a.sxp, a.n - 1)
+	# (to the building they came from while it has room, so it can attack again; else headquarters)
+	var back: Sim.Bld = sim.by_id.get(a.src)
+	var rest := a.n - 1
+	if back != null and back.p == p.id and back.ty != "hq" and back.state == "ready" and not back.dead:
+		var room := maxi(0, sim.garrison_wanted(back) - back.garrison - back.walking)
+		var home_n := mini(room, rest)
+		if home_n > 0:
+			var hm := Sim.mix_take_best(a.amix, home_n)
+			back.sxp = Sim.mix_xp(back.sxp, back.garrison, a.sxp, home_n)
+			Sim.mix_add(sim.gmix_of(back), hm)
+			back.garrison += home_n
+			back.sera = Sim.mix_avg(back.gmix)
+			rest -= home_n
+	p.res_xp = Sim.mix_xp(p.res_xp, p.reserve, a.sxp, rest)
 	Sim.mix_add(sim.rmix_of(p), a.amix)
-	p.reserve += a.n - 1
+	p.reserve += rest
 	p.res_era = Sim.mix_avg(p.rmix)
 	if p.id == 1 or op.id == 1:
 		sim.emit_log("%s captured a %s%s" % [p.name, String(t.def.name), " from you!" if op.id == 1 else " from %s." % op.name], Color("e0603a") if op.id == 1 else Color("d8aa4a"), Vector2i(t.x, t.y))
@@ -788,8 +1052,7 @@ func _check_end() -> void:
 ## Gunfire while an attack approaches: the attackers' musketeers and riflemen fire on the defenders
 ## once in range, and the defenders' guns fire back, each kind with its own range and reload time.
 func _volleys(a: Sim.Attack, p: Sim.Player, t: Sim.Bld) -> void:
-	var f := clampf((sim.time - a.t0) / maxf(0.01, a.t1 - a.t0), 0.0, 1.0)
-	var left := a.from.lerp(a.to, f).distance_to(a.to)
+	var left := column_pos(a).distance_to(a.to)
 	for g: int in GUNS:
 		var gun: Array = GUNS[g]
 		var shooters := int(a.amix[g]) if a.amix.size() > g else 0

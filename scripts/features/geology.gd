@@ -70,6 +70,36 @@ func _out(p: Sim.Player) -> int:
 	return n
 
 
+## How far around the spot clicked a geologist surveys (his work area).
+func area_radius(p: Sim.Player) -> int:
+	return 4 if p.techs.has("prospecting") else 3
+
+
+## The tiles a geologist of realm p sent to (x, y) would survey, nearest first: unsurveyed mountain
+## in his work area, at most 12 (18 with Prospecting), leaving those another geologist is on his way to.
+func survey_tiles(p: Sim.Player, x: int, y: int) -> PackedInt32Array:
+	var r := area_radius(p)
+	var most := 18 if p.techs.has("prospecting") else 12
+	var tiles := []
+	var taken := {}
+	for t in trips:
+		if int(t[0]) == p.id:
+			for j in (t[4] as PackedInt32Array):
+				taken[j] = true
+	for yy in range(maxi(0, y - r), mini(sim.h - 1, y + r) + 1):
+		for xx in range(maxi(0, x - r), mini(sim.w - 1, x + r) + 1):
+			var j := yy * sim.w + xx
+			if (xx - x) * (xx - x) + (yy - y) * (yy - y) > r * r + r:
+				continue
+			if sim.ter[j] == Sim.MOUNT and not known_at(p.id, j) and not taken.has(j):
+				tiles.append([Vector2(xx - x, yy - y).length_squared(), j])
+	tiles.sort_custom(func(a, b): return a[0] < b[0] or (a[0] == b[0] and a[1] < b[1]))
+	var list := PackedInt32Array()
+	for e in tiles.slice(0, most):
+		list.append(int(e[1]))
+	return list
+
+
 ## Sends a geologist of realm p to survey around tile (x, y). Returns "" or why not.
 func send(p: Sim.Player, x: int, y: int) -> String:
 	if not sim.inb(x, y):
@@ -83,21 +113,9 @@ func send(p: Sim.Player, x: int, y: int) -> String:
 				near = true
 	if not near:
 		return "Too far from your land: geologists survey your land and up to 3 tiles beyond"
-	var r := 4 if p.techs.has("prospecting") else 3
-	var most := 18 if p.techs.has("prospecting") else 12
-	var tiles := []
-	# tiles another of your geologists is already on the way to survey are left to him
-	var taken := {}
-	for t in trips:
-		if int(t[0]) == p.id:
-			for j in (t[4] as PackedInt32Array):
-				taken[j] = true
-	for yy in range(maxi(0, y - r), mini(sim.h - 1, y + r) + 1):
-		for xx in range(maxi(0, x - r), mini(sim.w - 1, x + r) + 1):
-			var j := yy * sim.w + xx
-			if sim.ter[j] == Sim.MOUNT and not known_at(p.id, j) and not taken.has(j):
-				tiles.append([Vector2(xx - x, yy - y).length_squared(), j])
-	if tiles.is_empty():
+	var r := area_radius(p)
+	var list := survey_tiles(p, x, y)
+	if list.is_empty():
 		return "No unsurveyed mountain there"
 	if _out(p) >= _max_out(p):
 		return "All your geologists are out (%d)" % _max_out(p)
@@ -105,10 +123,6 @@ func send(p: Sim.Player, x: int, y: int) -> String:
 		return "No idle peasant to send"
 	if float(p.stock.get("pickaxes", 0.0)) < 1.0 and bool(sim.opts.get("tools", true)):
 		return "No pickaxe in store for him"
-	tiles.sort_custom(func(a, b): return a[0] < b[0])
-	var list := PackedInt32Array()
-	for e in tiles.slice(0, most):
-		list.append(int(e[1]))
 	# from the nearest store, over land
 	var best: Sim.Bld = p.hq
 	var bd := 1e9
@@ -229,7 +243,7 @@ func _ai_surveys() -> void:
 
 func tools(cat: String) -> Array:
 	if cat == "industry":
-		return [["@geologist", "Send geologist", "unit_worker_pick", "Click a mountain in or near your land: a geologist surveys up to 12 tiles around it and marks what lies beneath."]]
+		return [["@geologist", "Send geologist", "unit_worker_pick", "Click a mountain in or near your land: a geologist surveys up to 12 tiles around it (the ring shows his work area, the dots the tiles he would survey) and marks what lies beneath."]]
 	return []
 
 
@@ -303,6 +317,24 @@ func draw_map(view: CanvasItem, rect: Rect2i) -> void:
 
 func draw_top(view: CanvasItem, _rect: Rect2i) -> void:
 	var mv = view
+	# while sending a geologist: his work area round the mouse, and the tiles he would survey
+	if String(mv.place_type) == "@geologist" and sim.inb(mv.ghost.x, mv.ghost.y):
+		var p := sim.human()
+		var g: Vector2i = mv.ghost
+		var r := float(area_radius(p))
+		var c := Vector2(g.x + 0.5, g.y + 0.5 - float(mv.lift_at(g.x + 0.5, g.y + 0.5)))
+		view.draw_arc(c, r + 0.5, 0.0, TAU, 48, Color(0.95, 0.85, 0.5, 0.75), 0.07)
+		var list := survey_tiles(p, g.x, g.y)
+		for j in list:
+			var q := Vector2(j % sim.w + 0.5, j / sim.w + 0.5)
+			q.y -= float(mv.lift_at(q.x, q.y))
+			view.draw_circle(q, 0.16, Color(0.95, 0.85, 0.4, 0.85))
+		var known_n := 0
+		for yy in range(maxi(0, g.y - int(r)), mini(sim.h - 1, g.y + int(r)) + 1):
+			for xx in range(maxi(0, g.x - int(r)), mini(sim.w - 1, g.x + int(r)) + 1):
+				if sim.ter[yy * sim.w + xx] == Sim.MOUNT and known_at(p.id, yy * sim.w + xx):
+					known_n += 1
+		mv._tool_labels.append([Vector2(g.x + 0.5, g.y + 0.5 - r - 0.8), ("%d tiles to survey" % list.size()) if not list.is_empty() else ("all surveyed here" if known_n > 0 else "no mountain here"), Color("f2cf5a")])
 	var fog = sim.get_feature("fog")
 	for t in trips:
 		var at := trip_pos(t)

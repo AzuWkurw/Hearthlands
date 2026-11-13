@@ -117,6 +117,8 @@ func _fill_diplomacy() -> void:
 		var l := main._rich()
 		l.custom_minimum_size = Vector2(430, 0)
 		l.text = tr("[color=#%s]■[/color] [b]%s[/b] [color=#9a9c88]%s, level %d[/color]\n%s · thinks of you: %s (%d) · army %d vs your %d") % [q.color.to_html(false), q.name, q.pers, q.skill, Diplomacy.NAMES[rel], Diplomacy.mood(op), roundi(op), roundi(Diplomacy.strength(main.sim, q)), roundi(my_str)]
+		if rel == Diplomacy.PEACE and Diplomacy.borders(main.sim, 1, q.id):
+			l.text += tr("\n[color=#e0b060]Your borders touch: their patience wears thin over time. A gift or a trade wins it back; at war they will march.[/color]") if q.pers != "builder" else tr("\n[color=#9a9c88]Your borders touch, but builders are patient neighbours.[/color]")
 		row.add_child(l)
 		if rel == Diplomacy.WAR:
 			row.add_child(main._button("Offer peace", _dip_propose.bind(q.id, "peace")))

@@ -56,6 +56,10 @@ var _masks: Array = []               # per biome: a soft-edged picture of where 
 var _ice: ImageTexture
 var _snow: Array = [0.0, 0.0, 0.0, 0.0]   # how much snow lies in each biome now (0 to 1), eased
 var _parts: Array = []               # rain drops and snow flakes on screen
+var _grid: Array = []                # the weather over a 16 x 9 grid of the screen: [weather or "" where unseen]
+var _grid_key := ""
+const GX := 16
+const GY := 9
 var _snow_t := 0.0                   # game time the snow was last brought up to date
 var _realm_t: Dictionary = {}        # realm id -> temperature at its headquarters, this second
 var _cache: Array = [{}, {}, {}, {}]  # per biome: building type -> work bonus, worked out once a second
@@ -548,14 +552,28 @@ func draw_overlay(view: CanvasItem, to_tile: Callable) -> void:
 	elif cw == "cloudy" or cw == "rain":
 		view.draw_rect(Rect2(Vector2.ZERO, sz), Color(0.1, 0.12, 0.16, 0.06))
 	var fog = sim.get_feature("fog")
+	# what falls where: the weather over a coarse grid of the screen, worked out five times a second
+	# (or when the view moves) instead of for every drop every frame
+	var c0: Vector2i = to_tile.call(Vector2.ZERO)
+	var c1: Vector2i = to_tile.call(sz)
+	var key := "%d,%d,%d,%d,%d,%d" % [c0.x, c0.y, c1.x, c1.y, Time.get_ticks_msec() / 200, weather.hash()]
+	if key != _grid_key:
+		_grid_key = key
+		_grid = []
+		for gy in GY:
+			for gx in GX:
+				var tl: Vector2i = to_tile.call(Vector2((gx + 0.5) * sz.x / GX, (gy + 0.5) * sz.y / GY))
+				var wv := ""
+				if sim.inb(tl.x, tl.y) and (fog == null or fog.explored_at(tl.y * sim.w + tl.x)):
+					wv = String(weather[biome_at(tl.x, tl.y)])
+				_grid.append(wv)
 	for q: Vector3 in _parts:
 		var x0 := q.x * sz.x
 		var spd := 0.6 + q.z * 0.6
 		# the weather of the biome under the drop's column decides what falls there
-		var tl: Vector2i = to_tile.call(Vector2(x0, q.y * sz.y))
-		if not sim.inb(tl.x, tl.y):
+		var wx := String(_grid[mini(GY - 1, int(q.y * GY)) * GX + mini(GX - 1, int(q.x * GX))])
+		if wx == "":
 			continue
-		var wx := String(weather[biome_at(tl.x, tl.y)])
 		var at := Vector2.ZERO
 		match wx:
 			"rain", "storm":
@@ -571,8 +589,10 @@ func draw_overlay(view: CanvasItem, to_tile: Callable) -> void:
 			_:
 				continue
 		# nothing falls on land you have never seen (or off the map)
-		var tl2: Vector2i = to_tile.call(at)
-		if not sim.inb(tl2.x, tl2.y) or (fog != null and not fog.explored_at(tl2.y * sim.w + tl2.x)):
+		if at.x < 0.0 or at.y < 0.0 or at.x >= sz.x or at.y >= sz.y:
+			if wx != "fog":
+				continue
+		elif String(_grid[mini(GY - 1, int(at.y / sz.y * GY)) * GX + mini(GX - 1, int(at.x / sz.x * GX))]) == "":
 			continue
 		match wx:
 			"rain", "storm":

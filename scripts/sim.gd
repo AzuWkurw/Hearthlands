@@ -221,11 +221,17 @@ class Bld:
 	var want_n := -1                       # soldiers the player wants here (-1: as many as it holds)
 	var want_kinds: Array = []             # 6 flags: which kinds may serve here (empty: any)
 	var keep_kind := -1                    # the kind that stays home when it attacks (-1: the oldest)
-	var archer_want := 0                   # how many of its soldiers should be archers (they take up bows)
-	var archers := 0                       # how many are archers now (never more than its garrison)
+	var archer_want := 0                   # how many archers it should have (extra to its soldiers; each takes a bow)
+	var archers := 0                       # how many archers it has now (not counted as soldiers)
+	var arrow_t := 0.0                     # when its archers can shoot next
+	var border := true                     # a military building near another realm's land (refreshed every 10 s)
+	var replaces := 0                      # a site built to move another building here: that one's id
+	var upg := ""                          # the building type it is being upgraded to ("": none)
+	var upg_t := 0.0                       # game time the upgrade is done
 	var sally := false                     # its soldiers march out to meet an attack instead of waiting
 	var crop := ""                         # a farm's crop (Crops.LIST; "" = wheat)
 	var rotate := false                    # a farm sows winter rye while its own crop is out of season
+	var season_crop: Array = []            # a farm's crop for each season (4 ids; "" = its main crop)
 	var sowing := false                    # a farm's work cycle sows a new field (else it harvests one)
 	var town := ""                         # a store's town name (shown on the map and in messages)
 	var blunt := 0                         # soldiers here whose weapons are worn out (re-armed from the stores)
@@ -270,6 +276,10 @@ class Player:
 	var colonies := 0       # harbours its expeditions founded
 	var warned := {}        # realm id -> when this rival last warned it before going to war
 	var blunt := 0          # soldiers at headquarters whose weapons are worn out
+	var inner_pct := 100    # military buildings away from the border hold this share of their soldiers
+	var border_first := true  # new soldiers go to buildings near the border first
+	var spare_builder := false  # one builder stays at headquarters, ready for the next building site
+	var job_limit := {}     # building type -> at most this many of the kind get workers (the Buildings window)
 	var used_artisan := 0
 	var hq: Bld = null
 	var start := Vector2i.ZERO
@@ -359,6 +369,8 @@ class Attack:
 	var field := 0               # uid of the enemy column it is fighting in the open (0: none)
 	var fstep := 0.0
 	var blunt := 0               # marching soldiers whose weapons are worn out
+	var path := PackedInt32Array()  # the tiles it marches over, round the water (empty: straight, old saves)
+	var chase := 0               # uid of the enemy column it marches out to stop (0: it attacks a building)
 
 
 class MinHeap:
@@ -445,6 +457,7 @@ var plot := PackedInt32Array()      # per tile: the building standing there (all
 
 var bmap := PackedInt32Array()
 var fields := {}                    # farm fields: tile -> [farm id, crop, growth seconds] (see Crops)
+var map_animals: Array = []         # animals a hand-made map places: [kind, x, y] (wildlife puts them there)
 
 
 var players: Array[Player] = []
@@ -596,6 +609,7 @@ func new_game(p_seed: String, p_foes: int, p_strength: int, p_mix: bool, p_size 
 	ter = g.ter; deco = g.deco; amt = g.amt; ore = g.ore; shade = g.shade
 	height = WorldGen.heights(p_seed, ter, w, h)
 	vein = g.vein; vein_amt = g.vein_amt; vein_tiles = g.vein_tiles
+	map_animals = g.get("animals", [])
 	pave = PackedByteArray(); pave.resize(w * h)
 	fields = {}
 	changed_tiles = PackedInt32Array()
@@ -681,6 +695,10 @@ func new_game(p_seed: String, p_foes: int, p_strength: int, p_mix: bool, p_size 
 		emit_log("All research is done: every realm starts in the %s age." % GameData.age_name(players[0].age), Color("8fc0ff"))
 	if creative():
 		emit_log("Creative mode: you build for free and at once, and your stores never run low.", Color("8fc0ff"))
+	# the realms' building lists are cached: refresh them now, or the features would still see the
+	# buildings of the game before (the fog then showed patches of land around them as explored)
+	_rebuild_realm_lists()
+	_mil_dirty = true
 	setup_features(opts.get("features", Features.default_ids()), false, {})
 	return true
 
@@ -1494,11 +1512,64 @@ func renovate(b: Bld) -> String:
 	return ""
 
 
-func _start_reno(b: Bld) -> void:
+## The military buildings b can be upgraded to: of the same size, holding more soldiers, and known.
+func upgrades_of(b: Bld) -> Array:
+	var out := []
+	if not b.def.has("garrison") or b.ty == "hq" or b.def.has("store"):
+		return out
+	var p := players[b.p - 1]
+	for ty in GameData.bld:
+		var d: Dictionary = GameData.bld[ty]
+		if ty == b.ty or not d.has("garrison") or d.has("store") or ty == "hq" or size_of(ty) != size_of(b.ty):
+			continue
+		if int(d.garrison) <= int(b.def.garrison) or not bld_enabled(ty):
+			continue
+		if (d.has("tech") and not p.techs.has(d.tech)) or (d.get("needs_noble", false) and p.noble < 1):
+			continue
+		out.append(ty)
+	out.sort_custom(func(x, y): return int(GameData.bld[x].garrison) < int(GameData.bld[y].garrison))
+	return out
+
+
+## What upgrading b to type ty costs: what ty costs more than b did (at least 2 stone).
+func upgrade_cost(b: Bld, ty: String) -> Dictionary:
+	var out := {}
+	var old: Dictionary = b.def.get("cost", {})
+	var new: Dictionary = GameData.bld[ty].get("cost", {})
+	for k in new:
+		var n := int(new[k]) - int(old.get(k, 0))
+		if n > 0:
+			out[k] = n
+	if out.is_empty():
+		out["stone"] = 2
+	return out
+
+
+## Upgrades military building b to type ty where it stands: carriers bring the extra materials and a
+## builder works on it; its soldiers stay inside and it holds its land meanwhile. Returns "" or why not.
+func upgrade(b: Bld, ty: String) -> String:
+	if b.state != "ready":
+		return "Not finished yet"
+	if b.reno_to >= 0:
+		return "Already being worked on"
+	if not upgrades_of(b).has(ty):
+		return "It can't be upgraded to that"
+	var q: Array = reno_queue.get(b.p, [])
+	q.erase(b.id)
+	b.upg = ty
+	_start_reno(b, upgrade_cost(b, ty))
+	return ""
+
+
+func _start_reno(b: Bld, cost_given: Dictionary = {}) -> void:
 	var p := players[b.p - 1]
 	b.need = {}; b.coming = {}; b.onsite = {}; b.spent = {}
 	b.mat_total = 0; b.mat_used = 0
 	var cost: Dictionary = b.def.get("cost", {})
+	if not cost_given.is_empty():
+		cost = {}
+		for k in cost_given:
+			cost[k] = int(cost_given[k]) * 2
 	for k in cost:
 		var n := ceili(float(cost[k]) * 0.5)
 		if n > 0:
@@ -1544,7 +1615,7 @@ func _reno_tick(p: Player) -> void:
 				b.onsite.erase(got)
 			b.spent[got] = int(b.spent.get(got, 0)) + 1
 			b.mat_used += 1
-		var t := maxf(4.0, float(b.def.get("time", 10)) * 0.5)
+		var t := maxf(4.0, float((GameData.bld[b.upg] if b.upg != "" else b.def).get("time", 10)) * 0.5)
 		b.reno_prog += (1.0 + mod(p, "build")) * float(opts.build) / t
 		if b.mat_total > 0:
 			b.reno_prog = minf(b.reno_prog, float(b.mat_used) / b.mat_total)
@@ -1557,7 +1628,17 @@ func _reno_tick(p: Player) -> void:
 			b.retry = 0.0
 			_reno.erase(id)
 			changed_tiles.append(idx(b.x, b.y))
-			if not p.ai:
+			if b.upg != "":
+				var was := String(b.def.name).to_lower()
+				b.ty = b.upg
+				b.def = GameData.bld[b.ty]
+				b.upg = ""
+				_tick_dirty = true
+				_rebuild_realm_lists()
+				recompute_territory()
+				if not p.ai:
+					emit_log("Your %s is now a %s: room for %d soldiers." % [was, String(b.def.name).to_lower(), int(b.def.garrison)], Color("d8aa4a"), Vector2i(b.x, b.y))
+			elif not p.ai:
 				emit_log("The %s now stands in the %s style." % [String(b.def.name).to_lower(), GameData.age_name(b.era)], Color("d8aa4a"), Vector2i(b.x, b.y))
 			# the next one waiting gets its turn
 			var q: Array = reno_queue.get(p.id, [])
@@ -1565,6 +1646,16 @@ func _reno_tick(p: Player) -> void:
 				var nb: Bld = by_id.get(int(q.pop_front()))
 				if nb != null and not nb.dead and nb.state == "ready" and nb.era < p.age and nb.reno_to < 0:
 					_start_reno(nb)
+	# rivals upgrade a military building at the border now and then, with stone and planks to spare
+	if p.ai and _renos_running(p) == 0 and rng.randf() < 1.0 / 120.0:
+		var promised0 := committed(p)
+		if float(p.stock.get("planks", 0.0)) - int(promised0.get("planks", 0)) > 16.0 and float(p.stock.get("stone", 0.0)) - int(promised0.get("stone", 0)) > 16.0:
+			for b: Bld in realm_blds(p):
+				if b.border and b.state == "ready" and b.reno_to < 0 and is_mil(b) and b.ty != "hq":
+					var ups := upgrades_of(b)
+					if not ups.is_empty():
+						upgrade(b, ups[0])
+						break
 	# rivals renovate now and then when they have materials to spare
 	if p.ai and p.age > 0 and _renos_running(p) == 0 and rng.randf() < 1.0 / 90.0:
 		var promised := committed(p)
@@ -2064,6 +2155,8 @@ func _secondly() -> void:
 		sea.sea_transfers()
 	Diplomacy.expire(self)
 	military.archers_tick()
+	if int(time) % 10 == 0:
+		military.mark_borders()
 	if not standing.is_empty() and int(time) % 5 == 0:
 		Diplomacy.standing_tick(self)
 	for f: Feature in features:
@@ -2332,6 +2425,8 @@ func from_save(d: Dictionary) -> String:
 			_reno[b.id] = true
 			if not b.need.is_empty():
 				_supply[b.id] = true
+	_rebuild_realm_lists()
+	_mil_dirty = true
 	setup_features(opts.get("features", Features.default_ids()), true, d.get("feature_state", {}))
 	return ""
 

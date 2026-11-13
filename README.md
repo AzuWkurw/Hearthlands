@@ -69,6 +69,11 @@ Exporting needs Godot 4.3's export templates (in the editor: Editor > Manage Exp
 | Trade | Diplomacy window, with a market built: pick what you give and ask for (the window says whether the realm would accept); tick Repeat for a standing offer |
 | Archers and sallies | Select one of your military buildings: Archers - / + (they take bows from the stores) and March out to meet attackers |
 | Farm crops | Select a farm: Crop buttons (greyed ones show which study unlocks the seed) and Winter rye when out of season |
+| Crops by season | Select a farm: a crop for each season (blank: the main crop); Use for all farms copies the plan |
+| Buildings window | J or Buildings: how many of each kind you have, workers, priority for a whole kind, a limit on workers per kind, Next jumps to them; Keep one builder free |
+| Upgrade a military building | Select it: Upgrade to (a bigger one of the same size); soldiers stay inside |
+| Border settings | Select a military building: how much inland buildings hold, and new soldiers to the border first |
+| Move a building | Select it: Move building, then click the new place; the old one works until the new one is done |
 | Rename a town | Select a store: Rename (each store is a town; the name shows on the map and in messages) |
 | Minimap | Click or drag to move the camera. The list above it shows only roads, only land and forts, or only the buildings that make one good |
 | Research tree | R, or the Research button |
@@ -229,6 +234,15 @@ Exporting needs Godot 4.3's export templates (in the editor: Editor > Manage Exp
 - **Archers and sallies.** A bowyer makes bows from wood. Soldiers in a military building take them up
   to be archers: they shoot attackers from 6 tiles out but fight worse at the gate. A building set to
   march out sends its soldiers to meet an attack in the open.
+- **Columns march on land.** Soldiers walk round lakes and rivers (and over bridges); a building with
+  water all round can't be attacked by land. Enemy columns passing your military buildings come under
+  their archers' fire, and a building set to "March out" sends soldiers to stop them in the open.
+  Survivors of a won attack go back to the building they came from, so it can attack again.
+- **Archers are extra.** A building holds up to half as many archers as soldiers, on top of its
+  soldiers; they shoot from the walls and are not counted as soldiers.
+- **Neighbours at peace grow tired of each other.** A rival whose land touches yours slowly thinks
+  less of you (a warlord fast, a builder hardly); when it is also the stronger it warns you, then
+  declares war. Gifts and trades win it back.
 - **Weapons wear out.** Each fight may wear out a soldier's weapon (1 in 10). A soldier with a worn
   weapon fights about 12% worse until a new weapon comes from the stores (one a second per building).
   Bows break now and then after a volley; the archer takes a new one. Tools already wear out the same

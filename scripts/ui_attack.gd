@@ -35,13 +35,38 @@ func sources(t: Sim.Bld) -> Array:
 		if Vector2(t.x - b.x, t.y - b.y).length() > Sim.RANGE:
 			continue
 		var av := mini(sim.own_def(b) - 1, 16)
-		if av >= 1:
+		if av >= 1 and not sim.military.land_path(b.x, b.y, t.x, t.y).is_empty():
 			out.append([b, av])
 	out.sort_custom(func(a, c):
 		var da := Vector2(t.x - a[0].x, t.y - a[0].y).length()
 		var dc := Vector2(t.x - c[0].x, t.y - c[0].y).length()
 		return da < dc or (da == dc and a[0].id < c[0].id))
 	return out
+
+
+## Why none of your buildings can attack enemy building t now.
+func why_not(t: Sim.Bld) -> String:
+	var sim: Sim = main.sim
+	var in_range := 0
+	var walking := 0
+	var no_way := 0
+	for b: Sim.Bld in sim.mil_list():
+		if b.p != 1 or b.state != "ready" or Vector2(t.x - b.x, t.y - b.y).length() > Sim.RANGE:
+			continue
+		in_range += 1
+		walking += b.walking
+		if sim.military.land_path(b.x, b.y, t.x, t.y).is_empty():
+			no_way += 1
+	if in_range == 0:
+		return "Too far: none of your military buildings is within %d tiles of it. Build one nearer." % int(Sim.RANGE)
+	if no_way == in_range:
+		return "No way there by land: water lies between. Build a bridge, or a military building on the other side."
+	var me := sim.human()
+	if walking > 0:
+		return "Your buildings in range each have only the one soldier who stays home. %d more are on their way to them." % walking
+	if me.reserve <= 2:
+		return "Your buildings in range each have only the one soldier who stays home, and none wait at headquarters. Train more soldiers."
+	return "Your buildings in range each have only the one soldier who stays home. More are coming from headquarters."
 
 
 ## Opens the window for enemy building t. Returns "" or why no attack is possible.
@@ -62,7 +87,7 @@ func open(t: Sim.Bld) -> String:
 	if t.archers > 0 or t.sally:
 		var extra := []
 		if t.archers > 0:
-			extra.append(tr("%d of them archers: they shoot from 6 tiles out") % t.archers)
+			extra.append(tr("plus %d archers: they shoot from 6 tiles out") % t.archers)
 		if t.sally:
 			extra.append("they march out to meet attackers")
 		var et := ", ".join(extra)
@@ -169,7 +194,7 @@ func _go() -> void:
 			why = r
 			continue
 		if sim.attacks.size() > before:
-			var a: Sim.Attack = sim.attacks[-1]
+			var a: Sim.Attack = sim.attacks[before]
 			left -= a.n
 			sent += a.n
 	close()

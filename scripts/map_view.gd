@@ -37,6 +37,7 @@ var place_type := ""             # a building id, or a tool: "@road", "@pave", "
 var ghost := Vector2i(-1, -1)
 var editor := false            # the map editor is open: left button paints (see UiEditor)
 var editor_starts: Array = []  # the map editor's start places, drawn as numbered banners
+var editor_animals: Array = []      # animals placed in the map editor: [kind, x, y]
 var editor_brush := 1          # the map editor's brush size, drawn around the mouse
 var _painting := false
 var _paint_last := Vector2i(-1, -1)
@@ -52,6 +53,11 @@ var road_after := false           # the road tool was started for a building jus
 var show_sites := false           # a building group is open: mark the largest building each spot takes
 var _site_key := ""
 var _sites := {}                  # tile -> "small", "medium", "large" or "mine"
+var _site_new := {}               # the marks being worked out (a few rows a frame)
+var _site_row := -1               # the next row to work out (-1: done)
+var _site_rect := Rect2i()
+var _gain_todo: Array = []        # spots still to count land for (the "+N" marks)
+var _gain_all: Array = []
 var auto_roads := false           # new buildings get their road at once (Settings.auto_roads; preview only)
 var _auto_key := Vector4i(-1, -1, -1, -1)
 var _auto_path := PackedInt32Array()
@@ -594,8 +600,27 @@ func _draw_ground() -> void:
 	ground_usec = Time.get_ticks_usec() - t_start
 
 
+## Timing of the parts of a frame's drawing (for tools/late_bench.gd): name -> microseconds, summed.
+var prof_on := false
+var prof := {}
+var _pm_t := 0
+
+var prof_max := {}
+var _trip_bb := {}      # trip -> the box round its path (to skip carriers off screen)
+var _trip_bb_n := {}
+var _trip_bb_t := 0
+var _pcol_light: Array = []   # each realm's colour, lightened, for its carriers
+
+func _pm(name: String) -> void:
+	var now := Time.get_ticks_usec()
+	prof[name] = int(prof.get(name, 0)) + (now - _pm_t)
+	prof_max[name] = maxi(int(prof_max.get(name, 0)), now - _pm_t)
+	_pm_t = now
+
+
 func _draw() -> void:
 	var t_start := Time.get_ticks_usec()
+	_pm_t = t_start
 	if sim == null or sim.w == 0:
 		return
 	var z := zoom
@@ -619,9 +644,12 @@ func _draw() -> void:
 		draw_map_texture(self, minimap.own_tex())
 	if _vary != null:
 		draw_map_texture(self, _vary)
+	if prof_on: _pm("ground")
 	_draw_fields(x0, x1, y0, y1)
+	if prof_on: _pm("fields")
 	if z >= DETAIL_ZOOM:
 		_draw_scenery(x0, x1, y0, y1)
+	if prof_on: _pm("scenery")
 	if traffic_ui != null and traffic_ui.on:
 		traffic_ui.draw(self, x0, x1, y0, y1)
 	# features draw on the ground (season colours, snow) under the buildings
@@ -629,9 +657,12 @@ func _draw() -> void:
 		var vr := Rect2i(x0, y0, x1 - x0 + 1, y1 - y0 + 1)
 		for f: Feature in sim.features:
 			f.draw_map(self, vr)
+			if prof_on: _pm("ground:" + f.id)
+	if prof_on: _pm("features_ground")
 	# building-site markers (while placing, or with a building group open), under the buildings
 	_tool_labels = []
 	_site_markers(x0, y0, x1, y1)
+	if prof_on: _pm("site_markers")
 	# buildings, sorted back to front
 	var vis: Array = []
 	# with the fog of war, rival buildings out of sight are drawn by the fog as last seen
@@ -644,22 +675,32 @@ func _draw() -> void:
 				continue
 			vis.append(b)
 	vis.sort_custom(func(a, b): return a.y < b.y or (a.y == b.y and a.x < b.x))
+	if prof_on: _pm("bld_list")
 	var labels: Array = []
 	# townsfolk about the houses and roads (close up only), drawn in turn with the buildings so a house
 	# in front hides the people behind it
+	var tfk := Time.get_ticks_usec() if prof_on else 0
 	var folk: Array = _collect_folk(vis) if detail else []
+	if prof_on:
+		prof["x_collect_folk"] = int(prof.get("x_collect_folk", 0)) + Time.get_ticks_usec() - tfk
+		prof["n_folk"] = int(prof.get("n_folk", 0)) + folk.size() * 1000
 	var fi := 0
 	for b in vis:
 		while fi < folk.size() and float(folk[fi][0]) < b.y + 0.98:
 			_draw_folk_one(folk[fi]); fi += 1
 		if raised: _lift_to(b.x + 0.5, b.y + 0.9)
 		var nl := labels.size()
+		var tb := Time.get_ticks_usec() if prof_on else 0
 		_draw_building(b, labels, detail)
+		if prof_on:
+			prof["n_blds"] = int(prof.get("n_blds", 0)) + 1000
+			prof["x_bld_only"] = int(prof.get("x_bld_only", 0)) + Time.get_ticks_usec() - tb
 		for li in range(nl, labels.size()):
 			labels[li][0] = (labels[li][0] as Vector2) + Vector2(0, -_cur_lift)
 		_unlift()
 	while fi < folk.size():
 		_draw_folk_one(folk[fi]); fi += 1
+	if prof_on: _pm("buildings_folk")
 	# entrance flags of your buildings, close up; one still without a road waves a warning ring
 	if detail:
 		for b in vis:
@@ -669,6 +710,7 @@ func _draw() -> void:
 					if raised: _lift_to(dt % w + 0.5, dt / w + 0.6)
 					_door_flag(dt, sim.players[0].color, not sim.connected(b))
 					_unlift()
+	if prof_on: _pm("door_flags")
 	# flags you set on your roads (road carriers mode)
 	if detail and not sim.players.is_empty():
 		for fi2 in sim.players[0].flags:
@@ -678,14 +720,43 @@ func _draw() -> void:
 				if raised: _lift_to(fx + 0.5, fy + 0.6)
 				_door_flag(fi2, Color(0.95, 0.95, 0.9), false)
 				_unlift()
+	if prof_on: _pm("road_flags")
 	# carriers: loaded on the way to the store, empty on the way back (drawn in batches, see _batch_add)
 	var drawn := 0
 	_batching = true
+	if Time.get_ticks_msec() - _trip_bb_t > 5000:
+		# refreshed now and then: the boxes of finished trips, the colours (colour-blind setting)
+		# and the sprite sheets (a texture swapped in the texture browser)
+		_trip_bb = {}
+		_trip_bb_n = {}
+		_pcol_light = []
+		_spr = {}
+		_trip_bb_t = Time.get_ticks_msec()
+	var vx0 := float(x0 - 2)
+	var vx1 := float(x1 + 2)
+	var vy0 := float(y0 - 2)
+	var vy1 := float(y1 + 3)
+	if _pcol_light.size() != sim.players.size():
+		_pcol_light = []
+		for pl in sim.players:
+			_pcol_light.append(pl.color.lightened(0.25))
 	for t in sim.trips:
 		if drawn > 700:
 			break
 		var n := t.path.size() - 1
 		if n < 1:
+			continue
+		# a carrier whose whole way lies off screen is skipped before working out where he is
+		var bb: Rect2 = _trip_bb.get(t, Rect2(-1, -1, -1, -1))
+		if bb.size.x < 0.0 or int(_trip_bb_n.get(t, -1)) != t.path.size():
+			var mnx := 1e9; var mny := 1e9; var mxx := -1e9; var mxy := -1e9
+			for pi in t.path:
+				var px := float(pi % w); var py := float(pi / w)
+				mnx = minf(mnx, px); mxx = maxf(mxx, px); mny = minf(mny, py); mxy = maxf(mxy, py)
+			bb = Rect2(mnx, mny, mxx - mnx, mxy - mny)
+			_trip_bb[t] = bb
+			_trip_bb_n[t] = t.path.size()
+		if bb.end.x < vx0 or bb.position.x > vx1 or bb.end.y < vy0 or bb.position.y > vy1:
 			continue
 		var prog := 0.0
 		if not t.delivered:
@@ -769,16 +840,18 @@ func _draw() -> void:
 		elif t.kind == "porter":
 			# men with a crate on an A-frame, women with a sack; empty on the way back; at the store
 			# they stoop to set the load down
-			var pid := "unit_porter_w" if (t.p * 7 + int(t.t0 * 10.0)) % 3 == 0 else "unit_porter"
+			var woman := (t.p * 7 + int(t.t0 * 10.0)) % 3 == 0
+			var pid := "unit_porter_w" if woman else "unit_porter"
+			var pe := _spr_info(pid)
 			var fr := (step % 8) + (0 if loaded else 8)
-			if Tex.frames(pid) < 18:
+			if int(pe[1]) < 18:
 				fr = step
 			elif t.delivered and sim.time - t.t1 < 0.8 and t.site == 0:
 				fr = 16 if sim.time - t.t1 < 0.4 else 17
 			chh = _sprite(pid, pos, 0.4, fr, dx < 0)
-			if Tex.frames(pid + "_tint") == Tex.frames(pid):
+			if bool(pe[4]):
 				_batch_layer = 1
-				_sprite(pid + "_tint", pos, 0.4, fr, dx < 0, pc.lightened(0.25))
+				_sprite("unit_porter_w_tint" if woman else "unit_porter_tint", pos, 0.4, fr, dx < 0, _pcol_light[t.p - 1])
 				_batch_layer = 0
 		elif t.kind == "mule":
 			chh = _sprite("unit_mule", pos, 0.78, step, dx < 0)
@@ -795,17 +868,22 @@ func _draw() -> void:
 			_batch_layer = 2
 			_batch_add(rt, Rect2(pos.x - 0.13, pos.y - chh - 0.24, 0.26, 0.26), Rect2(Vector2.ZERO, rt.get_size()), Color.WHITE)
 			_batch_layer = 0
+	if prof_on:
+		_pm("carriers")
+		prof["n_carriers"] = int(prof.get("n_carriers", 0)) + drawn * 1000
 	_flush_batches()
+	if prof_on: _pm("flush")
 	# marching soldiers
 	for a in sim.attacks:
 		if fog_on and a.p != 1:
-			var ap: Vector2 = a.to if a.fighting else a.from.lerp(a.to, clampf((sim.time - a.t0) / maxf(0.01, a.t1 - a.t0), 0.0, 1.0))
+			var ap: Vector2 = sim.military.column_pos(a)
 			if fv[clampi(int(ap.y), 0, sim.h - 1) * w + clampi(int(ap.x), 0, w - 1)] == 0:
 				continue
-		var left := a.to.x < a.from.x
+		var cdir: Vector2 = sim.military.column_dir(a)
+		var left := cdir.x < -0.05 if absf(cdir.x) > 0.05 else a.to.x < a.from.x
 		var col: Color = sim.players[a.p - 1].color.lightened(0.2)
 		if raised:
-			var apos: Vector2 = a.to if a.fighting else a.from.lerp(a.to, clampf((sim.time - a.t0) / maxf(0.01, a.t1 - a.t0), 0.0, 1.0))
+			var apos: Vector2 = sim.military.column_pos(a)
 			_lift_to(apos.x + 0.5, apos.y + 0.9)
 		var nl2 := labels.size()
 		if a.fighting:
@@ -824,15 +902,14 @@ func _draw() -> void:
 				draw_circle(at + Vector2(0, -0.32), 0.05, Color(1.0, 0.9, 0.5, 0.9))
 			labels.append([at + Vector2(0, -0.85), str(a.n), Color.WHITE])
 		else:
-			var f2 := clampf((sim.time - a.t0) / maxf(0.01, a.t1 - a.t0), 0.0, 1.0)
-			var pos2 := a.from.lerp(a.to, f2) + Vector2(0.5, 0.75)
+			var pos2: Vector2 = sim.military.column_pos(a) + Vector2(0.5, 0.75)
 			if a.field != 0:
 				# a battle in the open: crossed swords over the column
 				var sw := pos2 + Vector2(0, -1.25)
 				draw_line(sw + Vector2(-0.22, -0.22), sw + Vector2(0.22, 0.22), Color(0.95, 0.93, 0.85), 0.07)
 				draw_line(sw + Vector2(0.22, -0.22), sw + Vector2(-0.22, 0.22), Color(0.95, 0.93, 0.85), 0.07)
-			var walked := a.from.distance_to(pos2)
-			var dir := (a.to - a.from).normalized()
+			var walked := (sim.time - a.t0) * 0.9
+			var dir := cdir
 			# the column: up to three figures, one for each of its most numerous kinds
 			var kinds := []
 			for kk in range(5, -1, -1):
@@ -843,7 +920,7 @@ func _draw() -> void:
 			if kinds.is_empty():
 				kinds = [roundi(a.era)]
 			# the last stretch is a charge: weapons lowered, running
-			var charging := pos2.distance_to(a.to + Vector2(0.5, 0.75)) < 1.6
+			var charging := a.chase == 0 and pos2.distance_to(a.to + Vector2(0.5, 0.75)) < 1.6
 			for i in kinds.size():
 				var side2 := Vector2(-dir.y, dir.x) * (0.22 if i % 2 == 1 else -0.12 * float(i))
 				var off := -dir * 0.42 * i + side2
@@ -858,7 +935,7 @@ func _draw() -> void:
 				if u < 0.25:
 					draw_circle(muzzle, 0.07, Color(1.0, 0.85, 0.4, 0.95))
 					draw_line(muzzle, a.to + Vector2(0.5, 0.5), Color(1.0, 0.95, 0.7, 0.5), 0.03)
-			if tgt2 != null and sim.time - a.dshot_t < 0.45:
+			if tgt2 != null and a.chase == 0 and sim.time - a.dshot_t < 0.45:
 				var u2 := (sim.time - a.dshot_t) / 0.45
 				var gate := Vector2(tgt2.x + 0.5, tgt2.y + 0.4)
 				draw_circle(gate + Vector2(0, -u2 * 0.25), 0.15 + u2 * 0.25, Color(0.92, 0.92, 0.88, 0.75 * (1.0 - u2)))
@@ -873,12 +950,16 @@ func _draw() -> void:
 		var vr2 := Rect2i(x0, y0, x1 - x0 + 1, y1 - y0 + 1)
 		for f: Feature in sim.features:
 			f.draw_top(self, vr2)
+	if prof_on: _pm("soldiers_top")
 	_draw_night(vis, x0, y0, x1, y1)
+	if prof_on: _pm("night")
 	_draw_selection_and_tools()
+	if prof_on: _pm("selection")
 	# screen-space text
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	for f: Feature in sim.features:
 		f.draw_overlay(self, screen_to_tile)
+		if prof_on: _pm("overlay:" + f.id)
 	# town names over the stores
 	if z >= 9.0 and not editor:
 		var tfont := get_theme_default_font()
@@ -895,6 +976,7 @@ func _draw() -> void:
 			var sp2: Vector2 = origin + tp * z
 			draw_string_outline(tfont, sp2 + Vector2(-90, 0), b.town, HORIZONTAL_ALIGNMENT_CENTER, 180, tfs, 5, Color(0, 0, 0, 0.85))
 			draw_string(tfont, sp2 + Vector2(-90, 0), b.town, HORIZONTAL_ALIGNMENT_CENTER, 180, tfs, sim.players[b.p - 1].color.lightened(0.55))
+	if prof_on: _pm("town_names")
 	if z >= 14.0:
 		var font := get_theme_default_font()
 		var fs := clampi(int(z * 0.42), 10, 20)
@@ -902,10 +984,11 @@ func _draw() -> void:
 			l[0] = (l[0] as Vector2) + Vector2(0, -lift_at((l[0] as Vector2).x, (l[0] as Vector2).y + 0.6))
 		for l in labels + _tool_labels:
 			var sp: Vector2 = origin + (l[0] as Vector2) * z
-			draw_string_outline(font, sp + Vector2(-40, 0), String(l[1]), HORIZONTAL_ALIGNMENT_CENTER, 80, fs, 4, Color.BLACK)
-			draw_string(font, sp + Vector2(-40, 0), String(l[1]), HORIZONTAL_ALIGNMENT_CENTER, 80, fs, l[2])
+			draw_string_outline(font, sp + Vector2(-110, 0), String(l[1]), HORIZONTAL_ALIGNMENT_CENTER, 220, fs, 4, Color.BLACK)
+			draw_string(font, sp + Vector2(-110, 0), String(l[1]), HORIZONTAL_ALIGNMENT_CENTER, 220, fs, l[2])
 	if flash > 0.0:
 		draw_rect(Rect2(Vector2.ZERO, size), Color(0.85, 0.28, 0.24, flash * 0.25))
+	if prof_on: _pm("labels")
 	draw_usec = Time.get_ticks_usec() - t_start
 
 
@@ -921,6 +1004,11 @@ func _draw_selection_and_tools() -> void:
 				draw_line(c + Vector2(-0.45, -0.45), c + Vector2(0.45, 0.45), Color("ff4a3a"), 0.14)
 				draw_line(c + Vector2(0.45, -0.45), c + Vector2(-0.45, 0.45), Color("ff4a3a"), 0.14)
 	if editor:
+		for a in editor_animals:
+			var ap := Vector2(int(a[1]) + 0.5, int(a[2]) + 0.8)
+			ap.y -= lift_at(ap.x, ap.y)
+			var wd := {"deer": 0.62, "boar": 0.5, "hare": 0.3, "wolf": 0.6}.get(String(a[0]), 0.5) as float
+			_sprite("unit_" + String(a[0]), ap, wd, 0, false)
 		for k in editor_starts.size():
 			var st: Vector2i = editor_starts[k]
 			var c := Vector2(st.x + 0.5, st.y + 0.5 - lift_at(st.x + 0.5, st.y + 0.5))
@@ -1066,21 +1154,43 @@ func _site_markers(x0: int, y0: int, x1: int, y1: int) -> void:
 		return
 	if zoom < 20.0 or (x1 - x0 + 1) * (y1 - y0 + 1) > 3500:
 		return
-	var key := "%s|%d|%d,%d,%d,%d|%d" % [place_type if placing else "", door, x0, y0, x1, y1, Time.get_ticks_msec() / 600]
+	# worked out again when the view, the building, its entrance or the map changes (roads, buildings,
+	# land), a few rows a frame so turning the entrance doesn't stall a frame; the old marks stay up
+	# until the new ones are ready
+	var lg := sim.logistics
+	var key := "%s|%d|%d,%d,%d,%d|%s|%d|%d|%d" % [place_type if placing else "", door, x0, y0, x1, y1,
+		str(lg.net_ver), lg._store_ver, sim.territory_version, sim.blds.size()]
 	if key != _site_key:
 		_site_key = key
-		_sites = {}
+		_site_new = {}
+		_site_row = maxi(0, y0)
+		_site_rect = Rect2i(x0, y0, x1 - x0, y1 - y0)
+		# a small change of view (scrolling) keeps the marks in view until the new ones are ready
+	if _site_row >= 0:
+		var deadline := Time.get_ticks_usec() + 2500
 		var sz := sim.size_of(place_type) if placing else ""
-		_gain = {}
-		for y in range(maxi(0, y0), mini(sim.h - 1, y1) + 1):
-			for x in range(maxi(0, x0), mini(sim.w - 1, x1) + 1):
+		var ry1 := mini(sim.h - 1, _site_rect.end.y)
+		while _site_row <= ry1:
+			var y := _site_row
+			for x in range(maxi(0, _site_rect.position.x), mini(sim.w - 1, _site_rect.end.x) + 1):
 				if placing:
 					if Vector2i(x, y) != ghost and sim.can_place(place_type, x, y, 1, door) == "":
-						_sites[y * sim.w + x] = sz
+						_site_new[y * sim.w + x] = sz
 				else:
 					var s := sim.site_size(x, y, 1)
 					if s != "":
-						_sites[y * sim.w + x] = s
+						_site_new[y * sim.w + x] = s
+			_site_row += 1
+			if Time.get_ticks_usec() > deadline:
+				break
+		if _site_row > ry1:
+			_site_row = -1
+			_sites = _site_new
+			_gain = {}
+			_gain_todo = []
+			_gain_all = []
+		else:
+			queue_redraw()
 	# none under the building being placed, so its plot stays easy to read
 	var skip := {}
 	if placing and sim.inb(ghost.x, ghost.y):
@@ -1091,15 +1201,23 @@ func _site_markers(x0: int, y0: int, x1: int, y1: int) -> void:
 	# placing a military building: the spots that would claim the most new land get a "+N" ("expand here")
 	if placing and GameData.bld[place_type].has("radius"):
 		if _gain.is_empty() and not _sites.is_empty():
+			# also a few at a time: each spot counts the land in its radius
+			if _gain_todo.is_empty() and _gain_all.is_empty():
+				_gain_todo = _sites.keys()
 			var r := int(GameData.bld[place_type].radius)
-			var all: Array = []
-			for t in _sites:
-				all.append([land_gain(t % sim.w, t / sim.w, r, 1), t])
-			all.sort_custom(func(a, b): return a[0] > b[0])
-			for k in mini(5, all.size()):
-				if int(all[k][0]) > 0:
-					_gain[all[k][1]] = all[k][0]
-			_gain[-1] = 0   # worked out (even when nothing gains)
+			var dl := Time.get_ticks_usec() + 2000
+			while not _gain_todo.is_empty() and Time.get_ticks_usec() < dl:
+				var t: int = _gain_todo.pop_back()
+				_gain_all.append([land_gain(t % sim.w, t / sim.w, r, 1), t])
+			if _gain_todo.is_empty():
+				_gain_all.sort_custom(func(a, b): return a[0] > b[0] or (a[0] == b[0] and a[1] < b[1]))
+				for k in mini(5, _gain_all.size()):
+					if int(_gain_all[k][0]) > 0:
+						_gain[_gain_all[k][1]] = _gain_all[k][0]
+				_gain[-1] = 0   # worked out (even when nothing gains)
+				_gain_all = []
+			else:
+				queue_redraw()
 		for t in _gain:
 			if t >= 0 and not skip.has(t):
 				if raised: _lift_to(t % sim.w + 0.5, t / sim.w + 0.5)
@@ -1242,24 +1360,61 @@ func _site_icon(c: Vector2, size: String) -> void:
 
 
 ## A small flag in colour col on tile i: a building's entrance. warn adds a pulsing ring (no road yet).
+var _flag_tex := {}   # flag colour -> a little picture of the flag on its pole (one draw call a flag)
+
+func _flag_picture(col: Color) -> Texture2D:
+	var t = _flag_tex.get(col)
+	if t != null:
+		return t
+	# 32 x 64 pixels for 0.5 x 1 tile: the pole's foot at (16, 56), its shadow, the pennant
+	var img := Image.create(32, 64, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	for y in range(54, 60):
+		for x in range(12, 21):
+			if Vector2(x - 16, (y - 57) * 1.6).length() <= 4.5:
+				img.set_pixel(x, y, Color(0, 0, 0, 0.35))
+	for y in range(29, 57):
+		img.set_pixel(16, y, Color("3a2a18"))
+		img.set_pixel(17, y, Color("3a2a18"))
+	for y in range(29, 39):
+		var reach := int(15.0 * (1.0 - absf(y - 33.5) / 5.0))
+		for x in range(17, 18 + reach):
+			var edge := y == 29 or y == 38 or x == 17 + reach
+			img.set_pixel(x, y, col.darkened(0.45) if edge else col)
+	t = ImageTexture.create_from_image(img)
+	_flag_tex[col] = t
+	return t
+
+
 func _door_flag(i: int, col: Color, warn: bool) -> void:
 	var c := Vector2(i % sim.w + 0.5, i / sim.w + 0.62)
 	if warn:
 		var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.006)
 		draw_arc(c + Vector2(0, -0.05), 0.36 + 0.06 * pulse, 0, TAU, 24, Color(1.0, 0.85, 0.3, 0.55 + 0.4 * pulse), 0.06)
-	draw_circle(c + Vector2(0, 0.02), 0.07, Color(0, 0, 0, 0.35))
-	draw_line(c, c + Vector2(0, -0.42), Color("3a2a18"), 0.04)
-	var fl := PackedVector2Array([c + Vector2(0.02, -0.42), c + Vector2(0.25, -0.35), c + Vector2(0.02, -0.28)])
-	draw_colored_polygon(fl, col)
-	fl.append(fl[0])
-	draw_polyline(fl, Color(0, 0, 0, 0.5), 0.015)
+	draw_texture_rect(_flag_picture(col), Rect2(c.x - 0.25, c.y - 0.875, 0.5, 1.0), false)
 
 
 ## Draws frame f of an animated texture with its bottom centre at foot, wid tiles wide, mirrored when
 ## flip is true. Returns the height it was drawn at, so labels and loads can sit above it.
+## Per sprite sheet: [texture, frames, frame width, height, whether a "_tint" sheet matches it].
+## Looked up once, as the carriers alone draw hundreds of sprites a frame.
+var _spr := {}
+
+func _spr_info(id: String) -> Array:
+	var e = _spr.get(id)
+	if e == null:
+		var t := Tex.get_tex(id)
+		var n := Tex.frames(id)
+		e = [t, n, t.get_width() / float(n), float(t.get_height()), Tex.frames(id + "_tint") == n and Tex.get_tex(id + "_tint") != null]
+		_spr[id] = e
+	return e
+
+
 func _sprite(id: String, foot: Vector2, wid: float, f: int, flip: bool, col := Color.WHITE) -> float:
-	var tex := Tex.get_tex(id)
-	var src := Tex.frame_rect(id, f)
+	var e := _spr_info(id)
+	var tex: Texture2D = e[0]
+	var fw: float = e[2]
+	var src := Rect2(fw * posmod(f, int(e[1])), 0, fw, e[3])
 	var hgt := wid * src.size.y / maxf(1.0, src.size.x)
 	var dst := Rect2(foot.x - wid / 2.0, foot.y - hgt, wid, hgt)
 	if flip:
@@ -1335,16 +1490,32 @@ func bld_texture(ty: String, era: int) -> Texture2D:
 	return list[clampi(era, 0, 5)] if era >= 0 else _bld_tex.get(ty, Tex.placeholder())
 
 
+## What drawing a building of a type needs from its data, looked up once per type:
+## [style, picture width, hub, glow, smoke, military, siege, flag height share by picture].
+var _art := {}
+
+func _art_of(ty: String) -> Array:
+	var e = _art.get(ty)
+	if e == null:
+		var d: Dictionary = GameData.bld[ty]
+		var art: Dictionary = d.get("art", {})
+		var style := String(art.get("style", "house"))
+		var anchors: Dictionary = ANCHORS.get(style, {})
+		e = [style, float(art.get("sw", 2.0)), art.get("hub", anchors.get("hub", [])), art.get("glow", anchors.get("glow", [])),
+			art.get("smoke", anchors.get("smoke", [])), ty == "hq" or d.has("garrison"), d.has("siege")]
+		_art[ty] = e
+	return e
+
+
 func _draw_building(b: Sim.Bld, labels: Array, detail: bool) -> void:
 	# a site is drawn in the look it will have: its realm's age when it was placed
 	var tex: Texture2D = bld_texture(b.ty, b.era)
-	var art: Dictionary = b.def.get("art", {})
-	var style := String(art.get("style", "house"))
-	var sw := float(art.get("sw", 2.0))
+	var ai := _art_of(b.ty)
+	var style: String = ai[0]
+	var sw: float = ai[1]
 	var hgt := sw * tex.get_height() / maxf(1.0, tex.get_width())
 	var rect := Rect2(b.x + 0.5 - sw / 2.0, b.y + 1.0 - hgt, sw, hgt)
 	var pc: Color = sim.players[b.p - 1].color
-	var anchors: Dictionary = ANCHORS.get(style, {})
 	if b.state == "build":
 		# the building rises from the ground as work progresses, inside a scaffold
 		var p := clampf(b.prog, 0.0, 1.0)
@@ -1378,7 +1549,7 @@ func _draw_building(b: Sim.Bld, labels: Array, detail: bool) -> void:
 		_draw_animals(b, String(ANIMALS[b.ty]), false)
 	if b.reno_to >= 0:
 		# renovation: scaffolding over the building, the new look rising behind it
-		var ntex := bld_texture(b.ty, b.reno_to)
+		var ntex := bld_texture(b.upg if b.upg != "" else b.ty, b.reno_to)
 		var th := float(ntex.get_height())
 		var rp := clampf(b.reno_prog, 0.0, 1.0)
 		var nh := sw * th / maxf(1.0, ntex.get_width())
@@ -1389,7 +1560,7 @@ func _draw_building(b: Sim.Bld, labels: Array, detail: bool) -> void:
 		draw_rect(Rect2(b.x, b.y + 1.02, 1.0, 0.1), Color(0, 0, 0, 0.6))
 		draw_rect(Rect2(b.x, b.y + 1.02, rp, 0.1), Color("9fd0e8"))
 	# moving parts: windmill sails, furnace glow and chimney smoke
-	var hub: Array = art.get("hub", anchors.get("hub", []))
+	var hub: Array = ai[2]
 	if hub.size() == 2:
 		var turn := sim.time * 1.6 if b.working and animate else float(b.id)
 		var hp := _anchor(rect, hub)
@@ -1398,18 +1569,18 @@ func _draw_building(b: Sim.Bld, labels: Array, detail: bool) -> void:
 		draw_texture_rect(_sails, Rect2(-ss / 2.0, -ss / 2.0, ss, ss), false)
 		draw_set_transform(_origin, 0.0, Vector2(zoom, zoom))
 	if detail:
-		var glow: Array = art.get("glow", anchors.get("glow", []))
+		var glow: Array = ai[3]
 		if glow.size() == 2 and b.working:
 			var fl := 0.65 + 0.35 * sin(sim.time * 13.0 + b.id) * sin(sim.time * 7.3)
 			var gp := _anchor(rect, glow)
 			var gr := 0.28 * sw / 2.0
 			draw_texture_rect(_glow, Rect2(gp.x - gr, gp.y - gr, gr * 2.0, gr * 2.0), false, Color(1, 1, 1, fl))
-		var smoke: Array = art.get("smoke", anchors.get("smoke", []))
+		var smoke: Array = ai[4]
 		if smoke.size() == 2 and (b.working or (style in HOME_SMOKE and b.state == "ready")):
 			_smoke_at(_anchor(rect, smoke), b.id * 0.137, 1.0 if b.working else 0.5)
 		_draw_worker(b, pc)
 	# a catapult's stone in flight, and dust where it lands
-	if b.def.has("siege") and b.target >= 0:
+	if ai[6] and b.target >= 0:
 		var tp := Vector2(b.target % sim.w + 0.5, b.target / sim.w + 0.4)
 		var sp := Vector2(b.x + 0.3, b.y + 0.1)
 		if b.working:
@@ -1438,7 +1609,7 @@ func _draw_building(b: Sim.Bld, labels: Array, detail: bool) -> void:
 		var first: String = b.out_buf.keys()[0]
 		if _res_tex.has(first):
 			draw_texture_rect(_res_tex[first], Rect2(b.x + 0.62, b.y + 0.55, 0.36, 0.36), false)
-	if sim.is_mil(b):
+	if ai[5]:
 		labels.append([Vector2(b.x + 0.5, rect.position.y - 0.05), str(sim.own_def(b)), pc.lightened(0.5)])
 	if b.p == 1 and b.prio != Sim.PRIO_NORMAL:
 		_prio_badge(b)
@@ -1534,9 +1705,10 @@ func _draw_worker(b: Sim.Bld, pc: Color) -> void:
 ## A worker: the picture as it is, then the tunic in the realm's colour (an older single-layer picture
 ## is tinted whole, as before). Returns the drawn height.
 func _person(id: String, at: Vector2, f: int, flip: bool, col: Color) -> float:
-	if Tex.frames(id) >= 10:
+	var e := _spr_info(id)
+	if int(e[1]) >= 10:
 		var hh := _sprite(id, at, 0.4, f, flip)
-		if Tex.frames(id + "_tint") == Tex.frames(id):
+		if bool(e[4]):
 			_batch_layer = 1
 			_sprite(id + "_tint", at, 0.4, f, flip, col)
 			_batch_layer = 0

@@ -155,6 +155,10 @@ static func _try(s: int, size: int, n: int, att: int) -> Dictionary:
 	return g
 
 
+## Ore amounts the map editor paints, per tile (kept in amt, times ORE_UNIT units in the vein).
+const ORE_AMOUNTS := [3, 6, 12, 25]       # poor, normal, rich, very rich
+const ORE_UNIT := 4
+
 ## Groups touching ore tiles of the same kind into veins. Each vein gets one shared, random amount:
 ## most veins are modest, a few are very rich. Mines draw from the whole vein until it runs dry.
 static func _make_veins(g: Dictionary, rng: RandomNumberGenerator) -> void:
@@ -190,8 +194,17 @@ static func _make_veins(g: Dictionary, rng: RandomNumberGenerator) -> void:
 					stack.append(j)
 		var richness := pow(rng.randf(), 1.6) * 3.0 + 0.3
 		var total := maxi(20, int(tiles.size() * rng.randf_range(10.0, 35.0) * richness))
+		# ore painted in the map editor with an amount: the vein holds what its tiles were given
+		var given := 0
 		for t in tiles:
-			amt[t] = 0
+			given += int(amt[t])
+		if given > 0:
+			total = 0
+			for t in tiles:
+				total += (int(amt[t]) if amt[t] > 0 else ORE_AMOUNTS[1]) * ORE_UNIT
+		else:
+			for t in tiles:
+				amt[t] = 0
 		vein_amt.append(total)
 		vein_tiles.append(tiles)
 	g["vein"] = vein
@@ -411,13 +424,20 @@ static func from_map(m: Dictionary, n: int) -> Dictionary:
 	for p in g.starts:
 		_stamp(g, p.x, p.y, rng)
 	_make_veins(g, rng)
+	# (the amounts painted on ore tiles are in the veins now)
+	var gore: PackedByteArray = g.ore
+	var gamt: PackedByteArray = g.amt
+	for i in gore.size():
+		if gore[i] != 0:
+			gamt[i] = 0
 	g["seed"] = String(m.get("seed", "map"))
+	g["animals"] = m.get("animals", [])
 	return g
 
 
 static func map_to_json(m: Dictionary) -> String:
 	var out := {"format": 1, "name": String(m.get("name", "")), "w": m.w, "h": m.h, "seed": String(m.get("seed", "map")),
-		"starts": (m.starts as Array).map(func(s): return [s.x, s.y])}
+		"starts": (m.starts as Array).map(func(s): return [s.x, s.y]), "animals": m.get("animals", [])}
 	for k in MAP_KEYS:
 		var raw: PackedByteArray = m[k]
 		out[k] = Marshalls.raw_to_base64(raw.compress(FileAccess.COMPRESSION_ZSTD))
@@ -436,6 +456,9 @@ static func load_map(path: String) -> Dictionary:
 	var m := {"name": String(d.get("name", path.get_file().get_basename())), "w": w, "h": h, "seed": String(d.get("seed", "map")), "starts": []}
 	for s in d.get("starts", []):
 		m.starts.append(Vector2i(int(s[0]), int(s[1])))
+	m["animals"] = []
+	for a in d.get("animals", []):
+		m.animals.append([String(a[0]), int(a[1]), int(a[2])])
 	for k in MAP_KEYS:
 		var raw := Marshalls.base64_to_raw(String(d[k])).decompress(w * h, FileAccess.COMPRESSION_ZSTD)
 		if raw.size() != w * h:

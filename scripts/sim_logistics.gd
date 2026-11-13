@@ -199,6 +199,12 @@ func _territory_nets(before: PackedByteArray) -> void:
 					continue
 				if was != 0 and (sim.road[i] == was or sim.bmap[i] != 0):
 					lost[was] = true
+				# a road on land that changed hands goes with the land: it is the new owner's now
+				var rp := int(sim.road[i])
+				if now != 0 and rp != 0 and rp != now and sim.bmap[i] == 0:
+					sim.road[i] = now
+					sim.changed_tiles.append(i)
+					lost[rp] = true
 				if now != 0 and sim.road[i] == now:
 					net_touch(now, PackedInt32Array([i]))
 	for pid in lost:
@@ -1613,6 +1619,15 @@ func remove_road(x: int, y: int, pid: int) -> int:
 	if not sim.inb(x, y):
 		return 0
 	var i := sim.idx(x, y)
+	# another realm's road left on your land (from an older save) can be cleared too
+	var rp := int(sim.road[i])
+	if rp != 0 and rp != pid and sim.owner[i] == pid and sim.bmap[i] == 0:
+		sim.road[i] = 0
+		sim.pave[i] = 0
+		sim.changed_tiles.append(i)
+		net_dirty(rp)
+		net_dirty(pid)
+		return 1
 	if sim.road[i] != pid or sim.bmap[i] != 0:
 		return 0
 	var removed := PackedInt32Array()

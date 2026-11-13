@@ -391,6 +391,17 @@ func _finish_site(b: Sim.Bld, p: Sim.Player) -> void:
 			sim.recompute_territory()
 		if not p.ai:
 			sim.emit_log("%s is finished." % String(b.def.name), Color("d8aa4a"), Vector2i(b.x, b.y))
+		# a building moved here: the old one hands over its settings and is pulled down
+		if b.replaces != 0:
+			var old: Sim.Bld = sim.by_id.get(b.replaces)
+			b.replaces = 0
+			if old != null and not old.dead and old.p == b.p and old.ty == b.ty:
+				b.prio = old.prio; b.crop = old.crop; b.rotate = old.rotate
+				b.want_n = old.want_n; b.want_kinds = old.want_kinds.duplicate(); b.keep_kind = old.keep_kind
+				b.archer_want = old.archer_want; b.sally = old.sally; b.wxp = old.wxp
+				sim.demolish(old)
+				if not p.ai:
+					sim.emit_log("The old %s is pulled down: the new one has taken over." % String(b.def.name).to_lower(), Color("d8aa4a"), Vector2i(b.x, b.y))
 
 
 ## Runs only when a building wakes up: its work cycle ended, its last start check asked to be

@@ -282,15 +282,7 @@ func _matches(id: String) -> bool:
 
 ## Buildings tech id unlocks (from the tech's own list and the buildings' "tech").
 func unlocks(id: String) -> Array:
-	var out := []
-	if GameData.techs.has(id):
-		for b in GameData.techs[id].get("unlocks", []):
-			if GameData.bld.has(b) and not out.has(b):
-				out.append(b)
-		for b in GameData.bld:
-			if String(GameData.bld[b].get("tech", "")) == id and not out.has(b):
-				out.append(b)
-	return out
+	return GameData.unlocks(id)
 
 
 func _set_hover(id: String) -> void:

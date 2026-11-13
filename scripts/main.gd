@@ -37,6 +37,13 @@ var paused := true
 
 
 var speed := 1.0
+var moving_id := 0         # a building being moved: placing one of its type builds its replacement
+var new_blds := {}         # building types research just unlocked: marked NEW until you pick one
+var has_played := false    # the game on the map has been played (so starting or loading another asks first)
+var _confirm_dlg: ConfirmationDialog
+var real_speed := 1.0      # how fast the game really ran over the last two seconds
+var _real_t := 0.0
+var _game_t := 0.0
 
 
 var acc := 0.0
@@ -100,6 +107,7 @@ var rivals_label: RichTextLabel
 
 var problems_ui := UiProblems.new(self)  # the Problems list (ui_problems.gd)
 var traffic_ui := UiTraffic.new(self)    # the traffic map, F7 (ui_traffic.gd)
+var workers_ui := UiWorkers.new(self)    # the Buildings and workers window, J (ui_workers.gd)
 var undo_ui := UiUndo.new(self)          # Ctrl+Z (ui_undo.gd)
 var minimap_filter: OptionButton
 var achievements := Achievements.new(self)
@@ -232,6 +240,7 @@ var perf_label: Label
 
 
 var perf_t := 0.0
+var _last_sim_ms := 0.0
 
 
 var perf_last := {"time": 0.0, "usec": 0}
@@ -721,6 +730,9 @@ func _build_ui() -> void:
 	problems_btn = _button("Problems", func(): problems_ui.toggle())
 	problems_btn.tooltip_text = "Your buildings that cannot work, and why (O)"
 	tb.add_child(problems_btn)
+	var wkb := _button("Buildings", func(): workers_ui.toggle())
+	wkb.tooltip_text = "How many buildings of each kind you have, their workers, and limits and priorities for each kind (J)"
+	tb.add_child(wkb)
 	var trb := _button("Traffic", func(): traffic_ui.toggle())
 	trb.tooltip_text = "Colour your roads by how busy they are (F7)"
 	tb.add_child(trb)
@@ -867,6 +879,24 @@ func _build_ui() -> void:
 	campaign_ui.build()
 	problems_ui.build()
 	traffic_ui.build()
+	workers_ui.build()
+	sim.tech_done.connect(func(pid, tid):
+		if pid != 1:
+			return
+		var nb := []
+		for b in GameData.unlocks(tid):
+			if sim.bld_enabled(b):
+				new_blds[b] = tid
+				nb.append(String(GameData.bld[b].name))
+		_rebuild_build_list()
+		toolbar.mark_new()
+		var fx := GameData.effect_text(GameData.techs[tid].get("effects", {}))
+		var parts := []
+		if fx != "": parts.append(fx)
+		if not nb.is_empty(): parts.append(tr("new: %s") % ", ".join(nb))
+		var seeds := Crops.seeds_of(tid)
+		if not seeds.is_empty(): parts.append(tr("seeds: %s") % ", ".join(seeds))
+		_show_hint(tr("Research complete: %s. %s") % [GameData.tech_name(tid), "; ".join(parts)], 6.0))
 	view.traffic_ui = traffic_ui
 	attack_ui.build()
 	chain_ui.build()
@@ -952,6 +982,17 @@ func _build_setup() -> void:
 	foes_slider.value_changed.emit(foes_slider.value)
 	str_slider.value_changed.emit(str_slider.value)
 	var go := _button("Found the realm", func():
+		if game_running():
+			confirm("Start a new game? The game you are playing ends; anything not saved is lost.", "Start new game", _found_realm)
+			return
+		_found_realm())
+	go.custom_minimum_size = Vector2(0, 44)
+	v.add_child(go)
+	_found_realm_ui_done(v)
+
+
+func _found_realm() -> void:
+	if true:
 		var sz: int = SIZES[size_opt.selected][1]
 		var n := int(foes_slider.value) + 1
 		if sz > 0 and sz < WorldGen.min_size(n):
@@ -969,9 +1010,10 @@ func _build_setup() -> void:
 			return
 		setup.visible = false
 		paused = false
-		_set_speed(1.0))
-	go.custom_minimum_size = Vector2(0, 44)
-	v.add_child(go)
+		_set_speed(1.0)
+
+
+func _found_realm_ui_done(v: VBoxContainer) -> void:
 	var er := HBoxContainer.new(); v.add_child(er)
 	var me_b := _button("Map editor", func():
 		var sz: int = SIZES[size_opt.selected][1]
@@ -1209,7 +1251,33 @@ func _begin() -> void:
 	_set_speed(1.0)
 
 
+## Asks "text" in a small window; runs on_yes if the player agrees.
+func confirm(text: String, yes_text: String, on_yes: Callable) -> void:
+	if _confirm_dlg == null:
+		_confirm_dlg = ConfirmationDialog.new()
+		_confirm_dlg.title = "Hearthlands"
+		_confirm_dlg.theme = UiLog.window_theme()
+		_confirm_dlg.cancel_button_text = "Cancel"
+		add_child(_confirm_dlg)
+	for c in _confirm_dlg.confirmed.get_connections():
+		_confirm_dlg.confirmed.disconnect(c.callable)
+	_confirm_dlg.dialog_text = text
+	_confirm_dlg.ok_button_text = yes_text
+	_confirm_dlg.confirmed.connect(on_yes, CONNECT_ONE_SHOT)
+	_confirm_dlg.popup_centered(Vector2i(460, 0))
+
+
+## Whether a game is being played that starting or loading another would end.
+func game_running() -> bool:
+	return has_played and not sim.players.is_empty() and not sim.over and sim.time > 10.0
+
+
 func _after_world_change() -> void:
+	has_played = false
+	new_blds = {}
+	moving_id = 0
+	if toolbar != null:
+		toolbar.mark_new()
 	view.sim = sim
 	watch = {}
 	problems_ui.hidden = {}
@@ -1309,6 +1377,10 @@ func _rebuild_build_list() -> void:
 		b.custom_minimum_size = Vector2(176, 52)
 		b.add_theme_font_size_override("font_size", 13)
 		b.tooltip_text = _bld_tooltip(id)
+		if new_blds.has(id):
+			b.text = tr("NEW  %s\n%s") % [String(d.name), GameData.cost_text(d.get("cost", {}))]
+			b.add_theme_color_override("font_color", Color("f2cf5a"))
+			b.tooltip_text = tr("New from research: %s\n\n") % GameData.tech_name(String(new_blds[id])) + b.tooltip_text
 		b.pressed.connect(_pick_build.bind(id))
 		build_grid.add_child(b)
 		build_buttons[id] = b
@@ -1334,6 +1406,10 @@ func _bld_tooltip(id: String) -> String:
 
 
 func _pick_build(id: String) -> void:
+	if new_blds.has(id):
+		new_blds.erase(id)
+		_rebuild_build_list()
+		toolbar.mark_new()
 	view.road_after = false
 	view.place_type = "" if view.place_type == id else id
 	if GameData.bld.has(view.place_type) and not sim.door_ok(view.place_type, view.door):
@@ -1356,6 +1432,7 @@ func _feature_tool(id: String) -> Array:
 
 
 func _cancel_place() -> void:
+	moving_id = 0
 	view.road_after = false
 	view.place_type = ""
 	view.road_start = Vector2i(-1, -1)
@@ -1376,6 +1453,13 @@ func _on_tile(t: Vector2i) -> void:
 		if r != "":
 			_show_hint(r, 2.5)
 		else:
+			if moving_id != 0:
+				var nb0 := sim.bld_at(t.x, t.y)
+				var old: Sim.Bld = sim.by_id.get(moving_id)
+				if nb0 != null and old != null and not old.dead and old.ty == ty:
+					nb0.replaces = old.id
+					_show_hint(tr("The new %s is being built. The old one keeps working until it is done, then is pulled down (40%% of its materials come back).") % String(old.def.name).to_lower(), 4.5)
+				moving_id = 0
 			undo_ui.placed(sim.bld_at(t.x, t.y))
 			sim.emit_log("Building a %s." % String(GameData.bld[ty].name).to_lower(), DIM, Vector2i(t.x, t.y))
 			var short := sim.missing(sim.human(), GameData.bld[ty].get("cost", {}))
@@ -1398,6 +1482,8 @@ func _on_tile(t: Vector2i) -> void:
 	if fog != null and sim.inb(t.x, t.y):
 		var ti := sim.idx(t.x, t.y)
 		if b != null and b.p != 1 and not fog.visible_at(ti):
+			if sim.is_mil(b) and Diplomacy.at_war(sim, 1, b.p) and fog.explored_at(ti):
+				_show_hint("You can't see that building now: it is in the fog. Bring your border or a lookout nearer to attack it.", 4.0)
 			b = null
 		if not fog.explored_at(ti):
 			view.sel_id = 0
@@ -1406,6 +1492,8 @@ func _on_tile(t: Vector2i) -> void:
 			_refresh_sel()
 			return
 	# an enemy military building at war: the attack window (who marches, how many)
+	if b != null and b.p != 1 and sim.is_mil(b) and b.state == "ready" and Diplomacy.at_war(sim, 1, b.p) and attack_ui.sources(b).is_empty():
+		_show_hint(attack_ui.why_not(b), 5.0)
 	if b != null and b.p != 1 and sim.is_mil(b) and b.state == "ready" and Diplomacy.at_war(sim, 1, b.p) and not attack_ui.sources(b).is_empty():
 		var r2 := attack_ui.open(b)
 		if r2 != "":
@@ -1670,6 +1758,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.keycode == KEY_F7 and not setup.visible:
 		traffic_ui.toggle()
 		return
+	if event.keycode == KEY_J and not setup.visible and not editor_ui.open:
+		workers_ui.toggle()
+		return
 	if event.keycode == KEY_B and not setup.visible and not save_panel.visible:
 		toolbar.toggle_sites()
 		return
@@ -1678,7 +1769,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 	match event.keycode:
 		KEY_F5: _save_game("quicksave")
-		KEY_F9: _load_game("quicksave")
+		KEY_F9:
+			if game_running():
+				confirm("Load your quick save? The game since then is lost.", "Load", _load_game.bind("quicksave"))
+			else:
+				_load_game("quicksave")
 		KEY_R:
 			# while placing a building R turns its entrance; otherwise it opens research
 			if view.place_type != "" and GameData.bld.has(view.place_type):
@@ -1765,13 +1860,32 @@ func _process(delta: float) -> void:
 			autosave_t = 0.0
 			_save_game("autosave", true)
 		acc += delta * speed
+		has_played = true
 		var n := 0
+		# the simulation gets at most 50 ms of each frame: when it can't keep up the game runs
+		# slower than the speed chosen (shown on the speed button and with F3) instead of freezing the screen
+		var budget := Time.get_ticks_usec() + 50000
 		while acc >= Sim.TICK and n < 120:
 			sim.tick(Sim.TICK)
 			acc -= Sim.TICK
 			n += 1
-		if n >= 120:
+			if Time.get_ticks_usec() > budget:
+				break
+		if n >= 120 or acc > Sim.TICK * 4.0:
 			acc = 0.0
+		_real_t += delta
+		_game_t += n * Sim.TICK
+		if _real_t >= 2.0:
+			real_speed = _game_t / _real_t
+			_real_t = 0.0
+			_game_t = 0.0
+			var b: Button = speed_btns.get(int(speed))
+			var behind := real_speed < speed * 0.8 and speed > 1.0
+			for k in speed_btns:
+				(speed_btns[k] as Button).modulate = Color.WHITE
+			if b != null:
+				b.modulate = Color(1.0, 0.7, 0.45) if behind else Color.WHITE
+				b.tooltip_text = (tr("Chosen %dx, but the computer only keeps up with %.1fx right now (a big late game). The game runs at that speed.") % [int(speed), real_speed]) if behind else ("16 times as fast (key 5), for long games when the computer keeps up" if int(speed) == 16 else "")
 	if sim.map_dirty:
 		view.chunks.mark_all()
 	if sim.changed_tiles.size() > 0:
@@ -1780,6 +1894,7 @@ func _process(delta: float) -> void:
 		sim.changed_tiles.clear()
 	if view.flash > 0.0:
 		view.flash = maxf(0.0, view.flash - delta)
+	workers_ui.update(delta)
 	view.queue_redraw()
 	if perf_label.visible:
 		perf_t += delta
@@ -1980,7 +2095,10 @@ func _update_perf() -> void:
 	var per := float(usec - int(perf_last.usec)) / 1000.0 / maxf(0.001, game_secs)
 	perf_last = {"time": sim.time, "usec": usec}
 	perf_t = 0.0
-	perf_label.text = tr("%d fps · map drawing %.1f ms · simulation %.1f ms per game second · %d buildings · %d carriers on the road") % [Engine.get_frames_per_second(), (view.draw_usec + view.ground_usec) / 1000.0, per if game_secs > 0.0 else 0.0, sim.blds.size(), sim.trips.size()]
+	if game_secs > 0.05:
+		_last_sim_ms = per
+	var spd := (tr("paused") if paused else tr("game speed %dx, runs at %.1fx") % [int(speed), real_speed])
+	perf_label.text = tr("%d fps · map drawing %.1f ms · simulation %.1f ms per game second · %s · %d buildings · %d carriers on the road") % [Engine.get_frames_per_second(), (view.draw_usec + view.ground_usec) / 1000.0, _last_sim_ms, spd, sim.blds.size(), sim.trips.size()]
 
 
 # ================================================================ entry points into the parts

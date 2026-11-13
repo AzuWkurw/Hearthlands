@@ -37,6 +37,11 @@ func on_start(loaded: bool) -> void:
 	for i in sim.w * sim.h:
 		if sim.ter[i] == Sim.GRASS:
 			_land += 1
+	if animals.is_empty() and not loaded and not sim.map_animals.is_empty():
+		# a hand-made map: the animals its maker placed
+		for a in sim.map_animals:
+			if KINDS.has(String(a[0])) and sim.inb(int(a[1]), int(a[2])):
+				animals.append([String(a[0]), float(a[1]), float(a[2]), float(a[1]), float(a[2]), sim.time, sim.time + rng.randf_range(0.0, 6.0)])
 	if animals.is_empty():
 		for k: String in KINDS:
 			for n in maxi(2, _land / int(KINDS[k].per)):
@@ -258,6 +263,11 @@ func building_lines(b: Sim.Bld) -> PackedStringArray:
 	return PackedStringArray(["Game in the hunting grounds: %d animal%s" % [n, "" if n == 1 else "s"]])
 
 
+const WIDTH := {"deer": 0.62, "boar": 0.5, "hare": 0.3, "wolf": 0.6}
+var _fish_tiles := PackedInt32Array()   # water tiles with fish (for the jumping fish), refreshed every 10 s
+var _fish_t := -100.0
+
+
 func draw_map(view: CanvasItem, rect: Rect2i) -> void:
 	var mv = view
 	if float(mv.zoom) < 10.0:
@@ -273,27 +283,33 @@ func draw_map(view: CanvasItem, rect: Rect2i) -> void:
 			continue
 		var moving := sim.time < float(a[6])
 		var k := String(a[0])
-		var wd := {"deer": 0.62, "boar": 0.5, "hare": 0.3, "wolf": 0.6}[k] as float
+		var wd := float(WIDTH.get(k, 0.5))
 		var f := int(sim.time * 6.0 + float(a[1]) * 3.0) % 4 if (moving and anim) else 0
 		mv._sprite("unit_" + k, at + Vector2(0.5, 0.8 - float(mv.lift_at(at.x + 0.5, at.y + 0.8))), wd, f, float(a[3]) < float(a[1]))
 	# fish jumping in the fishing grounds, now and then
 	if anim and float(mv.zoom) >= 14.0:
 		var w := sim.w
-		for y in range(maxi(0, rect.position.y), mini(sim.h, rect.end.y + 1)):
-			for x in range(maxi(0, rect.position.x), mini(w, rect.end.x + 1)):
-				var i := y * w + x
-				if sim.ter[i] != Sim.WATER or sim.amt[i] == 0:
-					continue
-				if fog != null and not fog.visible_at(i):
-					continue
-				var ph := fmod(sim.time * 0.15 + float((i * 2654435761) % 1000) / 1000.0, 1.0)
-				if ph < 0.06:
-					var u := ph / 0.06
-					var c := Vector2(x + 0.5, y + 0.6)
-					var p0 := c + Vector2(-0.18 + u * 0.36, -sin(u * PI) * 0.3)
-					view.draw_line(p0, p0 + Vector2(0.12, 0.02 - cos(u * PI) * 0.06), Color(0.85, 0.9, 0.95, 0.9), 0.05)
-					if u > 0.85:
-						view.draw_arc(c, 0.12 + (u - 0.85) * 1.2, 0, TAU, 12, Color(1, 1, 1, 0.5), 0.03)
+		if absf(sim.time - _fish_t) >= 10.0:
+			_fish_t = sim.time
+			_fish_tiles = PackedInt32Array()
+			for i in w * sim.h:
+				if sim.ter[i] == Sim.WATER and sim.amt[i] != 0:
+					_fish_tiles.append(i)
+		for i in _fish_tiles:
+			var x := i % w
+			var y := i / w
+			if x < rect.position.x or x > rect.end.x or y < rect.position.y or y > rect.end.y:
+				continue
+			if sim.amt[i] == 0 or (fog != null and not fog.visible_at(i)):
+				continue
+			var ph := fmod(sim.time * 0.15 + float((i * 2654435761) % 1000) / 1000.0, 1.0)
+			if ph < 0.06:
+				var u := ph / 0.06
+				var c := Vector2(x + 0.5, y + 0.6)
+				var p0 := c + Vector2(-0.18 + u * 0.36, -sin(u * PI) * 0.3)
+				view.draw_line(p0, p0 + Vector2(0.12, 0.02 - cos(u * PI) * 0.06), Color(0.85, 0.9, 0.95, 0.9), 0.05)
+				if u > 0.85:
+					view.draw_arc(c, 0.12 + (u - 0.85) * 1.2, 0, TAU, 12, Color(1, 1, 1, 0.5), 0.03)
 
 
 func save_state() -> Dictionary:

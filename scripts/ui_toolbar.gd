@@ -56,6 +56,7 @@ func build() -> void:
 	for c in GameData.CATEGORIES:
 		var id := String(c[0])
 		var b := _btn(String(CAT_SHORT.get(id, c[1])), _cat_icon(id), "%s buildings" % String(c[1]), _on_cat.bind(id))
+		b.set_meta("cat_name", String(c[1]))
 		bg.add_child(b)
 		cat_btns[id] = b
 	row.add_child(VSeparator.new())
@@ -255,6 +256,19 @@ func _place_popup() -> void:
 	var right := main.size.x - Main.SIDE_W - 8
 	var x := clampf(b.global_position.x + b.size.x / 2.0 - popup.size.x / 2.0, 8.0, maxf(8.0, right - popup.size.x))
 	popup.position = Vector2(x, bar.global_position.y - popup.size.y - 6)
+
+
+## Groups holding a building research just unlocked show a gold dot until it is picked.
+func mark_new() -> void:
+	for id in cat_btns:
+		var b: Button = cat_btns[id]
+		var any := false
+		for t in main.new_blds:
+			if String(GameData.bld[t].get("cat", "")) == id:
+				any = true
+		b.modulate = Color(1.0, 0.88, 0.45) if any else Color.WHITE
+		var base := "%s buildings" % String(b.get_meta("cat_name", id))
+		b.tooltip_text = base + ("\nNew from research!" if any else "")
 
 
 ## Pressed states follow what is going on: the open group, the tool in use.

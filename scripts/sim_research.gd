@@ -185,7 +185,20 @@ func complete_tech(p: Sim.Player, id: String) -> void:
 	_start_next(p)
 	var t: Dictionary = GameData.techs[id]
 	if not p.ai:
-		sim.emit_log("Research complete: %s." % String(t.name), Color("8fc0ff"))
+		# what it brings: its effects, the buildings and seeds it unlocks
+		var parts := []
+		var fx := GameData.effect_text(t.get("effects", {}))
+		if fx != "":
+			parts.append(fx)
+		var nb: Array = GameData.unlocks(id).filter(func(b): return sim.bld_enabled(b))
+		if not nb.is_empty():
+			parts.append("new: " + ", ".join(nb.map(func(b): return String(GameData.bld[b].name))) + " (marked NEW on the toolbar)")
+		var seeds := Crops.seeds_of(id)
+		if not seeds.is_empty():
+			parts.append("seeds: " + ", ".join(seeds))
+		if parts.is_empty() and String(t.get("info", "")) != "":
+			parts.append(String(t.info).trim_suffix("."))
+		sim.emit_log("Research complete: %s%s." % [String(t.name), (": " + "; ".join(parts)) if not parts.is_empty() else ""], Color("8fc0ff"))
 		if p.age > old_age:
 			sim.emit_log("Your realm enters the %s age." % GameData.age_name(p.age), Color("8fc0ff"))
 	elif p.age > old_age and p.age >= 3:

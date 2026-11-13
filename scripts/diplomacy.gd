@@ -167,6 +167,8 @@ static func say(sim: Sim, p: Sim.Player, text: String) -> void:
 
 
 const THANKS := ["A fair deal. May the roads stay open between us.", "Good trading with you, neighbour.", "Our carts will come again.", "Your goods are welcome in my halls."]
+## How fast a rival at peace grows tired of a neighbour (opinion lost per diplomacy turn).
+const FRICTION := {"builder": 1.4, "balanced": 3.0, "warlord": 3.6}
 const WARNINGS := ["Your borders press on mine. Keep your soldiers back, or there will be war.", "My patience with you is wearing thin.", "I have counted your soldiers. I have more."]
 
 
@@ -437,7 +439,15 @@ static func ai_tick(sim: Sim, p: Sim.Player) -> void:
 		o += (base_opinion(p) - o) * 0.04
 		var rel := relation(sim, p.id, q.id)
 		if rel == ALLY: o += 1.0
-		elif rel == PEACE: o += 0.9
+		elif rel == PEACE:
+			o += 0.9
+			# neighbours rub: at peace with a realm whose land touches its own, a rival grows tired of it
+			# (a warlord fast, a builder hardly), and more so when it is the stronger; gifts and trades
+			# win it back
+			if borders(sim, p.id, q.id):
+				o -= FRICTION.get(p.pers, 3.0)
+				if strength(sim, p) > strength(sim, q) * 1.5:
+					o -= 0.8
 		for r in others:
 			if r.id != q.id and opinion(p, r.id) < -30.0 and r.opinion.get(q.id, 0.0) < -30.0:
 				o += 1.0

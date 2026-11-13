@@ -136,8 +136,13 @@ func _fill_saves() -> void:
 		var l := main._label(info, 13)
 		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(l)
-		row.add_child(main._button("Load", _load_game.bind(base)))
+		row.add_child(main._button("Load", func():
+			if main.game_running():
+				main.confirm(tr("Load \"%s\"? The game you are playing ends; anything not saved is lost.") % String(meta.get("name", base)), "Load", _load_game.bind(base))
+			else:
+				_load_game(base)))
 		row.add_child(main._button("Delete", func():
-			DirAccess.remove_absolute(Main.SAVE_DIR + "/" + fn)
-			_fill_saves()))
+			main.confirm(tr("Delete the save \"%s\"? This can't be undone.") % String(meta.get("name", base)), "Delete", func():
+				DirAccess.remove_absolute(Main.SAVE_DIR + "/" + fn)
+				_fill_saves())))
 		main.save_list.add_child(row)

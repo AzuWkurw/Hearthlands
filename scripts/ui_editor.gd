@@ -11,7 +11,10 @@ const BRUSHES := [
 	["Water", "ter", Sim.WATER], ["Beach", "ter", Sim.BEACH], ["Grass", "ter", Sim.GRASS], ["Mountain", "ter", Sim.MOUNT],
 	["Trees", "deco", 1], ["Rocks", "deco", 2], ["Clay", "deco", 3], ["Clear", "deco", 0],
 	["Coal", "ore", 1], ["Iron", "ore", 2], ["Gold", "ore", 3], ["Granite", "ore", 4], ["Copper", "ore", 5], ["No ore", "ore", 0],
+	["Set ore amount", "amount", 0],
+	["Deer", "animal", "deer"], ["Boar", "animal", "boar"], ["Hare", "animal", "hare"], ["Wolf", "animal", "wolf"], ["No animals", "animal", ""],
 ]
+const AMOUNT_NAMES := ["Poor", "Normal", "Rich", "Very rich"]
 
 var main: Main
 var win: Window
@@ -24,6 +27,8 @@ var starts: Array = []  # Vector2i
 var map_name := "my map"
 var name_edit: LineEdit
 var _touched := {}
+var ore_amt := 1        # index in WorldGen.ORE_AMOUNTS for the ore brushes
+var animals: Array = [] # [kind, x, y] placed on the map (none: the game puts them at random)
 
 
 func _init(p_owner: Main) -> void:
@@ -61,6 +66,8 @@ func start(seed_str: String, n: int, map_size: int) -> bool:
 	if not sim.new_game(seed_str, maxi(1, n - 1), 5, false, map_size, false, {"features": []}):
 		return false
 	starts = []
+	animals = []
+	main.view.editor_animals = animals
 	for p in sim.players:
 		starts.append(p.start)
 	# an empty map: no realms, buildings, roads or land
@@ -95,6 +102,7 @@ func close() -> void:
 	win.visible = false
 	main.view.editor = false
 	main.view.editor_starts = []
+	main.view.editor_animals = []
 	main.side_box.visible = true
 	main.toolbar.bar.visible = true
 	main.setup.visible = true
@@ -117,6 +125,22 @@ func _fill() -> void:
 		b.set_pressed_no_signal(k == brush and moving < 0)
 		b.custom_minimum_size = Vector2(96, 0)
 		g.add_child(b)
+	# how much ore the ore brushes put in (and "Set ore amount" changes on ore already painted)
+	var orr := HBoxContainer.new()
+	body.add_child(orr)
+	orr.add_child(main._label("Ore", 13, Main.DIM))
+	for k in AMOUNT_NAMES.size():
+		var ob := main._button(AMOUNT_NAMES[k], func():
+			ore_amt = k
+			_fill())
+		ob.toggle_mode = true
+		ob.set_pressed_no_signal(k == ore_amt)
+		ob.tooltip_text = "Each ore tile painted holds %d units; a vein holds what its tiles hold together." % (int(WorldGen.ORE_AMOUNTS[k]) * WorldGen.ORE_UNIT)
+		orr.add_child(ob)
+	var what0: String = BRUSHES[brush][1]
+	if what0 == "animal":
+		body.add_child(main._label(tr("%d animals placed. Click to place one; No animals clears them under the brush. With none placed the game puts animals at random.") % animals.size(), 12, Main.DIM))
+		(body.get_child(body.get_child_count() - 1) as Label).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	var sr := HBoxContainer.new()
 	body.add_child(sr)
 	sr.add_child(main._label("Size", 13, Main.DIM))
@@ -178,7 +202,7 @@ func _fill() -> void:
 ## The map as it is now, in the map file shape (see WorldGen.load_map).
 func current_map() -> Dictionary:
 	var sim: Sim = main.sim
-	var m := {"name": map_name, "w": sim.w, "h": sim.h, "seed": sim.seed_str, "starts": starts.duplicate()}
+	var m := {"name": map_name, "w": sim.w, "h": sim.h, "seed": sim.seed_str, "starts": starts.duplicate(), "animals": animals.duplicate(true)}
 	for k in WorldGen.MAP_KEYS:
 		m[k] = (sim.get(k) as PackedByteArray).duplicate()
 	return m
@@ -217,7 +241,23 @@ func _paint(t: Vector2i, first: bool) -> void:
 			_fill()
 		return
 	var what: String = BRUSHES[brush][1]
-	var val: int = BRUSHES[brush][2]
+	if what == "animal":
+		var kind := String(BRUSHES[brush][2])
+		if kind == "":
+			var r0 := maxi(1, size / 2)
+			for k in range(animals.size() - 1, -1, -1):
+				if absi(int(animals[k][1]) - t.x) <= r0 and absi(int(animals[k][2]) - t.y) <= r0:
+					animals.remove_at(k)
+		elif first:
+			var ti := sim.idx(t.x, t.y)
+			if sim.ter[ti] == Sim.GRASS or sim.ter[ti] == Sim.BEACH:
+				animals.append([kind, t.x, t.y])
+			else:
+				main._show_hint("Animals live on grass.", 2.0)
+		main.view.editor_animals = animals
+		_fill()
+		return
+	var val: int = int(BRUSHES[brush][2]) if what != "animal" else 0
 	var r := size / 2
 	for dy in range(-r, size - r):
 		for dx in range(-r, size - r):
@@ -239,10 +279,13 @@ func _paint(t: Vector2i, first: bool) -> void:
 					if val == 0 or sim.ter[i] == Sim.GRASS or sim.ter[i] == Sim.BEACH:
 						sim.deco[i] = val
 						sim.amt[i] = [0, 0, 8, 10][val]
+				"amount":
+					if sim.ore[i] != 0:
+						sim.amt[i] = int(WorldGen.ORE_AMOUNTS[ore_amt])
 				"ore":
 					if sim.ter[i] == Sim.MOUNT:
 						sim.ore[i] = val
-						sim.amt[i] = 0
+						sim.amt[i] = int(WorldGen.ORE_AMOUNTS[ore_amt]) if val > 0 else 0
 						# a vein of its own for now, so it shows at once (joined up when the stroke ends)
 						if val > 0:
 							sim.vein[i] = sim.vein_amt.size()
@@ -264,7 +307,7 @@ func _paint_done() -> void:
 	_touched = {}
 	var sim: Sim = main.sim
 	var what: String = BRUSHES[brush][1]
-	if what == "ore" or what == "ter":
+	if what == "ore" or what == "ter" or what == "amount":
 		var g := {"w": sim.w, "h": sim.h, "ore": sim.ore, "amt": sim.amt}
 		var rng := RandomNumberGenerator.new()
 		rng.seed = hash(sim.seed_str + "veins")

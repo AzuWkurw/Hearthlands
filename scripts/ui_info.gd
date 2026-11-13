@@ -232,6 +232,17 @@ func _refresh_sel() -> void:
 				_refresh_sel())
 		wb.tooltip_text = "Play a sound and say so when this building is finished."
 		main.sel_actions.add_child(wb)
+	if b.p == 1 and b.ty != "hq" and b.state == "ready" and not main.sim.is_mil(b) and not b.def.get("claim_only", false):
+		var mb := main._button("Move building", func():
+			var bb: Sim.Bld = main.sim.by_id.get(main.view.sel_id)
+			if bb:
+				main.moving_id = bb.id
+				main.view.place_type = bb.ty
+				main.view.door = bb.door if bb.door >= 0 else 0
+				main._show_hint(tr("Click where the new %s should stand. The old one keeps working until the new one is finished.") % String(bb.def.name).to_lower(), 4.0)
+				main._refresh_build())
+		mb.tooltip_text = "Build this building again somewhere else (full cost). The old one keeps working until the new one is finished, then it is pulled down and hands over its settings; 40% of its materials come back."
+		main.sel_actions.add_child(mb)
 	if b.p == 1 and wr > 0 and b.state == "ready":
 		main.sel_actions.add_child(main._button("Move work area", func():
 			main.view.place_type = "@work"
@@ -310,6 +321,42 @@ func _crop_ui(b: Sim.Bld) -> void:
 			tip += "\nLocked: study %s to get the seed." % String(GameData.techs[String(cd.tech)].name)
 		cb.tooltip_text = tip
 		main.prio_row.add_child(cb)
+	# a crop for each season (blank: the main crop above)
+	var sg := GridContainer.new()
+	sg.columns = 4
+	var cur_s := Crops.season_now(main.sim)
+	for s in 4:
+		var sl := main._label(["Spring", "Summer", "Autumn", "Winter"][s] + (" (now)" if s == cur_s else ""), 12, Main.BRASS if s == cur_s else Main.DIM)
+		sg.add_child(sl)
+	for s in 4:
+		var ob := OptionButton.new()
+		ob.focus_mode = Control.FOCUS_NONE
+		ob.add_item("main crop", 0)
+		ob.set_item_metadata(0, "")
+		var sel := 0
+		for id in Crops.ORDER:
+			var cd: Dictionary = Crops.LIST[id]
+			if String(cd.need) != "" and main.sim.get_feature(String(cd.need)) == null:
+				continue
+			ob.add_item(String(cd.name) + ("" if Crops.grows(id, s) else " (idle)"), ob.item_count)
+			ob.set_item_metadata(ob.item_count - 1, id)
+			ob.set_item_disabled(ob.item_count - 1, not Crops.known(main.sim, me, id))
+			if b.season_crop.size() == 4 and String(b.season_crop[s]) == id:
+				sel = ob.item_count - 1
+		ob.select(sel)
+		ob.tooltip_text = "What this farm sows in %s. 'main crop' uses the crop chosen above. A crop marked (idle) does not grow then." % ["spring", "summer", "autumn", "winter"][s]
+		ob.item_selected.connect(func(i):
+			var bb: Sim.Bld = main.sim.by_id.get(main.view.sel_id)
+			if bb:
+				if bb.season_crop.size() != 4:
+					bb.season_crop = ["", "", "", ""]
+				bb.season_crop[s] = String(ob.get_item_metadata(i))
+				if bb.season_crop == ["", "", "", ""]:
+					bb.season_crop = []
+				main._click()
+				_refresh_sel())
+		sg.add_child(ob)
+	main.prio_row.add_child(sg)
 	var rk := CheckBox.new()
 	rk.text = "Winter rye when out of season"
 	rk.button_pressed = b.rotate
@@ -321,6 +368,13 @@ func _crop_ui(b: Sim.Bld) -> void:
 			bb.rotate = on
 			_refresh_sel())
 	main.prio_row.add_child(rk)
+	var ga := main._button("Use for all farms", func():
+		var bb: Sim.Bld = main.sim.by_id.get(main.view.sel_id)
+		if bb:
+			main._show_hint(tr("%d other farms now sow the same crops by season.") % Crops.apply_to_all(main.sim, bb), 3.0)
+			_refresh_sel())
+	ga.tooltip_text = "Give every farm of yours this farm's crops: the main crop, the crop for each season and the winter rye setting."
+	main.prio_row.add_child(ga)
 
 
 ## The garrison settings of your military building b: how many soldiers, which kinds, and who stays
@@ -332,7 +386,7 @@ func _garrison_ui(b: Sim.Bld) -> void:
 	var rm := main.sim.rmix_of(p)
 	var gm := main.sim.gmix_of(b)
 	# rebuilt only when something it shows changes, so a menu that is open stays open
-	var sig := "%d|%d|%s|%d|%s|%s|%d|%d|%d|%s|%d|%d|%d" % [b.id, b.want_n, str(b.want_kinds), b.keep_kind, str(rm), str(gm), p.age, b.archer_want, b.archers, str(b.sally), int(p.stock.get("bows", 0.0)), b.blunt, int(p.stock.get("weapons", 0.0))]
+	var sig := "%d|%d|%s|%d|%s|%s|%d|%d|%d|%s|%d|%d|%d|%s|%d|%s|%d|%s|%d" % [b.id, b.want_n, str(b.want_kinds), b.keep_kind, str(rm), str(gm), p.age, b.archer_want, b.archers, str(b.sally), int(p.stock.get("bows", 0.0)), b.blunt, int(p.stock.get("weapons", 0.0)), b.upg, int(b.reno_prog * 20.0), str(b.border), p.inner_pct, str(p.border_first), p.techs.size()]
 	if sig == main._gar_sig:
 		return
 	main._gar_sig = sig
@@ -426,7 +480,7 @@ func _garrison_ui(b: Sim.Bld) -> void:
 	# archers: soldiers here who take up bows from the stores
 	var row4 := HBoxContainer.new()
 	var al := main._label("Archers", 14, Main.DIM)
-	al.tooltip_text = "Soldiers here who take up a bow each from the stores. Archers shoot at attackers from 6 tiles out, but fight worse at the gate."
+	al.tooltip_text = "Archers are extra to the soldiers here (up to half as many); each takes a bow from the stores. They shoot at attackers and at enemy columns passing within 6 tiles. They do not fight at the gate and are not counted as soldiers."
 	row4.add_child(al)
 	var am := main._button("-", func():
 		b.archer_want = maxi(0, b.archer_want - 1)
@@ -434,15 +488,15 @@ func _garrison_ui(b: Sim.Bld) -> void:
 		main._click())
 	am.disabled = b.archer_want <= 0
 	row4.add_child(am)
-	var an := main._label(tr("%d (want %d)") % [b.archers, b.archer_want], 15)
+	var an := main._label(tr("%d (want %d of %d)") % [b.archers, b.archer_want, main.sim.military.archer_cap(b)], 15)
 	an.custom_minimum_size = Vector2(90, 0)
 	an.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	row4.add_child(an)
 	var ap := main._button("+", func():
-		b.archer_want = mini(cap, b.archer_want + 1)
+		b.archer_want = mini(main.sim.military.archer_cap(b), b.archer_want + 1)
 		main._gar_sig = "-"
 		main._click())
-	ap.disabled = b.archer_want >= cap
+	ap.disabled = b.archer_want >= main.sim.military.archer_cap(b)
 	row4.add_child(ap)
 	row4.add_child(main._label(tr("  bows in store: %d") % int(p.stock.get("bows", 0.0)), 12, Main.DIM))
 	main.garrison_box.add_child(row4)
@@ -453,7 +507,7 @@ func _garrison_ui(b: Sim.Bld) -> void:
 	main.garrison_box.add_child(wl)
 	var sc := CheckBox.new()
 	sc.text = "March out to meet attackers"
-	sc.tooltip_text = "When an enemy attacks this building, its soldiers (all but one) go out to fight the column in the open before it reaches the walls."
+	sc.tooltip_text = "When an enemy attacks this building, or an enemy column marches past within 5 tiles on its way elsewhere, its soldiers (all but one) go out to fight it in the open."
 	sc.button_pressed = b.sally
 	sc.toggled.connect(func(on):
 		b.sally = on
@@ -461,3 +515,53 @@ func _garrison_ui(b: Sim.Bld) -> void:
 	main.garrison_box.add_child(sc)
 	main.garrison_box.add_child(main._label("Extra soldiers go back to headquarters; missing ones come from there, newest allowed kind first.", 12, Main.DIM))
 	(main.garrison_box.get_child(main.garrison_box.get_child_count() - 1) as Label).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	# upgrading where it stands: a bigger military building of the same size
+	main.garrison_box.add_child(HSeparator.new())
+	if b.upg != "":
+		main.garrison_box.add_child(main._label(tr("Upgrading to a %s: %d%% (soldiers stay inside)") % [String(GameData.bld[b.upg].name).to_lower(), roundi(b.reno_prog * 100.0)], 14, Color("9fd0e8")))
+	elif b.reno_to < 0:
+		var ups := main.sim.upgrades_of(b)
+		if ups.is_empty():
+			main.garrison_box.add_child(main._label("No upgrade: no bigger %s military building is known yet." % String(Sim.SIZE_NAMES.get(main.sim.size_of(b.ty), "")).to_lower(), 12, Main.DIM))
+		else:
+			var ur := HFlowContainer.new()
+			ur.add_child(main._label("Upgrade to", 14, Main.DIM))
+			for ty in ups:
+				var cost := main.sim.upgrade_cost(b, ty)
+				var ub := main._button("%s (%d)" % [String(GameData.bld[ty].name), int(GameData.bld[ty].garrison)], func():
+					var bb: Sim.Bld = main.sim.by_id.get(main.view.sel_id)
+					if bb:
+						var r := main.sim.upgrade(bb, ty)
+						main._show_hint(r if r != "" else tr("Upgrade started: carriers bring %s.") % Diplomacy.goods_text(main.sim.upgrade_cost(bb, ty)), 3.5)
+						main._gar_sig = "-"
+						_refresh_sel())
+				ub.tooltip_text = tr("Rebuild it as a %s where it stands: room for %d soldiers instead of %d, radius %d instead of %d. Costs %s. Its soldiers stay inside and it keeps its land meanwhile.") % [String(GameData.bld[ty].name).to_lower(), int(GameData.bld[ty].garrison), int(b.def.garrison), int(GameData.bld[ty].get("radius", 0)), int(b.def.get("radius", 0)), Diplomacy.goods_text(cost)]
+				ur.add_child(ub)
+			main.garrison_box.add_child(ur)
+	# the realm's border settings
+	main.garrison_box.add_child(HSeparator.new())
+	var where := main._label(tr("This building is near the border.") if b.border else tr("This building is inland (no other realm within %d tiles).") % SimMilitary.BORDER_R, 13, Color("e0b060") if b.border else Main.DIM)
+	main.garrison_box.add_child(where)
+	var br := HBoxContainer.new()
+	br.add_child(main._label("All inland buildings hold", 14, Main.DIM))
+	var ib := OptionButton.new()
+	ib.focus_mode = Control.FOCUS_NONE
+	for pct in [100, 75, 50, 25]:
+		ib.add_item(tr("%d%% of their soldiers") % pct if pct < 100 else tr("all their soldiers"), pct)
+		if p.inner_pct == pct:
+			ib.select(ib.item_count - 1)
+	ib.tooltip_text = "For your whole realm: military buildings away from the border keep only this share (at least one soldier); the rest wait at headquarters for the border. A building with its own 'Soldiers wanted' keeps that."
+	ib.item_selected.connect(func(i):
+		p.inner_pct = ib.get_item_id(i)
+		main._gar_sig = "-"
+		main._click())
+	br.add_child(ib)
+	main.garrison_box.add_child(br)
+	var bf := CheckBox.new()
+	bf.text = "New soldiers go to the border first"
+	bf.button_pressed = p.border_first
+	bf.tooltip_text = "For your whole realm: soldiers leaving headquarters fill buildings near the border before inland ones."
+	bf.toggled.connect(func(on):
+		p.border_first = on
+		main._gar_sig = "-")
+	main.garrison_box.add_child(bf)

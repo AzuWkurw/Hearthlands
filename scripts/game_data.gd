@@ -248,6 +248,19 @@ static func age_name(i: int) -> String:
 	return String(ages[clampi(i, 0, ages.size() - 1)]) if ages.size() > 0 else ""
 
 
+## Buildings tech id unlocks (from the tech's own list and the buildings' "tech").
+static func unlocks(id: String) -> Array:
+	var out := []
+	if techs.has(id):
+		for b in techs[id].get("unlocks", []):
+			if bld.has(b) and not out.has(b):
+				out.append(b)
+		for b in bld:
+			if String(bld[b].get("tech", "")) == id and not out.has(b):
+				out.append(b)
+	return out
+
+
 ## Plain-language description of a tech's effects.
 static func effect_text(eff: Dictionary) -> String:
 	var parts := []

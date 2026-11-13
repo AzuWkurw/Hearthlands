@@ -56,9 +56,14 @@ static func grows(id: String, season: int) -> bool:
 	return season < 0 or float(LIST[id].season[season]) > OFF
 
 
-## The crop farm b sows now: its own, or winter rye while its own is out of season (when set to rotate).
+## The crop farm b sows now: the one set for this season, else its own, or winter rye while its own
+## is out of season (when set to rotate).
 static func now(sim: Sim, b: Sim.Bld) -> String:
 	var c := chosen(b)
+	if b.season_crop.size() == 4:
+		var s0 := season_now(sim)
+		if s0 >= 0 and LIST.has(String(b.season_crop[s0])) and known(sim, sim.players[b.p - 1], String(b.season_crop[s0])):
+			return String(b.season_crop[s0])
 	if b.rotate and c != "rye":
 		var s := season_now(sim)
 		var p := sim.players[b.p - 1]
@@ -239,6 +244,19 @@ static func fields_line(sim: Sim, b: Sim.Bld) -> String:
 		var r := rate(sim, now(sim, b))
 		t += (", the next ripe in about %d s" % ceili((GROW - growing) / r)) if r > 0.0 else ", not growing now (out of season)"
 	return t
+
+
+## Copies farm b's crop plan (main crop, crop by season, winter rye) to every farm of its realm.
+## Returns how many farms changed.
+static func apply_to_all(sim: Sim, b: Sim.Bld) -> int:
+	var n := 0
+	for f: Sim.Bld in sim.realm_blds(sim.players[b.p - 1]):
+		if f != b and is_farm(f) and not f.dead:
+			f.crop = b.crop
+			f.season_crop = b.season_crop.duplicate()
+			f.rotate = b.rotate
+			n += 1
+	return n
 
 
 ## Seeds tech id unlocks (names).
