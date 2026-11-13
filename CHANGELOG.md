@@ -1,5 +1,36 @@
 # Changelog
 
+## Build 40 (v0.35.0, 2026-11-13)
+
+Fixes and features from the playtest list.
+
+Military
+- Soldiers no longer walk on water: columns march round lakes and rivers and over bridges. A building with water all round can't be attacked by land; the attack window says so.
+- Military buildings react to enemy columns passing by: their archers shoot, and one set to "March out" sends soldiers to stop the column in the open.
+- Fixed: after one attack you could not attack again. Survivors of a won attack now go back to the building they came from, and clicking an enemy building you can't attack says why.
+- Archers are extra to the soldiers: up to half as many as the soldiers inside, not counted as soldiers.
+- Upgrade a military building where it stands (a guardhouse to a tower, a keep to a castle...): its soldiers stay inside. Rivals upgrade their border buildings too.
+- Border priority: inland military buildings can hold fewer soldiers (75%, 50%, 25%), and new soldiers go to the border first.
+- Rivals at peace grow tired of a neighbour whose land touches theirs (a warlord fast, a builder hardly) and, when stronger, warn and then declare war. Gifts and trades win them back.
+
+Economy
+- Buildings window (J): how many buildings of each kind you have, how many work and how many wait for a worker, a priority for a whole kind, a limit on workers per kind, and Next to jump to them.
+- Keep one builder free for new building sites.
+- Move building: build it again somewhere else; the old one works until the new one is done and hands over its settings.
+- Farms: a crop for each season, and "Use for all farms".
+- The geologist's work area shows while sending him: the ring he surveys and the tiles he would visit.
+
+Interface
+- Research complete messages say what the study brings; new buildings are marked NEW on the toolbar until you pick them.
+- Confirm windows before starting a new game or loading over a game in play, and before deleting a save.
+- Map editor: ore amounts (poor to very rich, and Set ore amount for ore already painted), and animals you place (deer, boar, hare, wolf).
+
+Fixes
+- Fixed: random explored patches on the map (the fog saw the buildings of the game before when a game was started or loaded).
+- Fixed: deleting roads on land that changed hands. A road on land you take is now yours.
+- Late game drawing is faster: carriers off screen are skipped, entrance flags and the weather are cheaper, and the building spots are worked out a few rows a frame, so turning a building's entrance no longer stalls.
+- The F3 overlay keeps the simulation time while paused and shows the real game speed; the speed button turns orange when the computer can't keep up with the speed chosen.
+
 ## Build 39 (v0.34.0, 2026-11-09)
 
 Farms work real fields.

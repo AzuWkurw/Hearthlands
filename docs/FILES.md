@@ -16,7 +16,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `scripts/sim.gd` | 2612 | The whole game state and rules: map, players, economy, territory, combat and rival AI. Runs without any rendering, so it can be tested headless (see tools/sim_test.gd). |
 | `scripts/sim_ai.gd` | 667 | How rival realms think: what to build and where, when to attack, what to research. Part of the simulation: sim.gd holds the shared state and calls in here; the functions reach the rest of the game through `sim`. |
 | `scripts/sim_logistics.gd` | 1800 | Roads, the road network, stores, carriers and work areas. Part of the simulation: sim.gd holds the shared state and calls in here; the functions reach the rest of the game through `sim`. |
-| `scripts/sim_military.gd` | 1105 | Territory, soldiers, attacks, duels and conquest. Part of the simulation: sim.gd holds the shared state and calls in here; the functions reach the rest of the game through `sim`. |
+| `scripts/sim_military.gd` | 1108 | Territory, soldiers, attacks, duels and conquest. Part of the simulation: sim.gd holds the shared state and calls in here; the functions reach the rest of the game through `sim`. |
 | `scripts/sim_people.gd` | 560 | People: housing, jobs and specialists, homes where people wait, people walking to work and soldiers to their posts, needs and food. Part of the simulation: sim.gd holds the shared state and calls in here; the functions reach the rest of the game through `sim` (sim.gd keeps a one-line wrapper for each, so callers did not change). |
 | `scripts/sim_production.gd` | 496 | Production: buildings working in cycles (inputs, outputs, tools, experience) and construction sites. Part of the simulation: sim.gd holds the shared state and calls in here; the functions reach the rest of the game through `sim` (sim.gd keeps a one-line wrapper for each, so callers did not change). |
 | `scripts/sim_research.gd` | 277 | Research points, techs and the ages. Part of the simulation: sim.gd holds the shared state and calls in here; the functions reach the rest of the game through `sim`. |
@@ -133,7 +133,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `tools/geo_test.gd` | 44 | Tests geologists: ore hidden until surveyed, mines only on surveyed ore, a survey trip, rivals surveying. Run: godot --headless --script res://tools/geo_test.gd |
 | `tools/load_saves_test.gd` | 34 | Loads every save in the saves folder (user://saves) and plays each on for a minute: old saves must still load. godot --headless --script res://tools/load_saves_test.gd |
 | `tools/log_go_test.gd` | 34 | Checks the Go buttons of the event log: xvfb-run godot --rendering-driver opengl3 --script res://tools/log_go_test.gd -- out=/dir |
-| `tools/march_test.gd` | 86 | Columns march round water, buildings react to columns passing by, and survivors go home: godot --headless --script res://tools/march_test.gd |
+| `tools/march_test.gd` | 91 | Columns march round water, buildings react to columns passing by, and survivors go home: godot --headless --script res://tools/march_test.gd |
 | `tools/menu_test.gd` | 44 | Lists what each tab of the Build panel shows, for a new game and for a loaded older save, and names every building that appears in no tab. Run: godot --headless --script res://tools/menu_test.gd -- [save=path] |
 | `tools/mil2_test.gd` | 71 | Military upgrades, border priority, separate archers and rivals breaking the peace: godot --headless --script res://tools/mil2_test.gd |
 | `tools/mission_test.gd` | 55 | Missions and hand-made maps: every mission in data/missions.json starts, its goals are counted, a mission is won when its goals are met and lost at its deadline, and a game on a hand-made map saves and loads the same. godot --headless --script res://tools/mission_test.gd |
@@ -256,9 +256,9 @@ top of each file; run it again after adding files. For how the parts work togeth
 
 | File | Lines | What it is |
 |---|---:|---|
-| `CHANGELOG.md` | 489 | What changed in each build. |
+| `CHANGELOG.md` | 520 | What changed in each build. |
 | `README.md` | 882 | How to play, the rules, controls, settings, modding and the project layout. |
-| `docs/FILES.md` | 261 | This list (written by tools/file_list.py). |
+| `docs/FILES.md` | 267 | This list (written by tools/file_list.py). |
 | `docs/SOURCE_GUIDE.md` | 439 | A tour of the code for programmers: the parts, how a game tick runs, where things live. |
 | `docs/SUGGESTIONS.md` | 203 | Ideas and their status after each round of work. |
 | `export_presets.cfg` | 61 | Godot export settings for the Windows and Linux builds. |
