@@ -29,20 +29,35 @@ static func auto_size(n: int) -> int:
 	return mini(208, 72 + n * 15)
 
 
-static func generate(seed_str: String, n_enemies: int, size_override := 0) -> Dictionary:
+## Landscape settings for generate (the map editor's Generate, and the new-game screen). Each is
+## 0..1 with 0.5 the usual; leaving them out gives the same maps as always for a seed.
+##   water     how much sea (higher: more and bigger lakes and seas)
+##   mountains how much mountain
+##   forests   how much woodland
+##   ore       how much of the mountain holds ore
+##   scale     how big the lakes, hills and woods are (higher: fewer, larger features)
+##   shape     "island" (sea all round, the usual), "continent" (land to the edges), "lakes"
+##             (mostly land with lakes), "archipelago" (many small islands)
+const GEN_DEFAULTS := {"water": 0.5, "mountains": 0.5, "forests": 0.5, "ore": 0.5, "scale": 0.5, "shape": "island"}
+const SHAPES := ["island", "continent", "lakes", "archipelago"]
+
+
+static func generate(seed_str: String, n_enemies: int, size_override := 0, params := {}) -> Dictionary:
 	var n := n_enemies + 1
 	var size: int = auto_size(n) if size_override <= 0 else maxi(size_override, 48)
 	var tries := 40 if size >= auto_size(n) else 12
+	var gp := GEN_DEFAULTS.duplicate()
+	gp.merge(params, true)
 	for att in tries:
 		var s: int = (seed_str.hash() + att * 101) & 0x7fffffff
-		var g := _try(s, size, n, att)
+		var g := _try(s, size, n, att, gp)
 		if not g.is_empty():
 			g["seed"] = seed_str
 			return g
 	return {}
 
 
-static func _try(s: int, size: int, n: int, att: int) -> Dictionary:
+static func _try(s: int, size: int, n: int, att: int, gp: Dictionary = GEN_DEFAULTS) -> Dictionary:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = s
 	var w := size
@@ -53,18 +68,31 @@ static func _try(s: int, size: int, n: int, att: int) -> Dictionary:
 	var amt := PackedByteArray(); amt.resize(N)
 	var ore := PackedByteArray(); ore.resize(N)
 	var shade := PackedByteArray(); shade.resize(N)
-	var hn := _noise(s, 1.0 / 30.0)
+	var shape := String(gp.get("shape", "island"))
+	# how big the landforms are: 30 tiles across at the usual scale, 15 to 60 from 0 to 1
+	var feat := 30.0 * pow(2.0, (float(gp.scale) - 0.5) * 2.0)
+	if shape == "archipelago":
+		feat *= 0.55
+	var hn := _noise(s, 1.0 / feat)
 	var fn := _noise(s + 500, 1.0 / 16.0)
 	var orn: Array = []
 	for k in 5:
 		orn.append(_noise(s + 1000 + k * 31, 1.0 / 9.0, 3))
-	var water_t := -0.24 - att * 0.008
-	var mount_t := 0.30 + att * 0.004
+	var water_t := -0.24 - att * 0.008 + (float(gp.water) - 0.5) * 0.7
+	var mount_t := 0.30 + att * 0.004 - (float(gp.mountains) - 0.5) * 0.5
+	if shape == "lakes":
+		water_t -= 0.22
+	elif shape == "archipelago":
+		water_t += 0.12
+	var forest_t := 0.12 - (float(gp.forests) - 0.5) * 0.7
+	var ore_t := 0.18 - (float(gp.ore) - 0.5) * 0.36
 	for y in h:
 		for x in w:
 			var i := y * w + x
 			var e: float = maxf(absf(2.0 * x / w - 1.0), absf(2.0 * y / h - 1.0))
-			var fall := (e - 0.8) / 0.2 if e > 0.8 else 0.0
+			# the sea round the edge: wide for an island, a thin coast for the others
+			var edge := 0.8 if shape == "island" or shape == "archipelago" else 0.94
+			var fall := (e - edge) / (1.0 - edge) if e > edge else 0.0
 			var hv := hn.get_noise_2d(x, y) - fall * fall * 0.9
 			ter[i] = WATER if hv < water_t else (MOUNT if hv > mount_t else GRASS)
 			shade[i] = rng.randi() % 4
@@ -88,7 +116,7 @@ static func _try(s: int, size: int, n: int, att: int) -> Dictionary:
 			var i := y * w + x
 			var t := ter[i]
 			if t == GRASS:
-				if fn.get_noise_2d(x, y) > 0.12 and rng.randf() < 0.72:
+				if fn.get_noise_2d(x, y) > forest_t and rng.randf() < 0.72:
 					deco[i] = 1
 				elif rng.randf() < 0.012:
 					deco[i] = 2; amt[i] = 8
@@ -103,7 +131,7 @@ static func _try(s: int, size: int, n: int, att: int) -> Dictionary:
 					var v: float = (orn[k] as FastNoiseLite).get_noise_2d(x, y) - (0.08 if k == 2 else 0.0)
 					if v > bv:
 						bv = v; bi = k + 1
-				if bv > 0.18:
+				if bv > ore_t:
 					ore[i] = bi
 					amt[i] = 10 + rng.randi() % 20
 			elif t == WATER:

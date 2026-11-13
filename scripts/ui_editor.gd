@@ -29,6 +29,11 @@ var name_edit: LineEdit
 var _touched := {}
 var ore_amt := 1        # index in WorldGen.ORE_AMOUNTS for the ore brushes
 var animals: Array = [] # [kind, x, y] placed on the map (none: the game puts them at random)
+var gen_seed := ""      # the Generate section's settings
+var gen_size := 128
+var gen_starts := 4
+var gen := WorldGen.GEN_DEFAULTS.duplicate()
+var _show_gen := false  # the Generate section is open
 
 
 func _init(p_owner: Main) -> void:
@@ -60,16 +65,70 @@ func build() -> void:
 	main.view.paint_done.connect(_paint_done)
 
 
-## Opens the editor on the map of this seed and size (with room for n realms).
-func start(seed_str: String, n: int, map_size: int) -> bool:
+## Opens the editor on the map of this seed and size (with room for n realms), made with the landscape
+## settings params (see WorldGen.GEN_DEFAULTS; empty: the usual).
+func start(seed_str: String, n: int, map_size: int, params := {}) -> bool:
 	var sim: Sim = main.sim
-	if not sim.new_game(seed_str, maxi(1, n - 1), 5, false, map_size, false, {"features": []}):
+	if not sim.new_game(seed_str, maxi(1, n - 1), 5, false, map_size, false, {"features": [], "gen": params}):
 		return false
+	gen_seed = seed_str
+	gen_size = sim.w
+	gen_starts = n
 	starts = []
 	animals = []
-	main.view.editor_animals = animals
 	for p in sim.players:
 		starts.append(p.start)
+	map_name = "map " + seed_str
+	_begin_editing()
+	return true
+
+
+## Opens a saved map file for editing: its ground, ore (with the amounts painted), starts and animals.
+func load_file(path: String) -> String:
+	var m := WorldGen.load_map(path)
+	if m.is_empty():
+		return "That map could not be read."
+	var sim: Sim = main.sim
+	# a world of the right size first, then the map's own ground over it
+	if not sim.new_game(String(m.seed), 1, 5, false, int(m.w), false, {"features": []}):
+		return "That map is too small to open."
+	sim.ter = (m.ter as PackedByteArray).duplicate()
+	sim.deco = (m.deco as PackedByteArray).duplicate()
+	sim.amt = (m.amt as PackedByteArray).duplicate()
+	sim.ore = (m.ore as PackedByteArray).duplicate()
+	sim.shade = (m.shade as PackedByteArray).duplicate()
+	sim.height = WorldGen.heights(sim.seed_str, sim.ter, sim.w, sim.h)
+	var g := {"w": sim.w, "h": sim.h, "ore": sim.ore, "amt": sim.amt}
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(sim.seed_str + "veins")
+	WorldGen._make_veins(g, rng)
+	sim.vein = g.vein; sim.vein_amt = g.vein_amt; sim.vein_tiles = g.vein_tiles
+	starts = (m.starts as Array).duplicate()
+	animals = (m.get("animals", []) as Array).duplicate(true)
+	map_name = String(m.get("name", path.get_file().get_basename()))
+	gen_seed = sim.seed_str
+	gen_size = sim.w
+	gen_starts = starts.size()
+	_begin_editing()
+	return ""
+
+
+## Every map file there is to open: yours (user://maps) and the game's own (res://maps).
+static func map_files() -> Array:
+	var out := []
+	for dir in [MAP_DIR, "res://maps"]:
+		var d := DirAccess.open(dir)
+		if d == null:
+			continue
+		for f in d.get_files():
+			if f.ends_with(".json"):
+				out.append(dir + "/" + f)
+	out.sort()
+	return out
+
+
+func _begin_editing() -> void:
+	var sim: Sim = main.sim
 	# an empty map: no realms, buildings, roads or land
 	sim.blds.clear(); sim.by_id.clear(); sim.trips.clear(); sim.attacks.clear()
 	sim.bmap.fill(0); sim.owner.fill(0); sim.road.fill(0); sim.plot.fill(0)
@@ -79,6 +138,7 @@ func start(seed_str: String, n: int, map_size: int) -> bool:
 	main.guide_ui.box.visible = false
 	main.view.editor = true
 	main.view.editor_starts = starts
+	main.view.editor_animals = animals
 	main.view.editor_brush = size
 	main.view.center_on(Vector2(sim.w / 2.0, sim.h / 2.0))
 	main.view.zoom = 12.0
@@ -87,14 +147,117 @@ func start(seed_str: String, n: int, map_size: int) -> bool:
 	main.toolbar.bar.visible = false
 	main.paused = true
 	open = true
-	map_name = "map " + seed_str
 	_fill()
 	# in the side panel's place, full height
 	var vs: Vector2 = main.get_viewport().get_visible_rect().size
 	win.position = Vector2i(int(vs.x) - Main.SIDE_W, 0)
 	win.size = Vector2i(Main.SIDE_W, int(vs.y))
 	win.visible = true
-	return true
+
+
+## The top of the panel: open a saved map, or make a new one with the landscape settings.
+func _map_section() -> void:
+	body.add_child(main._label("Map", 14, Main.BRASS))
+	var lr := HBoxContainer.new()
+	body.add_child(lr)
+	var files := map_files()
+	var ob := OptionButton.new()
+	ob.focus_mode = Control.FOCUS_NONE
+	ob.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ob.clip_text = true
+	if files.is_empty():
+		ob.add_item("(no saved maps yet)")
+		ob.disabled = true
+	for f in files:
+		ob.add_item(String(f).get_file().get_basename() + ("  (game)" if String(f).begins_with("res://") else ""))
+		ob.set_item_metadata(ob.item_count - 1, f)
+	lr.add_child(ob)
+	var lb := main._button("Open", func():
+		if ob.disabled:
+			return
+		var path := String(ob.get_item_metadata(ob.selected))
+		main.confirm(tr("Open \"%s\"? Changes to the map in the editor that you have not saved are lost.") % path.get_file().get_basename(), "Open", func():
+			var err := load_file(path)
+			main._show_hint(err if err != "" else tr("Opened \"%s\".") % map_name, 3.0)))
+	lb.disabled = files.is_empty()
+	lr.add_child(lb)
+	var gb := main._button("New map..." if not _show_gen else "Hide", func():
+		_show_gen = not _show_gen
+		_fill())
+	gb.toggle_mode = true
+	gb.set_pressed_no_signal(_show_gen)
+	lr.add_child(gb)
+	if _show_gen:
+		_gen_section()
+	body.add_child(HSeparator.new())
+
+
+## Generate: a new map from a seed, a size, a number of starts and the landscape settings.
+func _gen_section() -> void:
+	var g := GridContainer.new()
+	g.columns = 2
+	body.add_child(g)
+	g.add_child(main._label("Seed", 13, Main.DIM))
+	var sr := HBoxContainer.new()
+	var se := LineEdit.new()
+	se.text = gen_seed
+	se.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	se.text_changed.connect(func(t): gen_seed = t)
+	sr.add_child(se)
+	sr.add_child(main._button("Dice", func():
+		gen_seed = main._rand_seed()
+		_fill()))
+	g.add_child(sr)
+	g.add_child(main._label("Size", 13, Main.DIM))
+	var so := OptionButton.new()
+	so.focus_mode = Control.FOCUS_NONE
+	var best := 1e9
+	for s in Main.SIZES:
+		if int(s[1]) > 0:
+			so.add_item(String(s[0]), int(s[1]))
+			# the size nearest the map open now
+			if absf(int(s[1]) - gen_size) < best:
+				best = absf(int(s[1]) - gen_size)
+				so.select(so.item_count - 1)
+	gen_size = so.get_item_id(so.selected)
+	so.item_selected.connect(func(i): gen_size = so.get_item_id(i))
+	g.add_child(so)
+	g.add_child(main._label("Starts", 13, Main.DIM))
+	var sp := SpinBox.new()
+	sp.min_value = 2; sp.max_value = 9; sp.value = gen_starts
+	sp.value_changed.connect(func(v): gen_starts = int(v))
+	g.add_child(sp)
+	g.add_child(main._label("Shape", 13, Main.DIM))
+	var sh := OptionButton.new()
+	sh.focus_mode = Control.FOCUS_NONE
+	for k in WorldGen.SHAPES:
+		sh.add_item({"island": "Island (sea all round)", "continent": "Continent (land to the edges)", "lakes": "Lakes (mostly land)", "archipelago": "Archipelago (many islands)"}[k])
+		if String(gen.shape) == k:
+			sh.select(sh.item_count - 1)
+	sh.item_selected.connect(func(i): gen["shape"] = WorldGen.SHAPES[i])
+	g.add_child(sh)
+	for k in [["water", "Water"], ["mountains", "Mountains"], ["forests", "Forests"], ["ore", "Ore"], ["scale", "Landform size"]]:
+		g.add_child(main._label(String(k[1]), 13, Main.DIM))
+		var hs := HSlider.new()
+		hs.min_value = 0.0; hs.max_value = 1.0; hs.step = 0.05
+		hs.value = float(gen[k[0]])
+		hs.custom_minimum_size = Vector2(150, 0)
+		hs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		hs.tooltip_text = {"water": "How much sea and lake", "mountains": "How much mountain (where mines go)", "forests": "How much woodland", "ore": "How much of the mountains holds ore", "scale": "Small: many small lakes, hills and woods. Large: a few big ones."}[k[0]]
+		var key: String = k[0]
+		hs.value_changed.connect(func(v): gen[key] = v)
+		g.add_child(hs)
+	var br := HBoxContainer.new()
+	body.add_child(br)
+	br.add_child(main._button("Generate", func():
+		main.confirm("Make a new map? The map in the editor is replaced; anything you have not saved is lost.", "Generate", func():
+			var sd := gen_seed.strip_edges() if gen_seed.strip_edges() != "" else main._rand_seed()
+			gen_seed = sd
+			if not start(sd, gen_starts, gen_size, gen.duplicate()):
+				main._show_hint("No map with room for that many starts came out of this. Try more land (less water), a bigger size or fewer starts.", 6.0))))
+	br.add_child(main._button("Usual settings", func():
+		gen = WorldGen.GEN_DEFAULTS.duplicate()
+		_fill()))
 
 
 func close() -> void:
@@ -112,6 +275,7 @@ func close() -> void:
 func _fill() -> void:
 	for c in body.get_children():
 		c.queue_free()
+	_map_section()
 	body.add_child(main._label("Brush", 14, Main.BRASS))
 	var g := GridContainer.new()
 	g.columns = 3

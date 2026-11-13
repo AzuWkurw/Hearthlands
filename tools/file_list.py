@@ -27,7 +27,8 @@ HAND = {
     "data/campaign.json": "The campaign: its chapters, their place on the campaign map, story before and after, what carries over, and the mission of each.",
     "data/map_iron_coast.json": "The hand-made map of the Iron Coast mission (made by tools/make_mission_map.gd).",
     "data/lang_de.json": "German translation of the interface.",
-    "shaders/ground.gdshader": "Draws the ground: the baked map pictures on the raised mesh, moving water, day and night.",
+    "shaders/ground.gdshader": "Draws the ground: the baked map pictures on the raised mesh, moving water and shore foam, drifting cloud shadows.",
+    "shaders/map_sway.gdshader": "The map view's own shader: bends the tops of trees and crops in the wind (corners marked by their colour's alpha).",
     "mods_examples/bountiful_harvest.gd": "A small example mod: a feature that makes farms faster (copy it to the mods folder).",
 }
 

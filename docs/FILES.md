@@ -2,7 +2,7 @@
 
 Every source file with what it is for, grouped by part. Written by `tools/file_list.py` from the comment at the
 top of each file; run it again after adding files. For how the parts work together, read
-`docs/SOURCE_GUIDE.md`. Besides these 208 files there are 969 pictures in `textures/` (made by
+`docs/SOURCE_GUIDE.md`. Besides these 210 files there are 969 pictures in `textures/` (made by
 `tools/make_textures.py` and `tools/make_scenery.py`, or your own) and 29 sounds in `sounds/` (made by
 `tools/make_sounds.py`). Godot's `.import` files next to them are made by the editor.
 
@@ -21,7 +21,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `scripts/sim_production.gd` | 498 | Production: buildings working in cycles (inputs, outputs, tools, experience) and construction sites. Part of the simulation: sim.gd holds the shared state and calls in here; the functions reach the rest of the game through `sim` (sim.gd keeps a one-line wrapper for each, so callers did not change). |
 | `scripts/sim_research.gd` | 277 | Research points, techs and the ages. Part of the simulation: sim.gd holds the shared state and calls in here; the functions reach the rest of the game through `sim`. |
 | `scripts/sim_sea.gd` | 258 | Ships and harbours. A shipyard on the coast builds ships (Player.ships). A harbour is a store on the coast that also holds a little land and a soldier, and people can wait there. From a harbour an expedition (a ship, 4 planks, 2 stone and a soldier) sails to another free coast and founds a new harbour there: a colony. Ships then carry goods between harbours that no road joins, from where there is plenty to where there is little. Ships are Trips of kind "ship" along a path over water; `aim` is the tile an expedition lands on. |
-| `scripts/world_gen.gd` | 477 | Random map generation. Terrain: 0 water, 1 beach, 2 grass, 3 mountain. Decorations: 1 tree, 2 rock, 3 clay patch. Ore (on mountains): see GameData.ORE_NAMES. |
+| `scripts/world_gen.gd` | 505 | Random map generation. Terrain: 0 water, 1 beach, 2 grass, 3 mountain. Decorations: 1 tree, 2 rock, 3 clay patch. Ore (on mountains): see GameData.ORE_NAMES. |
 
 ## Game: features (switchable in Settings)
 
@@ -58,7 +58,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 |---|---:|---|
 | `scripts/achievements.gd` | 133 | Achievements: little goals across all your games, kept in user://achievements.json with the day each was earned. Checked every few seconds while you play; a new one rings and shows a line. The end screen lists the ones earned in that game, and the new-game screen shows them all. |
 | `scripts/i18n.gd` | 54 | Interface languages. Each data/lang_<code>.json (and the same name in the mods folder) maps the English text to its translation; "_language" holds the language's own name. The files are loaded at start as Godot translations, so every label and button whose text is a key is shown translated, and text with numbers in it goes through tr("... %d ...") in the code. tools/extract_strings.py collects new text into the files. The game's own messages (event log, building info) stay English. |
-| `scripts/main.gd` | 2282 | Builds the interface in code and runs the game loop. |
+| `scripts/main.gd` | 2283 | Builds the interface in code and runs the game loop. |
 | `scripts/settings.gd` | 227 | Options that last between games: renderer, display mode and resolution, interface size, frame rate, and a few conveniences. They are kept in user://settings.cfg. The renderer is special: Godot picks it before any script runs, so it goes into a second file, user://graphics_override.cfg, which the engine reads at start-up (project.godot points to it with application/config/project_settings_override). A new renderer is first tried in a one-off restart; only if that start works is it written there, so a PC without Vulkan always gets back to OpenGL. Vulkan is preferred: on the first start the game checks, in a small hidden-away test start, whether Vulkan works on this PC, and switches to it if it does (Main._probe_vulkan). |
 | `scripts/share_pack.gd` | 105 | Sharing maps and missions as one file (.hlpack): the map editor exports the map being edited (with any of your missions that are played on it), the Missions window exports all your own missions and their maps, and imports a pack someone sent you. A pack is JSON: {"hearthlands_pack": 1, "maps": {file name: map file contents}, "missions": [mission, ...]}. Imported maps go into user://maps (renamed if the name is taken), missions into user://data/missions.json with their map paths pointing at the imported maps. |
 | `scripts/sound.gd` | 219 | Sound effects and ambience. The sounds are made by tools/make_sounds.py (synthesised, no samples). Effects: button clicks, placing and finishing buildings, research, good and bad news, attacks, and the work of buildings on screen (axes, picks, hammers, saws, building sites, battles) when zoomed in. Ambience loops, faded in and out by what is on screen: birdsong in the warm seasons, wind in winter, rain when it rains where you look (with the seasons feature), and a town murmur close up. Volumes are in Settings and kept in user://settings.cfg. |
@@ -67,7 +67,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `scripts/ui_chain.gd` | 246 | The production chain of a good: boxes for the buildings that make it and, step by step, what they need, with arrows to the buildings that use it. Each box shows how many you have and how much they make a minute: what they made over the last ten minutes when Statistics is on, and what they could make at full speed. An arrow turns red where what they can make at full speed falls short of what the next step needs, and the weakest link gets a tip. Opened from a good's info box ("Production chain"). |
 | `scripts/ui_demolish.gd` | 170 | The window that asks before a building is demolished. Part of the interface: main.gd holds the shared state and calls in here; the functions reach the rest of the game through `main`. |
 | `scripts/ui_diplomacy.gd` | 267 | The Diplomacy window: alliances, peace, war and trade with rivals. Part of the interface: main.gd holds the shared state and calls in here; the functions reach the rest of the game through `main`. |
-| `scripts/ui_editor.gd` | 325 | The map editor: opened from the new-game screen. It starts from the map of the seed and size chosen there, without any realm on it, and paints ground, trees, rocks, clay and ore with a brush. The numbered banners are the headquarters' places (start 1 is yours); "Move start" puts one where you click next. Maps are saved as JSON in the "maps" folder of the game's data folder (user://maps) and can be played from the editor or picked on the new-game screen. Missions can name a map too. |
+| `scripts/ui_editor.gd` | 489 | The map editor: opened from the new-game screen. It starts from the map of the seed and size chosen there, without any realm on it, and paints ground, trees, rocks, clay and ore with a brush. The numbered banners are the headquarters' places (start 1 is yours); "Move start" puts one where you click next. Maps are saved as JSON in the "maps" folder of the game's data folder (user://maps) and can be played from the editor or picked on the new-game screen. Missions can name a map too. |
 | `scripts/ui_guide.gd` | 164 | The first-game guide: a short checklist for the first minutes of a new game (build a woodcutter, join it to the roads, a sawmill, a quarry...). Each step is ticked off by itself when it is done, with a line on the rule that matters for it (entrances, sizes, roads). It closes when every step is done or with its x, and "Show the first-game guide" in Settings brings it back for the next new game. |
 | `scripts/ui_info.gd` | 567 | The building info box: what the selected building is doing, and its buttons (priority, stores, garrison...). Part of the interface: main.gd holds the shared state and calls in here; the functions reach the rest of the game through `main` (main.gd keeps a one-line wrapper for each, so callers did not change). |
 | `scripts/ui_log.gd` | 119 | The event log: a small window, at first in the upper-left corner of the map, that you can move by its title bar and resize from its edges. Its place, size and whether it is open are remembered in Settings. E (or the Events button on the top bar) shows and hides it. Events that happened somewhere on the map end with a Go button that moves the camera there. |
@@ -103,8 +103,8 @@ top of each file; run it again after adding files. For how the parts work togeth
 
 | File | Lines | What it is |
 |---|---:|---|
-| `shaders/ground.gdshader` | 70 | Draws the ground: the baked map pictures on the raised mesh, moving water, day and night. |
-| `shaders/map_sway.gdshader` | 38 | (no description yet) |
+| `shaders/ground.gdshader` | 70 | Draws the ground: the baked map pictures on the raised mesh, moving water and shore foam, drifting cloud shadows. |
+| `shaders/map_sway.gdshader` | 38 | The map view's own shader: bends the tops of trees and crops in the wind (corners marked by their colour's alpha). |
 
 ## Tools: automatic tests
 
@@ -124,6 +124,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `tools/crop_test.gd` | 91 | Farms sow a chosen crop; seeds come from research; crops keep their seasons: godot --headless --script res://tools/crop_test.gd |
 | `tools/door_test.gd` | 54 | Entrances: roads join buildings only at the door. godot --headless --script res://tools/door_test.gd |
 | `tools/econ2_test.gd` | 114 | Worker limits, the standby builder, moving a building, crops by season, map ore amounts and animals, and the fog not showing land of the game before: godot --headless --script res://tools/econ2_test.gd |
+| `tools/editor_test.gd` | 71 | The map editor's Generate and Open: maps of each shape come out with their starts, a map saved and opened again is the same, and generating with the usual settings gives the usual map. xvfb-run godot --rendering-driver opengl3 --script res://tools/editor_test.gd -- [out=/dir] |
 | `tools/feature_test.gd` | 31 | Tests the feature system: statistics counting, saving and loading feature data, switching a feature off, and a mod loaded from the mods folder. |
 | `tools/field_test.gd` | 39 | Columns that meet on the march fight in the open: godot --headless --script res://tools/field_test.gd |
 | `tools/fire_test.gd` | 45 | Fires spread between wooden buildings and burn them down; wells nearby put them out: godot --headless --script res://tools/fire_test.gd |
@@ -148,7 +149,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `tools/research_test.gd` | 30 | The research queue and repeatable studies: godot --headless --script res://tools/research_test.gd |
 | `tools/research_ui_test.gd` | 113 | Drives the research window with real mouse and key events and prints what happened. |
 | `tools/rules_test.gd` | 55 | Tests the build 11 rules: difficulty options, tools for new workers, the toolsmith's choice and production targets. |
-| `tools/run_all.py` | 109 | Run every automatic test and say which passed. |
+| `tools/run_all.py` | 110 | Run every automatic test and say which passed. |
 | `tools/save_test.gd` | 33 | Save/load round trip: play, save, load into a fresh Sim, then check both continue identically. |
 | `tools/sea_test.gd` | 95 | Ships and harbours: a harbour on your coast, an expedition founds a colony across the water, ships then carry goods there, and a game with ships at sea saves and loads the same. godot --headless --script res://tools/sea_test.gd [-- seed=valley] |
 | `tools/settings_test.gd` | 41 | Tests the Settings window: display mode, resolution, interface size, a renderer trial that fails, and continuing the autosaved game after a restart. Run it twice: first with "-- step1", then "-- resume". |
@@ -229,6 +230,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `tools/food_diag.gd` | 34 | Why a rival goes hungry: godot --headless --script res://tools/food_diag.gd [-- who=1] |
 | `tools/late_bench.gd` | 110 | Late-game drawing benchmark: a big game with every realm (yours too) played by the computer until there are about 750 buildings, then frame times at three zooms, with the map drawing split into its parts, and the frames while placing a building and turning its entrance. xvfb-run godot --rendering-driver opengl3 --script res://tools/late_bench.gd -- [blds=750] [fresh] The late game is kept in user://saves/late_bench.save and reused (fresh makes a new one). |
 | `tools/make_mission_map.gd` | 38 | Makes data/map_iron_coast.json, the hand-made map of mission 3, the way the map editor would: a generated map with an iron ridge (two passes) between your start in the south and the rivals. godot --headless --script res://tools/make_mission_map.gd |
+| `tools/map_hash.gd` | 8 | Prints a hash of the maps a few seeds make (to check map generation has not changed): godot --headless --script res://tools/map_hash.gd |
 | `tools/rel_diag.gd` | 21 | Diagnosis of how rivals see each other after 22 minutes on the valley map: crowding, reserve, strength, and the nearest distance between their military buildings (why they go to war or not). godot --headless --script res://tools/rel_diag.gd |
 | `tools/render_bench.gd` | 73 | Measures where frame time goes with the current renderer. Run: godot --rendering-method <gl_compatibility\|forward_plus\|mobile> --script res://tools/render_bench.gd -- [w=1600] [h=900] [label=...] Prints which renderer and graphics adapter actually run (Godot falls back to OpenGL when Vulkan is missing), then for a few scenes the average frame, the time the CPU spends on game logic and script drawing ("process"), and the renderer's own CPU and GPU time per frame. |
 | `tools/rival_check.gd` | 75 | How rival realms cope with local stores, carried inputs and walking workers: godot --headless --script res://tools/rival_check.gd [-- seed=valley mins=30] |
@@ -247,7 +249,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `tools/bump_build.py` | 53 | Raise the build number before a release. |
 | `tools/check_data.py` | 104 | Check the data files (and optionally a mod's JSON files) for mistakes. |
 | `tools/extract_strings.py` | 76 | Collect the interface text from the scripts into the translation files. |
-| `tools/file_list.py` | 134 | Writes docs/FILES.md: every source file of the project with what it is for. |
+| `tools/file_list.py` | 135 | Writes docs/FILES.md: every source file of the project with what it is for. |
 | `tools/folk_sprites.py` | 382 | Townsfolk, porters, workers, pack mules and ox carts, drawn in detail. Run on its own (python3 tools/folk_sprites.py) or from make_textures.py; it writes the unit_folk_*, unit_porter*, unit_worker_*, unit_mule, unit_cart and unit_load_* strips into textures/. Everything is drawn in design pixels with make_textures' Pen, so edges come out smooth. Strips that the game tints with the realm's colour come with a *_tint companion: the tunic alone, in grey, drawn over the picture in the realm's colour. |
 | `tools/make_build.py` | 224 | Make a release build of Hearthlands in one go. |
 | `tools/make_scenery.py` | 251 | Trees, mountain peaks and boulders for the map, drawn with light and shade so they look round. |
@@ -260,8 +262,8 @@ top of each file; run it again after adding files. For how the parts work togeth
 | File | Lines | What it is |
 |---|---:|---|
 | `CHANGELOG.md` | 520 | What changed in each build. |
-| `README.md` | 882 | How to play, the rules, controls, settings, modding and the project layout. |
-| `docs/FILES.md` | 267 | This list (written by tools/file_list.py). |
+| `README.md` | 884 | How to play, the rules, controls, settings, modding and the project layout. |
+| `docs/FILES.md` | 272 | This list (written by tools/file_list.py). |
 | `docs/SOURCE_GUIDE.md` | 439 | A tour of the code for programmers: the parts, how a game tick runs, where things live. |
 | `docs/SUGGESTIONS.md` | 203 | Ideas and their status after each round of work. |
 | `export_presets.cfg` | 61 | Godot export settings for the Windows and Linux builds. |

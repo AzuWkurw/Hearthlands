@@ -600,7 +600,7 @@ var _stamp := 0
 func new_game(p_seed: String, p_foes: int, p_strength: int, p_mix: bool, p_size := 0, p_research_victory := true, p_opts := {}, p_map := {}, p_mission := {}) -> bool:
 	GameData.ensure()
 	# a hand-made map (map editor, missions) or one made from the seed
-	var g := WorldGen.from_map(p_map, p_foes + 1) if not p_map.is_empty() else WorldGen.generate(p_seed, p_foes, p_size)
+	var g := WorldGen.from_map(p_map, p_foes + 1) if not p_map.is_empty() else WorldGen.generate(p_seed, p_foes, p_size, p_opts.get("gen", {}))
 	if g.is_empty():
 		return false
 	if not p_map.is_empty():

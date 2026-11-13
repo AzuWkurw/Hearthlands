@@ -43,6 +43,7 @@ TESTS = [
 	("columns and water", "march_test", [], False, True, [r"MARCH TEST: PASS"]),
 	("upgrades and war",  "mil2_test", [], False, False, [r"MIL2 TEST: PASS"]),
 	("workers and editor", "econ2_test", [], False, True, [r"ECON2 TEST: PASS"]),
+	("map editor",        "editor_test", [], True, True, [r"EDITOR TEST: PASS"]),
 	("campaign",          "campaign_test", [], True, False, [r"campaign test: ok"]),
 	("spreading fires",   "fire_test", [], False, True, [r"fire test: ok"]),
 	("small touches",     "touches_test", [], True, False, [r"touches test: ok"]),

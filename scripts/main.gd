@@ -297,7 +297,8 @@ var trade_result: Label
 const SAVE_DIR := "user://saves"
 
 
-const SIZES := [["Auto (fits the realms)", 0], ["Small (96)", 96], ["Medium (128)", 128], ["Large (160)", 160], ["Huge (200)", 200], ["Giant (256)", 256]]
+const SIZES := [["Auto (fits the realms)", 0], ["Small (96)", 96], ["Medium (128)", 128], ["Large (160)", 160], ["Huge (200)", 200], ["Giant (256)", 256],
+	["Colossal (320)", 320], ["Titanic (384)", 384], ["Vast (448)", 448]]
 
 
 func _exit_tree() -> void:

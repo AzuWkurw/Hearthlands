@@ -73,6 +73,8 @@ Exporting needs Godot 4.3's export templates (in the editor: Editor > Manage Exp
 | Buildings window | J or Buildings: how many of each kind you have, workers, priority for a whole kind, a limit on workers per kind, Next jumps to them; Keep one builder free |
 | Upgrade a military building | Select it: Upgrade to (a bigger one of the same size); soldiers stay inside |
 | Border settings | Select a military building: how much inland buildings hold, and new soldiers to the border first |
+| Map editor: open a map | In the editor: pick a saved map under Map and press Open |
+| Map editor: make a new map | In the editor: New map..., then seed, size (up to 448), starts, shape (island, continent, lakes, archipelago) and sliders for water, mountains, forests, ore and landform size; Generate |
 | Move a building | Select it: Move building, then click the new place; the old one works until the new one is done |
 | Rename a town | Select a store: Rename (each store is a town; the name shows on the map and in messages) |
 | Minimap | Click or drag to move the camera. The list above it shows only roads, only land and forts, or only the buildings that make one good |
