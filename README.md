@@ -73,8 +73,17 @@ Exporting needs Godot 4.3's export templates (in the editor: Editor > Manage Exp
 | Buildings window | J or Buildings: how many of each kind you have, workers, priority for a whole kind, a limit on workers per kind, Next jumps to them; Keep one builder free |
 | Upgrade a military building | Select it: Upgrade to (a bigger one of the same size); soldiers stay inside |
 | Border settings | Select a military building: how much inland buildings hold, and new soldiers to the border first |
-| Map editor: open a map | In the editor: pick a saved map under Map and press Open |
-| Map editor: make a new map | In the editor: New map..., then seed, size (up to 448), starts, shape (island, continent, lakes, archipelago) and sliders for water, mountains, forests, ore and landform size; Generate |
+| Map editor: open a map | In the editor, Map tab: pick a saved map and press Open |
+| Map editor: make a new map | In the editor, Map tab: seed, size (up to 448), starts, shape (island, continent, lakes, archipelago) and sliders for water, mountains, forests, ore and landform size; Generate |
+| Map editor: undo, redo | Ctrl+Z, Ctrl+Y (or the Undo / Redo buttons on the Paint tab); every stroke is one step |
+| Map editor: tools | Paint tab: Brush, Fill (the patch joined to the click), Smooth (rounds off coasts), River (drag from start to end; fords now and then), Copy (drag over an area), Paste (click; Turn or Mirror it first) |
+| Map editor: brush shape and mirror | Paint tab: Size 1 to 15, Round; Mirror left-right, top-bottom, four ways or turned 180° paints the other side of the map too |
+| Map editor: climate, ruins, bandit camps | Paint tab: Climate brushes (temperate, taiga, steppe, wetland; Show the climate), Places: Ruins, Bandit camp, Remove place |
+| Map editor: set up starts | Starts tab: per start a name, goods x0.5 to x2, extra soldiers; for rivals strength 1 to 10 and manner (builder, balanced, warlord) |
+| Map editor: write a mission | Mission tab: name, rivals, their strength, minutes, story, goals (build, people, soldiers, goods, study, land, trades, defeat rivals); Save the mission or Play it |
+| Map editor: fair starts | Check tab: open land, trees, rocks, clay, fish, mountain and each ore within 10, 15 or 20 tiles of every start; red where a start has less than half of the richest |
+| Landscape on the new-game screen | Landscape... next to Map size: shape and the five sliders, for a map from the seed |
+| Clear a bandit camp | Click the camp: soldiers from your military building with the most to spare (within reach) march out; whoever wins the duels takes the camp's gold and weapons |
 | Move a building | Select it: Move building, then click the new place; the old one works until the new one is done |
 | Rename a town | Select a store: Rename (each store is a town; the name shows on the map and in messages) |
 | Minimap | Click or drag to move the camera. The list above it shows only roads, only land and forts, or only the buildings that make one good |
@@ -212,10 +221,17 @@ Exporting needs Godot 4.3's export templates (in the editor: Editor > Manage Exp
   study, conquer) and a deadline. The third plays on a hand-made map. Goals show in the box on the left.
   More can be added in `data/missions.json` (or a mod's).
 - **Map editor.** The Map editor button on the new-game screen opens the map of the seed and size chosen
-  there, empty. Paint water, beach, grass, mountain, trees, rocks, clay and ore with a brush (1 to 9
-  tiles), move the numbered start places (start 1 is yours), name the map and Save it, or Play it. Saved
-  maps can be picked under Map on the new-game screen; they are kept in the `maps` folder of the game's
-  data folder.
+  there (with the landscape settings), empty. Five tabs: Paint (brush, fill, smooth, rivers with fords,
+  copy and paste turned or mirrored; ground, trees, rocks, clay, ore and its amount, climate, animals,
+  ruins and bandit camps; square or round brushes; mirrored painting for fair maps; undo and redo), Map
+  (open, generate, name, save, play, export), Starts (move them, and set each one up), Mission (write a
+  mission with goals on this map) and Check (what lies around each start). Saved maps can be picked under
+  Map on the new-game screen; they are kept in the `maps` folder of the game's data folder.
+- **Ruins and bandit camps.** Hand-made maps can hold them. The first realm whose land reaches ruins finds
+  planks, stone, gold and tools there. Nobody builds within 3 tiles of a bandit camp; every 90 seconds the
+  bandits steal goods from a realm whose land comes within 8 tiles. Click a camp to send soldiers from a
+  military building within reach; they fight the five bandits one by one, and clearing the camp gives its
+  gold and weapons. Rivals clear camps too when they have soldiers to spare.
 - **Ships and harbours.** A harbour (on the coast) is a store that holds a little land, a soldier and 8
   people. A shipyard builds a ship from 4 planks, up to 6. From a harbour an expedition (a ship, 4 planks,
   2 stone and a soldier) sails to a free coast and founds a new harbour there with land around it. Ships
@@ -851,7 +867,7 @@ tools/
   make_textures.py   regenerates default textures (--force to overwrite them all)
   make_scenery.py    the shaded trees, peaks and boulders (called by make_textures.py)
   shot_b37.gd, shot_traffic.gd, shot_bridge.gd   screenshots of the build 37 additions
-  shot_scenery.gd, shot_editor.gd   screenshots of the scenery and the map editor
+  shot_scenery.gd, shot_editor.gd, shot_editor2.gd   screenshots of the scenery and the map editor
   make_sounds.py     regenerates the sounds
   bump_build.py      raises the build number before a release
   make_build.py      makes a whole release: version, checks, exports, zips, commit

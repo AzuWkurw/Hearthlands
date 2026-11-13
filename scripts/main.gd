@@ -974,6 +974,16 @@ func _build_setup() -> void:
 	for s in SIZES:
 		size_opt.add_item(String(s[0]))
 	r2.add_child(size_opt)
+	# the landscape: shape, water, mountains, forests, ore, landform size (hidden until asked for)
+	var lg := GridContainer.new()
+	lg.columns = 2
+	lg.visible = false
+	UiEditor.landscape_controls(self, lg, new_gen)
+	var lb := _button("Landscape...", func(): lg.visible = not lg.visible)
+	lb.toggle_mode = true
+	lb.tooltip_text = "The shape of the land and how much water, mountain, forest and ore there is"
+	r2.add_child(lb)
+	v.add_child(lg)
 	# a hand-made map instead of one from the seed
 	var mr := HBoxContainer.new(); v.add_child(mr)
 	mr.add_child(_label("Map"))
@@ -1008,6 +1018,8 @@ func _found_realm() -> void:
 			return
 		var o := _difficulty_opts()
 		o["features"] = settings.enabled_features()
+		if new_gen != WorldGen.GEN_DEFAULTS:
+			o["gen"] = new_gen.duplicate()
 		if not _start(seed_edit.text if seed_edit.text != "" else "hearth", int(foes_slider.value), int(str_slider.value), mix_check.button_pressed, sz, rv_check.button_pressed, o):
 			_show_hint("Could not fit that many realms on this map. Try another seed or a bigger map.", 5.0)
 			return
@@ -1020,7 +1032,8 @@ func _found_realm_ui_done(v: VBoxContainer) -> void:
 	var er := HBoxContainer.new(); v.add_child(er)
 	var me_b := _button("Map editor", func():
 		var sz: int = SIZES[size_opt.selected][1]
-		if not editor_ui.start(seed_edit.text if seed_edit.text != "" else "hearth", int(foes_slider.value) + 1, sz):
+		editor_ui.gen = new_gen.duplicate()
+		if not editor_ui.start(seed_edit.text if seed_edit.text != "" else "hearth", int(foes_slider.value) + 1, sz, new_gen.duplicate()):
 			_show_hint("Could not make that map. Try another seed or a bigger map.", 5.0))
 	me_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	er.add_child(me_b)
@@ -1037,6 +1050,7 @@ func _found_realm_ui_done(v: VBoxContainer) -> void:
 
 
 var map_opt: OptionButton
+var new_gen := WorldGen.GEN_DEFAULTS.duplicate()  # the new-game screen's landscape settings
 
 
 ## The new-game screen's map list: made from the seed, or one of the maps saved in the editor.
@@ -1479,6 +1493,17 @@ func _on_tile(t: Vector2i) -> void:
 					_show_hint("Now lay its road: click where it should join your roads (Esc to leave it for later).", 4.0)
 		_refresh_all()
 		return
+	# a bandit camp: send soldiers to clear it
+	var camp := Places.at(sim, t.x, t.y, 1)
+	if not camp.is_empty() and camp.kind == "bandits" and not bool(camp.done) and sim.bld_at(t.x, t.y) == null:
+		var src := Places.best_source(sim, sim.human(), camp)
+		if src == null or sim.own_def(src) < 2:
+			_show_hint(Places.send(sim, sim.human(), camp), 4.0)
+		else:
+			confirm(tr("Send %d soldiers from your %s to clear the bandit camp? %d bandits are there.") % [sim.own_def(src) - 1, String(src.def.name).to_lower(), int(camp.n)], "Send them", func():
+				var r := Places.send(sim, sim.human(), camp)
+				if r != "": _show_hint(r, 4.0))
+		return
 	var b := sim.bld_at(t.x, t.y)
 	# with the fog of war, what can't be seen can't be picked
 	var fog = sim.get_feature("fog")
@@ -1751,6 +1776,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event.keycode == KEY_O and not setup.visible:
 		problems_ui.toggle()
+		return
+	if editor_ui.open and event.ctrl_pressed and (event.keycode == KEY_Z or event.keycode == KEY_Y):
+		if event.keycode == KEY_Y or event.shift_pressed:
+			editor_ui.redo()
+		else:
+			editor_ui.undo()
 		return
 	if event.keycode == KEY_Z and event.ctrl_pressed and not setup.visible and not editor_ui.open:
 		undo_ui.undo()

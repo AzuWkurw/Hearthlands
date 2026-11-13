@@ -460,12 +460,21 @@ static func from_map(m: Dictionary, n: int) -> Dictionary:
 			gamt[i] = 0
 	g["seed"] = String(m.get("seed", "map"))
 	g["animals"] = m.get("animals", [])
+	g["places"] = m.get("places", [])
+	g["setup"] = m.get("setup", [])
+	if (m.get("biome", PackedByteArray()) as PackedByteArray).size() == int(m.w) * int(m.h):
+		g["biome"] = m.biome
 	return g
 
 
 static func map_to_json(m: Dictionary) -> String:
 	var out := {"format": 1, "name": String(m.get("name", "")), "w": m.w, "h": m.h, "seed": String(m.get("seed", "map")),
-		"starts": (m.starts as Array).map(func(s): return [s.x, s.y]), "animals": m.get("animals", [])}
+		"starts": (m.starts as Array).map(func(s): return [s.x, s.y]), "animals": m.get("animals", []),
+		"places": m.get("places", []), "setup": m.get("setup", [])}
+	# the painted climate, when there is any
+	var bio: PackedByteArray = m.get("biome", PackedByteArray())
+	if bio.size() == int(m.w) * int(m.h) and bio.count(0) < bio.size():
+		out["biome"] = Marshalls.raw_to_base64(bio.compress(FileAccess.COMPRESSION_ZSTD))
 	for k in MAP_KEYS:
 		var raw: PackedByteArray = m[k]
 		out[k] = Marshalls.raw_to_base64(raw.compress(FileAccess.COMPRESSION_ZSTD))
@@ -487,6 +496,14 @@ static func load_map(path: String) -> Dictionary:
 	m["animals"] = []
 	for a in d.get("animals", []):
 		m.animals.append([String(a[0]), int(a[1]), int(a[2])])
+	m["places"] = []
+	for pl in d.get("places", []):
+		m.places.append([String(pl[0]), int(pl[1]), int(pl[2])])
+	m["setup"] = d.get("setup", [])
+	if d.has("biome"):
+		var bio := Marshalls.base64_to_raw(String(d.biome)).decompress(w * h, FileAccess.COMPRESSION_ZSTD)
+		if bio.size() == w * h:
+			m["biome"] = bio
 	for k in MAP_KEYS:
 		var raw := Marshalls.base64_to_raw(String(d[k])).decompress(w * h, FileAccess.COMPRESSION_ZSTD)
 		if raw.size() != w * h:

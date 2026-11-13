@@ -464,6 +464,8 @@ var plot := PackedInt32Array()      # per tile: the building standing there (all
 var bmap := PackedInt32Array()
 var fields := {}                    # farm fields: tile -> [farm id, crop, growth seconds] (see Crops)
 var map_animals: Array = []         # animals a hand-made map places: [kind, x, y] (wildlife puts them there)
+var map_biome := PackedByteArray()  # a hand-made map's climate: per tile 0 (decided by the game) or 1 + biome
+var places: Array = []              # ruins and bandit camps (see Places), saved with the game
 
 
 var players: Array[Player] = []
@@ -616,6 +618,10 @@ func new_game(p_seed: String, p_foes: int, p_strength: int, p_mix: bool, p_size 
 	height = WorldGen.heights(p_seed, ter, w, h)
 	vein = g.vein; vein_amt = g.vein_amt; vein_tiles = g.vein_tiles
 	map_animals = g.get("animals", [])
+	map_biome = g.get("biome", PackedByteArray())
+	places = []
+	for pl in g.get("places", []):
+		places.append(Places.make(String(pl[0]), int(pl[1]), int(pl[2])))
 	pave = PackedByteArray(); pave.resize(w * h)
 	fields = {}
 	changed_tiles = PackedInt32Array()
@@ -673,6 +679,10 @@ func new_game(p_seed: String, p_foes: int, p_strength: int, p_mix: bool, p_size 
 				p.stock[t] += roundf(f * 2)
 			p.artisan += roundi(f * 3); p.reserve += roundi(f * 4)
 		players.append(p)
+	# a hand-made map's setup for each start: name, personality, strength, goods and soldiers
+	var setup: Array = g.get("setup", [])
+	for k in mini(setup.size(), players.size()):
+		_apply_setup(players[k], setup[k])
 	for p in players:
 		p.hq = add_bld("hq", p.start.x, p.start.y, p, true, 0)
 		# the starting goods are in the headquarters
@@ -707,6 +717,29 @@ func new_game(p_seed: String, p_foes: int, p_strength: int, p_mix: bool, p_size 
 	_mil_dirty = true
 	setup_features(opts.get("features", Features.default_ids()), false, {})
 	return true
+
+
+## One start's setup from a hand-made map: {name, pers, skill, goods (times the usual), soldiers}.
+func _apply_setup(p: Player, s) -> void:
+	if not (s is Dictionary):
+		return
+	if String(s.get("name", "")) != "":
+		p.name = String(s.name)
+	if p.ai:
+		if PERSONALITIES.has(String(s.get("pers", ""))):
+			p.pers = String(s.pers)
+		var sk := int(s.get("skill", 0))
+		if sk > 0:
+			p.skill = clampi(sk, 1, 10)
+			p.prod = 0.6 + 0.1 * p.skill
+			p.think = 9.0 - 0.75 * p.skill
+			p.odds = 2.0 - 0.13 * p.skill
+			p.max_b = 1 + p.skill / 4
+	var gm := float(s.get("goods", 1.0))
+	if gm != 1.0:
+		for r in p.stock:
+			p.stock[r] = roundf(float(p.stock[r]) * gm)
+	p.reserve += maxi(0, int(s.get("soldiers", 0)))
 
 
 func _alloc_path_buffers() -> void:
@@ -1201,6 +1234,10 @@ func can_place(ty: String, x: int, y: int, pid: int, door := -1) -> String:
 	if deco[i] == D_ROCK: return "Rocks in the way"
 	if deco[i] == D_CLAY: return "Clay in the way"
 	if road[i] != 0: return "A road is in the way"
+	if not places.is_empty():
+		var pb := Places.block(self, x, y)
+		if pb != "":
+			return pb
 	if d.get("claim_only", false) and not _soldiers_hold(x, y, pid):
 		return "A boundary stone must stand on land your soldiers hold"
 	# no building on the doorstep of a neighbour
@@ -2160,6 +2197,8 @@ func _secondly() -> void:
 		logistics.transfers()
 		sea.sea_transfers()
 	Diplomacy.expire(self)
+	if not places.is_empty():
+		Places.tick(self)
 	military.archers_tick()
 	if int(time) % 10 == 0:
 		military.mark_borders()
@@ -2285,7 +2324,7 @@ func to_save() -> Dictionary:
 		"features_known": Features.available().map(func(e): return e.id), "build": Version.BUILD, "reno_queue": reno_queue.duplicate(true), "w": w, "h": h, "ter": ter, "deco": deco, "amt": amt, "ore": ore, "shade": shade,
 		"owner": owner, "road": road, "bmap": bmap, "time": time, "over": over, "logs": logs, "bid": _bid, "acc1": _acc1,
 		"rng_seed": rng.seed, "rng_state": rng.state, "players": pl, "blds": bl, "trips": tr, "attacks": at,
-		"vein": vein, "vein_amt": vein_amt, "vein_tiles": vein_tiles, "pave": pave, "fields": fields,
+		"vein": vein, "vein_amt": vein_amt, "vein_tiles": vein_tiles, "pave": pave, "fields": fields, "places": places, "map_biome": map_biome,
 		"rel": rel, "rel_since": rel_since, "proposals": proposals, "standing": standing, "prop_id": _prop_id,
 		"mission": mission, "mission_done": mission_done, "ticks": _ticks,
 	}
@@ -2362,6 +2401,8 @@ func from_save(d: Dictionary) -> String:
 	if pave.size() != w * h:
 		pave = PackedByteArray(); pave.resize(w * h)
 	fields = {}
+	places = (d.get("places", []) as Array).duplicate(true)
+	map_biome = d.get("map_biome", PackedByteArray())
 	var fd: Dictionary = d.get("fields", {})
 	for k in fd:
 		fields[int(k)] = [int(fd[k][0]), String(fd[k][1]), float(fd[k][2])]

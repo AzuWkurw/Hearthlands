@@ -148,9 +148,14 @@ func _make_biomes() -> void:
 	wet.seed = n.seed + 77
 	wet.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
 	wet.frequency = 1.0 / 12.0
+	var painted := sim.map_biome.size() == w * h
 	for y in h:
 		for x in w:
 			var i := y * w + x
+			# the climate the map's maker painted here (0: left to the game)
+			if painted and sim.map_biome[i] > 0:
+				biome[i] = sim.map_biome[i] - 1
+				continue
 			var v := float(y) / h + n.get_noise_2d(x, y) * 0.12
 			var k := TEMPERATE
 			if v < 0.30:

@@ -39,6 +39,16 @@ var editor := false            # the map editor is open: left button paints (see
 var editor_starts: Array = []  # the map editor's start places, drawn as numbered banners
 var editor_animals: Array = []      # animals placed in the map editor: [kind, x, y]
 var editor_brush := 1          # the map editor's brush size, drawn around the mouse
+var editor_round := false      # a round brush
+var editor_mirror := "off"     # the brush also paints mirrored (EditorTools.MIRRORS)
+var editor_line: Array = []    # a river being drawn: [from, to]
+var editor_rect := Rect2i()    # an area being copied
+var editor_paste := Vector2i.ZERO  # the size of the copied area, outlined at the mouse for pasting
+var editor_climate := false    # the painted climate shown over the map
+const CLIMATE_COL := [Color(0, 0, 0, 0), Color(0.45, 0.85, 0.3, 0.38), Color(0.35, 0.7, 1.0, 0.42), Color(1.0, 0.75, 0.25, 0.42), Color(0.15, 0.55, 0.5, 0.48)]
+var _clim_img: Image
+var _clim_tex: ImageTexture
+var _clim_dirty := false
 var _painting := false
 var _paint_last := Vector2i(-1, -1)
 var _tool_labels: Array = []   # text drawn over the map for the tool in hand (land a military building would claim)
@@ -773,6 +783,9 @@ func _draw() -> void:
 			vis.append(b)
 	vis.sort_custom(func(a, b): return a.y < b.y or (a.y == b.y and a.x < b.x))
 	if prof_on: _pm("bld_list")
+	# ruins and bandit camps (hand-made maps), under the buildings
+	if not sim.places.is_empty():
+		_draw_places(x0, y0, x1, y1, fog_on, fog)
 	# soft shadows on the ground first, so no building's shadow falls over another building
 	for b in vis:
 		_building_shadow(b)
@@ -1170,6 +1183,62 @@ func _draw() -> void:
 	draw_usec = Time.get_ticks_usec() - t_start
 
 
+## The map editor's climate picture: one pixel a tile, drawn stretched over the map.
+func editor_climate_load(b: PackedByteArray) -> void:
+	_clim_img = Image.create(sim.w, sim.h, false, Image.FORMAT_RGBA8)
+	for i in b.size():
+		if b[i] > 0:
+			_clim_img.set_pixel(i % sim.w, i / sim.w, CLIMATE_COL[b[i]])
+	_clim_tex = ImageTexture.create_from_image(_clim_img)
+	_clim_dirty = false
+
+
+func editor_climate_set(i: int, v: int) -> void:
+	if _clim_img == null or _clim_img.get_width() != sim.w:
+		return
+	_clim_img.set_pixel(i % sim.w, i / sim.w, CLIMATE_COL[v])
+	_clim_dirty = true
+
+
+func _draw_editor() -> void:
+	if editor_climate and _clim_tex != null and _clim_img.get_width() == sim.w:
+		if _clim_dirty:
+			_clim_tex.update(_clim_img)
+			_clim_dirty = false
+		draw_texture_rect(_clim_tex, Rect2(0, 0, sim.w, sim.h), false)
+	if editor_mirror != "off":
+		# the lines the brush mirrors across
+		var mc := Color(1, 1, 1, 0.3)
+		if editor_mirror == "left-right" or editor_mirror == "four ways":
+			draw_line(Vector2(sim.w / 2.0, 0), Vector2(sim.w / 2.0, sim.h), mc, 0.12)
+		if editor_mirror == "top-bottom" or editor_mirror == "four ways":
+			draw_line(Vector2(0, sim.h / 2.0), Vector2(sim.w, sim.h / 2.0), mc, 0.12)
+		if editor_mirror == "turned":
+			draw_circle(Vector2(sim.w / 2.0, sim.h / 2.0), 0.6, mc)
+	if editor_line.size() == 2:
+		var a: Vector2i = editor_line[0]
+		var b: Vector2i = editor_line[1]
+		draw_line(Vector2(a) + Vector2(0.5, 0.5), Vector2(b) + Vector2(0.5, 0.5), Color(0.35, 0.65, 1.0, 0.85), 0.5)
+		draw_circle(Vector2(a) + Vector2(0.5, 0.5), 0.5, Color(0.35, 0.65, 1.0))
+	if editor_rect.size.x > 0:
+		draw_rect(Rect2(editor_rect), Color(1.0, 0.9, 0.4, 0.15))
+		draw_rect(Rect2(editor_rect), Color(1.0, 0.9, 0.4, 0.95), false, 0.12)
+	if editor_paste.x > 0 and sim.inb(ghost.x, ghost.y):
+		draw_rect(Rect2(Vector2(ghost), Vector2(editor_paste)), Color(0.5, 1.0, 0.6, 0.12))
+		draw_rect(Rect2(Vector2(ghost), Vector2(editor_paste)), Color(0.5, 1.0, 0.6, 0.95), false, 0.12)
+		return
+	if sim.inb(ghost.x, ghost.y):
+		for p: Vector2i in EditorTools.mirrored(ghost.x, ghost.y, sim.w, sim.h, editor_mirror):
+			var gl := lift_at(p.x + 0.5, p.y + 0.5)
+			var col := Color(1, 1, 1, 0.9) if p == ghost else Color(1, 1, 1, 0.45)
+			if editor_round and editor_brush > 2:
+				var c := Vector2(p.x + (0.5 if editor_brush % 2 == 1 else 0.0), p.y + (0.5 if editor_brush % 2 == 1 else 0.0) - gl)
+				draw_arc(c, editor_brush / 2.0, 0, TAU, 48, col, 0.08)
+			else:
+				var r := editor_brush / 2
+				draw_rect(Rect2(p.x - r, p.y - r - gl, editor_brush, editor_brush), col, false, 0.08)
+
+
 func _draw_selection_and_tools() -> void:
 	var w := sim.w
 	if not preview_tiles.is_empty() or not preview_blds.is_empty():
@@ -1194,10 +1263,7 @@ func _draw_selection_and_tools() -> void:
 			draw_rect(Rect2(c.x - 3.5, c.y - 3.5, 7, 7), Sim.PCOL[k % Sim.PCOL.size()], false, 0.1)
 			draw_circle(c, 0.7, Sim.PCOL[k % Sim.PCOL.size()])
 			_tool_labels.append([c + Vector2(0, -0.9), "Start %d%s" % [k + 1, " (you)" if k == 0 else ""], Color.WHITE])
-		if sim.inb(ghost.x, ghost.y):
-			var r := editor_brush / 2
-			var gl := lift_at(ghost.x + 0.5, ghost.y + 0.5)
-			draw_rect(Rect2(ghost.x - r, ghost.y - r - gl, editor_brush, editor_brush), Color(1, 1, 1, 0.9), false, 0.08)
+		_draw_editor()
 		return
 	var sel: Sim.Bld = sim.by_id.get(sel_id)
 	if sel != null:
@@ -2146,6 +2212,73 @@ func _draw_fx(x0: int, y0: int, x1: int, y1: int) -> void:
 					draw_line(sx - Vector2(r, 0), sx + Vector2(r, 0), sc, 0.03)
 					draw_line(sx - Vector2(0, r), sx + Vector2(0, r), sc, 0.03)
 	_fx = keep
+
+
+## Ruins: broken stone walls and rubble (grey once looted). Bandit camps: tents round a fire, a few
+## bandits about, and soldiers marching out to clear it.
+func _draw_places(x0: int, y0: int, x1: int, y1: int, fog_on: bool, fog) -> void:
+	var t := Time.get_ticks_msec() / 1000.0
+	for pl: Dictionary in sim.places:
+		var x := int(pl.x)
+		var y := int(pl.y)
+		if x < x0 - 2 or x > x1 + 2 or y < y0 - 2 or y > y1 + 3:
+			continue
+		if fog_on and not fog.explored_at(sim.idx(x, y)):
+			continue
+		var base := Vector2(x + 0.5, y + 0.9)
+		if raised:
+			base.y -= lift_at(base.x, base.y - 0.2)
+		if pl.kind == "ruins":
+			var stone := Color(0.62, 0.6, 0.55) if not bool(pl.done) else Color(0.5, 0.49, 0.46)
+			draw_texture_rect(_shadow, Rect2(base.x - 0.9, base.y - 0.35, 1.9, 0.6), false)
+			# a broken wall: blocks of uneven height, a gap, an arch stump
+			for k in 5:
+				var hgt: float = [0.55, 0.85, 0.3, 0.7, 0.45][k]
+				var bx := base.x - 0.8 + k * 0.33
+				draw_rect(Rect2(bx, base.y - hgt, 0.28, hgt), stone)
+				draw_rect(Rect2(bx, base.y - hgt, 0.28, 0.06), stone.lightened(0.2))
+				draw_line(Vector2(bx, base.y - hgt * 0.5), Vector2(bx + 0.28, base.y - hgt * 0.5), stone.darkened(0.25), 0.02)
+			for k in 4:
+				draw_circle(base + Vector2(-0.6 + k * 0.4, 0.05), 0.08, stone.darkened(0.15))
+			if not bool(pl.done) and animate:
+				# something glints among the stones
+				if fmod(t * 0.7 + x, 3.0) < 0.25:
+					var g := base + Vector2(0.15, -0.25)
+					draw_line(g - Vector2(0.08, 0), g + Vector2(0.08, 0), Color(1, 0.95, 0.6), 0.03)
+					draw_line(g - Vector2(0, 0.08), g + Vector2(0, 0.08), Color(1, 0.95, 0.6), 0.03)
+			continue
+		# a bandit camp
+		var cleared := bool(pl.done)
+		draw_texture_rect(_shadow, Rect2(base.x - 1.2, base.y - 0.4, 2.4, 0.7), false)
+		for k in 3:
+			var tp := base + Vector2(-0.8 + k * 0.75, -0.05 * k)
+			var tc := Color(0.55, 0.32, 0.22) if k != 1 else Color(0.45, 0.36, 0.25)
+			if cleared:
+				tc = tc.darkened(0.4)
+			draw_colored_polygon(PackedVector2Array([tp + Vector2(-0.35, 0), tp + Vector2(0, -0.6), tp + Vector2(0.35, 0)]), tc)
+			draw_colored_polygon(PackedVector2Array([tp + Vector2(-0.08, 0), tp + Vector2(0, -0.25), tp + Vector2(0.08, 0)]), Color(0.12, 0.08, 0.05))
+		if cleared:
+			continue
+		# the fire, its smoke, and bandits standing about
+		var fp := base + Vector2(0.0, 0.35)
+		if animate:
+			for k in 3:
+				var fl := 0.18 + 0.08 * sin(t * 11.0 + k * 2.0)
+				draw_colored_polygon(PackedVector2Array([fp + Vector2(-0.08 + k * 0.06, 0), fp + Vector2(-0.04 + k * 0.06, -fl), fp + Vector2(0.0 + k * 0.06, 0)]), Color(1.0, 0.55, 0.15, 0.9))
+			for k in 3:
+				var ph := fmod(t * 0.4 + k * 0.33, 1.0)
+				draw_circle(fp + Vector2(sin(t + k) * 0.1 + ph * 0.3, -0.3 - ph * 1.2), 0.08 + ph * 0.15, Color(0.3, 0.3, 0.3, 0.4 * (1.0 - ph)))
+		for k in mini(int(pl.n), 3):
+			var bp := base + Vector2(-0.55 + k * 0.55, 0.55)
+			_sprite(_soldier_id(0), bp, 0.42, int(t * 2.0 + k) % 2, k % 2 == 0, Color(0.35, 0.3, 0.28))
+		# soldiers marching out to clear it
+		var pp := Places.party_pos(sim, pl)
+		if pp.x >= 0.0:
+			var party: Dictionary = pl.party
+			var pc: Color = sim.players[int(party.p) - 1].color.lightened(0.2)
+			var dir := (Vector2(x, y) - pp).normalized()
+			for k in mini(int(party.n), 4):
+				_sprite(_soldier_id(roundi(Sim.mix_avg(party.mix))), pp + Vector2(0.5, 0.75) - dir * 0.36 * k, 0.5, int(t * 5.0 + k) % 4, dir.x < 0, pc)
 
 
 ## Soldiers falling: when a column (key: its uid) or a garrison (key: minus the building's id) has
