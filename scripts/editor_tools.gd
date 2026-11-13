@@ -2,8 +2,8 @@ class_name EditorTools
 extends RefCounted
 ## The map editor's work on the map itself, apart from its panel (ui_editor.gd): where a mirrored
 ## brush paints, the fill bucket, smoothing, carving rivers, cutting out and stamping areas (copy and
-## paste, turned or mirrored), and the fairness count of what lies around each start. Every change goes
-## through a `set` callable (tile, layer, value) so the editor can remember it for undo.
+## paste, turned or mirrored), and the fairness count of what lies around each start.
+## These only work out which tiles change; the editor makes the changes, so it can undo them.
 
 const MIRRORS := ["off", "left-right", "top-bottom", "four ways", "turned"]
 const MIRROR_NAMES := ["Off", "Left | right", "Top | bottom", "Four ways", "Turned (180°)"]
