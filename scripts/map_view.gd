@@ -1096,16 +1096,7 @@ func _draw() -> void:
 			_person(fid, pos, step % (8 if Tex.frames(fid) >= 10 else 4), dx < 0, pc.lightened(0.25))
 			continue
 		if t.kind == "ship":
-			# a little ship: brown hull, a white sail with the realm's colour
-			var fl := -1.0 if dx < 0 else 1.0
-			var bob := 0.03 * sin(sim.time * 3.0 + t.t0)
-			var hp := pos + Vector2(0, -0.2 + bob)
-			draw_colored_polygon(PackedVector2Array([hp + 1.6 * Vector2(-0.45 * fl, -0.1), hp + 1.6 * Vector2(0.5 * fl, -0.1), hp + 1.6 * Vector2(0.3 * fl, 0.12), hp + 1.6 * Vector2(-0.35 * fl, 0.12)]), Color("6b4a2a"))
-			draw_line(hp + 1.6 * Vector2(0, -0.1), hp + 1.6 * Vector2(0, -0.75), Color("3a2a18"), 0.07)
-			draw_colored_polygon(PackedVector2Array([hp + 1.6 * Vector2(0.03 * fl, -0.72), hp + 1.6 * Vector2(0.34 * fl, -0.2), hp + 1.6 * Vector2(0.03 * fl, -0.2)]), Color("f2efe4"))
-			draw_rect(Rect2(hp + 1.6 * Vector2(-0.02, -0.82), Vector2(0.16 * fl, 0.08)).abs(), pc)
-			if t.res != "@expedition" and _res_tex.has(t.res):
-				draw_texture_rect(_res_tex[t.res], Rect2(hp + 1.6 * Vector2(-0.32 * fl - 0.1, -0.32), Vector2(0.32, 0.32)), false)
+			_draw_ship(pos, dx < 0, pc, t.t0, t.res if t.res != "@expedition" else "", false)
 			continue
 		if t.kind == "soldier":
 			_sprite(_soldier_id(t.n if t.n >= 0 else float(sim.players[t.p - 1].age)), pos, 0.5, step % 4, dx < 0, pc.lightened(0.2))
@@ -1212,6 +1203,17 @@ func _draw() -> void:
 					draw_circle(at + Vector2((k - 1.5) * 0.25 + sin(t2 + k) * 0.08, 0.05 - dph * 0.35), 0.1 + dph * 0.15, Color(0.75, 0.68, 0.55, 0.3 * (1.0 - dph)))
 			_track_losses(a.uid, a.n, at + Vector2(0.35 * sgn, 0), aid, col, left)
 			labels.append([at + Vector2(0, -0.85), str(a.n), Color.WHITE])
+		elif sim.military.at_sea(a):
+			# a landing on its way: its ships in a little line, the soldiers' number over the first
+			var fpos: Vector2 = sim.military.column_pos(a) + Vector2(0.5, 0.75)
+			var nsh := clampi(maxi(a.ships, ceili(float(a.n) / SimSea.LANDING_PER_SHIP)), 1, 3)
+			for k in nsh:
+				_draw_ship(fpos - cdir * 1.1 * k + Vector2(-cdir.y, cdir.x) * 0.35 * (k % 2), left, sim.players[a.p - 1].color, a.uid + k, "", true)
+			if a.field != 0:
+				var swp := fpos + Vector2(0, -1.7)
+				draw_line(swp + Vector2(-0.22, -0.22), swp + Vector2(0.22, 0.22), Color(0.95, 0.93, 0.85), 0.07)
+				draw_line(swp + Vector2(0.22, -0.22), swp + Vector2(-0.22, 0.22), Color(0.95, 0.93, 0.85), 0.07)
+			labels.append([fpos + Vector2(0, -1.45), str(a.n), Color.WHITE])
 		else:
 			var pos2: Vector2 = sim.military.column_pos(a) + Vector2(0.5, 0.75)
 			if a.field != 0:
@@ -1989,6 +1991,23 @@ func _smoke_at(p: Vector2, seed: float, strength: float) -> void:
 		draw_texture_rect(_smoke, Rect2(c.x - r, c.y - r, r * 2.0, r * 2.0), false, Color(1, 1, 1, (1.0 - ph) * 0.9 * strength))
 
 
+## A little ship at pos: brown hull, a white sail with the realm's colour; its cargo on deck (res), or,
+## for a fleet carrying soldiers to a landing (war), a red war pennant and shields along the side.
+func _draw_ship(pos: Vector2, left: bool, pc: Color, seed: float, res: String, war: bool) -> void:
+	var fl := -1.0 if left else 1.0
+	var bob := 0.03 * sin(sim.time * 3.0 + seed)
+	var hp := pos + Vector2(0, -0.2 + bob)
+	draw_colored_polygon(PackedVector2Array([hp + 1.6 * Vector2(-0.45 * fl, -0.1), hp + 1.6 * Vector2(0.5 * fl, -0.1), hp + 1.6 * Vector2(0.3 * fl, 0.12), hp + 1.6 * Vector2(-0.35 * fl, 0.12)]), Color("5a3a22") if war else Color("6b4a2a"))
+	draw_line(hp + 1.6 * Vector2(0, -0.1), hp + 1.6 * Vector2(0, -0.75), Color("3a2a18"), 0.07)
+	draw_colored_polygon(PackedVector2Array([hp + 1.6 * Vector2(0.03 * fl, -0.72), hp + 1.6 * Vector2(0.34 * fl, -0.2), hp + 1.6 * Vector2(0.03 * fl, -0.2)]), pc.lightened(0.55) if war else Color("f2efe4"))
+	draw_rect(Rect2(hp + 1.6 * Vector2(-0.02, -0.82), Vector2(0.16 * fl, 0.08)).abs(), Color("c03020") if war else pc)
+	if war:
+		for k in 3:
+			draw_circle(hp + 1.6 * Vector2((-0.25 + k * 0.2) * fl, -0.02), 0.07, pc)
+	elif res != "" and _res_tex.has(res):
+		draw_texture_rect(_res_tex[res], Rect2(hp + 1.6 * Vector2(-0.32 * fl - 0.1, -0.32), Vector2(0.32, 0.32)), false)
+
+
 ## The red "!" badge as one small picture (made once): a dark ring, a red disc and a white "!".
 var _badge_tex: Texture2D = null
 
@@ -2080,6 +2099,12 @@ func _draw_building(b: Sim.Bld, labels: Array, detail: bool) -> void:
 		# a site is drawn in the look it will have: its realm's age when it was placed
 		var tex0: Texture2D = bld_texture(b.ty, b.era)
 		var ai0 := _art_of(b.ty)
+		# a realm that landed from the sea: its headquarters is a big harbour on the coast
+		if b.ty == "hq" and sim.players[b.p - 1].landed:
+			tex0 = bld_texture("harbour", b.era)
+			ai0 = _art_of("harbour").duplicate()
+			ai0[1] = 3.2
+			ai0[5] = true
 		var sw0: float = ai0[1]
 		var hgt0 := sw0 * tex0.get_height() / maxf(1.0, tex0.get_width())
 		bc = [b.ty, b.era, tex0, ai0, Rect2(b.x + 0.5 - sw0 / 2.0, b.y + 1.0 - hgt0, sw0, hgt0), _tex_top(tex0),
@@ -2135,6 +2160,15 @@ func _draw_building(b: Sim.Bld, labels: Array, detail: bool) -> void:
 		return
 	if detail and ANIMALS.has(b.ty):
 		_draw_animals(b, String(ANIMALS[b.ty]), true)
+	# the ships waiting at a harbour (or a headquarters that landed from the sea), moored beside it
+	if zoom >= 9.0 and sim.sea.is_harbour(b) and b.state == "ready":
+		var pl := sim.players[b.p - 1]
+		var moor := sim.sea._moorings(b.x, b.y)
+		var free := sim.sea.free_ships(pl)
+		if not moor.is_empty() and free > 0 and (b.ty == "hq" or sim.sea.harbours(pl).find(b) == 0):
+			for k in mini(free, 2):
+				var mi := moor[(k * 3) % moor.size()]
+				_draw_ship(Vector2(mi % sim.w + 0.5, mi / sim.w + 0.75), k % 2 == 1, sim.players[b.p - 1].color, b.id + k, "", false)
 	draw_texture_rect(tex, rect, false)
 	# snow on the roofs in winter (the seasons feature says how much lies here)
 	if _snow_any:

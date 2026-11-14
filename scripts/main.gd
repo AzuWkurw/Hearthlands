@@ -1087,7 +1087,8 @@ const DIFF_CHOICES := [
 
 
 const DIFF_CHECKS := [["Endless ore veins", "endless_ore"], ["Endless stone, clay and fish", "endless_raw"], ["New workers need their trade's tool", "tools"],
-	["Road carriers: one carrier per stretch of road, goods handed on at flags (The Settlers style)", "road_carriers"], ["All research done at the start", "all_research"], ["Creative mode: build free and at once, stores never run low", "creative"]]
+	["Road carriers: one carrier per stretch of road, goods handed on at flags (The Settlers style)", "road_carriers"], ["All research done at the start", "all_research"], ["Creative mode: build free and at once, stores never run low", "creative"],
+	["Land from the sea: your headquarters is a harbour on the coast, with a ship", "sea_start"]]
 
 
 ## Presets: option values plus a rival strength. "Custom" leaves everything as it is.
@@ -1534,9 +1535,12 @@ func _on_tile(t: Vector2i) -> void:
 			_refresh_sel()
 			return
 	# an enemy military building at war: the attack window (who marches, how many)
-	if b != null and b.p != 1 and sim.is_mil(b) and b.state == "ready" and Diplomacy.at_war(sim, 1, b.p) and attack_ui.sources(b).is_empty():
+	# (or, with a harbour, free ships and soldiers waiting, a landing from the sea)
+	var can_land: bool = b != null and b.p != 1 and sim.is_mil(b) and b.state == "ready" and Diplomacy.at_war(sim, 1, b.p) \
+			and not attack_ui.sea_option(b).is_empty()
+	if b != null and b.p != 1 and sim.is_mil(b) and b.state == "ready" and Diplomacy.at_war(sim, 1, b.p) and attack_ui.sources(b).is_empty() and not can_land:
 		_show_hint(attack_ui.why_not(b), 5.0)
-	if b != null and b.p != 1 and sim.is_mil(b) and b.state == "ready" and Diplomacy.at_war(sim, 1, b.p) and not attack_ui.sources(b).is_empty():
+	if b != null and b.p != 1 and sim.is_mil(b) and b.state == "ready" and Diplomacy.at_war(sim, 1, b.p) and (not attack_ui.sources(b).is_empty() or can_land):
 		var r2 := attack_ui.open(b)
 		if r2 != "":
 			_show_hint(r2, 2.5)

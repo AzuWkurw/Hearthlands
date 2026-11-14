@@ -20,7 +20,12 @@ func _init(p_sim: Sim) -> void:
 
 
 func harbours(p: Sim.Player) -> Array:
-	return sim.realm_blds(p).filter(func(b): return b.ty == "harbour" and b.state == "ready" and not b.dead)
+	return sim.realm_blds(p).filter(func(b): return is_harbour(b) and b.state == "ready" and not b.dead)
+
+
+## A harbour, or the headquarters of a realm that landed from the sea (it stands on the coast).
+func is_harbour(b: Sim.Bld) -> bool:
+	return b != null and (b.ty == "harbour" or (b.ty == "hq" and sim.players[b.p - 1].landed))
 
 
 func free_ships(p: Sim.Player) -> int:
@@ -113,7 +118,7 @@ func landing_ok(x: int, y: int, pid: int) -> String:
 
 ## Sends an expedition from harbour h to land at (x, y). "" when it set sail, else why not.
 func expedition(p: Sim.Player, h: Sim.Bld, x: int, y: int) -> String:
-	if h == null or h.dead or h.ty != "harbour" or h.state != "ready":
+	if h == null or h.dead or not is_harbour(h) or h.state != "ready":
 		return "Expeditions leave from a harbour"
 	if free_ships(p) < 1:
 		return "No free ship: build a shipyard and let it build one"
@@ -229,6 +234,121 @@ func sea_transfers() -> void:
 		var st := _sail_time(path)
 		t.t0 = sim.time; t.t1 = sim.time + st + 2.0; t.t2 = t.t1 + st
 		sim.trips.append(t)
+
+
+# ---------------------------------------------------------------- landings
+const LANDING_PER_SHIP := 6      # soldiers a ship carries to a landing
+const LANDING_MAX := 24          # soldiers in one landing
+const LAND_R := 10               # a landing goes ashore at most this far from its target
+
+
+## The way for soldiers from harbour h to building t across the water: [the crossing (water tiles,
+## then the beach), the march from the beach], or [] when no sea joins them. The ships take the
+## shortest way to any beach within LAND_R of the target, then the soldiers march.
+func landing_route(h: Sim.Bld, t: Sim.Bld) -> Array:
+	var starts := _moorings(h.x, h.y)
+	if starts.is_empty():
+		return []
+	# beaches near the target: land tiles with water beside them, and that water
+	var goal := {}         # water tile -> the beach tile next to it nearest the target
+	var gd := {}
+	for dy in range(-LAND_R, LAND_R + 1):
+		for dx in range(-LAND_R, LAND_R + 1):
+			var x := t.x + dx
+			var y := t.y + dy
+			if not sim.inb(x, y) or dx * dx + dy * dy > LAND_R * LAND_R:
+				continue
+			var i := sim.idx(x, y)
+			if sim.ter[i] == Sim.WATER or sim.ter[i] == Sim.MOUNT or sim.bmap[i] != 0:
+				continue
+			var d := float(dx * dx + dy * dy)
+			for ny in range(y - 1, y + 2):
+				for nx in range(x - 1, x + 2):
+					if sim.inb(nx, ny) and sim.ter[sim.idx(nx, ny)] == Sim.WATER:
+						var wi := sim.idx(nx, ny)
+						if not goal.has(wi) or d < float(gd[wi]):
+							goal[wi] = i
+							gd[wi] = d
+	if goal.is_empty():
+		return []
+	# breadth-first over the water from the harbour to the first such beach
+	var came := {}
+	var q := []
+	for s in starts:
+		came[s] = -1
+		q.append(s)
+	var head := 0
+	var found := -1
+	while head < q.size() and head < 120000:
+		var cur: int = q[head]
+		head += 1
+		if goal.has(cur):
+			found = cur
+			break
+		var cx := cur % sim.w
+		var cy := cur / sim.w
+		for ddy in range(-1, 2):
+			for ddx in range(-1, 2):
+				var nx := cx + ddx
+				var ny := cy + ddy
+				if (ddx == 0 and ddy == 0) or not sim.inb(nx, ny):
+					continue
+				var ni := ny * sim.w + nx
+				if came.has(ni) or sim.ter[ni] != Sim.WATER:
+					continue
+				came[ni] = cur
+				q.append(ni)
+	if found < 0:
+		return []
+	var sea := PackedInt32Array()
+	var c := found
+	while c != -1:
+		sea.append(c)
+		c = came[c]
+	sea.reverse()
+	var beach: int = goal[found]
+	sea.append(beach)
+	var land := sim.military.land_path(beach % sim.w, beach / sim.w, t.x, t.y)
+	if land.is_empty():
+		return []
+	return [sea, land]
+
+
+## Where ship trip t is now (cargo ships and expeditions).
+func ship_pos(t: Sim.Trip) -> Vector2:
+	var n := t.path.size() - 1
+	if n < 1:
+		return Vector2(-99, -99)
+	var prog := 0.0
+	if not t.delivered:
+		prog = clampf((sim.time - t.t0) / maxf(0.01, t.t1 - t.t0), 0.0, 1.0)
+	else:
+		prog = 1.0 - clampf((sim.time - t.t1) / maxf(0.01, t.t2 - t.t1), 0.0, 1.0)
+	var f := prog * n
+	var k := mini(floori(f), n - 1)
+	return Vector2(t.path[k] % sim.w, t.path[k] / sim.w).lerp(Vector2(t.path[k + 1] % sim.w, t.path[k + 1] / sim.w), f - k)
+
+
+## A fleet at sea sinks the cargo ships and expeditions of realms it is at war with that it meets.
+func fleets_meet_ships() -> void:
+	for a: Sim.Attack in sim.attacks:
+		if not sim.military.at_sea(a) or a.n <= 0:
+			continue
+		var fp := sim.military.column_pos(a)
+		for k in range(sim.trips.size() - 1, -1, -1):
+			var t := sim.trips[k]
+			if t.kind != "ship" or t.p == a.p or not Diplomacy.at_war(sim, a.p, t.p):
+				continue
+			if ship_pos(t).distance_to(fp) > 1.6:
+				continue
+			var q := sim.players[t.p - 1]
+			q.ships = maxi(0, q.ships - 1)
+			q.ships_out = maxi(0, q.ships_out - 1)
+			sim.trips.remove_at(k)
+			if t.p == 1:
+				sim.emit_log("%s's fleet sank your ship%s." % [sim.players[a.p - 1].name, " and its expedition" if t.res == "@expedition" else (" with %d %s" % [t.n, t.res] if not t.delivered else "")], Color("e08a6a"), Vector2i(fp.round()))
+			elif a.p == 1:
+				sim.emit_log("Your fleet sank a ship of %s." % q.name, Color("86ad5c"), Vector2i(fp.round()))
 
 
 ## A rival with a free ship and a harbour sends an expedition to the nearest free coast, when its land

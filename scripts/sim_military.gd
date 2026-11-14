@@ -481,6 +481,69 @@ func _along(path: PackedInt32Array, f: float) -> Vector2:
 	return Vector2(path[0] % w, path[0] / w)
 
 
+# ---------------------------------------------------------------- army supplies
+## An army that marches further than SUPPLY_FREE tiles lives on what it carries: half a ration a
+## soldier for the way, taken from the stores where it sets out, and a ration for every four soldiers
+## each SUPPLY_EVERY seconds at the enemy's gate. It packs for the way and three rounds at the gate.
+## Soldiers without food grow hungry, and every duel goes SUPPLY_PEN worse for a starving army: a long
+## march needs full stores, and a siege far from home cannot last for ever.
+const SUPPLY_FREE := 14.0
+const SUPPLY_PER := 0.5
+const SUPPLY_EVERY := 20.0
+const SUPPLY_PEN := 0.12
+
+
+## Rations column a eats at the gate each SUPPLY_EVERY seconds.
+static func ration(n: int) -> int:
+	return maxi(1, ceili(n / 4.0))
+
+
+## Packs supplies for column a setting out from src: what the march needs, and three rounds at the gate.
+func pack_supplies(a: Sim.Attack, p: Sim.Player, src: Sim.Bld) -> void:
+	var dist := path_len(sim.w, a.path) if a.path.size() >= 2 else a.from.distance_to(a.to)
+	a.far = dist - float(a.sea) > SUPPLY_FREE or a.sea > 0
+	a.t_eat = a.t1 + SUPPLY_EVERY
+	if not a.far:
+		return
+	var way := ceili(a.n * SUPPLY_PER)
+	var want := way + ration(a.n) * 3
+	var got := 0
+	var at := sim.idx(src.x, src.y)
+	for k in want:
+		if sim.take_food(p, at) <= 0.0:
+			break
+		got += 1
+	# the way's share is eaten on the march; short of it, they arrive hungry
+	var eaten := mini(got, way)
+	a.food = float(got - eaten)
+	a.hunger = 1.0 - float(eaten) / float(way)
+
+
+## At the gate a column far from home eats from what it carries; without food it grows hungry.
+func _eat(a: Sim.Attack) -> void:
+	if not a.far or sim.time < a.t_eat:
+		return
+	a.t_eat = sim.time + SUPPLY_EVERY
+	var r := float(ration(a.n))
+	if a.food >= r:
+		a.food -= r
+		a.hunger = maxf(0.0, a.hunger - 0.5)
+	else:
+		a.food = 0.0
+		a.hunger = minf(1.0, a.hunger + 0.5)
+		if a.p == 1 and a.hunger >= 1.0:
+			sim.emit_log("Your soldiers at the gate have run out of food and are starving.", Color("e08a6a"), Vector2i(a.to.round()))
+
+
+## Words for what a column carries, for the player.
+func supply_words(a: Sim.Attack) -> String:
+	if not a.far:
+		return "near home: no supplies needed"
+	if a.hunger >= 0.99:
+		return "out of food, starving"
+	return "%d rations left%s" % [int(a.food), ", hungry" if a.hunger > 0.01 else ""]
+
+
 func launch_attack(src: Sim.Bld, tgt: Sim.Bld, want := -1, kinds: Array = [], sally := false, via := PackedInt32Array()) -> String:
 	var p := sim.players[src.p - 1]
 	if src.p == tgt.p or not sim.is_mil(tgt) or tgt.state != "ready" or src.state != "ready":
@@ -545,6 +608,7 @@ func launch_attack(src: Sim.Bld, tgt: Sim.Bld, want := -1, kinds: Array = [], sa
 	a.blunt = mini(go_blunt, n)
 	sim._bid += 1
 	a.uid = sim._bid
+	pack_supplies(a, p, src)
 	sim.attacks.append(a)
 	p.attacks_made += 1
 	Diplomacy.on_attacked(sim, tgt.p, src.p)
@@ -553,11 +617,105 @@ func launch_attack(src: Sim.Bld, tgt: Sim.Bld, want := -1, kinds: Array = [], sa
 	if tgt.p == 1:
 		sim.emit_log("%s attacks your %s with %d soldiers!" % [p.name, String(tgt.def.name), n], Color("e0603a"), Vector2i(tgt.x, tgt.y))
 	elif src.p == 1:
-		sim.emit_log("Your %d soldiers march on %s." % [n, sim.players[tgt.p - 1].name], Color("d8aa4a"), Vector2i(tgt.x, tgt.y))
+		sim.emit_log("Your %d soldiers march on %s (%s)." % [n, sim.players[tgt.p - 1].name, supply_words(a)], Color("d8aa4a"), Vector2i(tgt.x, tgt.y))
 	return ""
 
 
+## Sends soldiers waiting at the headquarters across the water from harbour h to attack building tgt:
+## ships carry them (one for every SimSea.LANDING_PER_SHIP), land them on the nearest beach to it, and
+## sail home. "" when they set sail, else why not.
+func launch_landing(h: Sim.Bld, tgt: Sim.Bld, want := -1) -> String:
+	var p := sim.players[h.p - 1]
+	if not sim.sea.is_harbour(h) or h.state != "ready" or h.dead:
+		return "Landings set sail from a harbour"
+	if h.p == tgt.p or not sim.is_mil(tgt) or tgt.state != "ready":
+		return "Pick an enemy military building"
+	if not Diplomacy.at_war(sim, h.p, tgt.p):
+		return "You are not at war with %s. Declare war in Diplomacy first." % sim.players[tgt.p - 1].name
+	var ships := sim.sea.free_ships(p)
+	if ships < 1:
+		return "No free ship: build a shipyard and let it build one"
+	if p.reserve < 1:
+		return "A landing takes soldiers waiting at the headquarters"
+	var route := sim.sea.landing_route(h, tgt)
+	if route.is_empty():
+		return "No way by sea from this harbour to a beach near that building"
+	var n := mini(mini(p.reserve, ships * SimSea.LANDING_PER_SHIP), SimSea.LANDING_MAX)
+	if want >= 0:
+		n = mini(n, want)
+	if n < 1:
+		return "No soldiers to send"
+	var need_ships := ceili(float(n) / SimSea.LANDING_PER_SHIP)
+	var sea: PackedInt32Array = route[0]
+	var land: PackedInt32Array = route[1]
+	var sent := Sim.mix_take_best(sim.rmix_of(p), n)
+	var go_blunt := mini(p.blunt, roundi(float(p.blunt) * n / maxf(1.0, p.reserve)))
+	p.blunt -= go_blunt
+	p.reserve -= n
+	p.ships_out += need_ships
+	var a := Sim.Attack.new()
+	a.p = h.p; a.src = h.id; a.tgt = tgt.id; a.n = n; a.n0 = n; a.t0 = sim.time
+	var way := sea.duplicate()
+	way.append_array(land.slice(1))
+	a.path = way
+	a.sea = sea.size()
+	a.ships = need_ships
+	a.t_land = sim.time + path_len(sim.w, sea) / SimSea.SHIP_SPEED + 2.0
+	a.t1 = a.t_land + path_len(sim.w, land) * 1.1 + 1.0
+	a.from = Vector2(h.x, h.y); a.to = Vector2(tgt.x, tgt.y)
+	a.vet = clampf(p.vets / maxf(1.0, sim.soldiers(p) + n), 0.0, 1.0)
+	a.sxp = p.res_xp
+	a.amix = sent
+	a.era = Sim.mix_avg(sent)
+	a.vt = [a.t0, a.t0]
+	a.dvt = [a.t0, a.t0]
+	a.blunt = mini(go_blunt, n)
+	sim._bid += 1
+	a.uid = sim._bid
+	pack_supplies(a, p, h)
+	sim.attacks.append(a)
+	p.attacks_made += 1
+	Diplomacy.on_attacked(sim, tgt.p, h.p)
+	if tgt.p == 1:
+		sim.emit_log("A fleet of %s is sailing for your %s with %d soldiers!" % [p.name, String(tgt.def.name), n], Color("e0603a"), Vector2i(tgt.x, tgt.y))
+	elif h.p == 1:
+		sim.emit_log("%d ships sail with %d of your soldiers for %s's coast (%s)." % [need_ships, n, sim.players[tgt.p - 1].name, supply_words(a)], Color("d8aa4a"), Vector2i(tgt.x, tgt.y))
+	return ""
+
+
+## Landings' ships: they sail home once the soldiers are ashore; a fleet beaten at sea goes down
+## with them. at_start: the fleets at sea when this tick began.
+func _fleets_tick(at_start: Array) -> void:
+	for a: Sim.Attack in at_start:
+		if a.ships <= 0:
+			continue
+		var p := sim.players[a.p - 1]
+		var gone := not sim.attacks.has(a)
+		if gone and a.n <= 0 and sim.time < a.t_land:
+			# beaten at sea: the ships are lost
+			p.ships = maxi(0, p.ships - a.ships)
+			p.ships_out = maxi(0, p.ships_out - a.ships)
+			if a.p == 1:
+				sim.emit_log("Your fleet was sunk at sea.", Color("e08a6a"), Vector2i(column_pos(a).round()))
+			a.ships = 0
+		elif gone or sim.time >= a.t_land:
+			p.ships_out = maxi(0, p.ships_out - a.ships)
+			a.ships = 0
+
+
 func attack_tick(dt: float) -> void:
+	var fleets := []
+	for a0 in sim.attacks:
+		if a0.ships > 0:
+			fleets.append(a0)
+	_attack_tick(dt)
+	if not fleets.is_empty():
+		_fleets_tick(fleets)
+		if int(sim.time * 2.0) != int((sim.time - dt) * 2.0):
+			sim.sea.fleets_meet_ships()
+
+
+func _attack_tick(dt: float) -> void:
 	_field_battles(dt)
 	for k in range(sim.attacks.size() - 1, -1, -1):
 		var a := sim.attacks[k]
@@ -603,6 +761,7 @@ func attack_tick(dt: float) -> void:
 			if a.p == 1 or t.p == 1:
 				sim.emit_log("The attack on %s was beaten back." % String(t.def.name), Color("86ad5c") if t.p == 1 else Color("e08a6a"), Vector2i(t.x, t.y))
 			continue
+		_eat(a)
 		a.step += dt
 		if a.step < 1.0:
 			continue
@@ -618,6 +777,8 @@ func attack_tick(dt: float) -> void:
 			dw += float(t.def.get("wall", 0.0))
 			dw += 0.15 * (dvet - a.vet) + sim.mod(op, "defense") - sim.mod(p, "attack")
 			dw += 0.03 * (Sim.level(defender_xp(t), Sim.SOLDIER_XP) - Sim.level(a.sxp, Sim.SOLDIER_XP))
+			# hungry soldiers far from home
+			dw += SUPPLY_PEN * a.hunger
 			# one soldier of each side: the attacker comes as he is, the defenders send their best
 			# answer to him. Later ages are stronger (+3.5% a duel per age, about 15% in strength);
 			# some kinds beat others; and each kind has its own edge.
@@ -679,14 +840,34 @@ func column_pos(a: Sim.Attack) -> Vector2:
 		return a.from
 	if a.fighting:
 		return a.to
+	if a.sea > 0:
+		return _landing_pos(a, sim.time)
 	var f := clampf((sim.time - a.t0) / maxf(0.01, a.t1 - a.t0), 0.0, 1.0)
 	if a.path.size() > 2:
 		return _along(a.path, f)
 	return a.from.lerp(a.to, f)
 
 
+## Where a landing is at game time tm: on the ships along the crossing (the first a.sea tiles of its
+## path) until a.t_land, then marching from the beach.
+func _landing_pos(a: Sim.Attack, tm: float) -> Vector2:
+	if tm < a.t_land:
+		var f := clampf((tm - a.t0) / maxf(0.01, a.t_land - a.t0), 0.0, 1.0)
+		return _along(a.path.slice(0, a.sea), f)
+	var f2 := clampf((tm - a.t_land) / maxf(0.01, a.t1 - a.t_land), 0.0, 1.0)
+	return _along(a.path.slice(a.sea - 1), f2)
+
+
+## Whether column a is still on its ships, crossing the water.
+func at_sea(a: Sim.Attack) -> bool:
+	return a.sea > 0 and sim.time < a.t_land and not a.fighting
+
+
 ## The way a column faces (a unit vector).
 func column_dir(a: Sim.Attack) -> Vector2:
+	if a.sea > 0 and not a.fighting:
+		var d0 := _landing_pos(a, sim.time + 0.5) - _landing_pos(a, sim.time - 0.2)
+		return d0.normalized() if d0.length() > 0.01 else Vector2.RIGHT
 	if a.chase != 0:
 		var c := _by_uid(a.chase)
 		var d0 := (column_pos(c) - a.from) if c != null else (a.to - a.from)
@@ -926,7 +1107,7 @@ func _column_volleys(a: Sim.Attack, b: Sim.Attack, d: float) -> void:
 func _retreat(a: Sim.Attack, p: Sim.Player) -> void:
 	var s: Sim.Bld = sim.by_id.get(a.src)
 	Sim.mix_fix(a.amix, a.n, roundi(a.era))
-	if s != null and s.p == a.p and s.ty != "hq":
+	if s != null and s.p == a.p and s.ty != "hq" and a.sea == 0:
 		s.sxp = Sim.mix_xp(s.sxp, s.garrison, a.sxp, a.n)
 		Sim.mix_add(sim.gmix_of(s), a.amix)
 		s.garrison += a.n

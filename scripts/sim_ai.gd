@@ -723,10 +723,35 @@ func ai_attack(p: Sim.Player) -> bool:
 		if sc > best_sc:
 			best_sc = sc; best = [near, t]
 	if best == null:
-		return false
+		return _ai_landing(p)
 	for s in best[0]:
 		sim.launch_attack(s, best[1])
 	return true
+
+
+## No target by land: a rival with a harbour, a free ship and soldiers waiting lands on an enemy coast
+## (it looks at most once a minute: finding the way by sea takes a while).
+func _ai_landing(p: Sim.Player) -> bool:
+	if sim.time - p.sea_try < 60.0 or p.reserve < 6 or sim.sea.free_ships(p) < 1:
+		return false
+	var hs := sim.sea.harbours(p)
+	if hs.is_empty():
+		return false
+	p.sea_try = sim.time
+	var n := mini(mini(p.reserve - 2, sim.sea.free_ships(p) * SimSea.LANDING_PER_SHIP), SimSea.LANDING_MAX)
+	var cands := []
+	for t: Sim.Bld in sim.mil_list():
+		if t.p == p.id or t.state != "ready" or t.dead or not sim.players[t.p - 1].alive or not Diplomacy.at_war(sim, p.id, t.p):
+			continue
+		if float(n) / maxf(1.0, sim.defenders(t)) < p.odds:
+			continue
+		cands.append([float(n) / maxf(1.0, sim.defenders(t)) + _attack_value(t), t])
+	cands.sort_custom(func(a, b): return a[0] > b[0] or (a[0] == b[0] and (a[1] as Sim.Bld).id < (b[1] as Sim.Bld).id))
+	for c in cands.slice(0, 3):
+		for h: Sim.Bld in hs.slice(0, 2):
+			if sim.military.launch_landing(h, c[1], n) == "":
+				return true
+	return false
 
 
 func _at_peace(p: Sim.Player) -> bool:

@@ -293,5 +293,13 @@
 	"Upgrade to %s": "Ausbauen zu %s",
 	"Upgrade started: carriers bring %s.": "Ausbau begonnen: Träger bringen %s.",
 	"Rebuild it as a %s where it stands. Costs %s.\n%s": "An Ort und Stelle umbauen zu: %s. Kostet %s.\n%s",
-	"Upgrade to %s after studying %s": "Ausbau zu %s nach der Forschung %s"
+	"Upgrade to %s after studying %s": "Ausbau zu %s nach der Forschung %s",
+	"Or land from the sea: up to %d soldiers waiting at headquarters sail from your %s.": "Oder vom Meer aus landen: bis zu %d Soldaten aus dem Hauptquartier segeln von deinem %s ab.",
+	"Land from the sea instead": "Stattdessen vom Meer aus landen",
+	"Land on %s's coast: attack the %s": "An der Küste von %s landen: %s angreifen",
+	"Soldiers waiting at your headquarters board ships at your %s, %d to a ship, sail to the nearest beach to it and march from there. The ships sail home once they are ashore; a fleet beaten at sea is lost with them. Enemy ships they meet on the way are sunk.\nFar from home they live on what they carry: rations from the stores for the crossing and three rounds at the gate.": "Soldaten aus deinem Hauptquartier gehen in deinem %s an Bord, %d pro Schiff, segeln zum nächsten Strand und marschieren von dort. Die Schiffe kehren heim, sobald alle an Land sind; eine auf See geschlagene Flotte geht mit ihnen unter. Feindliche Schiffe unterwegs werden versenkt.\nFern der Heimat leben sie von dem, was sie mitnehmen: Rationen aus den Lagern für die Überfahrt und drei Runden am Tor.",
+	"%d soldiers on %d ships, %d rations": "%d Soldaten auf %d Schiffen, %d Rationen",
+	"Set sail": "Segel setzen",
+	"The fleet sets sail.": "Die Flotte setzt die Segel.",
+	"Land from the sea: your headquarters is a harbour on the coast, with a ship": "Vom Meer aus landen: dein Hauptquartier ist ein Hafen an der Küste, mit einem Schiff"
 }

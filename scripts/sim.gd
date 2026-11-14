@@ -156,7 +156,42 @@ const DEFAULT_OPTS := {
 	"road_carriers": false, # The Settlers style: one carrier for each stretch of road, goods handed on at flags
 	"all_research": false,  # every realm starts with all research done (but the Industrial Revolution)
 	"creative": false,      # creative mode: you build for free and at once, and your stores never run low
+	"sea_start": false,     # you land from the sea: your headquarters is a harbour on the coast, with a ship
 }
+
+
+## The nearest place to `from` (up to 40 tiles away) where a headquarters can stand on the coast: its
+## whole plot on grass or beach, open water within reach of its moorings, and no other realm's start
+## near. (-1, -1) when there is none.
+func _coast_start(from: Vector2i) -> Vector2i:
+	for r in range(0, 41):
+		var best := Vector2i(-1, -1)
+		var bd := 1e9
+		for dy in range(-r, r + 1):
+			for dx in range(-r, r + 1):
+				if maxi(absi(dx), absi(dy)) != r:
+					continue
+				var x := from.x + dx
+				var y := from.y + dy
+				if x < 3 or y < 3 or x >= w - 3 or y >= h - 3:
+					continue
+				var ok := true
+				for t in plot_tiles("hq", x, y):
+					if ter[t] != GRASS and ter[t] != BEACH:
+						ok = false
+						break
+				if not ok or sea._moorings(x, y).size() < 2:
+					continue
+				for q in players:
+					if q.id != 1 and Vector2(q.start.x - x, q.start.y - y).length() < 16.0:
+						ok = false
+				var d := Vector2(dx, dy).length()
+				if ok and d < bd:
+					bd = d
+					best = Vector2i(x, y)
+		if best.x >= 0:
+			return best
+	return Vector2i(-1, -1)
 
 
 ## The tool kit every realm starts with (times the starting goods setting).
@@ -265,7 +300,9 @@ class Player:
 	var road_carriers := 0                 # road carriers mode: porters posted on stretches in use
 	var flags := {}                        # road carriers mode: flags the player set on roads (tile -> true)
 	var ships := 0                         # ships built at its shipyards
-	var ships_out := 0                     # ships at sea (expeditions and cargoes)
+	var ships_out := 0                     # ships at sea (expeditions, cargoes and landings)
+	var landed := false                    # started by landing from the sea: its headquarters is a harbour (opts.sea_start)
+	var sea_try := 0.0                     # rivals: when they last looked for a landing to make
 	var donkeys_used := 0                  # road carriers mode: donkeys out helping on busy stretches
 	var store_total := 0                   # room for each good across all stores (before per-good factors)
 	var store_porters := 0                 # porters employed by the stores
@@ -382,6 +419,13 @@ class Attack:
 	var blunt := 0               # marching soldiers whose weapons are worn out
 	var path := PackedInt32Array()  # the tiles it marches over, round the water (empty: straight, old saves)
 	var chase := 0               # uid of the enemy column it marches out to stop (0: it attacks a building)
+	var food := 0.0              # army supplies: rations it carries (SimMilitary.SUPPLY_*)
+	var hunger := 0.0            # 0 fed .. 1 starving: hungry soldiers fight worse
+	var far := false             # it marched further than SUPPLY_FREE tiles from home: it lives on what it carries
+	var t_eat := 0.0             # when it eats next, at the gate
+	var sea := 0                 # a landing: the first `sea` tiles of path are the crossing by ship
+	var t_land := 0.0            # when a landing's ships reach the beach
+	var ships := 0               # ships carrying a landing (they sail home once it has landed)
 
 
 class MinHeap:
@@ -688,6 +732,14 @@ func new_game(p_seed: String, p_foes: int, p_strength: int, p_mix: bool, p_size 
 	var setup: Array = g.get("setup", [])
 	for k in mini(setup.size(), players.size()):
 		_apply_setup(players[k], setup[k])
+	# landing from the sea: your start moves to the nearest coast, and your headquarters is a harbour
+	if bool(opts.get("sea_start", false)) and not players.is_empty():
+		var p0: Player = players[0]
+		var spot := _coast_start(p0.start)
+		if spot.x >= 0:
+			p0.start = spot
+			p0.landed = true
+			p0.ships = 1
 	for p in players:
 		p.hq = add_bld("hq", p.start.x, p.start.y, p, true, 0)
 		# the starting goods are in the headquarters

@@ -44,6 +44,33 @@ func sources(t: Sim.Bld) -> Array:
 	return out
 
 
+## A landing on t from the sea: [your harbour, how many soldiers can sail] or [] when none can (no
+## harbour with a free ship, no soldier waiting at the headquarters, or no sea way to a beach near it).
+## Kept for the building last asked about, as finding the sea way takes a moment.
+var _sea_for := -1
+var _sea_at := -1.0
+var _sea: Array = []
+
+func sea_option(t: Sim.Bld) -> Array:
+	var sim: Sim = main.sim
+	if _sea_for == t.id and absf(sim.time - _sea_at) < 2.0:
+		return _sea
+	_sea_for = t.id
+	_sea_at = sim.time
+	_sea = []
+	var me := sim.human()
+	var ships := sim.sea.free_ships(me)
+	if ships < 1 or me.reserve < 1:
+		return _sea
+	var hs := sim.sea.harbours(me)
+	hs.sort_custom(func(a, c): return Vector2(a.x - t.x, a.y - t.y).length() < Vector2(c.x - t.x, c.y - t.y).length())
+	for h: Sim.Bld in hs.slice(0, 3):
+		if not sim.sea.landing_route(h, t).is_empty():
+			_sea = [h, mini(mini(me.reserve, ships * SimSea.LANDING_PER_SHIP), SimSea.LANDING_MAX)]
+			break
+	return _sea
+
+
 ## Why none of your buildings can attack enemy building t now.
 func why_not(t: Sim.Bld) -> String:
 	var sim: Sim = main.sim
@@ -75,13 +102,17 @@ func open(t: Sim.Bld) -> String:
 	if not Diplomacy.at_war(sim, 1, t.p):
 		return "You are not at war with %s. Declare war in Diplomacy first." % sim.players[t.p - 1].name
 	var src := sources(t)
-	if src.is_empty():
+	var sea := sea_option(t)
+	if src.is_empty() and sea.is_empty():
 		return "None of your military buildings in range has a soldier to spare."
 	tgt_id = t.id
 	for c in body.get_children():
 		body.remove_child(c)
 		c.queue_free()
 	body.add_child(main._label(tr("Attack %s's %s") % [sim.players[t.p - 1].name, String(t.def.name)], 22, Main.BRASS))
+	if src.is_empty():
+		_open_sea(t, sea)
+		return ""
 	var dm: Array = sim.military.mix_of(sim.military._defending(t))
 	body.add_child(main._label(tr("Defenders: %d (%s)") % [sim.defenders(t), Sim.mix_text(dm)], 14, Main.DIM))
 	if t.archers > 0 or t.sally:
@@ -129,9 +160,54 @@ func open(t: Sim.Bld) -> String:
 	body.add_child(row)
 	row.add_child(main._button("Attack", _go))
 	row.add_child(main._button("Cancel (Esc)", close))
+	if not sea.is_empty():
+		body.add_child(main._label(tr("Or land from the sea: up to %d soldiers waiting at headquarters sail from your %s.") % [int(sea[1]), String((sea[0] as Sim.Bld).def.name).to_lower()], 13, Color("9fd0e8")))
+		body.add_child(main._button(tr("Land from the sea instead"), func(): _open_sea(t, sea)))
 	_update()
 	panel.visible = true
 	return ""
+
+
+## The window for a landing from the sea: how many sail, the ships and supplies it takes.
+var sea_slider: HSlider
+
+func _open_sea(t: Sim.Bld, sea: Array) -> void:
+	var sim: Sim = main.sim
+	for c in body.get_children():
+		body.remove_child(c)
+		c.queue_free()
+	body.add_child(main._label(tr("Land on %s's coast: attack the %s") % [sim.players[t.p - 1].name, String(t.def.name)], 22, Main.BRASS))
+	var dm: Array = sim.military.mix_of(sim.military._defending(t))
+	body.add_child(main._label(tr("Defenders: %d (%s)") % [sim.defenders(t), Sim.mix_text(dm)], 14, Main.DIM))
+	var h: Sim.Bld = sea[0]
+	var info := main._rich()
+	info.custom_minimum_size = Vector2(460, 0)
+	info.text = tr("Soldiers waiting at your headquarters board ships at your %s, %d to a ship, sail to the nearest beach to it and march from there. The ships sail home once they are ashore; a fleet beaten at sea is lost with them. Enemy ships they meet on the way are sunk.\nFar from home they live on what they carry: rations from the stores for the crossing and three rounds at the gate.") % [String(h.def.name).to_lower(), SimSea.LANDING_PER_SHIP]
+	body.add_child(info)
+	var cl := main._label("", 15)
+	body.add_child(cl)
+	sea_slider = HSlider.new()
+	sea_slider.min_value = 1
+	sea_slider.max_value = int(sea[1])
+	sea_slider.step = 1
+	sea_slider.value = int(sea[1])
+	sea_slider.custom_minimum_size = Vector2(380, 24)
+	var upd := func(_v = 0):
+		var n := int(sea_slider.value)
+		cl.text = tr("%d soldiers on %d ships, %d rations") % [n, ceili(float(n) / SimSea.LANDING_PER_SHIP), ceili(n * SimMilitary.SUPPLY_PER) + SimMilitary.ration(n) * 3]
+	sea_slider.value_changed.connect(upd)
+	upd.call()
+	body.add_child(sea_slider)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	body.add_child(row)
+	row.add_child(main._button(tr("Set sail"), func():
+		var r := sim.military.launch_landing(h, t, int(sea_slider.value))
+		close()
+		main._show_hint(tr("The fleet sets sail.") if r == "" else r, 3.0)
+		main._refresh_all()))
+	row.add_child(main._button("Cancel (Esc)", close))
+	panel.visible = true
 
 
 func close() -> void:

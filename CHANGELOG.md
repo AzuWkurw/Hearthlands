@@ -1,5 +1,17 @@
 # Changelog
 
+## Build 49 (v0.44.0, 2026-11-14)
+
+War at sea, armies that need supplies, and a new start: landing from the sea.
+
+- Landings: click an enemy military building across the water. With a harbour, a free ship and soldiers waiting at the headquarters, the attack window offers to land from the sea (also as an extra choice when you could march there too). Ships carry 6 soldiers each, up to 24 in one landing, to the nearest beach to the target; the soldiers march from there, and the ships sail home once they are ashore.
+- Battles at sea: two enemy fleets that meet fight, and a fleet beaten at sea goes down with its ships. Fleets sink enemy cargo ships and expeditions they pass. Towers and archers on the coast shoot at fleets sailing by. Fleets are drawn as war ships (red pennant, shields along the side) with their soldiers' number, and see through the fog of war as they sail, as your marching columns now do too.
+- Rivals with a harbour, a free ship and soldiers to spare land on your coast when they can't reach you by land.
+- Army supplies: an army marching more than 14 tiles from home (and every landing) takes food from the stores: half a ration a soldier for the way and enough for three rounds at the gate, then a ration for every four soldiers every 20 seconds while it fights. Without food it grows hungry, and starving soldiers lose more duels. The march message says what it carries.
+- New-game option "Land from the sea": your headquarters is a harbour on the coast, with a ship moored beside it; expeditions and landings leave from it.
+- Harbours show their free ships moored beside them.
+- New test: war at sea and supplies (41 tests).
+
 ## Build 48.6 (v0.43.0, 2026-11-14)
 
 Faster big games, measured on a player's own save (448 map, 9 realms, 2,129 buildings, 1,362 carriers on the road).

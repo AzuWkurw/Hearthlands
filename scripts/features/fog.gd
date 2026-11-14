@@ -112,8 +112,13 @@ func _update_sight() -> void:
 			towers += 1
 		if b.state == "ready":
 			ready += 1
-	var sig := "%d:%d:%d:%d:%d" % [sim.territory_version, mine.size(), ready, towers, walks.size()]
-	if sig == _sig and walks.is_empty():
+	# your columns on the march and fleets at sea see where they go, as scouts do
+	var cols := []
+	for a: Sim.Attack in sim.attacks:
+		if a.p == p.id and a.n > 0:
+			cols.append(a)
+	var sig := "%d:%d:%d:%d:%d:%d" % [sim.territory_version, mine.size(), ready, towers, walks.size(), cols.size()]
+	if sig == _sig and walks.is_empty() and cols.is_empty():
 		_remember_rivals(p)
 		return
 	_sig = sig
@@ -148,6 +153,9 @@ func _update_sight() -> void:
 		if int(wk[0]) == p.id:
 			var at := walk_pos(wk)
 			_reveal(roundi(at.x), roundi(at.y), SCOUT_SIGHT)
+	for a: Sim.Attack in cols:
+		var cp: Vector2 = sim.military.column_pos(a)
+		_reveal(roundi(cp.x), roundi(cp.y), SCOUT_SIGHT)
 	if vis != before:
 		for y in sim.h:
 			if before.size() != n or _row_differs(vis, before, y, w):

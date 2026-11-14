@@ -10,7 +10,7 @@ economy you do.
 ## Download
 
 The ready-made Windows game is on the [`downloads` branch](../../tree/downloads): download the zip,
-unzip it and run `Hearthlands.exe`. Current version: **v0.43.0 build 48.6** (see `CHANGELOG.md`).
+unzip it and run `Hearthlands.exe`. Current version: **v0.44.0 build 49** (see `CHANGELOG.md`).
 
 What is in the game now:
 
@@ -28,7 +28,7 @@ What is in the game now:
 
 The full plan is in the [roadmap](https://claude.ai/artifact/YVAWwJGUN4FRBYtpz3zgQh).
 
-Done (builds 43 to 48):
+Done (builds 43 to 49):
 
 | Build | What came in |
 |---|---|
@@ -39,12 +39,10 @@ Done (builds 43 to 48):
 | 46 | Luxuries and 8 new production buildings: spices, silk, porcelain, coffee and more, wanted by nobles for contentment and taxes |
 | 47 | Events with a choice (pilgrims, a comet, grumbling, a strange ship), merchants who buy your surplus, allies who ask for help and leave when trust falls |
 | 48 | A living world: working buildings move (saws, water wheels, sparks, steam), and snow settles on roofs in winter |
+| 48.1 to 48.6 | Bug fixes and speed-ups: square clouds and the orange map at dusk fixed, no starving with full stores, ox carts as an upgrade for the mule station, map baking on all processor cores, about twice as fast drawing on big maps |
+| 49 | War at sea: landings on a rival's coast from your harbours, fleets that fight and sink enemy ships; armies that need supplies far from home; a new-game option to land from the sea with a harbour headquarters |
 
-Done: five rounds of bug fixes and speed-ups (48.1 to 48.5): long AI games played to find errors,
-and the slowest parts of the game made faster.
-
-Next (build 49): battles at sea and landings on a rival's coast, armies that need supplies in the
-field, and a new-game option to start by landing from the sea with a harbour instead of a headquarters.
+Next: a window for logistics priorities and one for worker priorities, with numbers.
 
 Later: a story campaign through the ages, multiplayer, scripted scenarios, a chronicle at the end of a
 game, more animations, music for each age, and quality-of-life features (a production chain overlay,
@@ -834,6 +832,23 @@ A mod in `user://data/techs.json` with the same id changes an existing tech; new
 
 The AI builds the buildings it knows by id. Your new buildings are available to you, and AI rivals keep
 playing with the standard set.
+
+## War at sea and army supplies
+
+- **Landings:** click an enemy military building across the water. If you have a harbour with a free
+  ship and soldiers waiting at the headquarters, the attack window offers to land from the sea. Ships
+  carry 6 soldiers each (up to 24 in one landing) to the nearest beach to the target, and the soldiers
+  march from there. The ships sail home once the soldiers are ashore.
+- **Battles at sea:** two enemy fleets that meet fight it out, and a fleet beaten at sea goes down
+  with its ships. Fleets sink enemy cargo ships and expeditions they pass. Towers and archers on the
+  coast shoot at fleets sailing by. Rivals land on your coast too when they can't reach you by land.
+- **Supplies:** an army marching more than 14 tiles from home (and every landing) takes food along:
+  half a ration a soldier for the way and enough for three rounds at the gate. It eats a ration for
+  every four soldiers every 20 seconds while it fights there. Without food it grows hungry, and
+  starving soldiers lose more duels. Full stores make long marches possible; a siege far from home
+  cannot last for ever.
+- **Land from the sea** (new-game option): your headquarters is a harbour on the coast with one ship.
+  Expeditions and landings leave from it.
 
 ## A living world
 
