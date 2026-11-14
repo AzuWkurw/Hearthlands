@@ -89,6 +89,8 @@ func _res_option(with_nothing: bool) -> OptionButton:
 		o.add_item(String(r.name))
 		o.set_item_metadata(o.item_count - 1, String(r.id))
 		o.set_item_icon(o.item_count - 1, Tex.get_tex("res_" + String(r.id)))
+		o.get_popup().set_item_icon_max_width(o.item_count - 1, 20)
+	o.add_theme_constant_override("icon_max_width", 20)
 	return o
 
 

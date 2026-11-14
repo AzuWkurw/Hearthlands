@@ -11,6 +11,16 @@ uniform bool animate = true;
 uniform float clouds = 0.3;
 // Which way and how fast the clouds drift, in tiles a second.
 uniform vec2 drift = vec2(0.35, 0.12);
+// Hills: the light and shade of the slopes, one pixel a tile (0.5 flat, lighter where the ground faces
+// the light from the upper left, darker where it faces away), smoothed between tiles. Done here instead
+// of baked into the chunks, so baking is quicker at every zoom.
+uniform sampler2D relief_map : filter_linear, repeat_disable;
+uniform bool use_relief = false;
+uniform vec2 map_size = vec2(1.0, 1.0);
+// With raised ground the chunks are drawn lifted; lift_map holds each tile corner's lift (in tiles / 4)
+// so the flat map position under a pixel can be found again.
+uniform sampler2D lift_map : filter_linear, repeat_disable;
+uniform bool raised = false;
 
 // Position of the pixel on the map, in tiles, handed from the vertex step to the pixel step.
 varying vec2 world;
@@ -58,6 +68,22 @@ void fragment() {
 		c.rgb += vec3(0.22, 0.26, 0.28) * smoothstep(0.5, 0.8, n) * water;
 		// A slow swell that brightens and darkens wide patches of water.
 		c.rgb *= 1.0 + 0.05 * sin(t * 0.9 + world.x * 0.7 + world.y * 0.5) * water;
+	}
+	// hills, on land only
+	if (use_relief) {
+		vec2 p = world;
+		if (raised) {
+			for (int k = 0; k < 3; k++) {
+				p.y = world.y + texture(lift_map, (p + 0.5) / (map_size + 1.0)).r * 4.0;
+			}
+		}
+		float rv = texture(relief_map, p / map_size).r * 2.0 - 1.0;
+		float land = 1.0 - water;
+		if (rv > 0.0) {
+			c.rgb = mix(c.rgb, vec3(1.0, 1.0, 0.92), rv * 0.49 * land);
+		} else {
+			c.rgb = mix(c.rgb, vec3(0.0), -rv * 0.647 * land);
+		}
 	}
 	// cloud shadows: big soft patches drifting with the wind (more of them on a cloudy day)
 	if (clouds > 0.01) {

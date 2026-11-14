@@ -45,7 +45,7 @@ func _open_textures() -> void:
 		tr.custom_minimum_size = Vector2(64, 64)
 		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		tr.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 		cell.add_child(tr)
 		var custom := Tex.custom.has(id)
 		if custom:

@@ -2,7 +2,7 @@
 
 Every source file with what it is for, grouped by part. Written by `tools/file_list.py` from the comment at the
 top of each file; run it again after adding files. For how the parts work together, read
-`docs/SOURCE_GUIDE.md`. Besides these 216 files there are 969 pictures in `textures/` (made by
+`docs/SOURCE_GUIDE.md`. Besides these 220 files there are 969 pictures in `textures/` (made by
 `tools/make_textures.py` and `tools/make_scenery.py`, or your own) and 76 sounds in `sounds/` (made by
 `tools/make_sounds.py`) and 8 pieces of music in `music/` (made by `tools/make_music.py`). Godot's
 `.import` files next to them are made by the editor.
@@ -47,8 +47,8 @@ top of each file; run it again after adding files. For how the parts work togeth
 | File | Lines | What it is |
 |---|---:|---|
 | `scripts/line_chart.gd` | 73 | A simple line chart: one line per series over the same time axis, newest on the right. Set `series` to [{"name": String, "color": Color, "values": Array of numbers}, ...] and `x_label`. |
-| `scripts/map_chunks.gd` | 517 | Bakes the parts of the map that rarely change (ground, roads, scenery, ore, territory) into large images of 16 x 16 tiles called chunks. Drawing a few dozen chunks each frame is far cheaper than drawing thousands of separate tiles. A chunk is baked again only when something inside it changes. Where two kinds of ground meet, the higher one (beach over water, grass over beach, mountain over grass) spills softly over the edge. Open water is baked half transparent: the ground shader uses that as a marker to make the water shimmer. |
-| `scripts/map_view.gd` | 2712 | Draws the world and turns mouse input into tile clicks. The ground, roads, scenery and borders come from pre-baked chunks (map_chunks.gd), drawn by a child layer whose shader makes the water shimmer. Everything that moves or changes often (buildings, carriers, soldiers, workers, smoke, selections, tool previews) is drawn every frame on top. Animations follow the game clock, so they freeze while the game is paused and speed up with it. |
+| `scripts/map_chunks.gd` | 475 | Bakes the parts of the map that rarely change (ground, roads, scenery, ore, territory) into large images of 16 x 16 tiles called chunks. Drawing a few dozen chunks each frame is far cheaper than drawing thousands of separate tiles. A chunk is baked again only when something inside it changes. Where two kinds of ground meet, the higher one (beach over water, grass over beach, mountain over grass) spills softly over the edge. Open water is baked half transparent: the ground shader uses that as a marker to make the water shimmer. |
+| `scripts/map_view.gd` | 2788 | Draws the world and turns mouse input into tile clicks. The ground, roads, scenery and borders come from pre-baked chunks (map_chunks.gd), drawn by a child layer whose shader makes the water shimmer. Everything that moves or changes often (buildings, carriers, soldiers, workers, smoke, selections, tool previews) is drawn every frame on top. Animations follow the game clock, so they freeze while the game is paused and speed up with it. |
 | `scripts/minimap.gd` | 239 | Whole-map overview: terrain, roads, territory, military buildings and the camera frame. Its images double as the far-zoom picture of the main map. |
 | `scripts/tech_tree_view.gd` | 582 | The tech tree drawn as a map: ages run left to right, each band is a branch of the realm, and lines run from what a tech needs to what it leads to. The places come from data/techs.json ("lane", "col", "row", worked out to cross as few lines as possible); techs added by a mod without them are put in an "Other" band. Repeatable studies sit in the Mastery band at the bottom. Drag (or the arrow keys) to move, the wheel to scroll, Ctrl + wheel or a pinch to zoom. |
 | `scripts/tex.gd` | 201 | Texture lookup with user overrides. For an id like "bld_sawmill" the game looks for, in order: 1. user://textures/bld_sawmill.png   (your custom texture, any size) 2. res://textures/bld_sawmill.png    (the default shipped with the project) 3. a magenta placeholder, so a missing file is obvious in game. |
@@ -69,7 +69,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `scripts/ui_campaign.gd` | 251 | The campaign: the chapters of data/campaign.json on a parchment map, each a mission with a story before and after it. A chapter opens when the one before it is won. Winning a chapter can carry something into the next (veteran soldiers, a stock of goods), and the map remembers the best time and score of each chapter. Progress is kept in user://campaign_progress.json. |
 | `scripts/ui_chain.gd` | 246 | The production chain of a good: boxes for the buildings that make it and, step by step, what they need, with arrows to the buildings that use it. Each box shows how many you have and how much they make a minute: what they made over the last ten minutes when Statistics is on, and what they could make at full speed. An arrow turns red where what they can make at full speed falls short of what the next step needs, and the weakest link gets a tip. Opened from a good's info box ("Production chain"). |
 | `scripts/ui_demolish.gd` | 170 | The window that asks before a building is demolished. Part of the interface: main.gd holds the shared state and calls in here; the functions reach the rest of the game through `main`. |
-| `scripts/ui_diplomacy.gd` | 267 | The Diplomacy window: alliances, peace, war and trade with rivals. Part of the interface: main.gd holds the shared state and calls in here; the functions reach the rest of the game through `main`. |
+| `scripts/ui_diplomacy.gd` | 269 | The Diplomacy window: alliances, peace, war and trade with rivals. Part of the interface: main.gd holds the shared state and calls in here; the functions reach the rest of the game through `main`. |
 | `scripts/ui_editor.gd` | 1289 | The map editor: opened from the new-game screen. It starts from the map of the seed and size chosen there, without any realm on it. Its panel has five tabs: - Paint: tools (brush, fill bucket, smoothing, rivers with fords, copy and paste turned or mirrored) and what they paint: ground, trees/rocks/clay, ore and its amount, climate, animals, ruins and bandit camps. Brushes are square or round, and can paint mirrored (left\|right, top\|bottom, four ways, turned) for fair maps. Every stroke can be undone (Ctrl+Z) and redone (Ctrl+Y). - Map: open a saved map, make a new one from a seed with the landscape settings, name, save, play, export. - Starts: move, add and remove the headquarters' places (start 1 is yours), and set each one up: a name, the rival's personality and strength, more or fewer goods, extra soldiers. - Mission: goals, a story and a deadline, saved to your missions and played on this map. - Check: what lies around each start (trees, stone, ore, fish, open land), so the starts are fair. Maps are saved as JSON in the "maps" folder of the game's data folder (user://maps). |
 | `scripts/ui_guide.gd` | 164 | The first-game guide: a short checklist for the first minutes of a new game (build a woodcutter, join it to the roads, a sawmill, a quarry...). Each step is ticked off by itself when it is done, with a line on the rule that matters for it (entrances, sizes, roads). It closes when every step is done or with its x, and "Show the first-game guide" in Settings brings it back for the next new game. |
 | `scripts/ui_info.gd` | 567 | The building info box: what the selected building is doing, and its buttons (priority, stores, garrison...). Part of the interface: main.gd holds the shared state and calls in here; the functions reach the rest of the game through `main` (main.gd keeps a one-line wrapper for each, so callers did not change). |
@@ -106,7 +106,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 
 | File | Lines | What it is |
 |---|---:|---|
-| `shaders/ground.gdshader` | 70 | Draws the ground: the baked map pictures on the raised mesh, moving water and shore foam, drifting cloud shadows. |
+| `shaders/ground.gdshader` | 96 | Draws the ground: the baked map pictures on the raised mesh, moving water and shore foam, drifting cloud shadows. |
 | `shaders/map_sway.gdshader` | 38 | The map view's own shader: bends the tops of trees and crops in the wind (corners marked by their colour's alpha). |
 
 ## Tools: automatic tests
@@ -213,6 +213,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `tools/shot_stats.gd` | 38 | Statistics: realms compared, and the border replay. xvfb-run -a -s "-screen 0 1920x1080x24" godot --rendering-driver opengl3 --script res://tools/shot_stats.gd -- out=/dir |
 | `tools/shot_stone.gd` | 49 | Boundary stones: one built at the border, another being placed with the land it would claim. xvfb-run -a -s "-screen 0 1920x1080x24" godot --rendering-driver opengl3 --script res://tools/shot_stone.gd -- out=/dir |
 | `tools/shot_stores.gd` | 80 | Pictures of goods in each store, people waiting in homes and a lodge, and inputs at a workshop: xvfb-run -a -s "-screen 0 1920x1080x24" godot --rendering-driver opengl3 --script res://tools/shot_stores.gd -- out=/dir |
+| `tools/shot_tex.gd` | 74 | Screenshots for judging the textures: a town grown by the computer for a few minutes (no weather or fog, so the ground shows as it is), at four zooms round the headquarters, then a coast and mountains up close. The game is kept in user://saves/shot_tex.save and reused (fresh makes a new one): xvfb-run -a -s "-screen 0 1920x1080x24" godot --rendering-driver opengl3 --script res://tools/shot_tex.gd -- out=/dir [tag=now] [fresh] |
 | `tools/shot_toolbar.gd` | 51 | Screenshots of the bottom toolbar: xvfb-run -a -s "-screen 0 1920x1080x24" godot --rendering-driver opengl3 --script res://tools/shot_toolbar.gd -- out=/dir |
 | `tools/shot_toolbar_small.gd` | 24 | The toolbar in a 1280 x 720 window (compact, icons only): xvfb-run ... --script res://tools/shot_toolbar_small.gd -- out=/dir |
 | `tools/shot_traffic.gd` | 37 | The traffic map on a town that grew for 12 minutes, with a jammed road clicked. xvfb-run -a -s "-screen 0 1920x1080x24" godot --rendering-driver opengl3 --script res://tools/shot_traffic.gd -- out=/dir |
@@ -252,24 +253,27 @@ top of each file; run it again after adding files. For how the parts work togeth
 
 | File | Lines | What it is |
 |---|---:|---|
+| `tools/bld_tex.py` | 243 | Surface textures for the building pictures (used by make_textures.py). |
 | `tools/bump_build.py` | 53 | Raise the build number before a release. |
 | `tools/check_data.py` | 104 | Check the data files (and optionally a mod's JSON files) for mistakes. |
 | `tools/extract_strings.py` | 76 | Collect the interface text from the scripts into the translation files. |
 | `tools/file_list.py` | 137 | Writes docs/FILES.md: every source file of the project with what it is for. |
 | `tools/folk_sprites.py` | 382 | Townsfolk, porters, workers, pack mules and ox carts, drawn in detail. Run on its own (python3 tools/folk_sprites.py) or from make_textures.py; it writes the unit_folk_*, unit_porter*, unit_worker_*, unit_mule, unit_cart and unit_load_* strips into textures/. Everything is drawn in design pixels with make_textures' Pen, so edges come out smooth. Strips that the game tints with the realm's colour come with a *_tint companion: the tunic alone, in grey, drawn over the picture in the realm's colour. |
 | `tools/make_build.py` | 224 | Make a release build of Hearthlands in one go. |
+| `tools/make_ground.py` | 381 | Ground tiles for Hearthlands: grass, beach, water and mountain rock, four variants each, 64 x 64. |
 | `tools/make_music.py` | 545 | Compose and render Hearthlands' music into ../music (OGG Vorbis, stereo, 44.1 kHz). |
-| `tools/make_scenery.py` | 251 | Trees, mountain peaks and boulders for the map, drawn with light and shade so they look round. |
+| `tools/make_scenery.py` | 273 | Trees, mountain peaks and boulders for the map, drawn with light and shade so they look round. |
 | `tools/make_sounds.py` | 542 | Generate Hearthlands' sound effects and ambience into ../sounds. |
-| `tools/make_textures.py` | 1580 | Generate Hearthlands' default textures into ../textures. |
+| `tools/make_textures.py` | 1709 | Generate Hearthlands' default textures into ../textures. |
 | `tools/readme_tables.py` | 128 | Rebuilds the Resources, Buildings and Research tree tables in README.md from the data files. |
+| `tools/tech_icons.py` | 820 | Emblems for the research icons (used by make_textures.techs()). |
 
 ## Project and documents
 
 | File | Lines | What it is |
 |---|---:|---|
 | `CHANGELOG.md` | 561 | What changed in each build. |
-| `README.md` | 910 | How to play, the rules, controls, settings, modding and the project layout. |
+| `README.md` | 912 | How to play, the rules, controls, settings, modding and the project layout. |
 | `docs/FILES.md` | 279 | This list (written by tools/file_list.py). |
 | `docs/SOURCE_GUIDE.md` | 439 | A tour of the code for programmers: the parts, how a game tick runs, where things live. |
 | `docs/SUGGESTIONS.md` | 203 | Ideas and their status after each round of work. |

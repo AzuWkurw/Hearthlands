@@ -14,6 +14,7 @@ signal paint_done                           # map editor: the left button was le
 const DETAIL_ZOOM := 10.0        # below this many pixels per tile, the map is drawn from the minimap image
 const ANIM_ZOOM := 14.0          # below this, small details (smoke, workers, animals) are skipped
 const LORES_ZOOM := 16.0         # below this, the ground comes from chunks baked at half resolution
+const HIRES_ZOOM := 36.0         # from this on, from chunks baked at double resolution (64 pixels a tile)
 ## Tools that outdoor workers carry, by the building's "act".
 const TOOL := {"cut_tree": "axe", "cut_rock": "pick", "dig_clay": "shovel", "fish": "rod", "plant": "seed", "farm": "seed"}
 ## Where effects sit on each building style, as fractions of the picture's width and height.
@@ -133,6 +134,7 @@ func _ensure_lift() -> void:
 	var W := sim.w + 1
 	_lift = PackedFloat32Array(); _lift.resize(W * (sim.h + 1))
 	if not raised or sim.height.size() != sim.w * sim.h:
+		_ground_mat.set_shader_parameter("raised", false)
 		return
 	for cy in sim.h + 1:
 		for cx in W:
@@ -151,6 +153,20 @@ func _ensure_lift() -> void:
 						n += 1
 			# corners touching the sea stay at sea level, so the shore meets the water
 			_lift[cy * W + cx] = 0.0 if water or n == 0 else maxf(0.0, s / n - 6.0) * LIFT
+	_make_lift_map()
+
+
+## The corner lifts as a picture for the ground shader (which finds the flat map position with it).
+func _make_lift_map() -> void:
+	var W := sim.w + 1
+	var H := sim.h + 1
+	var data := PackedByteArray()
+	data.resize(W * H)
+	for k in W * H:
+		data[k] = clampi(int(round(_lift[k] / 4.0 * 255.0)), 0, 255)
+	var img := Image.create_from_data(W, H, false, Image.FORMAT_R8, data)
+	_ground_mat.set_shader_parameter("lift_map", ImageTexture.create_from_image(img))
+	_ground_mat.set_shader_parameter("raised", raised)
 
 
 ## How far the ground at (fx, fy), in tiles, is raised on screen.
@@ -470,10 +486,57 @@ func _make_variation() -> void:
 	var img := Image.create_from_data(w, h, false, Image.FORMAT_RGBA8, data)
 	img.resize(w * 4, h * 4, Image.INTERPOLATE_BILINEAR)
 	_vary = ImageTexture.create_from_image(img)
+	_make_relief_map()
+
+
+## The hills' light and shade, one pixel a tile, for the ground shader: the slope towards the light
+## (from the upper left) plus a little for height, as -1..1 stored as 0..255 (128 flat).
+func _make_relief_map() -> void:
+	if sim.height.size() != sim.w * sim.h:
+		_ground_mat.set_shader_parameter("use_relief", false)
+		return
+	var w := sim.w
+	var h := sim.h
+	var data := PackedByteArray()
+	data.resize(w * h)
+	for y in h:
+		for x in w:
+			data[y * w + x] = _relief_at(x, y)
+	_relief_img = Image.create_from_data(w, h, false, Image.FORMAT_R8, data)
+	_relief_tex = ImageTexture.create_from_image(_relief_img)
+	_ground_mat.set_shader_parameter("relief_map", _relief_tex)
+	_ground_mat.set_shader_parameter("map_size", Vector2(w, h))
+	_ground_mat.set_shader_parameter("use_relief", true)
+
+
+var _relief_img: Image
+var _relief_tex: ImageTexture
+var _relief_dirty := false
+
+
+## Tile (x, y)'s light and shade (0..255, 128 flat). Water, roads and tiles showing an ore marker stay
+## flat, so they keep their own colour (as when the shading was baked under them), and the shore isn't
+## darkened by the low ground of the water next to it.
+func _relief_at(x: int, y: int) -> int:
+	var w := sim.w
+	var h := sim.h
+	var i := y * w + x
+	if sim.road[i] != 0 or sim.ter[i] == Sim.WATER or (sim.ore[i] != 0 and sim.ore_known(1, i)):
+		return 128
+	var hx := int(sim.height[y * w + mini(x + 1, w - 1)]) - int(sim.height[y * w + maxi(x - 1, 0)])
+	var hy := int(sim.height[mini(y + 1, h - 1) * w + x]) - int(sim.height[maxi(y - 1, 0) * w + x])
+	var v := clampf((hx + hy) / 30.0 + (int(sim.height[i]) - 100) / 260.0, -1.0, 1.0)
+	return clampi(int(round((v * 0.5 + 0.5) * 255.0)), 0, 255)
 
 
 ## Tiles whose look changed in the simulation (trees cut, roads laid...).
 func tiles_changed(tiles: PackedInt32Array) -> void:
+	if _relief_img != null and _relief_img.get_width() == sim.w and _relief_img.get_height() == sim.h:
+		for i in tiles:
+			var v := _relief_at(i % sim.w, i / sim.w)
+			if _relief_img.get_pixel(i % sim.w, i / sim.w).r8 != v:
+				_relief_img.set_pixel(i % sim.w, i / sim.w, Color8(v, 0, 0))
+				_relief_dirty = true
 	for i in tiles:
 		chunks.mark_tile(i)
 		# the scenery of this tile's chunk, and of its neighbours' (a peak needs mountain all round)
@@ -653,6 +716,9 @@ func road_preview() -> PackedInt32Array:
 
 ## Draws the ground on the child layer, which sits behind everything this view draws itself.
 func _draw_ground() -> void:
+	if _relief_dirty and _relief_tex != null:
+		_relief_tex.update(_relief_img)
+		_relief_dirty = false
 	var t_start := Time.get_ticks_usec()
 	var g := _ground
 	if sim == null or sim.w == 0:
@@ -676,7 +742,15 @@ func _draw_ground() -> void:
 		chunks.twin.smooth = chunks.smooth
 		chunks.twin.details = chunks.details
 		chunks.twin.load_images()
-	var ch: MapChunks = chunks if z >= LORES_ZOOM else chunks.twin
+	if z >= HIRES_ZOOM and chunks.hi == null:
+		chunks.hi = MapChunks.new()
+		chunks.hi.TS = 64
+		chunks.hi.max_chunks = 28      # 4 MB each: up close only a few are on screen
+		chunks.hi.sim = sim
+		chunks.hi.smooth = chunks.smooth
+		chunks.hi.details = chunks.details
+		chunks.hi.load_images()
+	var ch: MapChunks = chunks.hi if z >= HIRES_ZOOM else (chunks if z >= LORES_ZOOM else chunks.twin)
 	chunks.sim = sim
 	ch.sim = sim
 	ch.begin_frame()
@@ -1507,6 +1581,8 @@ func set_details(on: bool) -> void:
 	chunks.details = on
 	if chunks.twin != null:
 		chunks.twin.details = on
+	if chunks.hi != null:
+		chunks.hi.details = on
 	chunks.mark_all()
 
 
@@ -2538,7 +2614,7 @@ func _draw_newcomer(hq: Sim.Bld) -> void:
 
 const SCENERY := ["deco_tree_0", "deco_tree_1", "deco_tree_2", "deco_tree_3", "deco_tree_4",
 	"deco_peak_0", "deco_peak_1", "deco_rock_0", "deco_rock_1"]
-const SCN_PX := 64                 # atlas pixels per tile
+const SCN_PX := 128                # atlas pixels per tile (mipmapped, so far out stays smooth)
 var _scn_shadow_uv := Rect2()      # where the shadow lies in the scenery atlas
 const SCN_PEAK := 5
 const SCN_ROCK := 7

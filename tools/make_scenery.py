@@ -6,7 +6,8 @@ cylinders for trunks, two faces for a peak). Every pixel is lit from the upper l
 direction, with a little ambient light, darker hollows low in the crown, leaf or rock grain, and a
 soft shadow cast to the lower right on the ground. Everything is drawn 4 times larger and shrunk.
 
-Trees and peaks are 64 x 96 (one tile wide, one and a half tall), boulders 64 x 64.
+Shapes are given in design pixels (a tile is 64 across); the pictures come out K times larger (K = 2:
+trees and peaks 128 x 192, boulders 128 x 128), so they stay sharp when the map is zoomed right in.
 
 Usage:  python3 tools/make_scenery.py [--force]      (also run by make_textures.py)
 """
@@ -18,6 +19,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "textures")
 FORCE = "--force" in sys.argv
 SS = 4
+K = 2          # output pixels per design pixel
+SSK = SS * K   # canvas pixels per design pixel
 LIGHT = np.array([-0.55, -0.62, 0.56])
 LIGHT = LIGHT / np.linalg.norm(LIGHT)
 
@@ -25,14 +28,14 @@ LIGHT = LIGHT / np.linalg.norm(LIGHT)
 class Canvas:
     def __init__(self, w, h, seed):
         self.w, self.h = w, h
-        self.W, self.H = w * SS, h * SS
+        self.W, self.H = w * SSK, h * SSK
         self.rgb = np.zeros((self.H, self.W, 3), np.float32)
         self.a = np.zeros((self.H, self.W), np.float32)
         self.rng = np.random.default_rng(seed)
         yy, xx = np.mgrid[0:self.H, 0:self.W]
         # design units (pixels of the final picture)
-        self.x = (xx + 0.5) / SS
-        self.y = (yy + 0.5) / SS
+        self.x = (xx + 0.5) / SSK
+        self.y = (yy + 0.5) / SSK
 
     def noise(self, cell, amp):
         """Smooth value noise with cells `cell` design pixels across, from -amp to +amp."""
@@ -67,8 +70,8 @@ class Canvas:
         # premultiply while shrinking, so dark empty pixels don't bleed into the edges
         pm = img.copy()
         pm[:, :, :3] *= self.a[:, :, None]
-        im = Image.fromarray(pm.astype(np.uint8), "RGBA").resize((self.w, self.h), Image.LANCZOS)
-        am = Image.fromarray((self.a * 255).astype(np.uint8), "L").resize((self.w, self.h), Image.LANCZOS)
+        im = Image.fromarray(pm.astype(np.uint8), "RGBA").resize((self.w * K, self.h * K), Image.LANCZOS)
+        am = Image.fromarray((self.a * 255).astype(np.uint8), "L").resize((self.w * K, self.h * K), Image.LANCZOS)
         out = np.asarray(im).astype(np.float32)
         al = np.asarray(am).astype(np.float32) / 255.0
         out[:, :, :3] = np.where(al[:, :, None] > 0.01, out[:, :, :3] / np.maximum(al[:, :, None], 0.01), 0)
@@ -87,11 +90,16 @@ def sphere(c, cx, cy, r, base, grain=0.0, rough=0.0, ao_top=None, ao_bot=None, s
     dy = (c.y - cy) / (r * squash)
     d2 = dx * dx + dy * dy
     edge = 1.0 + (c.noise(r * 0.35, rough) if rough else 0.0)
-    m = np.clip((edge - np.sqrt(d2)) * r * SS * 0.5, 0, 1)
+    m = np.clip((edge - np.sqrt(d2)) * r * SSK * 0.5, 0, 1)
     nz = np.sqrt(np.clip(1 - np.minimum(d2, 1), 0, 1))
     shade = lit(dx, dy, nz)
     if grain:
-        shade = shade * (1 + c.noise(1.2, grain) + c.noise(0.6, grain * 0.6))
+        shade = shade * (1 + c.noise(1.2, grain) + c.noise(0.6, grain * 0.6) + c.noise(0.3, grain * 0.5))
+        # single leaves: dark gaps and bright glints where the clump faces the light
+        leaf = c.noise(0.28, 1.0)
+        facing = np.clip(dx * LIGHT[0] + dy * LIGHT[1] + nz * LIGHT[2], 0, 1)
+        shade = np.where(leaf < -0.55, shade * 0.72, shade)
+        shade = np.where((leaf > 0.62) & (facing > 0.55), shade * 1.22, shade)
     if ao_bot is not None:
         shade = shade * np.clip(1 - np.clip((c.y - ao_top) / (ao_bot - ao_top), 0, 1) * 0.35, 0.5, 1)
     c.put(m, np.asarray(base, np.float32)[None, None, :] * shade[:, :, None])
@@ -103,9 +111,13 @@ def trunk(c, cx, y0, y1, w0, w1, base, marks=None):
     half = (w1 + (w0 - w1) * t) / 2
     dx = (c.x - cx) / np.maximum(half, 0.1)
     inside = (np.abs(dx) <= 1) & (c.y >= y0) & (c.y <= y1)
-    m = np.clip((1 - np.abs(dx)) * half * SS, 0, 1) * inside
+    m = np.clip((1 - np.abs(dx)) * half * SSK, 0, 1) * inside
     nz = np.sqrt(np.clip(1 - dx * dx, 0, 1))
     shade = lit(dx, np.zeros_like(dx), nz, 0.42, 0.75) * (1 + c.noise(0.8, 0.08))
+    # bark: furrows running up the trunk (none on a birch's smooth white bark)
+    if marks is None:
+        fur = np.sin((c.x - cx) / np.maximum(half, 0.1) * 7.0 + c.noise(3, 1.2)) * 0.5 + 0.5
+        shade = shade * (1 - 0.18 * (fur > 0.72) - 0.06 * c.noise(0.35, 1.0))
     col = np.asarray(base, np.float32)[None, None, :] * shade[:, :, None]
     if marks is not None:
         mk = (c.noise(1.6, 1.0) > 0.45) & (np.abs(dx) < 0.95)
@@ -120,13 +132,16 @@ def fir_tier(c, cx, top, bot, half, base, jag=0.14):
     dx = (c.x - cx) / np.maximum(hw, 0.3)
     ragged = bot + c.noise(1.3, (bot - top) * jag) - np.abs(dx) * (bot - top) * 0.12
     inside = (t >= 0) & (np.abs(dx) <= 1) & (c.y <= ragged)
-    m = np.clip(np.minimum((1 - np.abs(dx)) * hw * SS * 0.5, (ragged - c.y) * SS * 0.5), 0, 1) * inside
+    m = np.clip(np.minimum((1 - np.abs(dx)) * hw * SSK * 0.5, (ragged - c.y) * SSK * 0.5), 0, 1) * inside
     nz = np.sqrt(np.clip(1 - dx * dx, 0, 1)) * 0.8
     ny = -0.45 + t * 0.2        # the cone's surface leans back
     shade = lit(dx * 0.95, ny, nz, 0.34, 0.9)
     # the tier above shades this one's top; the needles give it texture
     shade = shade * (0.55 + 0.5 * np.clip(t, 0, 1) ** 0.8)
-    shade = shade * (1 + c.noise(0.9, 0.16) + c.noise(2.5, 0.08))
+    shade = shade * (1 + c.noise(0.9, 0.16) + c.noise(2.5, 0.08) + c.noise(0.35, 0.12))
+    # sprays of needles hanging down: short streaks, lighter at their tips
+    spray = c.noise(0.25, 1.0)
+    shade = np.where(spray > 0.55, shade * (1.12 + 0.1 * np.clip(t, 0, 1)), np.where(spray < -0.6, shade * 0.78, shade))
     c.put(m, np.asarray(base, np.float32)[None, None, :] * shade[:, :, None])
 
 
@@ -204,7 +219,14 @@ def rocks():
         c.shadow(38, 56, 25, 6.5, 0.45)
         for (x, y, r, sq) in sorted(stones, key=lambda s: s[1]):
             sphere(c, x, y, r, (138, 134, 124), grain=0.16, rough=0.1, squash=sq)
-            # cracks
+            dx = (c.x - x) / r
+            dy = (c.y - y) / (r * sq)
+            inside = dx * dx + dy * dy < 0.85
+            # a crack or two, dark with a lit lip, and patches of yellow-green lichen on top
+            crack = (np.abs(c.noise(3.0, 1.0)) < 0.035) & inside
+            c.put(crack.astype(np.float32), (70, 66, 60), 0.85)
+            lich = (c.noise(1.1, 1.0) > 0.45) & inside & (dy < 0.1)
+            c.put(lich.astype(np.float32) * 0.55, (150, 156, 96))
         save(c.done(), f"deco_rock_{v}")
 
 
@@ -220,7 +242,7 @@ def peaks():
         tl = (c.y - ty) / (base - ty)
         left_edge = tx - (tx - lx) * tl + c.noise(3, 1.2) * np.clip(tl * 3, 0, 1)
         right_edge = tx + (rx - tx) * tl + c.noise(3, 1.2) * np.clip(tl * 3, 0, 1)
-        m = np.clip(np.minimum(np.minimum(c.x - left_edge, right_edge - c.x), base - c.y) * SS * 0.5, 0, 1) * (c.y >= ty)
+        m = np.clip(np.minimum(np.minimum(c.x - left_edge, right_edge - c.x), base - c.y) * SSK * 0.5, 0, 1) * (c.y >= ty)
         lit_side = c.x < ridge
         rockc = np.array([132, 124, 108], np.float32)
         # the lit face brightest near the ridge, the shaded face darkest just behind it

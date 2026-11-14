@@ -130,8 +130,7 @@ func _apply_colors() -> void:
 	cb_on = settings.cb_colors
 	for k in sim.players.size():
 		sim.players[k].color = (CB_PCOL if cb_on else Sim.PCOL)[k % Sim.PCOL.size()]
-	view.chunks._tint.clear()
-	view.chunks._territory = -1
+	view.chunks.reset_tint()
 	view.chunks.mark_all()
 	minimap.reset()
 	view.queue_redraw()
@@ -770,8 +769,10 @@ func _build_ui() -> void:
 			mf.add_item(tr("Only buildings making %s") % String(r.name).to_lower())
 			mf.set_item_metadata(mf.item_count - 1, "good:" + String(r.id))
 			mf.set_item_icon(mf.item_count - 1, Tex.get_tex("res_" + String(r.id)))
+			mf.get_popup().set_item_icon_max_width(mf.item_count - 1, 20)
 	mf.item_selected.connect(func(i): minimap.set_filter(String(mf.get_item_metadata(i))))
 	minimap_filter = mf
+	mf.add_theme_constant_override("icon_max_width", 20)
 	add_child(mf)
 
 	hint = _label("", 15)
@@ -828,7 +829,6 @@ func _build_ui() -> void:
 		ic.custom_minimum_size = Vector2(20, 20)
 		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		ic.mouse_filter = Control.MOUSE_FILTER_PASS
 		hb.add_child(ic)
 		var l := _label("0", 14)

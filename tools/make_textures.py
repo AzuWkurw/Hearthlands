@@ -11,6 +11,7 @@ Everything is drawn SS times larger than needed and then shrunk with a high-qual
 gives smooth (anti-aliased) edges. Animated sprites are strips of frames side by side.
 """
 import json, math, os, random, sys, zlib
+import bld_tex as BT
 import numpy as np
 from PIL import Image, ImageChops, ImageDraw
 
@@ -62,8 +63,10 @@ def polish(img, name):
         return img
     rs = np.random.default_rng(zlib.crc32(name.encode()))
     # grain: per-pixel speckle plus soft blotches, a few percent either way
-    grain = (rs.random((h, w)) - 0.5) * 0.07
-    blot = np.kron(rs.random((h // 4 + 1, w // 4 + 1)) - 0.5, np.ones((4, 4)))[:h, :w] * 0.06
+    # (buildings carry their own textures now, so they get less grain than the scenery)
+    gk = 0.5 if name.startswith("bld_") else 1.0
+    grain = (rs.random((h, w)) - 0.5) * 0.07 * gk
+    blot = np.kron(rs.random((h // 4 + 1, w // 4 + 1)) - 0.5, np.ones((4, 4)))[:h, :w] * 0.06 * gk
     # light from above, measured over the shape's own height
     ys = np.where(solid.any(axis=1))[0]
     top, bot = ys[0], max(ys[-1], ys[0] + 1)
@@ -174,6 +177,68 @@ class Pen:
         layer.putalpha(ImageChops.multiply(layer.getchannel("A"), mask))
         self.im.alpha_composite(layer)
 
+    def _poly_box(self, pts):
+        P = self._p(pts)
+        xs = [q[0] for q in P]; ys = [q[1] for q in P]
+        x0 = max(0, int(min(xs)) - 1); y0 = max(0, int(min(ys)) - 1)
+        x1 = min(self.im.size[0], int(max(xs)) + 2); y1 = min(self.im.size[1], int(max(ys)) + 2)
+        return P, x0, y0, x1, y1
+
+    def texfill(self, pts, tex, mult=1.0):
+        """Fills the polygon pts with a texture: tex(w, h, f) gives an RGBA picture of w x h canvas
+        pixels (f canvas pixels a design pixel), laid with its corner at the polygon's top left."""
+        P, x0, y0, x1, y1 = self._poly_box(pts)
+        if x1 <= x0 or y1 <= y0:
+            return
+        img = tex(x1 - x0, y1 - y0, self.f)
+        if mult != 1.0:
+            a = np.asarray(img).astype(np.float32)
+            a[..., :3] *= mult
+            img = Image.fromarray(np.clip(a, 0, 255).astype(np.uint8), "RGBA")
+        mask = Image.new("L", (x1 - x0, y1 - y0), 0)
+        ImageDraw.Draw(mask).polygon([(q[0] - x0, q[1] - y0) for q in P], fill=255)
+        img.putalpha(ImageChops.multiply(img.getchannel("A"), mask))
+        self.im.alpha_composite(img, (x0, y0))
+
+    def texmask(self, draw, tex, mult=1.0):
+        """Draws with draw(pen) on a mask, then fills what was drawn with the texture tex (as texfill)."""
+        layer = Pen(self.w, self.h, self.k)
+        draw(layer)
+        al = layer.im.getchannel("A")
+        box = al.getbbox()
+        if box is None:
+            return
+        x0, y0, x1, y1 = box
+        img = tex(x1 - x0, y1 - y0, self.f)
+        if mult != 1.0:
+            a = np.asarray(img).astype(np.float32)
+            a[..., :3] *= mult
+            img = Image.fromarray(np.clip(a, 0, 255).astype(np.uint8), "RGBA")
+        img.putalpha(ImageChops.multiply(img.getchannel("A"), al.crop(box)))
+        self.im.alpha_composite(img, (x0, y0))
+
+    def texslope(self, quad, tex, mult=1.0):
+        """Fills a roof slope with a texture made in roof space (rows across, the ridge at the top) and
+        slanted to the slope: quad = [bottom left, bottom right, top right, top left] (design pixels)."""
+        P, x0, y0, x1, y1 = self._poly_box(quad)
+        bl, br, tr, tl = P
+        hgt = max(1.0, bl[1] - tl[1])
+        s = (tl[0] - bl[0]) / hgt              # how far the slope leans per canvas pixel up
+        wid = int(max(br[0] - bl[0], tr[0] - tl[0]) + 4)
+        src = tex(wid, int(hgt) + 4, self.f)
+        if mult != 1.0:
+            a = np.asarray(src).astype(np.float32)
+            a[..., :3] *= mult
+            src = Image.fromarray(np.clip(a, 0, 255).astype(np.uint8), "RGBA")
+        W, H = x1 - x0, y1 - y0
+        # output (x, y) in the box -> roof space (u, v): v from the ridge down, u from the slanted left edge
+        out = src.transform((W, H), Image.Transform.AFFINE,
+                            (1, s, x0 - bl[0] - s * (bl[1] - y0), 0, 1, y0 - tl[1]), Image.Resampling.BILINEAR)
+        mask = Image.new("L", (W, H), 0)
+        ImageDraw.Draw(mask).polygon([(q[0] - x0, q[1] - y0) for q in P], fill=255)
+        out.putalpha(ImageChops.multiply(out.getchannel("A"), mask))
+        self.im.alpha_composite(out, (x0, y0))
+
     def paste(self, img, x, y, size):
         """Pastes another picture with its top-left at design (x, y), size design pixels square."""
         s = round(size * self.f)
@@ -223,111 +288,12 @@ def colorize(v, c0, c1):
 
 # ---------------------------------------------------------------- terrain
 def terrain():
-    """Ground tiles, 32x32, four of each kind; they wrap around so neighbours join without seams."""
-    for v in range(4):
-        rnd = random.Random(v * 31 + 7)
-        f = [1.0, 0.98, 1.02, 0.97][v]
-
-        def px(d, x, y, c):
-            d.point((x % 32, y % 32), fill=c)
-
-        # grass: three shades of green mixed by noise, drier patches, blades with dark roots and
-        # light tips, a few tufts, clover and the odd flower
-        n = fbm(32, 10 + v, ((4, 0.45), (8, 0.35), (16, 0.2)))
-        dry = tnoise(32, 2, 60 + v)
-        im = colorize(n * 1.35 - 0.18, sh((80, 128, 50), f), sh((126, 172, 78), f))
-        arr = np.asarray(im).astype(np.float32)
-        tint = np.clip((dry - 0.55) * 2.2, 0, 1)[:, :, None] * 0.25
-        arr[:, :, :3] = arr[:, :, :3] * (1 - tint) + np.array([168, 172, 86], np.float32) * tint
-        im = Image.fromarray(arr.astype(np.uint8), "RGBA")
-        d = ImageDraw.Draw(im)
-        for _ in range(46):
-            x, y = rnd.randrange(32), rnd.randrange(32)
-            lean = rnd.choice([-1, 0, 0, 1])
-            hgt = rnd.choice([2, 2, 3])
-            px(d, x, y, sh((62, 104, 38), f))
-            for k in range(1, hgt):
-                px(d, x + (lean if k == hgt - 1 else 0), y - k, sh((150, 194, 98), f) if k == hgt - 1 else sh((96, 146, 58), f))
-        for _ in range(2):
-            cx, cy = rnd.randrange(32), rnd.randrange(32)
-            for k in range(5):
-                x = cx + k - 2
-                px(d, x, cy, sh((56, 96, 34), f)); px(d, x + (k - 2) // 2, cy - 1 - (k % 2), sh((84, 132, 50), f))
-        if v == 1:
-            for _ in range(2):
-                cx, cy = rnd.randrange(32), rnd.randrange(32)
-                for dx, dy in ((0, 0), (1, 0), (0, 1), (-1, 0), (0, -1)):
-                    px(d, cx + dx, cy + dy, sh((112, 164, 70), f))
-        if v >= 2:
-            for _ in range(3):
-                x, y = rnd.randrange(32), rnd.randrange(32)
-                col = rnd.choice([(244, 226, 110, 255), (246, 246, 240, 255), (222, 140, 200, 255), (150, 170, 240, 255)])
-                px(d, x, y, col); px(d, x + 1, y, sh(col, 0.8)); px(d, x, y + 1, (60, 100, 36, 255))
-        save(im, f"terrain_grass_{v}")
-
-        # water: deep and slightly mottled, light ripple crests with darker troughs below them
-        # (all four kinds equally bright, so neighbouring water tiles don't form a chequerboard)
-        n = fbm(32, 20 + v, ((2, 0.5), (4, 0.3), (8, 0.2)))
-        im = colorize(n, (38, 94, 142), (56, 122, 170))
-        d = ImageDraw.Draw(im)
-        for _ in range(3):
-            x, y = rnd.randrange(32), rnd.randrange(3, 30)
-            ln = rnd.randrange(4, 8)
-            for k in range(ln):
-                lift = 1 if 0 < k < ln - 1 else 0
-                px(d, x + k, y - lift, (84, 146, 190, 255))
-                px(d, x + k, y - lift + 1, (36, 88, 134, 255))
-        for _ in range(2):
-            px(d, rnd.randrange(32), rnd.randrange(32), (118, 172, 208, 255))
-        save(im, f"terrain_water_{v}")
-
-        # beach: sand with damp patches, light and dark grains, ripple lines, pebbles and the odd shell
-        n = fbm(32, 30 + v)
-        im = colorize(n * 1.2 - 0.1, sh((202, 180, 122), f), sh((234, 216, 162), f))
-        arr = np.asarray(im).astype(np.float32)
-        damp = np.clip((tnoise(32, 2, 70 + v) - 0.6) * 3.0, 0, 1)[:, :, None] * 0.12
-        arr[:, :, :3] *= 1 - damp
-        im = Image.fromarray(arr.astype(np.uint8), "RGBA")
-        d = ImageDraw.Draw(im)
-        for _ in range(55):
-            px(d, rnd.randrange(32), rnd.randrange(32), rnd.choice([(246, 236, 200, 255), (178, 154, 102, 255), (214, 190, 140, 255)]))
-        y = rnd.randrange(6, 26)
-        for x in range(32):
-            if (x // 3) % 3:
-                yy = y + round(math.sin(x / 32 * math.tau * 2) * 1.5)
-                px(d, x, yy, sh((186, 162, 108), f)); px(d, x, yy - 1, sh((240, 224, 176), f))
-        for _ in range(2):
-            x, y = rnd.randrange(32), rnd.randrange(32)
-            px(d, x, y, (150, 140, 124, 255)); px(d, x + 1, y, (120, 112, 100, 255)); px(d, x, y - 1, (196, 188, 172, 255))
-        if v == 3:
-            x, y = rnd.randrange(32), rnd.randrange(32)
-            px(d, x, y, (250, 240, 232, 255)); px(d, x + 1, y, (236, 210, 200, 255)); px(d, x, y + 1, (200, 170, 150, 255))
-        save(im, f"terrain_beach_{v}")
-
-        # mountain ground: layered grey-brown rock (bands bent by noise), cracks with lit edges,
-        # loose stones and flecks of lichen (the peaks are separate sprites)
-        n = fbm(32, 40 + v, ((4, 0.4), (8, 0.35), (16, 0.25)))
-        warp = tnoise(32, 4, 90 + v)
-        yy = np.arange(32)[:, None] + warp * 8
-        bands = 0.12 * np.sin(yy / 32 * math.tau * 3)
-        im = colorize(n * 1.4 - 0.2 + bands, sh((100, 94, 84), f), sh((156, 150, 134), f))
-        d = ImageDraw.Draw(im)
-        for _ in range(3):
-            x, y = rnd.randrange(32), rnd.randrange(32)
-            pts = [(x, y)]
-            for _ in range(4):
-                x += rnd.choice([-2, -1, 1, 2]); y += rnd.choice([1, 2])
-                pts.append((x % 32, y % 32))
-            for a, b in zip(pts, pts[1:]):
-                if abs(a[0] - b[0]) < 4 and abs(a[1] - b[1]) < 4:
-                    d.line([a, b], fill=sh((70, 66, 58), f))
-                    d.line([(a[0] + 1, a[1]), (b[0] + 1, b[1])], fill=sh((176, 170, 154), f))
-        for _ in range(4):
-            x, y = rnd.randrange(32), rnd.randrange(32)
-            px(d, x, y, sh((170, 164, 148), f)); px(d, x + 1, y + 1, sh((80, 76, 68), f))
-        for _ in range(5):
-            px(d, rnd.randrange(32), rnd.randrange(32), rnd.choice([(132, 148, 96, 255), (168, 170, 120, 255)]))
-        save(im, f"terrain_mountain_{v}")
+    """Ground tiles, 64x64, four of each kind (make_ground.py): they wrap around, and the variants of a
+    kind share their edges, so any neighbours join without seams."""
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import make_ground
+    make_ground.FORCE = FORCE
+    make_ground.build_all()
 
 
 def decos():
@@ -337,16 +303,21 @@ def decos():
     make_scenery.FORCE = FORCE
     make_scenery.build_all()
     # clay: a dug pit with layers of wet clay
-    p = Pen(32, 32)
+    p = Pen(32, 32, 2)
     p.ellipse([3, 9, 28, 28], fill=(150, 92, 48, 255), outline=(104, 62, 30, 255))
     p.ellipse([6, 12, 25, 25], fill=(184, 121, 63, 255))
     p.ellipse([9, 15, 22, 23], fill=(140, 84, 44, 255))
     p.ellipse([10, 14, 16, 18], fill=(214, 160, 104, 255))
+    for k in range(4):
+        p.arc([5 + k, 11 + k, 26 - k, 26 - k], 200, 320, fill=(120, 72, 38, 160), width=0.4)
+    p.ellipse([18, 20, 22, 22.5], fill=(150, 180, 200, 140))
+    p.line([(24, 8), (21, 17)], fill=(112, 78, 46, 255), width=0.9)
+    p.polygon([(20, 16), (22.6, 16.8), (21.6, 20), (19.2, 19.2)], fill=(150, 154, 160, 255), outline=(80, 80, 86, 255), width=0.3)
     save(p.done(), "deco_clay")
     # ore deposits: a few rocks with glinting coloured nuggets
     ores = {1: (34, 34, 36), 2: (176, 100, 70), 3: (246, 206, 70), 4: (220, 220, 210), 5: (206, 116, 58)}
     for k, c in ores.items():
-        p = Pen(16, 16)
+        p = Pen(16, 16, 2)
         for (x, y, r) in [(4, 11, 4), (11, 11, 4), (7.5, 6, 4)]:
             p.disc(x, y, r, (96, 92, 84, 255))
             p.disc(x - 0.5, y - 0.5, r - 1.2, c + (255,))
@@ -609,7 +580,7 @@ WOOD = (112, 78, 46, 255)
 class B:
     """Drawing helpers for one building picture (64 design pixels wide, light from the upper left)."""
 
-    def __init__(self, W, H, wall, roof, cat, k=2):
+    def __init__(self, W, H, wall, roof, cat, k=3):
         self.p = Pen(W, H, k)
         self.W, self.H = W, H
         self.b = H - 4                      # the ground line
@@ -623,6 +594,28 @@ class B:
         self.roof = roof + (255,)
         self.cat = cat
         self.p.ellipse([4, self.b - 5, W - 4, self.b + 3], fill=(0, 0, 0, 64))
+
+    # ---- surfaces: every wall, roof and door is filled with a texture (bld_tex.py) over its base colour
+    def _seed(self):
+        return random.randrange(1 << 30)
+
+    def surface(self, pts, mat, base, mult=1.0, foot_moss=0.0):
+        """Fills polygon pts with material mat ('stone', 'brick', 'plaster', 'planks', 'rock') of colour base."""
+        sd = self._seed()
+        base = tuple(base[:3])
+        if mat == "stone":
+            tex = lambda W, H, F: BT.blocks(W, H, F, base, sd, row=4, wmin=4, wmax=7, moss=foot_moss)
+        elif mat == "brick":
+            tex = lambda W, H, F: BT.blocks(W, H, F, base, sd, row=2, wmin=4, brick=True, mortar=0.45, rough=0.6)
+        elif mat == "plaster":
+            tex = lambda W, H, F: BT.plaster(W, H, F, base, sd)
+        elif mat == "planks":
+            tex = lambda W, H, F: BT.wood(W, H, F, base, sd, board=3)
+        elif mat == "rock":
+            tex = lambda W, H, F: BT.rock(W, H, F, base, sd)
+        else:
+            return
+        self.p.texfill(pts, tex, mult)
 
     def walls(self, x0, x1, top, mat, dx=7, dy=5):
         """Front wall and right side wall of a box; mat is 'timber', 'stone' or 'planks'.
@@ -639,64 +632,62 @@ class B:
         if look("footing") and mat != "stone":
             # High Medieval: a stone footing under the walls
             fy = b - (b - top) * 0.32
-            st = (150, 146, 136, 255)
-            for poly, xa, xb, f in ((front, x0, x1, 1.0), (side, x1, x1 + dx, 0.66)):
-                def foot(q, xa=xa, xb=xb, f=f):
-                    for r, y in enumerate(range(int(fy), int(b) + 2, 3)):
-                        off = 0 if r % 2 == 0 else 2.5
-                        for x in range(int(xa) - 5 + int(off), int(xb) + 5, 5):
-                            q.rectangle([x, y, x + 4.4, y + 2.6], fill=sh(st, f * random.choice([0.9, 1.0, 1.08])), outline=sh(st, f * 0.7), width=0.4)
-                clip = [pt for pt in poly]
-                p.clipped([(xa, b + 2), (xb, b + 2 - (dy if xa == x1 else 0)), (xb, fy - (dy if xa == x1 else 0)), (xa, fy)], foot)
-        p.shade(front, top, b, (255, 255, 255, 30), (0, 0, 0, 50))
-        p.polygon(side, outline=sh(w, 0.38), width=0.6)
-        p.polygon(front, outline=sh(w, 0.38), width=0.6)
+            st = (150, 146, 136)
+            self.surface([(x0, b), (x1, b), (x1, fy), (x0, fy)], "stone", st, 1.0, 0.5)
+            self.surface([(x1, b), (x1 + dx, b - dy), (x1 + dx, fy - dy), (x1, fy)], "stone", st, 0.66, 0.5)
+            p.line([(x0, fy), (x1, fy), (x1 + dx, fy - dy)], fill=(96, 92, 84, 255), width=0.5)
+        p.shade(front, top, b, (255, 255, 255, 26), (0, 0, 0, 46))
+        # where the walls meet the ground: a dark band of grime and shadow
+        p.shade([(x0, b - 3), (x1, b - 3), (x1, b), (x0, b)], b - 3, b, (0, 0, 0, 0), (0, 0, 0, 80))
+        p.shade([(x1, b - 3), (x1 + dx, b - dy - 3), (x1 + dx, b - dy), (x1, b)], b - dy - 3, b, (0, 0, 0, 10), (0, 0, 0, 70))
+        # the corner where front and side meet catches a little light
+        p.line([(x1, top), (x1, b)], fill=sh(w, 1.18), width=0.35)
+        p.polygon(side, outline=sh(w, 0.38), width=0.5)
+        p.polygon(front, outline=sh(w, 0.38), width=0.5)
         if look("columns") and x1 - x0 >= 16:
             # Roman: white pilasters at the corners of the front, with capitals
             for cx in (x0 + 0.6, x1 - 2.6):
                 p.rectangle([cx, top + 1, cx + 2, b], fill=(244, 240, 228, 255), outline=(170, 164, 150, 255), width=0.4)
+                p.line([(cx + 0.5, top + 1.5), (cx + 0.5, b - 0.5)], fill=(255, 255, 250, 255), width=0.4)
+                p.line([(cx + 1.6, top + 1.5), (cx + 1.6, b - 0.5)], fill=(200, 194, 180, 255), width=0.4)
                 p.rectangle([cx - 0.6, top, cx + 2.6, top + 1.4], fill=(230, 226, 214, 255))
         if look("cornice"):
             p.line([(x0 - 1, top + 0.8), (x1 + 0.5, top + 0.8)], fill=sh(w, 1.35), width=1.3)
+            p.line([(x0 - 1, top + 1.6), (x1 + 0.5, top + 1.6)], fill=sh(w, 0.7), width=0.4)
             p.line([(x1 + 0.5, top + 0.8), (x1 + dx, top - dy + 0.8)], fill=sh(w, 1.0), width=1.1)
+        # tufts of grass along the foot
+        rnd = random.Random(int(x0 * 31 + b))
+        for _ in range(int((x1 - x0 + dx) / 3)):
+            gx = rnd.uniform(x0 - 1, x1 + dx)
+            gy = b - (gx - x1) * dy / dx if gx > x1 else b
+            gy += 0.6
+            gc = rnd.choice([(74, 112, 46, 255), (96, 138, 58, 255), (62, 96, 38, 255)])
+            for k in range(3):
+                p.line([(gx, gy), (gx + (k - 1) * 0.5, gy - rnd.uniform(0.9, 1.8))], fill=gc, width=0.3)
 
     def material(self, pts, x0, x1, top, b, mat, f):
         w = sh(self.wall, f)
+        if mat in ("stone", "brick", "plaster", "planks"):
+            self.surface(pts, mat, w, 1.0, 0.25 if mat == "stone" else 0.0)
+            return
+        if mat == "timber":
+            # half-timbering: plaster panels between oak beams (with the beams' shadow on the plaster)
+            self.surface(pts, "plaster", w)
+            beam = sh(WOOD, f)
 
-        def draw(q):
-            if mat == "stone":
-                for r, y in enumerate(range(int(top), int(b) + 1, 4)):
-                    off = 0 if r % 2 == 0 else 3
-                    for x in range(int(x0) - 6 + off, int(x1) + 6, 6):
-                        q.rectangle([x, y, x + 5, y + 3], fill=sh(w, random.choice([0.92, 1.0, 1.06])), outline=sh(w, 0.72), width=0.5)
-            elif mat == "planks":
-                for x in range(int(x0), int(x1) + 1, 3):
-                    q.line([(x, top), (x, b)], fill=sh(w, 0.78), width=0.5)
-            elif mat == "plaster":
-                # smooth lime plaster: faint trowel marks and a few speckles
-                rnd = random.Random(int(x0 * 13 + top))
-                for y in range(int(top) + 3, int(b), 5):
-                    q.line([(x0, y), (x1, y + rnd.uniform(-0.5, 0.5))], fill=sh(w, 0.96), width=0.4)
-                for _ in range(int((x1 - x0) * (b - top) / 40)):
-                    q.point((rnd.uniform(x0, x1), rnd.uniform(top, b)), fill=sh(w, rnd.choice([0.88, 1.06])))
-            elif mat == "brick":
-                mortar = sh(w, 1.3)
-                for r, y in enumerate(range(int(top), int(b) + 1, 2)):
-                    q.line([(x0 - 6, y), (x1 + 6, y)], fill=mortar, width=0.35)
-                    off = 0 if r % 2 == 0 else 2
-                    for x in range(int(x0) - 6 + off, int(x1) + 6, 4):
-                        q.line([(x, y), (x, y + 2)], fill=mortar, width=0.3)
-            elif mat == "timber":
-                beam = sh(WOOD, f)
-                q.line([(x0, top + 1), (x1, top + 1)], fill=beam, width=1.4)
-                q.line([(x0, (top + b) / 2), (x1, (top + b) / 2)], fill=beam, width=1.1)
+            def beams(q, off=(0.0, 0.0), col=beam):
+                ox, oy = off
+                q.line([(x0 + ox, top + 1 + oy), (x1 + ox, top + 1 + oy)], fill=col, width=1.4)
+                q.line([(x0 + ox, (top + b) / 2 + oy), (x1 + ox, (top + b) / 2 + oy)], fill=col, width=1.1)
                 n = max(2, round((x1 - x0) / 10))
                 for k in range(n + 1):
                     x = x0 + (x1 - x0) * k / n
-                    q.line([(x, top), (x, b)], fill=beam, width=1.2)
+                    q.line([(x + ox, top + oy), (x + ox, b + oy)], fill=col, width=1.2)
                     if k < n and k % 2 == 0:
-                        q.line([(x, b), (x0 + (x1 - x0) * (k + 1) / n, (top + b) / 2)], fill=beam, width=0.9)
-        self.p.clipped(pts, draw)
+                        q.line([(x + ox, b + oy), (x0 + (x1 - x0) * (k + 1) / n + ox, (top + b) / 2 + oy)], fill=col, width=0.9)
+            self.p.clipped(pts, lambda q: beams(q, (0.35, 0.45), (0, 0, 0, 70)))
+            sd = self._seed()
+            self.p.clipped(pts, lambda q: q.texmask(lambda r: beams(r), lambda W, H, F: BT.wood(W, H, F, beam, sd, board=1.3, vertical=False, gap=0.0)))
 
     def roof_gable(self, x0, x1, top, rh, dx=7, dy=5, mat=None):
         """A pitched roof over walls(x0, x1, top): the front slope, the gable end and the ridge."""
@@ -707,73 +698,126 @@ class B:
             mat = look("roof_mat")
         ridge = top - dy / 2 - rh
         gable = [(x1, top), (x1 + dx, top - dy), (x1 + dx / 2, ridge)]
-        p.polygon(gable, fill=sh(self.wall, 0.76), outline=sh(self.wall, 0.4), width=0.6)
+        p.polygon(gable, fill=sh(self.wall, 0.76))
+        gm = "stone" if look("wall_mat") in ("brick",) else ("plaster" if look("wall_mat") == "plaster" else "planks")
+        self.surface(gable, gm if gm != "stone" else "brick", sh(self.wall, 0.76))
+        p.polygon(gable, outline=sh(self.wall, 0.4), width=0.5)
         slope = [(x0 - 2, top + 1.5), (x1 + 1, top + 1.5), (x1 + dx / 2 + 1, ridge), (x0 - 2 + dx / 2, ridge)]
         back = [(x1 + 1, top + 1.5), (x1 + dx / 2 + 1, ridge), (x1 + dx + 1.5, top - dy + 1.5), (x1 + dx + 0.5, top - dy + 2.5)]
+        sd = self._seed()
+        rr = tuple(r[:3])
+        if mat == "thatch":
+            tex = lambda W, H, F: BT.thatch(W, H, F, rr, sd)
+        elif mat == "slate":
+            tex = lambda W, H, F: BT.slates(W, H, F, rr, sd)
+        else:
+            tex = lambda W, H, F: BT.roof_tiles(W, H, F, rr, sd)
         p.polygon(back, fill=sh(r, 0.6))
+        p.texfill(back, tex, 0.6)
+        # the eaves throw a shadow down the top of the walls
+        p.shade([(x0, top + 1.5), (x1, top + 1.5), (x1, top + 6), (x0, top + 6)], top + 1.5, top + 6, (0, 0, 0, 120), (0, 0, 0, 0))
+        p.shade([(x1, top + 1.5), (x1 + dx, top - dy + 1.5), (x1 + dx, top - dy + 5), (x1, top + 5)], top - dy + 1.5, top + 5, (0, 0, 0, 90), (0, 0, 0, 0))
         p.polygon(slope, fill=r)
-
-        def draw(q):
-            if mat == "thatch":
-                rnd = random.Random(int(x0 * 7 + top))
-                for i in range(int((x1 - x0 + 6) * 1.6)):
-                    x = x0 - 2 + i / 1.6 + rnd.random()
-                    q.line([(x, top + 1.5), (x + dx / 2, ridge)], fill=sh(r, rnd.choice([0.82, 0.92, 1.1, 1.18])), width=0.6)
-            else:
-                rows = max(2, int((top - ridge) / 3))
-                for k in range(rows + 1):
-                    t = k / rows
-                    y = top + 1.5 + (ridge - top - 1.5) * t
-                    xs = x0 - 2 + dx / 2 * t
-                    xe = x1 + 1 + dx / 2 * t
-                    q.line([(xs, y), (xe, y)], fill=sh(r, 0.7), width=0.6)
-                    if mat == "tiles":
-                        for x in range(int(xs) + (k % 2) * 2, int(xe), 4):
-                            q.line([(x, y), (x + 0.6, y - 2.6)], fill=sh(r, 0.78), width=0.5)
-        p.clipped(slope, draw)
-        p.shade(slope, ridge, top, (255, 255, 255, 40), (0, 0, 0, 30))
-        p.line([(x0 - 2 + dx / 2, ridge), (x1 + dx / 2 + 1, ridge)], fill=sh(r, 1.3), width=1.0)
-        p.polygon(slope, outline=sh(r, 0.45), width=0.6)
+        p.texslope([slope[0], slope[1], slope[2], slope[3]], tex)
+        p.shade(slope, ridge, top, (255, 255, 255, 36), (0, 0, 0, 34))
+        # ridge cap and the edge of the eaves
+        if mat == "thatch":
+            p.line([(x0 - 2 + dx / 2, ridge + 0.5), (x1 + dx / 2 + 1, ridge + 0.5)], fill=sh(r, 0.7), width=1.6)
+            p.line([(x0 - 2 + dx / 2, ridge), (x1 + dx / 2 + 1, ridge)], fill=sh(r, 1.15), width=0.6)
+        else:
+            p.line([(x0 - 2 + dx / 2, ridge + 0.2), (x1 + dx / 2 + 1, ridge + 0.2)], fill=sh(r, 0.8), width=1.3)
+            p.line([(x0 - 2 + dx / 2, ridge - 0.3), (x1 + dx / 2 + 1, ridge - 0.3)], fill=sh(r, 1.35), width=0.5)
+        p.line([(x0 - 2, top + 1.5), (x1 + 1, top + 1.5)], fill=sh(r, 0.55), width=0.7)
+        p.polygon(slope, outline=sh(r, 0.42), width=0.5)
         return ridge
 
     def flat_top(self, x0, x1, top, dx=7, dy=5, crenel=True):
         """The flat top of a stone tower with battlements."""
         p, w = self.p, self.wall
-        p.polygon([(x0, top), (x1, top), (x1 + dx, top - dy), (x0 + dx, top - dy)], fill=sh(w, 0.55))
+        deck = [(x0, top), (x1, top), (x1 + dx, top - dy), (x0 + dx, top - dy)]
+        p.polygon(deck, fill=sh(w, 0.55))
+        self.surface(deck, "stone", sh(w, 0.55))
         if crenel:
             for x in range(int(x0), int(x1) - 1, 5):
-                p.rectangle([x, top - 4, x + 2.6, top], fill=sh(w, 1.05), outline=sh(w, 0.5), width=0.5)
+                m = [(x, top), (x + 2.6, top), (x + 2.6, top - 4), (x, top - 4)]
+                p.polygon(m, fill=sh(w, 1.05))
+                self.surface(m, "stone", sh(w, 1.05))
+                p.line([(x, top - 4), (x + 2.6, top - 4)], fill=sh(w, 1.3), width=0.4)
+                p.line([(x + 2.6, top - 4), (x + 2.6, top)], fill=sh(w, 0.55), width=0.4)
+                p.polygon(m, outline=sh(w, 0.5), width=0.4)
             for k in range(3):
                 x = x1 + dx * (k + 0.3) / 3
                 y = top - dy * (k + 0.3) / 3
-                p.polygon([(x, y), (x + 1.6, y - 1.1), (x + 1.6, y - 5.1), (x, y - 4)], fill=sh(w, 0.7))
+                m = [(x, y), (x + 1.6, y - 1.1), (x + 1.6, y - 5.1), (x, y - 4)]
+                p.polygon(m, fill=sh(w, 0.7))
+                self.surface(m, "stone", sh(w, 0.7))
 
     def door(self, x, w=8, h=12, arch=False):
         p, b = self.p, self.b
         arch = arch or ERA == 0
-        p.rectangle([x - 1, b - h - 1, x + w, b], fill=sh(self.wall, 0.5))
+        # the opening in the wall, a little deeper than the door
+        p.rectangle([x - 1, b - h - 1, x + w, b], fill=sh(self.wall, 0.45))
         if arch:
+            p.pieslice([x - 1, b - h - w / 2 - 1, x + w, b - h + w / 2], 180, 360, fill=sh(self.wall, 0.45))
             p.pieslice([x, b - h - w / 2, x + w - 1, b - h + w / 2], 180, 360, fill=DARK)
-        p.rectangle([x, b - h, x + w - 1, b], fill=(88, 60, 34, 255))
-        for k in range(1, 3):
-            p.line([(x + w * k / 3, b - h), (x + w * k / 3, b)], fill=(64, 42, 24, 255), width=0.5)
-        p.point((x + w - 2.5, b - h / 2), fill=(220, 200, 120, 255))
-        p.rectangle([x - 1, b - 1, x + w, b + 0.5], fill=(150, 146, 136, 255))
+        leaf = [(x, b), (x + w - 1, b), (x + w - 1, b - h), (x, b - h)]
+        p.polygon(leaf, fill=(88, 60, 34, 255))
+        sd = self._seed()
+        p.texfill(leaf, lambda W, H, F: BT.wood(W, H, F, (98, 66, 38), sd, board=max(1.5, w / 3), gap=0.25))
+        # shadow under the lintel, iron straps with studs, a ring handle
+        p.shade([(x, b - h), (x + w - 1, b - h), (x + w - 1, b - h + 2.5), (x, b - h + 2.5)], b - h, b - h + 2.5, (0, 0, 0, 130), (0, 0, 0, 0))
+        for yy in (b - h * 0.78, b - h * 0.3):
+            p.line([(x + 0.3, yy), (x + w - 1.6, yy)], fill=(46, 42, 38, 255), width=0.7)
+            for k in range(3):
+                p.point((x + 0.8 + k * (w - 2.8) / 2, yy - 0.2), fill=(150, 146, 138, 255))
+        p.arc([x + w - 2.8, b - h / 2 - 0.4, x + w - 1.9, b - h / 2 + 0.6], 0, 360, fill=(70, 64, 56, 255), width=0.3)
+        # the step
+        p.rectangle([x - 1.5, b - 1, x + w + 0.5, b + 0.6], fill=(156, 152, 142, 255))
+        p.line([(x - 1.5, b - 1), (x + w + 0.5, b - 1)], fill=(196, 192, 182, 255), width=0.35)
+
+    def big_door(self, x0, y0, x1, y1, col=(84, 58, 34), split=True):
+        """A wide plank door (workshops, barns): boards, a lintel's shadow, iron hinges; two leaves."""
+        p = self.p
+        p.rectangle([x0 - 1, y0 - 1, x1 + 1, y1], fill=sh(self.wall, 0.45))
+        leaf = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
+        p.polygon(leaf, fill=col + (255,))
+        sd = self._seed()
+        p.texfill(leaf, lambda W, H, F: BT.wood(W, H, F, col, sd, board=2.0, gap=0.3))
+        p.shade([(x0, y0), (x1, y0), (x1, y0 + 3), (x0, y0 + 3)], y0, y0 + 3, (0, 0, 0, 140), (0, 0, 0, 0))
+        if split:
+            mx = (x0 + x1) / 2
+            p.line([(mx, y0), (mx, y1)], fill=(34, 24, 14, 255), width=0.6)
+        for yy in (y0 + (y1 - y0) * 0.22, y1 - (y1 - y0) * 0.22):
+            p.line([(x0 + 0.3, yy), (x0 + (x1 - x0) * 0.38, yy)], fill=(46, 42, 38, 255), width=0.7)
+            p.line([(x1 - 0.3, yy), (x1 - (x1 - x0) * 0.38, yy)], fill=(46, 42, 38, 255), width=0.7)
+        p.polygon(leaf, outline=DARK, width=0.4)
+
+    def _glass(self, x, y, w, h, lit):
+        """Panes: darker at the top under the lintel, a pale reflection across them (or warm light)."""
+        p = self.p
+        pane = [(x, y), (x + w - 1, y), (x + w - 1, y + h - 1), (x, y + h - 1)]
+        if lit:
+            p.shade(pane, y, y + h - 1, (255, 222, 140, 255), (236, 170, 80, 255))
+        else:
+            p.shade(pane, y, y + h - 1, (56, 74, 92, 255), (96, 124, 146, 255))
+            p.polygon([(x + w * 0.15, y + h - 1), (x + w * 0.45, y), (x + w * 0.62, y), (x + w * 0.32, y + h - 1)], fill=(190, 214, 230, 70))
 
     def window(self, x, y, w=6, h=6, lit=False):
         p = self.p
         style = look("window")
-        glass = (248, 214, 120, 255) if lit else (70, 92, 112, 255)
         if style == "shutter":
             # Roman: a dark opening between two wooden shutters
             p.rectangle([x, y, x + w - 1, y + h - 1], fill=(48, 40, 32, 255) if not lit else (236, 190, 100, 255))
-            p.rectangle([x - 2, y, x - 0.2, y + h - 1], fill=WOOD, outline=DARK, width=0.3)
-            p.rectangle([x + w - 0.8, y, x + w + 1, y + h - 1], fill=WOOD, outline=DARK, width=0.3)
+            for sx0, sx1 in ((x - 2, x - 0.2), (x + w - 0.8, x + w + 1)):
+                p.rectangle([sx0, y, sx1, y + h - 1], fill=WOOD, outline=DARK, width=0.3)
+                for k in range(1, 3):
+                    p.line([(sx0 + 0.2, y + h * k / 3), (sx1 - 0.2, y + h * k / 3)], fill=(84, 58, 34, 255), width=0.3)
+            p.rectangle([x - 2.2, y + h - 0.2, x + w + 1.2, y + h + 0.6], fill=(220, 214, 200, 255))
             return
         if style in ("framed", "sash"):
             hh = h * (1.35 if style == "sash" else 1.0)
             p.rectangle([x - 1.2, y - 1.2, x + w + 0.2, y + hh + 0.2], fill=(246, 244, 236, 255))
-            p.rectangle([x, y, x + w - 1, y + hh - 1], fill=glass)
+            self._glass(x, y, w, hh, lit)
             p.line([(x + w / 2 - 0.5, y), (x + w / 2 - 0.5, y + hh - 1)], fill=(246, 244, 236, 255), width=0.6)
             rows = 3 if style == "sash" else 2
             for k in range(1, rows):
@@ -781,37 +825,56 @@ class B:
             if style == "framed":
                 p.polygon([(x - 1.6, y - 1.4), (x + w / 2 - 0.5, y - 3.2), (x + w + 0.6, y - 1.4)], fill=sh(self.wall, 1.2))
             p.rectangle([x - 1.8, y + hh, x + w + 0.8, y + hh + 1], fill=(220, 216, 204, 255))
+            p.shade([(x - 1.8, y + hh + 1), (x + w + 0.8, y + hh + 1), (x + w + 0.8, y + hh + 2.4), (x - 1.8, y + hh + 2.4)], y + hh + 1, y + hh + 2.4, (0, 0, 0, 70), (0, 0, 0, 0))
             return
         if style == "factory":
             p.rectangle([x - 0.8, y - 0.8, x + w - 0.2, y + h - 0.2], fill=(60, 62, 66, 255))
-            p.rectangle([x, y, x + w - 1, y + h - 1], fill=(250, 220, 140, 255) if lit else (52, 66, 80, 255))
+            self._glass(x, y, w, h, lit)
             for k in range(1, 3):
                 p.line([(x + (w - 1) * k / 3, y), (x + (w - 1) * k / 3, y + h - 1)], fill=(60, 62, 66, 255), width=0.4)
                 p.line([(x, y + (h - 1) * k / 3), (x + w - 1, y + (h - 1) * k / 3)], fill=(60, 62, 66, 255), width=0.4)
             return
-        p.rectangle([x - 1, y - 1, x + w, y + h], fill=(232, 222, 200, 255))
-        p.rectangle([x, y, x + w - 1, y + h - 1], fill=(248, 214, 120, 255) if lit else (70, 92, 112, 255))
-        p.line([(x, y), (x + w / 2, y + h / 2)], fill=(150, 176, 196, 120) if not lit else (255, 240, 190, 160), width=0.6)
-        p.line([(x + w / 2 - 0.5, y), (x + w / 2 - 0.5, y + h - 1)], fill=(232, 222, 200, 255), width=0.7)
-        p.line([(x, y + h / 2 - 0.5), (x + w - 1, y + h / 2 - 0.5)], fill=(232, 222, 200, 255), width=0.7)
-        p.rectangle([x - 1.5, y + h, x + w + 0.5, y + h + 1], fill=(120, 110, 96, 255))
+        # timber-framed and medieval windows: a deep reveal, a wooden frame with a cross, a stone sill
+        p.rectangle([x - 1.3, y - 1.3, x + w + 0.3, y + h + 0.3], fill=sh(self.wall, 0.5))
+        p.rectangle([x - 1, y - 1, x + w, y + h], fill=(206, 190, 160, 255))
+        self._glass(x, y, w, h, lit)
+        p.line([(x + w / 2 - 0.5, y), (x + w / 2 - 0.5, y + h - 1)], fill=(222, 208, 178, 255), width=0.7)
+        p.line([(x, y + h / 2 - 0.5), (x + w - 1, y + h / 2 - 0.5)], fill=(222, 208, 178, 255), width=0.7)
+        p.line([(x - 1, y - 1), (x + w, y - 1)], fill=(246, 236, 210, 255), width=0.3)
+        p.rectangle([x - 1.6, y + h, x + w + 0.6, y + h + 1], fill=(150, 144, 132, 255))
+        p.line([(x - 1.6, y + h), (x + w + 0.6, y + h)], fill=(196, 190, 178, 255), width=0.3)
+        p.shade([(x - 1.6, y + h + 1), (x + w + 0.6, y + h + 1), (x + w + 0.6, y + h + 2.4), (x - 1.6, y + h + 2.4)], y + h + 1, y + h + 2.4, (0, 0, 0, 80), (0, 0, 0, 0))
+        # now and then a box of flowers under it
+        if not lit and random.random() < 0.4 and ERA in (1, 2, 3):
+            p.rectangle([x - 1, y + h + 1, x + w, y + h + 2.6], fill=(120, 80, 44, 255), outline=(70, 46, 26, 255), width=0.3)
+            for k in range(int(w) + 1):
+                fx = x - 0.5 + k
+                p.disc(fx, y + h + 0.9, 0.55, (70, 120, 52, 255))
+                if k % 2 == 0:
+                    p.disc(fx, y + h + 0.6, 0.45, random.choice([(230, 70, 60, 255), (240, 200, 70, 255), (236, 236, 236, 255), (200, 110, 200, 255)]))
 
     def chimney(self, x, y_top, y_base):
         p = self.p
         if look("tall_chimney"):
             # Industrial: a tall dark brick stack with an iron band
             y_top -= 7
-            p.rectangle([x, y_top, x + 4, y_base], fill=(118, 58, 42, 255), outline=(70, 34, 24, 255), width=0.5)
-            for y in range(int(y_top) + 2, int(y_base), 2):
-                p.line([(x, y), (x + 4, y)], fill=(96, 48, 34, 255), width=0.4)
+            body = [(x, y_top), (x + 4, y_top), (x + 4, y_base), (x, y_base)]
+            p.polygon(body, fill=(118, 58, 42, 255))
+            self.surface(body, "brick", (118, 58, 42))
+            p.rectangle([x + 3, y_top, x + 4, y_base], fill=(0, 0, 0, 60))
+            p.polygon(body, outline=(70, 34, 24, 255), width=0.5)
             p.rectangle([x - 0.6, y_top + 3, x + 4.6, y_top + 4], fill=(60, 60, 64, 255))
             p.rectangle([x - 0.8, y_top - 1.2, x + 4.8, y_top], fill=(50, 50, 54, 255))
+            p.shade(body, y_top, y_top + 5, (20, 18, 16, 150), (20, 18, 16, 0))
             return
-        p.rectangle([x, y_top, x + 4, y_base], fill=(150, 76, 58, 255), outline=(90, 46, 34, 255), width=0.5)
-        p.rectangle([x + 3, y_top, x + 4, y_base], fill=(112, 56, 42, 255))
-        for y in range(int(y_top) + 2, int(y_base), 2):
-            p.line([(x, y), (x + 4, y)], fill=(120, 62, 46, 255), width=0.4)
+        body = [(x, y_top), (x + 4, y_top), (x + 4, y_base), (x, y_base)]
+        p.polygon(body, fill=(150, 76, 58, 255))
+        self.surface(body, "brick", (150, 76, 58))
+        p.rectangle([x + 3, y_top, x + 4, y_base], fill=(0, 0, 0, 60))
+        p.polygon(body, outline=(90, 46, 34, 255), width=0.5)
         p.rectangle([x - 0.8, y_top - 1.2, x + 4.8, y_top], fill=(90, 86, 80, 255))
+        p.line([(x - 0.8, y_top - 1.2), (x + 4.8, y_top - 1.2)], fill=(140, 136, 128, 255), width=0.35)
+        p.shade(body, y_top, y_top + 3, (24, 20, 16, 140), (24, 20, 16, 0))
 
     def sign(self, x, y, res_icon):
         """A hanging signboard showing what the building makes."""
@@ -865,9 +928,7 @@ def make_building(style, wall, roof, cat, res_icon, W=64, H=64):
         g.walls(6, 48, top, "timber")
         ridge = g.roof_gable(6, 48, top, 12)
         g.chimney(40, ridge - 6, top - 4)
-        p.rectangle([9, b - 15, 22, b], fill=sh(g.wall, 0.5))
-        p.rectangle([10, b - 14, 21, b], fill=(70, 48, 28, 255))
-        p.line([(15.5, b - 14), (15.5, b)], fill=(50, 34, 20, 255), width=0.6)
+        g.big_door(10, b - 14, 21, b)
         g.window(34, top + 5, 7, 6, lit=True)
         g.sign(25, b - 16, res_icon)
     elif style == "shed":
@@ -883,11 +944,17 @@ def make_building(style, wall, roof, cat, res_icon, W=64, H=64):
         g.sign(29, top + 3, res_icon)
     elif style == "quarry":
         # a heap of cut stone on the left, the stonemason's hut on the right
-        p.polygon([(2, b), (8, b - 18), (18, b - 26), (28, b - 16), (32, b)], fill=(140, 138, 130, 255))
-        p.polygon([(8, b - 18), (18, b - 26), (16, b - 8)], fill=(186, 184, 174, 255))
-        p.polygon([(18, b - 26), (28, b - 16), (32, b), (16, b - 8)], fill=(110, 108, 100, 255))
+        for poly, c in (([(2, b), (8, b - 18), (18, b - 26), (28, b - 16), (32, b)], (140, 138, 130)),
+                        ([(8, b - 18), (18, b - 26), (16, b - 8)], (186, 184, 174)),
+                        ([(18, b - 26), (28, b - 16), (32, b), (16, b - 8)], (110, 108, 100))):
+            p.polygon(poly, fill=c + (255,))
+            g.surface(poly, "rock", c)
         for (x, y) in [(8, b - 4), (14, b - 3), (20, b - 5), (11, b - 8)]:
-            p.rectangle([x, y, x + 5, y + 3], fill=(196, 194, 184, 255), outline=(110, 108, 100, 255), width=0.5)
+            blk = [(x, y), (x + 5, y), (x + 5, y + 3), (x, y + 3)]
+            p.polygon(blk, fill=(196, 194, 184, 255))
+            g.surface(blk, "rock", (196, 194, 184))
+            p.line([(x, y), (x + 5, y)], fill=(226, 224, 216, 255), width=0.4)
+            p.polygon(blk, outline=(110, 108, 100, 255), width=0.4)
         top = b - 14
         g.walls(34, 50, top, "planks", dx=6, dy=4)
         g.roof_gable(34, 50, top, 9, dx=6, dy=4)
@@ -896,7 +963,7 @@ def make_building(style, wall, roof, cat, res_icon, W=64, H=64):
         top = b - 22
         g.walls(18, 52, top, "planks")
         g.roof_gable(18, 52, top, 14, mat="thatch" if g.cat in THATCH else None)
-        p.rectangle([28, b - 15, 42, b], fill=(128, 52, 40, 255), outline=DARK, width=0.6)
+        g.big_door(28, b - 15, 42, b, (128, 52, 40), split=False)
         p.line([(28, b - 15), (42, b)], fill=(230, 220, 200, 255), width=0.8)
         p.line([(42, b - 15), (28, b)], fill=(230, 220, 200, 255), width=0.8)
         p.line([(35, b - 15), (35, b)], fill=DARK, width=0.6)
@@ -911,7 +978,10 @@ def make_building(style, wall, roof, cat, res_icon, W=64, H=64):
         g.walls(14, 50, top - 4, "planks")
         g.roof_gable(14, 50, top - 4, 12)
         for k, (x0, col) in enumerate([(3, (196, 64, 52, 255)), (23, (60, 110, 170, 255)), (43, (212, 170, 60, 255))]):
-            p.rectangle([x0 + 1, b - 9, x0 + 17, b], fill=(140, 98, 58, 255), outline=(80, 54, 30, 255), width=0.5)
+            cnt = [(x0 + 1, b - 9), (x0 + 17, b - 9), (x0 + 17, b), (x0 + 1, b)]
+            p.polygon(cnt, fill=(140, 98, 58, 255))
+            p.texfill(cnt, lambda W, H, F, sd=g._seed(): BT.wood(W, H, F, (140, 98, 58), sd, board=2.0, vertical=False))
+            p.polygon(cnt, outline=(80, 54, 30, 255), width=0.5)
             p.line([(x0 + 2, b - 9), (x0 + 2, b - 17)], fill=WOOD, width=0.9)
             p.line([(x0 + 16, b - 9), (x0 + 16, b - 17)], fill=WOOD, width=0.9)
             for s2 in range(4):
@@ -922,14 +992,26 @@ def make_building(style, wall, roof, cat, res_icon, W=64, H=64):
             p.disc(x0 + 11, b - 10.5, 1.8, (176, 72, 52, 255) if k != 1 else (110, 150, 70, 255))
     elif style == "mine":
         # a mountain side with a timbered entrance and a cart of ore on rails
-        p.polygon([(1, b), (12, b - 28), (30, b - 38), (50, b - 26), (63, b)], fill=(118, 112, 98, 255))
-        p.polygon([(1, b), (12, b - 28), (30, b - 38), (24, b - 16)], fill=(148, 142, 126, 255))
-        p.polygon([(30, b - 38), (50, b - 26), (63, b), (40, b - 14)], fill=(92, 86, 74, 255))
+        for poly, c in (([(1, b), (12, b - 28), (30, b - 38), (50, b - 26), (63, b)], (118, 112, 98)),
+                        ([(1, b), (12, b - 28), (30, b - 38), (24, b - 16)], (148, 142, 126)),
+                        ([(30, b - 38), (50, b - 26), (63, b), (40, b - 14)], (92, 86, 74))):
+            p.polygon(poly, fill=c + (255,))
+            g.surface(poly, "rock", c)
+        # tufts of grass and a little scree on the slopes
+        for (gx, gy) in ((6, b - 6), (10, b - 18), (52, b - 8), (57, b - 4), (44, b - 20)):
+            for k in range(3):
+                p.line([(gx, gy), (gx + (k - 1) * 0.6, gy - 1.4)], fill=(86, 120, 54, 255), width=0.35)
         p.pieslice([20, b - 24, 44, b + 2], 180, 360, fill=DARK)
         p.rectangle([20, b - 11, 44, b], fill=DARK)
         for x in (20, 43):
-            p.rectangle([x - 1, b - 13, x + 1, b], fill=WOOD)
-        p.rectangle([18, b - 15, 46, b - 12], fill=WOOD, outline=(70, 48, 28, 255), width=0.5)
+            post = [(x - 1, b - 13), (x + 1, b - 13), (x + 1, b), (x - 1, b)]
+            p.polygon(post, fill=WOOD)
+            p.texfill(post, lambda W, H, F, sd=g._seed(): BT.wood(W, H, F, WOOD, sd, board=2.2, gap=0))
+        lintel = [(18, b - 15), (46, b - 15), (46, b - 12), (18, b - 12)]
+        p.polygon(lintel, fill=WOOD)
+        p.texfill(lintel, lambda W, H, F, sd=g._seed(): BT.wood(W, H, F, WOOD, sd, board=3.5, vertical=False, gap=0))
+        p.polygon(lintel, outline=(70, 48, 28, 255), width=0.5)
+        p.shade([(18, b - 12), (46, b - 12), (46, b - 9), (18, b - 9)], b - 12, b - 9, (0, 0, 0, 140), (0, 0, 0, 0))
         p.line([(24, b), (54, b)], fill=(80, 80, 84, 255), width=0.7)
         p.line([(24, b - 2), (54, b - 2)], fill=(80, 80, 84, 255), width=0.7)
         p.rectangle([46, b - 8, 56, b - 3], fill=(96, 70, 46, 255), outline=(60, 42, 26, 255), width=0.5)
@@ -947,6 +1029,9 @@ def make_building(style, wall, roof, cat, res_icon, W=64, H=64):
         p.rectangle([13, b - 48, 22, b - 46], fill=(90, 86, 80, 255))
         p.pieslice([3, b - 32, 33, b + 4], 180, 360, fill=(168, 84, 60, 255), outline=(104, 50, 36, 255), width=0.6)
         p.rectangle([3, b - 14, 33, b], fill=(168, 84, 60, 255))
+        dome = [(3 + 15 + 15 * math.cos(math.radians(a)), b - 14 + 18 * math.sin(math.radians(a))) for a in range(180, 361, 10)] + [(33, b), (3, b)]
+        g.surface(dome, "brick", (168, 84, 60))
+        p.shade(dome, b - 32, b, (255, 230, 200, 40), (0, 0, 0, 60))
         p.pieslice([6, b - 29, 24, b - 5], 200, 300, fill=(196, 110, 80, 255))
         for k in range(4):
             p.arc([3 + k * 2, b - 32 + k * 4, 33 - k * 2, b + 4 - k * 4], 185, 355, fill=(130, 62, 44, 255), width=0.4)
@@ -961,7 +1046,9 @@ def make_building(style, wall, roof, cat, res_icon, W=64, H=64):
         p.line([(44, b - 2), (56, b - 2)], fill=(150, 196, 226, 200), width=0.6)
         for x in (14, 26, 38, 50):
             p.rectangle([x - 1, b - 14, x + 1, b], fill=(90, 62, 36, 255))
-        p.polygon([(8, b - 14), (54, b - 14), (60, b - 18), (14, b - 18)], fill=(150, 112, 70, 255))
+        sdeck = [(8, b - 14), (54, b - 14), (60, b - 18), (14, b - 18)]
+        p.polygon(sdeck, fill=(150, 112, 70, 255))
+        p.texfill(sdeck, lambda W, H, F, sd=g._seed(): BT.wood(W, H, F, (150, 112, 70), sd, board=2.5))
         p.rectangle([8, b - 14, 54, b - 12], fill=(118, 84, 50, 255))
         top = b - 32
         g.b = b - 17
@@ -978,8 +1065,10 @@ def make_building(style, wall, roof, cat, res_icon, W=64, H=64):
     elif style == "well":
         p.ellipse([14, b - 14, 50, b], fill=(132, 130, 122, 255), outline=(84, 82, 76, 255), width=0.6)
         p.rectangle([14, b - 9, 50, b - 4], fill=(132, 130, 122, 255))
-        for x in range(16, 50, 5):
-            p.line([(x, b - 9), (x, b - 2)], fill=(96, 94, 88, 255), width=0.4)
+        ring = [(32 + 18 * math.cos(math.radians(a)), b - 7 + 7 * math.sin(math.radians(a))) for a in range(0, 181, 10)] + [(14, b - 9), (50, b - 9)]
+        ring = [(50, b - 9)] + [(32 + 18 * math.cos(math.radians(a)), b - 7 + 7 * math.sin(math.radians(a))) for a in range(0, 181, 10)] + [(14, b - 9)]
+        g.surface(ring, "stone", (132, 130, 122))
+        p.shade(ring, b - 9, b, (0, 0, 0, 0), (0, 0, 0, 70))
         p.ellipse([18, b - 13, 46, b - 6], fill=(36, 66, 104, 255), outline=(84, 82, 76, 255), width=0.6)
         p.ellipse([22, b - 12, 30, b - 10], fill=(100, 150, 200, 200))
         for x in (17, 45):
@@ -1033,15 +1122,25 @@ def make_building(style, wall, roof, cat, res_icon, W=64, H=64):
         g.roof_gable(22, 40, top - 4, 7, mat="thatch")
         for x in range(8, 56, 3):
             h = 13 + (x * 7) % 4
-            p.polygon([(x, b + 1), (x, b - h + 2), (x + 1.4, b - h), (x + 2.8, b - h + 2), (x + 2.8, b + 1)], fill=sh(WOOD, 0.95 + ((x // 3) % 3) * 0.05), outline=sh(WOOD, 0.55), width=0.4)
+            stake = [(x, b + 1), (x, b - h + 2), (x + 1.4, b - h), (x + 2.8, b - h + 2), (x + 2.8, b + 1)]
+            p.polygon(stake, fill=sh(WOOD, 0.95 + ((x // 3) % 3) * 0.05))
+            p.texfill(stake, lambda W, H, F, sd=g._seed(), c=sh(WOOD, 0.95 + ((x // 3) % 3) * 0.05): BT.wood(W, H, F, c, sd, board=2.8, gap=0))
+            p.line([(x + 0.4, b), (x + 0.4, b - h + 2)], fill=sh(WOOD, 1.25), width=0.35)
+            p.polygon(stake, outline=sh(WOOD, 0.55), width=0.4)
         p.line([(8, b - 6), (56, b - 6)], fill=sh(WOOD, 0.5), width=0.8)
         p.rectangle([29, b - 9, 35, b + 1], fill=(48, 36, 24, 255))
     elif style == "bastion":
         # a low star fort: sloped stone faces, a gun platform and cannon in the embrasures
         top = b - 16
         st = g.wall
-        p.polygon([(4, b), (14, top + 4), (50, top + 4), (60, b)], fill=sh(st, 0.9), outline=sh(st, 0.45), width=0.6)
-        p.polygon([(14, top + 4), (20, top - 2), (44, top - 2), (50, top + 4)], fill=sh(st, 1.15), outline=sh(st, 0.5), width=0.5)
+        f1 = [(4, b), (14, top + 4), (50, top + 4), (60, b)]
+        f2 = [(14, top + 4), (20, top - 2), (44, top - 2), (50, top + 4)]
+        p.polygon(f1, fill=sh(st, 0.9))
+        g.surface(f1, "stone", sh(st, 0.9), 1.0, 0.3)
+        p.polygon(f1, outline=sh(st, 0.45), width=0.6)
+        p.polygon(f2, fill=sh(st, 1.15))
+        g.surface(f2, "stone", sh(st, 1.15))
+        p.polygon(f2, outline=sh(st, 0.5), width=0.5)
         for x in range(8, 58, 5):
             p.line([(x, b), (x + (32 - x) * 0.18, top + 4)], fill=sh(st, 0.78), width=0.35)
         for y in range(int(top) + 7, int(b), 3):
@@ -1053,7 +1152,10 @@ def make_building(style, wall, roof, cat, res_icon, W=64, H=64):
     elif style == "battery":
         # an earthwork with wicker gabions and cannon pointing out
         top = b - 12
-        p.polygon([(2, b), (10, top), (54, top), (62, b)], fill=(122, 112, 70, 255), outline=(72, 64, 40, 255), width=0.6)
+        earth = [(2, b), (10, top), (54, top), (62, b)]
+        p.polygon(earth, fill=(122, 112, 70, 255))
+        g.surface(earth, "rock", (122, 112, 70))
+        p.polygon(earth, outline=(72, 64, 40, 255), width=0.6)
         p.polygon([(10, top), (14, top - 3), (50, top - 3), (54, top)], fill=(140, 150, 84, 255))
         for x in range(12, 52, 6):
             p.rectangle([x, top - 7, x + 4, top - 2], fill=(150, 118, 70, 255), outline=(90, 66, 36, 255), width=0.4)
@@ -1083,9 +1185,10 @@ def make_building(style, wall, roof, cat, res_icon, W=64, H=64):
         p.rectangle([2, b - 6, 62, b], fill=(70, 110, 150, 255))
         for x in range(4, 62, 3):
             p.line([(x, b - 6), (x + 2, b - 6)], fill=(150, 190, 220, 255), width=0.5)
-        p.rectangle([6, b - 12, 60, b - 7], fill=sh(WOOD, 1.05), outline=sh(WOOD, 0.5), width=0.5)
-        for x in range(8, 60, 4):
-            p.line([(x, b - 12), (x, b - 7)], fill=sh(WOOD, 0.7), width=0.3)
+        deck = [(6, b - 12), (60, b - 12), (60, b - 7), (6, b - 7)]
+        p.polygon(deck, fill=sh(WOOD, 1.05))
+        p.texfill(deck, lambda W, H, F, sd=g._seed(): BT.wood(W, H, F, sh(WOOD, 1.05), sd, board=2.5))
+        p.polygon(deck, outline=sh(WOOD, 0.5), width=0.5)
         for x in (10, 24, 38, 52):
             p.rectangle([x, b - 7, x + 2, b], fill=sh(WOOD, 0.55))
         g.walls(10, 30, b - 12 - 20, "timber")
@@ -1519,56 +1622,82 @@ def effects():
 def ui_icons():
     cls = {"peasant": (150, 120, 70), "artisan": (90, 120, 170), "noble": (160, 110, 190), "soldier": (180, 70, 60)}
     for k, c in cls.items():
-        d = Pen(20, 20)
+        d = Pen(20, 20, 2)
         d.ellipse([6, 1, 14, 9], fill=(235, 210, 180, 255)); d.pieslice([2, 9, 18, 27], 180, 360, fill=c + (255,))
         if k == "noble": d.polygon([(6, 2), (8, -1), (10, 2), (12, -1), (14, 2)], fill=(250, 210, 60, 255))
         if k == "soldier": d.rectangle([6, 0, 14, 3], fill=(170, 170, 176, 255))
         if k == "artisan": d.line([(14, 12), (18, 6)], fill=(110, 110, 110, 255), width=2)
-        save(d.done(), "ui_" + k)
+        save(icon_polish(d.done()), "ui_" + k)
+
+
+def icon_polish(img):
+    """Depth for a small icon: light from above (brighter top, darker foot), a glint along the top edge
+    and a soft shadow under it to the lower right."""
+    a = np.asarray(img.convert("RGBA")).astype(np.float32)
+    h, w = a.shape[:2]
+    al = a[:, :, 3] / 255.0
+    ys = np.where(al.max(axis=1) > 0.3)[0]
+    if len(ys) == 0:
+        return img
+    top, bot = ys[0], max(ys[-1], ys[0] + 1)
+    yy = np.clip((np.arange(h) - top) / (bot - top), 0, 1)[:, None]
+    f = 1.12 - 0.26 * yy
+    solid = al > 0.5
+    up = np.zeros_like(solid); up[1:, :] = ~solid[:-1, :]
+    f = np.where(solid & up, f * 1.18, f)
+    a[:, :, :3] = np.clip(a[:, :, :3] * f[:, :, None], 0, 255)
+    out = Image.fromarray(a.astype(np.uint8), "RGBA")
+    # the shadow: the shape's alpha, shifted and blurred, in dark brown, under the icon
+    from PIL import ImageFilter
+    k = max(1, w // 24)
+    shadow = Image.new("RGBA", (w, h), (30, 20, 10, 0))
+    sa = img.getchannel("A").filter(ImageFilter.GaussianBlur(k * 0.9)).point(lambda v: int(v * 0.45))
+    shadow.putalpha(ImageChops.offset(sa, k, k))
+    base = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    base.alpha_composite(shadow)
+    base.alpha_composite(out)
+    return base
 
 
 def resources():
+    """Resource icons, 48 x 48 (the 24 x 24 designs drawn at twice the size, with depth)."""
     for r in json.load(open(os.path.join(ROOT, "data", "resources.json"))):
-        save(icon(r.get("icon", "dot"), rgb(r["color"])), "res_" + r["id"])
+        save(icon_polish(icon(r.get("icon", "dot"), rgb(r["color"]), 48)), "res_" + r["id"])
 
 
 AGE_COL = [(150, 60, 50), (120, 90, 60), (90, 110, 70), (70, 100, 150), (120, 80, 150), (70, 70, 80)]
 
 
 def techs():
+    """Research icons, 96 x 96: a picture of what the study is about (tech_icons.py) on a parchment disc,
+    in a shield (or, for the repeatable studies, a round badge) in the colour of its age."""
+    import tech_icons
     p = os.path.join(ROOT, "data", "techs.json")
     if not os.path.exists(p):
         return
-    for t in json.load(open(p))["techs"]:
+    data = json.load(open(p))
+    for t in data["techs"] + data.get("repeatables", []):
+        rep = t in data.get("repeatables", [])
         c = AGE_COL[min(len(AGE_COL) - 1, int(t.get("age", 0)))]
-        d = Pen(48, 48)
-        d.polygon([(6, 4), (42, 4), (42, 26), (24, 45), (6, 26)], fill=c + (255,), outline=sh(c, 0.5))
-        d.shade([(6, 4), (42, 4), (42, 26), (24, 45), (6, 26)], 4, 45, (255, 255, 255, 50), (0, 0, 0, 50))
-        d.polygon([(9, 7), (39, 7), (39, 25), (24, 41), (9, 25)], outline=sh(c, 1.5))
+        d = Pen(48, 48, 2)
+        if rep:
+            d.ellipse([2, 2, 46, 46], fill=c + (255,), outline=sh(c, 0.45), width=1.0)
+            d.ellipse([5, 5, 43, 43], outline=sh(c, 1.45), width=0.8)
+            d.arc([3.5, 3.5, 44.5, 44.5], 200, 330, fill=(255, 255, 255, 90), width=1.0)
+        else:
+            sh_pts = [(5, 3), (43, 3), (43, 26), (24, 46), (5, 26)]
+            d.polygon(sh_pts, fill=c + (255,), outline=sh(c, 0.45), width=1.0)
+            d.shade(sh_pts, 3, 46, (255, 255, 255, 60), (0, 0, 0, 60))
+            d.polygon([(8, 6), (40, 6), (40, 25), (24, 42), (8, 25)], outline=sh(c, 1.5), width=0.7)
+        # the parchment disc the picture sits on
+        d.disc(24, 22.5, 15.5, (0, 0, 0, 60))
+        d.disc(24, 22, 15, (238, 228, 200, 255))
+        d.shade([(9, 7), (39, 7), (39, 37), (9, 37)], 7, 37, (255, 255, 255, 0), (150, 120, 80, 0))
+        d.ellipse([9, 7, 39, 37], outline=(160, 130, 90, 255), width=0.6)
+        tech_icons.draw(d, t)
         if t.get("final"):
-            d.polygon([(18, 0), (21, 5), (24, 0), (27, 5), (30, 0), (30, 7), (18, 7)], fill=(250, 210, 60, 255))
+            d.polygon([(16, 0.5), (20, 5), (24, 0.5), (28, 5), (32, 0.5), (32, 7), (16, 7)], fill=(250, 210, 60, 255), outline=(150, 110, 30, 255), width=0.5)
         im = d.done()
-        words = t["name"].split()
-        initials = "".join(w[0] for w in words[:2]).upper()
-        # the initials, drawn with Pillow's small built-in font and scaled up
-        tmp = new(16, 12); ImageDraw.Draw(tmp).text((1, 0), initials, fill=(250, 240, 210, 255))
-        tmp = tmp.resize((32, 24), Image.NEAREST)
-        im.alpha_composite(tmp, (9 if len(initials) > 1 else 16, 11))
-        save(im, "tech_" + t["id"])
-    # repeatable studies: a round badge with a turning arrow and the initials
-    for t in json.load(open(p)).get("repeatables", []):
-        c = AGE_COL[min(len(AGE_COL) - 1, int(t.get("age", 0)))]
-        d = Pen(48, 48)
-        d.ellipse([3, 3, 45, 45], fill=c + (255,), outline=sh(c, 0.5))
-        d.ellipse([7, 7, 41, 41], outline=sh(c, 1.5))
-        d.arc([10, 10, 38, 38], 200, 500, fill=(250, 230, 170, 200), width=2)
-        d.polygon([(33, 7), (40, 13), (31, 16)], fill=(250, 230, 170, 255))
-        im = d.done()
-        words = t["name"].split()
-        initials = "".join(w[0] for w in words[:2]).upper()
-        tmp = new(16, 12); ImageDraw.Draw(tmp).text((1, 0), initials, fill=(250, 240, 210, 255))
-        tmp = tmp.resize((32, 24), Image.NEAREST)
-        im.alpha_composite(tmp, (9 if len(initials) > 1 else 16, 13))
         save(im, "tech_" + t["id"])
 
 

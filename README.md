@@ -650,13 +650,15 @@ Texture folder (Godot's `user://textures`):
 Rules:
 
 - **Any size works.** Buildings are drawn bottom-centred on their tile and keep their proportions; the
-  width in tiles is `art.sw` in `buildings.json`. Terrain and road tiles fill one tile.
+  width in tiles is `art.sw` in `buildings.json`. Terrain and road tiles fill one tile. The defaults are
+  sized for the closest zoom: ground and roads 64 x 64 a tile, buildings 192 px wide for one tile (384 for
+  the headquarters), resource icons 48 x 48, research icons 96 x 96.
 - **Names:**
   - `terrain_<water|beach|grass|mountain>_<0-3>` are four variants each, mixed randomly.
   - `road_<0-15>` are picked by which neighbours connect (bits: 1 up, 2 right, 4 down, 8 left).
   - `deco_tree_0` to `deco_tree_4`, `deco_rock_0/1`, `deco_clay` and `deco_peak_0/1` (mountain peaks) are scenery.
-    Trees and peaks are 64 x 96 (one tile wide, the foot at the bottom), boulders 64 x 64; they stand upright
-    on the raised ground.
+    Trees and peaks are 128 x 192 (one tile wide, the foot at the bottom), boulders 128 x 128; they stand
+    upright on the raised ground.
     Trees and peaks are 1.5 tiles tall and reach into the tile above.
   - `ore_<1-5>` are deposits: coal, iron, gold, granite, copper.
   - `res_<id>` are resource icons and `bld_<id>` are buildings.

@@ -9,7 +9,7 @@ extends RefCounted
 
 const CH := 16             # tiles along each side of a chunk
 var TS := 32               # pixels per tile inside a chunk (16 in the low-resolution twin)
-const MAX_CHUNKS := 120    # chunks kept in memory; the least recently seen are forgotten first
+var max_chunks := 120      # chunks kept in memory; the least recently seen are forgotten first
 const WATER_ALPHA := 128   # alpha of open water in a baked chunk (255 = land)
 const EDGE_WIDTH := [0.0, 11.0, 8.0, 7.0]   # pixels each kind of ground spills over a lower neighbour
 ## Neighbour offsets, in mask bit order: N, E, S, W, then the corners NE, SE, SW, NW.
@@ -18,6 +18,7 @@ const NB := [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0),
 
 var sim: Sim
 var twin: MapChunks        # the same map at half resolution, used when zoomed out (see MapView)
+var hi: MapChunks          # the same map at double resolution (64 pixels a tile), used up close
 var smooth := false        # build mipmaps so chunks look smooth when zoomed out; call clear() after changing it
 var _tex: Dictionary = {}  # chunk key -> ImageTexture
 var _dirty: Dictionary = {}
@@ -64,11 +65,8 @@ func _bridge_img(ns: bool, stone: bool) -> Image:
 
 
 func load_images() -> void:
-	if twin != null:
-		twin.sim = sim
-		twin.smooth = smooth
-		twin.details = details
-		twin.load_images()
+	for c: MapChunks in _subs():
+		c.load_images()
 	_bridge = [_bridge_img(false, false), _bridge_img(true, false), _bridge_img(false, true), _bridge_img(true, true)]
 	_ter.clear(); _road.clear(); _paved.clear(); _ore.clear(); _edge.clear(); _snow.clear()
 	for t in Tex.TERRAIN:
@@ -89,6 +87,26 @@ func load_images() -> void:
 	clear()
 
 
+## The other resolutions of the same map, brought up to date with this one's settings.
+func _subs() -> Array:
+	var out := []
+	for c in [twin, hi]:
+		if c != null:
+			c.sim = sim
+			c.smooth = smooth
+			c.details = details
+			out.append(c)
+	return out
+
+
+## The realms' colours changed (a new game): the territory tints are made again at every resolution.
+func reset_tint() -> void:
+	_tint.clear()
+	_territory = -1
+	for c: MapChunks in _subs():
+		c.reset_tint()
+
+
 ## A texture as an uncompressed RGBA image of exactly w x h pixels, so custom textures of any size fit.
 func _img(id: String, w: int, h: int) -> Image:
 	var img := Tex.get_tex(id).get_image()
@@ -101,18 +119,15 @@ func _img(id: String, w: int, h: int) -> Image:
 	img.clear_mipmaps()
 	img.convert(Image.FORMAT_RGBA8)
 	if img.get_width() != w or img.get_height() != h:
-		img.resize(w, h, Image.INTERPOLATE_BILINEAR if img.get_width() > w else Image.INTERPOLATE_NEAREST)
+		img.resize(w, h, Image.INTERPOLATE_LANCZOS if img.get_width() > w else Image.INTERPOLATE_BILINEAR)
 	return img
 
 
 ## Forgets every baked chunk (new game, loaded game, new textures).
 func clear() -> void:
 	ver += 1
-	if twin != null:
-		twin.sim = sim
-		twin.smooth = smooth
-		twin.details = details
-		twin.clear()
+	for c: MapChunks in _subs():
+		c.clear()
 	_tex.clear()
 	_dirty.clear()
 	_used.clear()
@@ -122,11 +137,8 @@ func clear() -> void:
 
 func mark_all() -> void:
 	ver += 1
-	if twin != null:
-		twin.sim = sim
-		twin.smooth = smooth
-		twin.details = details
-		twin.mark_all()
+	for c: MapChunks in _subs():
+		c.mark_all()
 	for k in _tex:
 		_dirty[k] = true
 
@@ -134,11 +146,8 @@ func mark_all() -> void:
 ## Something on tile i changed: re-bake the chunks that can show it. Neighbours count too, because
 ## road shapes depend on the tiles next door and trees reach into the tile above.
 func mark_tile(i: int) -> void:
-	if twin != null:
-		twin.sim = sim
-		twin.smooth = smooth
-		twin.details = details
-		twin.mark_tile(i)
+	for c: MapChunks in _subs():
+		c.mark_tile(i)
 	var x := i % sim.w
 	var y := i / sim.w
 	for yy in [y - 1, y, y + 1]:
@@ -161,10 +170,10 @@ func begin_frame() -> void:
 				t.fill(Color(p.color, 0.16))
 				_tint.append(t)
 		_mark_owner_changes()
-	if _tex.size() > MAX_CHUNKS:
+	if _tex.size() > max_chunks:
 		var keys := _tex.keys()
 		keys.sort_custom(func(a, b): return int(_used.get(a, 0)) < int(_used.get(b, 0)))
-		for n in keys.size() - MAX_CHUNKS:
+		for n in keys.size() - max_chunks:
 			_tex.erase(keys[n])
 			_dirty.erase(keys[n])
 			_used.erase(keys[n])
@@ -211,7 +220,6 @@ func _bake(cx: int, cy: int, k: int) -> void:
 	var full := Rect2i(0, 0, TS, TS)
 	var x0 := cx * CH
 	var y0 := cy * CH
-	var relief := _relief(x0, y0)
 	# ground, roads and the territory tint
 	for ly in CH:
 		var y := y0 + ly
@@ -229,10 +237,7 @@ func _bake(cx: int, cy: int, k: int) -> void:
 				var m := _edge_mask(x, y, u)
 				if m != 0:
 					img.blend_rect(_edge_img(u, m), full, pos)
-			# hills: slopes facing the light are lighter, the others darker (not on open water, whose
-			# alpha the water shader reads)
-			if relief != null and t != 0:
-				img.blend_rect(relief, Rect2i(pos, Vector2i(TS, TS)), pos)
+			# (the hills' light and shade is laid on by the ground shader, see MapView._make_relief_map)
 			if details:
 				_details(img, pos, x, y, i, t)
 			if sim.road[i] != 0 and sim.bmap[i] == 0:
@@ -307,9 +312,8 @@ func _bake(cx: int, cy: int, k: int) -> void:
 	_dirty.erase(k)
 
 
-## Small things on the ground, baked in with it so they cost nothing to draw: grass tufts and the odd
-## flower on grass, pebbles on beaches and grass, reeds where land meets water, foam along the shore,
-## and snow on the highest mountain tiles. Each tile picks its details from a hash of its position, so
+## Small things on the ground, baked in with it so they cost nothing to draw: reeds where land meets
+## water, foam along the shore, and snow on the highest mountain tiles. Each tile picks its details from a hash of its position, so
 ## they stay put when a chunk is baked again. Nothing is drawn under roads or buildings.
 var details := true
 
@@ -368,33 +372,7 @@ func _details(img: Image, pos: Vector2i, x: int, y: int, i: int, t: int) -> void
 			# the brown head of a bulrush
 			img.fill_rect(Rect2i(rx - maxi(1, int(u / 2)), base_y - top, bw + maxi(1, int(u)), maxi(2, int(5 * u))), Color8(104, 70, 38))
 		return
-	if t == Sim.GRASS:
-		# tufts: three short blades, darker than the grass
-		for j in 2 + h % 2:
-			if (h >> (j * 4)) % 3 == 0:
-				continue
-			var cx := pos.x + int((4 + (h >> (j * 5 + 1)) % 24) * u)
-			var cy := pos.y + int((8 + (h >> (j * 5 + 3)) % 20) * u)
-			var c := Color8(58, 86, 32, 230)
-			var c2 := Color8(132, 164, 76, 230)
-			var bw2 := maxi(1, int(2 * u))
-			img.fill_rect(Rect2i(cx, cy - int(6 * u), bw2, int(6 * u)), c)
-			img.fill_rect(Rect2i(cx - int(3 * u), cy - int(4 * u), bw2, int(4 * u)), c)
-			img.fill_rect(Rect2i(cx + int(3 * u), cy - int(4 * u), bw2, int(4 * u)), c)
-			img.fill_rect(Rect2i(cx, cy - int(6 * u), maxi(1, int(u)), maxi(1, int(2 * u))), c2)
-		# now and then a flower
-		if h % 11 == 0:
-			var fx := pos.x + int((6 + (h >> 7) % 20) * u)
-			var fy := pos.y + int((6 + (h >> 11) % 20) * u)
-			var fc: Color = [Color8(236, 220, 120), Color8(230, 236, 240), Color8(200, 120, 190)][(h >> 3) % 3]
-			img.fill_rect(Rect2i(fx, fy, maxi(1, int(3 * u)), maxi(1, int(3 * u))), fc)
-	# pebbles on beaches, and a few on grass
-	if (t == Sim.BEACH and h % 2 == 0) or (t == Sim.GRASS and h % 9 == 0):
-		for j in 2:
-			var px := pos.x + int((5 + (h >> (j * 6 + 2)) % 22) * u)
-			var py := pos.y + int((6 + (h >> (j * 6 + 5)) % 20) * u)
-			img.fill_rect(Rect2i(px, py, maxi(1, int(3 * u)), maxi(1, int(3 * u))), Color8(158, 154, 140))
-			img.fill_rect(Rect2i(px, py + maxi(1, int(3 * u)), maxi(1, int(3 * u)), maxi(1, int(u))), Color8(86, 80, 68, 180))
+	# (grass tufts, flowers and pebbles are in the ground textures themselves)
 
 
 static func _hash(x: int, y: int) -> int:
@@ -441,22 +419,27 @@ func _edge_img(u: int, m: int) -> Image:
 	if _edge.has(key):
 		return _edge[key]
 	var data: PackedByteArray = (_ter[u * 4] as Image).get_data()
-	var r: float = EDGE_WIDTH[u] * TS / 32.0
+	var sc := TS / 32.0
+	var r: float = EDGE_WIDTH[u] * sc
+	# the sides are joined with a smooth minimum, so where two sides meet the edge bends round
+	# instead of making a square corner (coasts look less like the tile grid)
+	var kr := r * 0.7
 	for py in TS:
 		for px in TS:
 			var cx := px + 0.5
 			var cy := py + 0.5
-			var wx := 1.8 * sin(TAU * 2.0 * cx / TS + u) + 1.0 * sin(TAU * 5.0 * cx / TS + 1.7 * u)
-			var wy := 1.8 * sin(TAU * 2.0 * cy / TS + 2.0 * u) + 1.0 * sin(TAU * 5.0 * cy / TS + u)
-			var dist := 99.0
-			if m & 1: dist = minf(dist, cy + wx)
-			if m & 2: dist = minf(dist, TS - cx + wy)
-			if m & 4: dist = minf(dist, TS - cy - wx)
-			if m & 8: dist = minf(dist, cx - wy)
-			if m & 16: dist = minf(dist, Vector2(TS - cx, cy).length() + wx * 0.5)
-			if m & 32: dist = minf(dist, Vector2(TS - cx, TS - cy).length() + wy * 0.5)
-			if m & 64: dist = minf(dist, Vector2(cx, TS - cy).length() - wx * 0.5)
-			if m & 128: dist = minf(dist, Vector2(cx, cy).length() - wy * 0.5)
+			var wx := (1.8 * sin(TAU * 2.0 * cx / TS + u) + 1.0 * sin(TAU * 5.0 * cx / TS + 1.7 * u)) * sc
+			var wy := (1.8 * sin(TAU * 2.0 * cy / TS + 2.0 * u) + 1.0 * sin(TAU * 5.0 * cy / TS + u)) * sc
+			var acc := 0.0
+			if m & 1: acc += exp(-(cy + wx) / kr)
+			if m & 2: acc += exp(-(TS - cx + wy) / kr)
+			if m & 4: acc += exp(-(TS - cy - wx) / kr)
+			if m & 8: acc += exp(-(cx - wy) / kr)
+			if m & 16: acc += exp(-(Vector2(TS - cx, cy).length() + wx * 0.5) / kr)
+			if m & 32: acc += exp(-(Vector2(TS - cx, TS - cy).length() + wy * 0.5) / kr)
+			if m & 64: acc += exp(-(Vector2(cx, TS - cy).length() - wx * 0.5) / kr)
+			if m & 128: acc += exp(-(Vector2(cx, cy).length() - wy * 0.5) / kr)
+			var dist := -kr * log(maxf(acc, 1e-9))
 			var a := clampf(1.0 - dist / r, 0.0, 1.0)
 			a = a * a * (3.0 - 2.0 * a)
 			var k := (py * TS + px) * 4 + 3
@@ -490,28 +473,3 @@ func _slope_marks(img: Image, pos: Vector2i, level: int) -> void:
 	for k in level:
 		img.fill_rect(Rect2i(x + k * gap - 1, y - 1, s + 2, s + 2), Color(0.15, 0.1, 0.05, 0.9))
 		img.fill_rect(Rect2i(x + k * gap, y, s, s), SLOPE_COL[level])
-
-
-## The hill shading for the chunk whose top-left tile is (x0, y0): a picture the size of the chunk,
-## light where the ground faces the light (from the upper left), dark where it faces away, a little
-## lighter higher up. Worked out per tile and smoothed, so slopes fade softly.
-func _relief(x0: int, y0: int) -> Image:
-	if sim.height.size() != sim.w * sim.h:
-		return null
-	var n := CH + 2
-	var data := PackedByteArray(); data.resize(n * n * 4)
-	var w := sim.w
-	for ly in n:
-		var y := clampi(y0 + ly - 1, 0, sim.h - 1)
-		for lx in n:
-			var x := clampi(x0 + lx - 1, 0, w - 1)
-			var hx := int(sim.height[y * w + mini(x + 1, w - 1)]) - int(sim.height[y * w + maxi(x - 1, 0)])
-			var hy := int(sim.height[mini(y + 1, sim.h - 1) * w + x]) - int(sim.height[maxi(y - 1, 0) * w + x])
-			# the slope towards the light, plus a little for height (higher ground lighter, low ground darker)
-			var v := clampf((hx + hy) / 30.0 + (int(sim.height[y * w + x]) - 100) / 260.0, -1.0, 1.0)
-			var o := (ly * n + lx) * 4
-			var c := 255 if v > 0.0 else 0
-			data[o] = c; data[o + 1] = c; data[o + 2] = int(c * 0.92); data[o + 3] = int(absf(v) * (125.0 if v > 0.0 else 165.0))
-	var small := Image.create_from_data(n, n, false, Image.FORMAT_RGBA8, data)
-	small.resize(n * TS, n * TS, Image.INTERPOLATE_BILINEAR)
-	return small.get_region(Rect2i(TS, TS, CH * TS, CH * TS))
