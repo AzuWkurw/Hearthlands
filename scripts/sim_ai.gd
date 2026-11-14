@@ -396,6 +396,12 @@ func ai_think(p: Sim.Player) -> void:
 		["vineyard", 1 if mins > 13 and p.noble > 0 else 0], ["winery", 1 if c.call("vineyard") > 0 else 0],
 		["chandler", 1 if mins > 13 and c.call("apiary") > 0 and p.noble > 0 else 0],
 		["sand_pit", 1 if mins > 16 and p.noble > 1 else 0], ["glassworks", 1 if c.call("sand_pit") > 0 else 0],
+		# a wonder once the goods for it are in store (builders and the learned want them most)
+		["great_hall", 1 if mins > 14 and S.planks > 36 and S.stone > 30 and S.gold >= 8 and not war else 0],
+		["cathedral", 1 if mins > 20 and S.stone > 56 and S.bricks > 20 and S.gold >= 14 else 0],
+		["grand_academy", 1 if mins > 25 and S.bricks > 34 and S.paper > 18 and S.gold >= 18 else 0],
+		["observatory", 1 if mins > 30 and S.bricks > 44 and S.glass > 18 and S.iron > 18 and S.gold >= 22 else 0],
+		["exhibition_palace", 1 if mins > 35 and S.iron > 44 and S.glass > 32 and S.gold >= 26 else 0],
 	]
 	# features add their own buildings after the basic economy (food, water, first huts)
 	var extra := []

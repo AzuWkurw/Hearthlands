@@ -2064,6 +2064,185 @@ def v_depot(g, icon):
     g.sign(36, top0 - 10, icon) if icon is not None and False else None
 
 
+# ------------------------------------------------------------------ wonders (64 x 72)
+def v_great_hall(g, icon):
+    """A long timber hall on a stone footing, carved gable ends and banners: the king's mead hall."""
+    p, b = g.p, g.b
+    top = b - 22
+    g.walls(4, 52, top, "timber")
+    for k in range(int((b - top) / 2.6)):
+        y = b - 1.3 - k * 2.6
+        p.line([(4, y), (52, y)], fill=(126, 88, 52, 255), width=2.2)
+        p.line([(4, y - 0.8), (52, y - 0.8)], fill=(168, 124, 78, 255), width=0.5)
+    p.rectangle([4, b - 4, 52, b], fill=(140, 136, 126, 255))
+    g.surface([(4, b), (52, b), (52, b - 4), (4, b - 4)], "stone", (140, 136, 126))
+    ridge = g.roof_gable(2, 54, top, 22, mat="thatch" if g.cat in mt.THATCH else None)
+    # dragon-head gable ends crossing over the ridge
+    for gx in (5, 57.5):
+        p.line([(gx - 4, ridge + 6), (gx + 4, ridge - 6)], fill=(150, 104, 60, 255), width=1.3)
+        p.line([(gx + 4, ridge + 6), (gx - 4, ridge - 6)], fill=(150, 104, 60, 255), width=1.3)
+        for s_ in (-1, 1):
+            p.disc(gx + s_ * 4.3, ridge - 6.4, 1.3, (170, 120, 70, 255))
+    chim(g, 28, ridge - 4, top - 6)
+    # a great door with carved posts, shields on the wall, banners
+    g.big_door(22, b - 16, 34, b, (110, 70, 40))
+    for x in (20.4, 34.6):
+        p.rectangle([x - 0.8, b - 18, x + 0.8, b], fill=(170, 120, 70, 255))
+    for k, col in enumerate(((180, 50, 44), (60, 90, 160), (200, 160, 50), (60, 120, 70))):
+        x = 9 + k * 4.4 if k < 2 else 38 + (k - 2) * 4.4
+        p.ellipse([x, top + 6, x + 3.6, top + 9.6], fill=C(col), outline=(60, 40, 24, 255), width=0.4)
+    for x, col in ((2, (180, 50, 44)), (57, (60, 90, 160))):
+        p.line([(x, b), (x, b - 34)], fill=(90, 66, 40, 255), width=0.8)
+        p.polygon([(x + 0.4, b - 33), (x + 4.6, b - 33), (x + 4.6, b - 24), (x + 2.5, b - 26), (x + 0.4, b - 24)], fill=C(col), outline=sh(C(col), 0.5), width=0.3)
+    _set("glow", 28, b - 8)
+
+
+def v_cathedral(g, icon):
+    """A Gothic cathedral: a long nave with pointed windows and buttresses, a rose window, two spires."""
+    p, b = g.p, g.b
+    top = b - 26
+    g.walls(14, 50, top, "stone")
+    g.roof_gable(14, 50, top, 14, mat="slate")
+    for x in (16, 25, 34, 43):
+        p.polygon([(x, b), (x + 3, b), (x + 3, top + 6), (x + 1.5, top + 2), (x, top + 6)], fill=sh(g.wall, 0.82), outline=sh(g.wall, 0.45), width=0.4)
+    for x in (20, 29, 38, 46):
+        p.rectangle([x, top + 7, x + 2.6, top + 18], fill=sh(g.wall, 0.45))
+        p.polygon([(x, top + 7), (x + 1.3, top + 4), (x + 2.6, top + 7)], fill=sh(g.wall, 0.45))
+        p.shade([(x + 0.4, top + 7), (x + 2.2, top + 7), (x + 2.2, top + 17.6), (x + 0.4, top + 17.6)], top + 6, top + 18, (90, 70, 150, 255), (200, 120, 70, 255))
+    # the west front: two towers with spires, a rose window and a pointed portal
+    for tx in (2, 13):
+        tt = b - 44
+        tw = [(tx, b), (tx + 11, b), (tx + 11, tt), (tx, tt)]
+        stone_fill(g, tw, g.wall, "stone", 1.04)
+        p.polygon([(tx + 7.5, b), (tx + 11, b), (tx + 11, tt), (tx + 7.5, tt)], fill=(0, 0, 0, 50))
+        p.polygon(tw, outline=sh(g.wall, 0.45), width=0.5)
+        p.rectangle([tx + 4, tt + 6, tx + 7, tt + 14], fill=(36, 30, 26, 255))
+        p.polygon([(tx + 4, tt + 6), (tx + 5.5, tt + 3), (tx + 7, tt + 6)], fill=(36, 30, 26, 255))
+        cone(g, tx + 5.5, tt + 0.5, 6.4, 20, g.roof, "slate")
+        p.line([(tx + 5.5, tt - 19.5), (tx + 5.5, tt - 24)], fill=(220, 190, 90, 255), width=0.6)
+        p.line([(tx + 4, tt - 22.6), (tx + 7, tt - 22.6)], fill=(220, 190, 90, 255), width=0.6)
+    p.disc(13.5, b - 26, 4.6, sh(g.wall, 0.45))
+    p.disc(13.5, b - 26, 3.8, (140, 60, 120, 255))
+    for k in range(8):
+        a = k * math.pi / 4
+        p.line([(13.5, b - 26), (13.5 + math.cos(a) * 3.6, b - 26 + math.sin(a) * 3.6)], fill=(230, 200, 90, 255), width=0.4)
+    p.disc(13.5, b - 26, 1.2, (240, 210, 100, 255))
+    p.rectangle([9.5, b - 14, 17.5, b], fill=sh(g.wall, 0.5))
+    p.polygon([(9.5, b - 14), (13.5, b - 20), (17.5, b - 14)], fill=sh(g.wall, 0.5))
+    p.rectangle([10.5, b - 13, 16.5, b], fill=(90, 56, 34, 255))
+    p.polygon([(10.5, b - 13), (13.5, b - 18), (16.5, b - 13)], fill=(90, 56, 34, 255))
+    p.line([(13.5, b - 17), (13.5, b)], fill=(50, 30, 18, 255), width=0.5)
+
+
+def v_grand_academy(g, icon):
+    """A Renaissance academy: two storeys of arched windows round a central dome with a lantern."""
+    p, b = g.p, g.b
+    top = b - 28
+    g.walls(2, 54, top, "stone")
+    deck = [(2, top), (54, top), (61, top - 5), (9, top - 5)]
+    stone_fill(g, deck, g.wall, "stone", 0.62)
+    p.rectangle([2, top - 1.5, 54, top], fill=sh(g.wall, 1.15))
+    for x in range(4, 54, 5):
+        p.rectangle([x, top - 3.4, x + 1.2, top - 1.5], fill=sh(g.wall, 1.1))
+    dome(g, 28, top - 4, 13, 16, (120, 140, 120), ribs=8)
+    p.rectangle([25.6, top - 25, 30.4, top - 19.5], fill=sh(g.wall, 1.1), outline=sh(g.wall, 0.5), width=0.3)
+    p.polygon([(25, top - 25), (28, top - 30), (31, top - 25)], fill=(120, 140, 120, 255))
+    p.disc(28, top - 31, 0.9, (220, 190, 90, 255))
+    for r in range(2):
+        for x in (5, 11, 17, 37, 43, 49):
+            y = top + 4 + r * 12
+            p.rectangle([x - 0.2, y + 1.5, x + 3.2, y + 8], fill=sh(g.wall, 0.45))
+            p.pieslice([x - 0.2, y, x + 3.2, y + 3.4], 180, 360, fill=sh(g.wall, 0.45))
+            g._glass(x + 0.3, y + 1.6, 2.4, 6, r == 1 and x == 11)
+    # the portal with paired columns and a pediment
+    p.rectangle([20, top + 2, 36, b], fill=sh(g.wall, 1.1))
+    p.polygon([(19, top + 2), (37, top + 2), (28, top - 2.6)], fill=sh(g.wall, 1.15), outline=sh(g.wall, 0.5), width=0.4)
+    g.door(25, 6, 12, arch=True)
+    for x in (20.6, 23, 32, 34.4):
+        p.rectangle([x, top + 3, x + 1.4, b - 1], fill=(240, 236, 226, 255))
+    for k in range(3):
+        p.rectangle([19 - k, b - 1.2 + k * 0.5, 37 + k, b - 0.6 + k * 0.5], fill=(200, 196, 186, 255))
+
+
+def v_observatory(g, icon):
+    """An observatory: a domed tower with the shutter open and a long telescope, beside a brick wing."""
+    p, b = g.p, g.b
+    top = b - 20
+    g.walls(28, 58, top, "brick")
+    g.roof_gable(28, 58, top, 9, mat="slate")
+    for x in (32, 40, 48):
+        g.window(x, top + 5, 4, 7, lit=x == 40)
+    g.door(52, 5, 10)
+    # the round tower and its turning dome
+    tx0, tx1 = 6, 28
+    tower = [(tx0, b), (tx1, b), (tx1, b - 36), (tx0, b - 36)]
+    stone_fill(g, tower, g.wall, "stone", 1.02)
+    p.polygon([(18, b), (tx1, b), (tx1, b - 36), (18, b - 36)], fill=(0, 0, 0, 55))
+    p.polygon([(tx0, b), (tx0 + 3, b), (tx0 + 3, b - 36), (tx0, b - 36)], fill=(255, 255, 255, 30))
+    p.polygon(tower, outline=sh(g.wall, 0.45), width=0.5)
+    for y in (b - 12, b - 24):
+        p.line([(tx0, y), (tx1, y)], fill=sh(g.wall, 0.7), width=0.6)
+        g.window(15, y + 3, 4, 6)
+    g.door(14, 6, 10, arch=True)
+    p.rectangle([tx0 - 1, b - 37.5, tx1 + 1, b - 35.5], fill=sh(g.wall, 1.15))
+    dome(g, 17, b - 37, 12, 12, (150, 160, 170), ribs=8, tex="stone")
+    p.polygon([(15.5, b - 48.5), (19, b - 48.5), (19.6, b - 37.5), (15, b - 37.5)], fill=(30, 30, 40, 255))
+    p.line([(17, b - 41), (30, b - 58)], fill=(150, 120, 60, 255), width=2.2)
+    p.line([(29, b - 56.6), (31, b - 59.4)], fill=(90, 70, 40, 255), width=2.8)
+    p.line([(17.6, b - 41.6), (29.6, b - 57.6)], fill=(220, 190, 110, 255), width=0.5)
+    # a few stars painted on a banner? no: a brass armillary sphere in front
+    cx, cy = 40, b - 4
+    p.line([(cx, b), (cx, cy)], fill=(120, 100, 60, 255), width=0.8)
+    p.ellipse([cx - 4, cy - 8, cx + 4, cy], outline=(210, 170, 70, 255), width=0.6)
+    p.ellipse([cx - 4, cy - 5.6, cx + 4, cy - 2.4], outline=(210, 170, 70, 255), width=0.5)
+    p.ellipse([cx - 1.6, cy - 8, cx + 1.6, cy], outline=(210, 170, 70, 255), width=0.5)
+
+
+def v_exhibition_palace(g, icon):
+    """A palace of iron and glass: a long glass hall with a barrel-vaulted transept and flags."""
+    p, b = g.p, g.b
+    glass_hi = (190, 220, 232)
+    frame = (70, 84, 96, 255)
+    # the long hall: glass walls in an iron grid
+    x0, x1, top = 2, 60, b - 18
+    hall = [(x0, b), (x1, b), (x1, top), (x0, top)]
+    p.shade(hall, top, b, (176, 210, 226, 255), (120, 160, 186, 255))
+    for x in range(x0, x1 + 1, 4):
+        p.line([(x, top), (x, b)], fill=frame, width=0.6)
+    for y in (top + 6, top + 12):
+        p.line([(x0, y), (x1, y)], fill=frame, width=0.5)
+    p.polygon(hall, outline=frame, width=0.7)
+    # stepped glass roof of the hall
+    roof = [(x0 - 1, top), (x1 + 1, top), (x1 - 3, top - 6), (x0 + 3, top - 6)]
+    p.polygon(roof, fill=(150, 190, 210, 255))
+    p.shade(roof, top - 6, top, (220, 240, 250, 200), (120, 160, 186, 60))
+    for x in range(x0 + 3, x1 - 2, 4):
+        p.line([(x, top - 6), (x - 2.4, top)], fill=frame, width=0.4)
+    p.polygon(roof, outline=frame, width=0.5)
+    # the transept: a tall barrel vault in the middle
+    cx = 31
+    tw = [(cx - 10, b), (cx + 10, b), (cx + 10, top - 12), (cx - 10, top - 12)]
+    p.shade(tw, top - 12, b, (190, 222, 236, 255), (130, 170, 194, 255))
+    for x in range(cx - 10, cx + 11, 3):
+        p.line([(x, top - 12), (x, b)], fill=frame, width=0.5)
+    p.pieslice([cx - 10, top - 23, cx + 10, top - 1], 180, 360, fill=(170, 206, 224, 255), outline=frame, width=0.7)
+    for k in range(1, 6):
+        a = math.pi + k * math.pi / 6
+        p.line([(cx, top - 12), (cx + math.cos(a) * 10, top - 12 + math.sin(a) * 11)], fill=frame, width=0.5)
+    p.arc([cx - 7, top - 20, cx + 7, top - 4], 200, 260, fill=(255, 255, 255, 220), width=0.6)
+    p.polygon(tw, outline=frame, width=0.7)
+    # the doors and flags of many nations
+    p.rectangle([cx - 3, b - 9, cx + 3, b], fill=(50, 60, 70, 255))
+    p.pieslice([cx - 3, b - 12, cx + 3, b - 6], 180, 360, fill=(50, 60, 70, 255))
+    for k, col in enumerate(((200, 60, 50), (60, 90, 170), (230, 200, 60), (60, 140, 80), (240, 240, 240))):
+        x = 6 + k * 12 if k < 2 else 40 + (k - 2) * 8
+        if k == 4:
+            x = cx - 0.5
+        y = top - 6 if k != 4 else top - 23
+        p.line([(x, y), (x, y - 8)], fill=(60, 60, 64, 255), width=0.5)
+        p.polygon([(x + 0.3, y - 8), (x + 5, y - 7), (x + 0.3, y - 5.4)], fill=C(col))
+
+
 # ------------------------------------------------------------------ mines
 MINE = {
     "coal_mine": {"rock": (100, 96, 90), "ore": (40, 40, 44), "glint": (90, 90, 100), "frame": True},
@@ -2278,6 +2457,8 @@ VARIANTS = {
     "copper_smelter": v_copper_smelter, "steelworks": v_steelworks, "glassworks": v_glassworks,
     "lodge": v_lodge, "infirmary": v_infirmary, "chapel": v_chapel, "scriptorium": v_scriptorium, "library": v_library,
     "manor": v_manor, "university": v_university, "fortress": v_fortress, "depot": v_depot,
+    "great_hall": v_great_hall, "cathedral": v_cathedral, "grand_academy": v_grand_academy,
+    "observatory": v_observatory, "exhibition_palace": v_exhibition_palace,
     "keep": v_keep, "watch_tower": v_watch_tower, "paper_mill": v_paper_mill, "guardhouse": v_guardhouse,
     "redoubt": v_redoubt,
 }

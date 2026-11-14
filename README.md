@@ -10,13 +10,14 @@ economy you do.
 ## Download
 
 The ready-made Windows game is on the [`downloads` branch](../../tree/downloads): download the zip,
-unzip it and run `Hearthlands.exe`. Current version: **v0.39.0 build 44** (see `CHANGELOG.md`).
+unzip it and run `Hearthlands.exe`. Current version: **v0.40.0 build 45** (see `CHANGELOG.md`).
 
 What is in the game now:
 
 - Six ages from Roman to Industrial, 137 techs and a special study at the end of each age that opens
-  the next; each age has its own building looks and kind of soldier.
-- 91 buildings in long production chains, each drawn with the tools and goods of its trade.
+  the next, a choice of path (wealth, war or learning) for each age and a wonder to build in it; each
+  age has its own building looks and kind of soldier.
+- 96 buildings in long production chains, each drawn with the tools and goods of its trade.
 - Up to 8 rival AIs with personalities, diplomacy, attacks and sieges, sea expeditions and colonies.
 - Four classes of people with needs and contentment, seasons and weather, diseases, fires, wildlife,
   random events, ruins and bandit camps.
@@ -365,7 +366,7 @@ Logs, Stone, Clay, Water, Grain, Hops, Wool, Hides, Salt, Coal, Iron ore, Copper
 
 Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples, Vegetables, Cheese, Sausages, Honey.
 
-## Buildings (91 you can build)
+## Buildings (96 you can build)
 
 **Raw**
 
@@ -455,6 +456,11 @@ Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples,
 | Tavern | 4 planks, 2 stone | peasant (food and drink) | 1 beer, 1 bread | – | Roman (start) |
 | Chapel | 3 planks, 4 stone | peasant (healing) | 1 candles | – | Roman (start) |
 | Fire station | 2 planks, 3 stone | peasant (healing) | – | – | Roman (start) |
+| Great hall | 30 planks, 24 stone, 6 gold | – | – | – | The new kingdoms |
+| Cathedral | 50 stone, 20 planks, 16 bricks, 12 gold | – | – | – | Rise of the towns |
+| Grand academy | 30 stone, 30 bricks, 16 paper, 16 gold | – | – | – | Rebirth of learning |
+| Observatory | 40 bricks, 16 glassware, 16 iron, 20 gold | – | – | – | Age of reason |
+| Exhibition palace | 40 iron, 30 glassware, 30 bricks, 24 gold | – | – | – | Dawn of industry |
 
 **Science**
 
@@ -805,6 +811,11 @@ itself needs a number of techs of the age before (`"gate": true` and `"need"` in
 On entering an age a window shows what it brings and asks you to choose the realm's path for it:
 wealth, war or learning, each with its own lasting bonus (`"age_bonuses"` in `data/techs.json`).
 Rivals choose by their manner: warlords war, builders wealth, the others learning or wealth.
+
+Each age has a wonder (Folk tab, opened by the age's study): the Great hall, the Cathedral, the Grand
+academy, the Observatory and the Exhibition palace. A realm builds each once; it costs a great deal and
+gives a lasting bonus while it stands (`"wonder"` in `data/buildings.json`). With the peaceful victory
+on, the first realm with all five wonders wins, as does the first to the Industrial Revolution.
 
 Each building is drawn in the style of the age its realm was in when it was placed (Roman, Early
 Medieval, High Medieval, Renaissance, Enlightenment, Industrial); Renovate brings it up to date. The

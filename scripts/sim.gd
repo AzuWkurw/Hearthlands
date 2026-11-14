@@ -864,6 +864,8 @@ func destroy(b: Bld, why := "") -> void:
 		_clamp_stock(p)
 	if why != "" and b.p == 1:
 		emit_log("%s %s" % [String(b.def.name), why], Color("e08a6a"), Vector2i(b.x, b.y))
+	if b.def.has("wonder") and b.state == "ready":
+		_recompute_mods(p)
 
 
 # ---------------------------------------------------------------- town names
@@ -1254,6 +1256,10 @@ func can_place(ty: String, x: int, y: int, pid: int, door := -1) -> String:
 		var pb := Places.block(self, x, y)
 		if pb != "":
 			return pb
+	if d.get("unique", false):
+		for b in blds:
+			if b.p == pid and b.ty == ty and not b.dead:
+				return "Your realm has its %s already: a wonder is built once" % String(d.name)
 	if d.get("claim_only", false) and not _soldiers_hold(x, y, pid):
 		return "A boundary stone must stand on land your soldiers hold"
 	# no building on the doorstep of a neighbour
@@ -2670,6 +2676,23 @@ func missing_age_bonus(p: Player) -> int:
 
 func choose_age_bonus(p: Player, age: int, id: String) -> void:
 	research.choose_age_bonus(p, age, id)
+
+## The wonders realm p has finished (the buildings with "wonder" in buildings.json).
+func wonders_of(p: Player) -> Array:
+	var out := []
+	for b in blds:
+		if b.p == p.id and not b.dead and b.state == "ready" and b.def.has("wonder"):
+			out.append(b)
+	return out
+
+
+## The number of wonders in the game (a realm with all of them wins).
+static func wonder_count() -> int:
+	var n := 0
+	for k in GameData.bld:
+		if GameData.bld[k].has("wonder"):
+			n += 1
+	return n
 
 ## For the study that opens an age: how many techs of the age before the realm has.
 func gate_have(p: Player, id: String) -> int:

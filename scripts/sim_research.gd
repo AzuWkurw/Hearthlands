@@ -213,6 +213,11 @@ func _recompute_mods(p: Sim.Player) -> void:
 		var o := _age_bonus_def(int(a), String(p.age_bonus[a]))
 		for k in o.get("effects", {}):
 			p.mods[k] = float(p.mods.get(k, 0.0)) + float(o.effects[k])
+	# the wonders standing in the realm
+	for b in sim.wonders_of(p):
+		var we: Dictionary = b.def.wonder
+		for k in we:
+			p.mods[k] = float(p.mods.get(k, 0.0)) + float(we[k])
 	# repeatable studies: their effects once per level
 	for id in p.reps:
 		var r: Dictionary = GameData.reps.get(id, {})

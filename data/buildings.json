@@ -2482,5 +2482,139 @@
    "glow": []
   },
   "trade": "woodwork"
+ },
+ "great_hall": {
+  "name": "Great hall",
+  "cat": "folk",
+  "size": "large",
+  "cost": {
+   "planks": 30,
+   "stone": 24,
+   "gold": 6
+  },
+  "time": 240,
+  "tech": "new_kingdoms",
+  "unique": true,
+  "wonder": {
+   "tax": 0.1,
+   "immigration": 0.1
+  },
+  "info": "A wonder of the Early Medieval age: the king's hall, where lords feast and swear their oaths. Built once by each realm; while it stands: gold tax +10%, newcomers arrive +10% faster. The first realm with all five wonders wins (when the research victory is on).",
+  "art": {
+   "style": "castle",
+   "wall": "#a88a5c",
+   "sw": 3.0,
+   "smoke": [
+    0.469,
+    0.215
+   ],
+   "glow": [
+    0.438,
+    0.833
+   ]
+  }
+ },
+ "cathedral": {
+  "name": "Cathedral",
+  "cat": "folk",
+  "size": "large",
+  "cost": {
+   "stone": 50,
+   "planks": 20,
+   "bricks": 16,
+   "gold": 12
+  },
+  "time": 240,
+  "tech": "rise_of_towns",
+  "unique": true,
+  "wonder": {
+   "need": -0.08,
+   "immigration": 0.15
+  },
+  "info": "A wonder of the High Medieval age: its spire is seen from every village. Built once by each realm; while it stands: artisans and nobles use -8% goods, newcomers arrive +15% faster. The first realm with all five wonders wins (when the research victory is on).",
+  "art": {
+   "style": "castle",
+   "wall": "#d8d0bc",
+   "sw": 3.0,
+   "smoke": [],
+   "glow": []
+  }
+ },
+ "grand_academy": {
+  "name": "Grand academy",
+  "cat": "folk",
+  "size": "large",
+  "cost": {
+   "stone": 30,
+   "bricks": 30,
+   "paper": 16,
+   "gold": 16
+  },
+  "time": 240,
+  "tech": "rebirth_of_learning",
+  "unique": true,
+  "wonder": {
+   "research": 0.2
+  },
+  "info": "A wonder of the Renaissance: scholars from every land come to teach and learn. Built once by each realm; while it stands: research +20%. The first realm with all five wonders wins (when the research victory is on).",
+  "art": {
+   "style": "castle",
+   "wall": "#d8ccb0",
+   "sw": 3.0,
+   "smoke": [],
+   "glow": []
+  }
+ },
+ "observatory": {
+  "name": "Observatory",
+  "cat": "folk",
+  "size": "large",
+  "cost": {
+   "bricks": 40,
+   "glass": 16,
+   "iron": 16,
+   "gold": 20
+  },
+  "time": 240,
+  "tech": "age_of_reason",
+  "unique": true,
+  "wonder": {
+   "research": 0.1,
+   "speed:all": 0.05
+  },
+  "info": "A wonder of the Enlightenment: the heavens measured, and the seasons, tides and maps with them. Built once by each realm; while it stands: research +10%, all production +5% speed. The first realm with all five wonders wins (when the research victory is on).",
+  "art": {
+   "style": "castle",
+   "wall": "#c8c0b0",
+   "sw": 3.0,
+   "smoke": [],
+   "glow": []
+  }
+ },
+ "exhibition_palace": {
+  "name": "Exhibition palace",
+  "cat": "folk",
+  "size": "large",
+  "cost": {
+   "iron": 40,
+   "glass": 30,
+   "bricks": 30,
+   "gold": 24
+  },
+  "time": 240,
+  "tech": "dawn_of_industry",
+  "unique": true,
+  "wonder": {
+   "speed:all": 0.08,
+   "tax": 0.1
+  },
+  "info": "A wonder of the Industrial age: a palace of iron and glass showing the realm's machines and goods. Built once by each realm; while it stands: all production +8% speed, gold tax +10%. The first realm with all five wonders wins (when the research victory is on).",
+  "art": {
+   "style": "castle",
+   "wall": "#b8c4cc",
+   "sw": 3.0,
+   "smoke": [],
+   "glow": []
+  }
  }
 }

@@ -999,7 +999,7 @@ func _build_setup() -> void:
 	map_opt = OptionButton.new(); map_opt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	mr.add_child(map_opt)
 	_fill_maps()
-	rv_check = CheckBox.new(); rv_check.text = "Research victory: first to the Industrial Revolution wins"; rv_check.button_pressed = true; v.add_child(rv_check)
+	rv_check = CheckBox.new(); rv_check.text = "Peaceful victory: the first to the Industrial Revolution, or to build all five wonders, wins"; rv_check.button_pressed = true; v.add_child(rv_check)
 	_build_difficulty(v)
 	foes_slider.value_changed.emit(foes_slider.value)
 	str_slider.value_changed.emit(str_slider.value)
