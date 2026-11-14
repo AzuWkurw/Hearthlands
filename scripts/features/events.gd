@@ -24,7 +24,25 @@ const EVENTS := {
 	"bandits": ["Bandits", 1.5, false],
 	"scholar": ["Wandering scholar", 2.0, true],
 	"epidemic": ["Epidemic", 1.0, false],
+	# events that ask you to choose (rivals choose at once)
+	"pilgrims": ["Pilgrims at the gate", 1.5, true],
+	"comet": ["A comet", 1.0, true],
+	"grumbling": ["Grumbling over taxes", 1.2, false],
+	"strange_ship": ["A strange ship", 1.0, true],
 }
+
+## The events that ask for a choice: what happened, and the answers [label, what it does].
+const CHOICES := {
+	"pilgrims": ["A band of pilgrims on their way to a distant shrine asks for food and shelter.",
+		[["Take them in (10 food)", "Some may stay as peasants."], ["Ask a toll and let them pass", "A little gold."], ["Send them on", "Nothing happens."]]],
+	"comet": ["A comet with a fiery tail hangs over the realm, and the people whisper of omens.",
+		[["Hold a day of prayers (10 candles or beer)", "All work faster for 2 minutes."], ["Let the scholars study it", "Research points."], ["Tell the people it means nothing", "Uneasy people work slower for a minute."]]],
+	"grumbling": ["The peasants grumble that the lords' taxes are too heavy.",
+		[["Ease the taxes for a while (15 gold)", "Content people work faster for 2 minutes."], ["Send soldiers to keep order (needs a soldier in reserve)", "Calm returns."], ["Do nothing", "Work goes slower for 2 minutes."]]],
+	"strange_ship": ["A ship from far away anchors off your coast. Its sailors look pale and some are coughing, but its hold is full of goods.",
+		[["Let them land and trade", "Rare goods, but maybe sickness."], ["Turn them away", "Nothing happens."]]],
+}
+const CHOICE_WAIT := 120.0     # an unanswered question takes its last answer after this long (game seconds)
 
 var next_t: Dictionary = {}      # realm id -> game time of its next event
 var boosts: Array = []           # [realm id, what ("crops", "all", "hunter", "build"), bonus, until]
@@ -32,6 +50,7 @@ var blocked: Dictionary = {}     # building id -> [until, reason]
 var off: Dictionary = {}         # event id -> true when switched off
 var history: Array = []          # [time, realm id, event id, text] of the last events
 var rng := RandomNumberGenerator.new()
+var pending: Dictionary = {}     # realm id -> [event id, time asked]: a question waiting for your answer
 
 
 func _init() -> void:
@@ -62,6 +81,11 @@ func on_second() -> void:
 	for k in blocked.keys():
 		if sim.time >= float(blocked[k][0]):
 			blocked.erase(k)
+	for pid in pending.keys():
+		if sim.time - float(pending[pid][1]) > CHOICE_WAIT:
+			var q: Array = pending[pid]
+			var opts: Array = CHOICES[q[0]][1]
+			answer(sim.players[int(pid) - 1], opts.size() - 1)
 	for p: Sim.Player in sim.players:
 		if not p.alive:
 			continue
@@ -109,6 +133,10 @@ func _possible(p: Sim.Player) -> Array:
 			"storm": ok = cl != null and String(cl.weather[cl.biome_of(p)]) in ["storm", "blizzard"] and sim.realm_blds(p).any(func(b): return b.state == "build")
 			"bandits": ok = float(p.stock.get("gold", 0.0)) >= 5.0
 			"epidemic": ok = sim.feature_on("diseases") and sim.pop_total(p) >= 30
+			"pilgrims": ok = food >= 20.0 and not pending.has(p.id)
+			"comet": ok = not pending.has(p.id)
+			"grumbling": ok = p.noble > 0 and p.peasant >= 20 and not pending.has(p.id)
+			"strange_ship": ok = p.age >= 2 and not pending.has(p.id) and sim.realm_blds(p).any(func(b): return b.ty in ["harbour", "fisher", "saltworks"])
 		if ok:
 			out.append(k)
 	return out
@@ -128,6 +156,13 @@ func _happen(p: Sim.Player) -> void:
 		if r <= 0.0:
 			pick = k
 			break
+	if CHOICES.has(pick):
+		if p.ai:
+			_answer(p, pick, _ai_answer(p, pick))
+		else:
+			pending[p.id] = [pick, sim.time]
+			sim.emit_log("%s: %s Choose what to do." % [String(EVENTS[pick][0]), String(CHOICES[pick][0])], Color("e0c070"))
+		return
 	var text := _apply(p, pick)
 	if text == "":
 		return
@@ -261,6 +296,110 @@ func _apply(p: Sim.Player, k: String) -> String:
 	return ""
 
 
+## The question waiting for realm p's answer: {id, title, text, options: [[label, hint]...], left}, or {}.
+func question(p: Sim.Player) -> Dictionary:
+	if not pending.has(p.id):
+		return {}
+	var k: String = pending[p.id][0]
+	return {"id": k, "title": String(EVENTS[k][0]), "text": String(CHOICES[k][0]), "options": CHOICES[k][1],
+		"left": maxf(0.0, CHOICE_WAIT - (sim.time - float(pending[p.id][1])))}
+
+
+## Realm p answers its waiting question with option i.
+func answer(p: Sim.Player, i: int) -> void:
+	if not pending.has(p.id):
+		return
+	var k: String = pending[p.id][0]
+	pending.erase(p.id)
+	_answer(p, k, i)
+
+
+func _ai_answer(p: Sim.Player, k: String) -> int:
+	match k:
+		"pilgrims": return 1
+		"comet": return 1
+		"grumbling": return 0 if float(p.stock.get("gold", 0.0)) >= 20.0 else (1 if p.reserve > 0 else 2)
+		"strange_ship": return 1
+	return 0
+
+
+func _answer(p: Sim.Player, k: String, i: int) -> void:
+	var text := ""
+	match k:
+		"pilgrims":
+			match i:
+				0:
+					var fed := 0
+					for n in 10:
+						if sim.take_food(p) > 0.0:
+							fed += 1
+					var stay := mini(2 + rng.randi() % 3, maxi(0, sim.housing(p) - sim.pop_total(p))) if fed >= 8 else 0
+					p.peasant += stay
+					text = "you fed the pilgrims (%d food)%s." % [fed, (" and %d of them stayed as peasants" % stay) if stay > 0 else ""]
+				1:
+					var g := 3 + rng.randi() % 4
+					sim.give(p, "gold", g); sim.made(p, "gold", g)
+					text = "the pilgrims paid %d gold to pass." % g
+				_: text = "the pilgrims walked on."
+		"comet":
+			match i:
+				0:
+					var what := "candles" if float(p.stock.get("candles", 0.0)) >= 10.0 else ("beer" if float(p.stock.get("beer", 0.0)) >= 10.0 else "")
+					if what != "":
+						var got := sim.take(p, what, 10.0)
+						sim.used(p, what, got)
+						boosts.append([p.id, "all", 0.12, sim.time + 120.0])
+						text = "a day of prayers (10 %s) lifts every heart: all work 12%% faster for 2 minutes." % what
+					else:
+						boosts.append([p.id, "all", -0.05, sim.time + 60.0])
+						text = "there were no candles or beer for the prayers, and the people are uneasy: all work 5% slower for a minute."
+				1:
+					var rpts := 40.0 + 15.0 * p.age
+					p.rp += rpts
+					text = "your scholars measured the comet's path: %d research points." % roundi(rpts)
+				_:
+					boosts.append([p.id, "all", -0.05, sim.time + 60.0])
+					text = "the people are uneasy: all work 5% slower for a minute."
+		"grumbling":
+			match i:
+				0:
+					if float(p.stock.get("gold", 0.0)) >= 15.0:
+						var got := sim.take(p, "gold", 15.0)
+						sim.used(p, "gold", got)
+						boosts.append([p.id, "all", 0.06, sim.time + 120.0])
+						text = "you eased the taxes (15 gold); the peasants work 6% faster for 2 minutes."
+					else:
+						boosts.append([p.id, "all", -0.10, sim.time + 120.0])
+						text = "there was no gold to ease the taxes: work goes 10% slower for 2 minutes."
+				1:
+					if p.reserve > 0:
+						text = "soldiers kept order; the grumbling stopped."
+					else:
+						boosts.append([p.id, "all", -0.10, sim.time + 120.0])
+						text = "no soldiers to spare: work goes 10% slower for 2 minutes."
+				_:
+					boosts.append([p.id, "all", -0.10, sim.time + 120.0])
+					text = "the grumbling spread: work goes 10% slower for 2 minutes."
+		"strange_ship":
+			if i == 0:
+				var goods := ["spices", "silk", "porcelain", "coffee", "glass", "jewelry"]
+				var g: String = goods[rng.randi() % goods.size()]
+				var n := 6 + rng.randi() % 5
+				sim.give(p, g, n); sim.made(p, g, n)
+				text = "the sailors traded %d %s" % [n, GameData.res_name(g).to_lower()]
+				if sim.feature_on("diseases") and rng.randf() < 0.5:
+					var sick := _apply(p, "epidemic")
+					text += "; but " + (sick if sick != "" else "some fell ill") 
+				text += "."
+			else:
+				text = "the ship sailed on."
+	history.append([sim.time, p.id, k, text])
+	if history.size() > 60:
+		history.pop_front()
+	if not p.ai:
+		sim.emit_log("%s: %s" % [String(EVENTS[k][0]), text], Color("a0d070"))
+
+
 func _boost(p: Sim.Player, what: String) -> float:
 	var s := 0.0
 	for b in boosts:
@@ -373,7 +512,7 @@ func _fill() -> void:
 
 
 func save_state() -> Dictionary:
-	return {"next": next_t, "boosts": boosts, "blocked": blocked, "history": history, "rng": rng.state, "seed": rng.seed}
+	return {"next": next_t, "boosts": boosts, "blocked": blocked, "history": history, "rng": rng.state, "seed": rng.seed, "pending": pending}
 
 
 func load_state(d: Dictionary) -> void:
@@ -385,5 +524,8 @@ func load_state(d: Dictionary) -> void:
 	for k in d.get("blocked", {}):
 		blocked[int(k)] = d.blocked[k]
 	history = d.get("history", [])
+	pending = {}
+	for k in d.get("pending", {}):
+		pending[int(k)] = d.pending[k]
 	rng.seed = int(d.get("seed", 0))
 	rng.state = int(d.get("rng", 0))

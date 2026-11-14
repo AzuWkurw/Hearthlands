@@ -10,7 +10,7 @@ economy you do.
 ## Download
 
 The ready-made Windows game is on the [`downloads` branch](../../tree/downloads): download the zip,
-unzip it and run `Hearthlands.exe`. Current version: **v0.41.0 build 46** (see `CHANGELOG.md`).
+unzip it and run `Hearthlands.exe`. Current version: **v0.42.0 build 47** (see `CHANGELOG.md`).
 
 What is in the game now:
 
@@ -810,6 +810,16 @@ A mod in `user://data/techs.json` with the same id changes an existing tech; new
 
 The AI builds the buildings it knows by id. Your new buildings are available to you, and AI rivals keep
 playing with the standard set.
+
+## Events that ask you to choose, and allies
+
+Some random events ask you what to do, in a window: pilgrims at the gate (feed them, take a toll or
+send them on), a comet (prayers, the scholars, or nothing), grumbling over taxes (ease them, send
+soldiers, or nothing) and a strange ship (trade, maybe catching its sickness, or turn it away). An
+unanswered question takes its last answer after two game minutes; rivals choose at once.
+
+An ally at war asks you to join it (Diplomacy): accept and it trusts you more, refuse or let it lapse
+and it trusts you less. An ally whose trust falls low ends the alliance and stays at peace.
 
 ## Luxuries
 

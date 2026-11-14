@@ -390,6 +390,17 @@ static func accept(sim: Sim, id: int) -> String:
 				if relation(sim, pr.from, pr.to) != WAR: return "You are no longer at war."
 			"alliance":
 				if relation(sim, pr.from, pr.to) != PEACE: return "You are no longer at peace."
+			"help":
+				# your ally asked you to join its war
+				var foe := int(pr.get("target", 0))
+				if relation(sim, pr.from, pr.to) != ALLY: return "You are no longer allies."
+				if foe <= 0 or not sim.players[foe - 1].alive or relation(sim, pr.from, foe) != WAR: return "That war is over."
+				if relation(sim, pr.to, foe) != WAR:
+					declare_war(sim, int(pr.to), foe)
+				adjust(them, int(pr.to), 25.0)
+				say(sim, them, "A true friend! Together we will crush %s." % sim.players[foe - 1].name)
+				sim.diplomacy_changed.emit()
+				return ""
 			_:
 				if not has_goods(me, pr.want): return "You no longer have what they asked for."
 				if not has_goods(them, pr.give): return "%s no longer has what they offered." % them.name
@@ -403,7 +414,11 @@ static func decline(sim: Sim, id: int) -> void:
 		if int(pr.id) == id:
 			sim.proposals.erase(pr)
 			var who := sim.players[int(pr.from) - 1]
-			if String(pr.kind) == "tribute":
+			if String(pr.kind) == "help":
+				# an ally left to fight alone remembers it
+				adjust(who, int(pr.to), -18.0)
+				say(sim, who, "So that is what your friendship is worth.")
+			elif String(pr.kind) == "tribute":
 				adjust(who, int(pr.to), -20.0)
 				who.warned[int(pr.to)] = sim.time - 120.0
 				say(sim, who, "You will regret this.")
@@ -423,6 +438,8 @@ static func expire(sim: Sim) -> void:
 	for pr in sim.proposals.duplicate():
 		if sim.time - float(pr.t) > PROPOSAL_LIFE:
 			sim.proposals.erase(pr)
+			if String(pr.kind) == "help":
+				adjust(sim.players[int(pr.from) - 1], int(pr.to), -12.0)
 	if sim.proposals.size() != n:
 		sim.diplomacy_changed.emit()
 
@@ -458,6 +475,8 @@ static func ai_tick(sim: Sim, p: Sim.Player) -> void:
 		var j := sim.rng.randi() % (i + 1)
 		var t = others[i]; others[i] = others[j]; others[j] = t
 	for q in others:
+		if _ai_leave_alliance(sim, p, q):
+			return
 		var rel := relation(sim, p.id, q.id)
 		var op := opinion(p, q.id)
 		var ratio := strength(sim, p) / maxf(1.0, strength(sim, q))
@@ -498,8 +517,48 @@ static func ai_tick(sim: Sim, p: Sim.Player) -> void:
 			if op >= need and since(sim, p.id, q.id) > 240.0 and sim.rng.randf() < 0.4:
 				propose(sim, p.id, q.id, "alliance")
 				return
+		if rel == ALLY and not q.ai and _ai_call_for_help(sim, p, q):
+			return
 		if rel != WAR and sim.rng.randf() < (0.3 if not q.ai else 0.15) and _ai_offer_trade(sim, p, q):
 			return
+
+
+## An ally at war asks you to join it, once in a while for each war: say yes and it trusts you more,
+## say no (or let the offer lapse) and it trusts you less. Allies that keep being let down break the
+## alliance (their opinion falls below the line for keeping it).
+static func _ai_call_for_help(sim: Sim, p: Sim.Player, q: Sim.Player) -> bool:
+	for r in sim.players:
+		if not r.alive or r.id == p.id or r.id == q.id:
+			continue
+		if relation(sim, p.id, r.id) != WAR or relation(sim, q.id, r.id) == WAR:
+			continue
+		var k := "help:%d" % r.id
+		if sim.time - float(p.warned.get(k, -1e9)) < 480.0:
+			continue
+		p.warned[k] = sim.time
+		for pr in sim.proposals:
+			if int(pr.from) == p.id and pr.kind == "help":
+				return false
+		sim._prop_id += 1
+		sim.proposals.append({"id": sim._prop_id, "from": p.id, "to": q.id, "kind": "help", "give": {}, "want": {}, "t": sim.time, "target": r.id})
+		say(sim, p, "%s makes war on me. Stand with me, as allies should!" % r.name)
+		sim.emit_log("Your ally %s asks you to join its war against %s. Answer in Diplomacy." % [p.name, r.name], Color("e0b060"))
+		sim.diplomacy_changed.emit()
+		return true
+	return false
+
+
+## An ally whose trust has fallen low leaves the alliance (it stays at peace).
+static func _ai_leave_alliance(sim: Sim, p: Sim.Player, q: Sim.Player) -> bool:
+	if relation(sim, p.id, q.id) != ALLY or opinion(p, q.id) > 5.0:
+		return false
+	set_relation(sim, p.id, q.id, PEACE)
+	adjust(q, p.id, -10.0)
+	if not q.ai:
+		say(sim, p, "You have been no friend to me. Our alliance is over.")
+		sim.emit_log("%s ends its alliance with you (it stays at peace)." % p.name, Color("e0b060"))
+	sim.diplomacy_changed.emit()
+	return true
 
 
 ## Before going to war with you, a rival warns you once (and waits at least a minute).
