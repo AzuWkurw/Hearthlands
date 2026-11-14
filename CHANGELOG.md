@@ -1,5 +1,13 @@
 # Changelog
 
+## Build 48 (v0.43.0, 2026-11-14)
+
+A living world: buildings at work move, and snow settles on the roofs.
+
+- Working buildings show their work: the sawmill's frame saw goes up and down, sparks fly from the toolsmith's, weaponsmith's and armorer's anvils (and at the shipyard, smelter and steelworks), the paper mill's water wheel turns, the machine works' cogs turn, steam rises from the brewery's copper, the bathhouse's basin and the coffee roaster, and the carpenter saws at the trestle.
+- In winter, snow settles on the roofs of every building as it settles on the ground, and melts again in spring.
+- (Day and night in Settings still lights the windows of homes and workshops.)
+
 ## Build 47 (v0.42.0, 2026-11-14)
 
 Events that ask you to choose, and allies who ask for help.

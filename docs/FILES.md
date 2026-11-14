@@ -2,7 +2,7 @@
 
 Every source file with what it is for, grouped by part. Written by `tools/file_list.py` from the comment at the
 top of each file; run it again after adding files. For how the parts work together, read
-`docs/SOURCE_GUIDE.md`. Besides these 229 files there are 1073 pictures in `textures/` (made by
+`docs/SOURCE_GUIDE.md`. Besides these 229 files there are 1577 pictures in `textures/` (made by
 `tools/make_textures.py` and `tools/make_scenery.py`, or your own) and 76 sounds in `sounds/` (made by
 `tools/make_sounds.py`) and 8 pieces of music in `music/` (made by `tools/make_music.py`). Godot's
 `.import` files next to them are made by the editor.
@@ -37,7 +37,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `scripts/features/fires.gd` | 204 | Fires that spread. A fire starts in a building (a random event's fire, or a catapult's stone) and grows. A building on fire stops working, and when the fire has burned it down it is gone. Fire jumps to wooden neighbours within 3 tiles; buildings mostly of stone or brick do not catch, and nor do the headquarters, stores and stone forts. People from working wells within 10 tiles, and the crew of a fire station within 14, run with buckets: the more of them, the faster the fire dies. A fire left alone burns a building down in a minute or two. |
 | `scripts/features/fog.gd` | 324 | Fog of war, watch towers and scouts. You see only what your realm can see: your own land, a few tiles around each building, further from military buildings, 14 tiles from a watch tower with a scout inside, and around scouts out exploring. Land you have seen once stays on the map (explored), but darkened, and rival buildings there show as you last saw them; their soldiers and carriers show only in sight. Unexplored land is black. Scouts are trained at the scout lodge. Idle scouts can be sent to any spot on the map (the Send scout tool in the Military tab): one walks there and back, seeing 5 tiles around him, and turns back at the shore. Rivals are not limited by the fog (the computer plays without it). |
 | `scripts/features/geology.gd` | 363 | Geologists. What lies under the mountains is unknown until a geologist has surveyed it: ore veins don't show on the map, and mines can only be built on surveyed tiles with the right ore. Send geologist (Industry tab), then click a mountain in or near your land: an idle peasant takes a pickaxe from the store (he brings it back), walks there over land, checks up to 12 mountain tiles around the spot (18 with Prospecting) and plants a marker on each: coal, iron, gold, copper, granite or nothing, bigger for richer veins. The markers fade after five minutes but your realm remembers what was found; picking a mine to build shows every surveyed tile of its ore again. Prospecting also lets 4 geologists out at once instead of 2; Geological survey makes one find reveal its whole vein. Rivals send geologists too. |
-| `scripts/features/seasons.gd` | 648 | Seasons, biomes and weather. A year has four seasons of five game minutes each, starting in spring. The map is split into biomes: a cold northern taiga, a temperate middle, a dry southern steppe and wetland patches near water. Each biome has its own weather, which changes every one to two and a half minutes, and its own temperature (season + biome + weather; mountains are colder). Season, biome and weather speed up or slow down outdoor work, construction, and how much people eat. Other features (clothes, diseases) read the temperature through temp_at() and realm_temp(). |
+| `scripts/features/seasons.gd` | 655 | Seasons, biomes and weather. A year has four seasons of five game minutes each, starting in spring. The map is split into biomes: a cold northern taiga, a temperate middle, a dry southern steppe and wetland patches near water. Each biome has its own weather, which changes every one to two and a half minutes, and its own temperature (season + biome + weather; mountains are colder). Season, biome and weather speed up or slow down outdoor work, construction, and how much people eat. Other features (clothes, diseases) read the temperature through temp_at() and realm_temp(). |
 | `scripts/features/statistics.gd` | 379 | Production statistics: for every realm and every game minute, how much of each good was made and used, plus its population, buildings, soldiers and research. The Statistics window (F2) shows charts. |
 | `scripts/features/tool_quality.gd` | 201 | Tool quality. Every tool is crude, standard, fine or masterwork. The toolsmith's skill decides the quality: an apprentice makes crude and standard tools, a master fine and masterwork ones; the machine works does better still. Tools in store are kept as a pool with an average quality. A worker uses his tool every work cycle and it wears out: crude after 40 cycles, masterwork after 180. Then he takes a new one from the stores; if there is none, he works on with a worn-out tool, 25% slower. Better tools make work faster: crude -12%, standard +0%, fine +12%, masterwork +25%. Only matters when new workers need tools (the difficulty option). |
 | `scripts/features/wildlife.gd` | 326 | Wildlife you can see: deer and boars in and near the woods, hares in the open, wolves in the forests (more in the northern taiga). They wander, keep away from buildings, and have young (not in winter) up to what the land can feed. Hunters must find a real animal in their hunting grounds; each catch takes one, so over-hunting empties a forest for a while. Wolves now and then scare the herds of sheep and pig farms and dairies (the farm stops for a while) and take deer and hares themselves. Fish jump in the fishing grounds. |
@@ -48,7 +48,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 |---|---:|---|
 | `scripts/line_chart.gd` | 73 | A simple line chart: one line per series over the same time axis, newest on the right. Set `series` to [{"name": String, "color": Color, "values": Array of numbers}, ...] and `x_label`. |
 | `scripts/map_chunks.gd` | 485 | Bakes the parts of the map that rarely change (ground, roads, scenery, ore, territory) into large images of 16 x 16 tiles called chunks. Drawing a few dozen chunks each frame is far cheaper than drawing thousands of separate tiles. A chunk is baked again only when something inside it changes. Where two kinds of ground meet, the higher one (beach over water, grass over beach, mountain over grass) spills softly over the edge. Open water is baked half transparent: the ground shader uses that as a marker to make the water shimmer. |
-| `scripts/map_view.gd` | 2841 | Draws the world and turns mouse input into tile clicks. The ground, roads, scenery and borders come from pre-baked chunks (map_chunks.gd), drawn by a child layer whose shader makes the water shimmer. Everything that moves or changes often (buildings, carriers, soldiers, workers, smoke, selections, tool previews) is drawn every frame on top. Animations follow the game clock, so they freeze while the game is paused and speed up with it. |
+| `scripts/map_view.gd` | 2924 | Draws the world and turns mouse input into tile clicks. The ground, roads, scenery and borders come from pre-baked chunks (map_chunks.gd), drawn by a child layer whose shader makes the water shimmer. Everything that moves or changes often (buildings, carriers, soldiers, workers, smoke, selections, tool previews) is drawn every frame on top. Animations follow the game clock, so they freeze while the game is paused and speed up with it. |
 | `scripts/minimap.gd` | 241 | Whole-map overview: terrain, roads, territory, military buildings and the camera frame. Its images double as the far-zoom picture of the main map. |
 | `scripts/tech_tree_view.gd` | 611 | The tech tree drawn as a map: ages run left to right, each band is a branch of the realm, and lines run from what a tech needs to what it leads to. The places come from data/techs.json ("lane", "col", "row", worked out to cross as few lines as possible); techs added by a mod without them are put in an "Other" band. Repeatable studies sit in the Mastery band at the bottom. Drag (or the arrow keys) to move, the wheel to scroll, Ctrl + wheel or a pinch to zoom. |
 | `scripts/tex.gd` | 201 | Texture lookup with user overrides. For an id like "bld_sawmill" the game looks for, in order: 1. user://textures/bld_sawmill.png   (your custom texture, any size) 2. res://textures/bld_sawmill.png    (the default shipped with the project) 3. a magenta placeholder, so a missing file is obvious in game. |
@@ -94,7 +94,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 
 | File | Lines | What it is |
 |---|---:|---|
-| `data/buildings.json` | 2848 | Every building: name, group, size, cost, build time, worker, inputs and outputs, work cycle, garrison, store room, art style and info text. |
+| `data/buildings.json` | 3340 | Every building: name, group, size, cost, build time, worker, inputs and outputs, work cycle, garrison, store room, art style and info text. |
 | `data/campaign.json` | 397 | The campaign: its chapters, their place on the campaign map, story before and after, what carries over, and the mission of each. |
 | `data/lang_de.json` | 292 | German translation of the interface. |
 | `data/map_iron_coast.json` | 1 | The hand-made map of the Iron Coast mission (made by tools/make_mission_map.gd). |
@@ -262,7 +262,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 | File | Lines | What it is |
 |---|---:|---|
 | `tools/bld_tex.py` | 243 | Surface textures for the building pictures (used by make_textures.py). |
-| `tools/bld_variants.py` | 2673 | Own pictures for buildings that share a drawing style in make_textures.py. |
+| `tools/bld_variants.py` | 2700 | Own pictures for buildings that share a drawing style in make_textures.py. |
 | `tools/bump_build.py` | 63 | Raise the build number before a release. |
 | `tools/check_data.py` | 104 | Check the data files (and optionally a mod's JSON files) for mistakes. |
 | `tools/extract_strings.py` | 76 | Collect the interface text from the scripts into the translation files. |
@@ -273,7 +273,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `tools/make_music.py` | 545 | Compose and render Hearthlands' music into ../music (OGG Vorbis, stereo, 44.1 kHz). |
 | `tools/make_scenery.py` | 273 | Trees, mountain peaks and boulders for the map, drawn with light and shade so they look round. |
 | `tools/make_sounds.py` | 542 | Generate Hearthlands' sound effects and ambience into ../sounds. |
-| `tools/make_textures.py` | 1720 | Generate Hearthlands' default textures into ../textures. |
+| `tools/make_textures.py` | 1772 | Generate Hearthlands' default textures into ../textures. |
 | `tools/readme_tables.py` | 128 | Rebuilds the Resources, Buildings and Research tree tables in README.md from the data files. |
 | `tools/tech_icons.py` | 823 | Emblems for the research icons (used by make_textures.techs()). |
 
@@ -281,9 +281,9 @@ top of each file; run it again after adding files. For how the parts work togeth
 
 | File | Lines | What it is |
 |---|---:|---|
-| `CHANGELOG.md` | 663 | What changed in each build. |
-| `README.md` | 990 | How to play, the rules, controls, settings, modding and the project layout. |
-| `docs/FILES.md` | 289 | This list (written by tools/file_list.py). |
+| `CHANGELOG.md` | 671 | What changed in each build. |
+| `README.md` | 998 | How to play, the rules, controls, settings, modding and the project layout. |
+| `docs/FILES.md` | 292 | This list (written by tools/file_list.py). |
 | `docs/SOURCE_GUIDE.md` | 439 | A tour of the code for programmers: the parts, how a game tick runs, where things live. |
 | `docs/SUGGESTIONS.md` | 203 | Ideas and their status after each round of work. |
 | `export_presets.cfg` | 61 | Godot export settings for the Windows and Linux builds. |
