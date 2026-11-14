@@ -2,6 +2,6 @@
 
 The compiled Windows game. Click the zip, then **Download raw file** (or "View raw"). Unzip it and run Hearthlands.exe.
 
-Latest: **Hearthlands-v0.38.0-build43.2-Windows.zip**
+Latest: **Hearthlands-v0.38.0-build43.3-Windows.zip**
 
 The source code is on the `main` branch.
