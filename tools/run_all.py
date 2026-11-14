@@ -42,6 +42,7 @@ TESTS = [
 	("sea war",           "sea_war_test", [], False, True, [r"SEA WAR TEST: PASS"]),
 	("navy",              "navy_test", [], False, True, [r"NAVY TEST: PASS"]),
 	("economy",           "econ_test", [], False, True, [r"ECON TEST: PASS"]),
+	("priority sets",     "prio2_test", [], False, True, [r"PRIO2 TEST: PASS"]),
 	("priorities",        "priorities_test", [], False, True, [r"PRIORITIES TEST: PASS"]),
 	("age paths",         "age_bonus_test", [], False, False, [r"age bonus test: ok"]),
 	("bridges",           "bridge_test", [], False, True, [r"bridge test: ok"]),

@@ -312,6 +312,8 @@ class Player:
 	var kids: Array = []                   # children: the time each was born (SimPeople.families)
 	var born := 0.0                        # births building up to the next child
 	var schooled := 0                      # children who came out of school as artisans
+	var prio_t := -1000.0                  # rivals: when they last chose a set of priorities
+	var prio_set := ""                     # rivals: the set of priorities they use now (PrioPresets)
 	var general_xp := 0.0                  # the realm's general: his experience (SimMilitary.GENERAL_XP)
 	var general_uid := 0                   # the column he leads now (0: at home)
 	var general_back := 0.0                # after he falls, a new general is ready at this time

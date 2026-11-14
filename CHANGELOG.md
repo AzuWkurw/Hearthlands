@@ -1,5 +1,14 @@
 # Changelog
 
+## Build 54 (v0.49.0, 2026-11-14)
+
+Build 54: priority sets and rivals that use priorities.
+- Sets in the transport and worker priority windows: Build up, War, Feed everyone and Research put the numbers for that aim at once; save your own numbers as a named set, kept for later games.
+- Drag a row onto another to move it (it takes that row's number, one less when dragged up, one more when dragged down).
+- A building's info shows its kind's worker number and the transport number of each good it takes, and you can change them there.
+- Rivals set priorities: food first when hungry, arms first at war when weapons run short, building materials first while many sites wait.
+- The README now lists builds 53 and 54 (the 53 line was missing).
+
 ## Build 53 (v0.48.0, 2026-11-14)
 
 Build 53: prices that move, children and schooling, the bottleneck finder, the chain on the map.

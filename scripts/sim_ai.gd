@@ -355,6 +355,7 @@ func _ai_build(p: Sim.Player, ty: String) -> String:
 func ai_think(p: Sim.Player) -> void:
 	_free_pid = -1
 	_plan_town(p)
+	_ai_priorities(p)
 	var isl := sim.naval.island(p)
 	if p.crowded or isl:
 		sim.sea.ai_expedition(p)
@@ -778,6 +779,36 @@ func _ai_landing(p: Sim.Player) -> bool:
 			if sim.military.launch_landing(h, c[1], n) == "":
 				return true
 	return false
+
+
+## A rival sets its priorities as a player would (build 54), once a minute: food first when its people
+## go hungry, arms first at war when weapons run short, building materials first while many sites
+## wait, and the usual numbers otherwise.
+func _ai_priorities(p: Sim.Player) -> void:
+	if sim.time - p.prio_t < 60.0:
+		return
+	p.prio_t = sim.time
+	var want := ""
+	var pop := sim.pop_total(p)
+	var sites := 0
+	for b: Sim.Bld in sim.realm_blds(p):
+		if b.state == "build":
+			sites += 1
+	if p.starve > 0 or sim.food_total(p) < pop * 0.25 + 8.0:
+		want = "Feed everyone"
+	elif _at_war_any(p) and float(p.stock.get("weapons", 0.0)) < 4.0 and sim.time > 15 * 60.0:
+		want = "War"
+	elif sites >= 4 and float(p.stock.get("planks", 0.0)) < 12.0:
+		want = "Build up"
+	if want == p.prio_set:
+		return
+	p.prio_set = want
+	if want == "":
+		p.carry_rank = {}
+		p.work_rank = {}
+	else:
+		PrioPresets.apply_named(p, want)
+	sim.staffing(p)
 
 
 func _at_war_any(p: Sim.Player) -> bool:

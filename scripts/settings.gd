@@ -48,6 +48,7 @@ var details := true                       # grass tufts, reeds, foam, snow on pe
 var raised := true                        # hills drawn raised (2.5D); off: a flat map
 var guide := true                         # show the first-game guide in a new game
 var keys := {}                            # action -> key code the player chose (Keys in Settings)
+var prio_presets := {}                    # name -> {"carry": {...}, "work": {...}}: priority sets the player saved
 var sound_on := true
 var master_vol := 0.8
 var sfx_vol := 0.8
@@ -82,6 +83,7 @@ func load_file() -> void:
 	details = bool(cf.get_value("display", "details", details))
 	language = String(cf.get_value("display", "language", language))
 	keys = cf.get_value("game", "keys", {})
+	prio_presets = cf.get_value("game", "prio_presets", {})
 	sound_on = bool(cf.get_value("sound", "on", sound_on))
 	master_vol = float(cf.get_value("sound", "master", master_vol))
 	sfx_vol = float(cf.get_value("sound", "effects", sfx_vol))
@@ -114,6 +116,7 @@ func save_file() -> void:
 	cf.set_value("display", "cb_colors", cb_colors)
 	cf.set_value("display", "language", language)
 	cf.set_value("game", "keys", keys)
+	cf.set_value("game", "prio_presets", prio_presets)
 	cf.set_value("sound", "on", sound_on)
 	cf.set_value("sound", "master", master_vol)
 	cf.set_value("sound", "effects", sfx_vol)

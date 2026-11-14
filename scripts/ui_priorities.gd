@@ -21,6 +21,8 @@ var head: Label
 var grid: GridContainer
 var show_all: CheckBox
 var _spins := {}         # good or building type -> SpinBox
+var presets: OptionButton
+var save_name: LineEdit
 
 
 func _init(p_owner: Main, p_mode: int) -> void:
@@ -63,6 +65,30 @@ func build() -> void:
 			main.sim.staffing(p)
 		refresh()))
 	v.add_child(top)
+	# ready-made sets, and your own (build 54): transport and worker numbers together
+	var pr := HBoxContainer.new()
+	pr.add_theme_constant_override("separation", 8)
+	pr.add_child(main._label(tr("Sets:"), 14, Main.DIM))
+	presets = OptionButton.new()
+	presets.custom_minimum_size = Vector2(170, 0)
+	pr.add_child(presets)
+	var use := main._button(tr("Use"), func(): _use_preset())
+	use.tooltip_text = tr("Puts this set's transport and worker numbers on your realm (all others back to 5).")
+	pr.add_child(use)
+	save_name = LineEdit.new()
+	save_name.placeholder_text = tr("name for your set")
+	save_name.custom_minimum_size = Vector2(150, 0)
+	pr.add_child(save_name)
+	var sv := main._button(tr("Save"), func(): _save_preset())
+	sv.tooltip_text = tr("Keeps your transport and worker numbers now as a set of your own, for this and later games.")
+	pr.add_child(sv)
+	var dl := main._button(tr("Delete"), func(): _delete_preset())
+	dl.tooltip_text = tr("Deletes the chosen set of your own.")
+	pr.add_child(dl)
+	v.add_child(pr)
+	var hint := main._label(tr("Drag a row onto another to move it: it takes that row's number, one less when dragged up, one more when dragged down."), 12, Main.DIM)
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(hint)
 	var sc := ScrollContainer.new()
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -81,6 +107,7 @@ func toggle() -> void:
 	if win.visible:
 		win.visible = false
 		return
+	_fill_presets()
 	refresh()
 	win.popup_centered()
 
@@ -91,6 +118,7 @@ func refresh() -> void:
 		grid.remove_child(c)
 		c.queue_free()
 	_spins = {}
+	_order = []
 	var sim: Sim = main.sim
 	var p := sim.human()
 	var items := []        # [key, name, icon, note]
@@ -127,13 +155,25 @@ func refresh() -> void:
 		var rb := _rank(p, String(b[0]))
 		return ra < rb or (ra == rb and String(a[1]) < String(b[1])))
 	for it in items:
-		var ic := TextureRect.new()
+		var ic := DragIcon.new()
+		ic.key = String(it[0])
+		ic.ui = self
+		ic.mouse_filter = Control.MOUSE_FILTER_STOP
+		ic.tooltip_text = tr("Drag onto another row")
 		ic.texture = it[2]
 		ic.custom_minimum_size = Vector2(28, 28)
 		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		grid.add_child(ic)
-		grid.add_child(main._label(String(it[1]), 14))
+		var nl0 := DragName.new()
+		nl0.text = String(it[1])
+		nl0.add_theme_font_size_override("font_size", 14)
+		nl0.key = String(it[0])
+		nl0.ui = self
+		nl0.mouse_filter = Control.MOUSE_FILTER_STOP
+		nl0.mouse_default_cursor_shape = Control.CURSOR_DRAG
+		grid.add_child(nl0)
+		_order.append(String(it[0]))
 		var sp := SpinBox.new()
 		sp.min_value = 1
 		sp.max_value = 9
@@ -172,3 +212,114 @@ func _used(p: Sim.Player, id: String) -> bool:
 		if b.def.get("in", {}).has(id) or b.def.get("out", {}).has(id) or b.def.get("cost", {}).has(id):
 			return true
 	return false
+
+
+# ---------------------------------------------------------------- sets and dragging (build 54)
+var _order: Array = []     # the keys in the order shown
+
+
+func _fill_presets() -> void:
+	presets.clear()
+	for name in PrioPresets.BUILT_IN:
+		presets.add_item(tr(name))
+		presets.set_item_metadata(presets.item_count - 1, ["built", name])
+		presets.set_item_tooltip(presets.item_count - 1, tr(String(PrioPresets.BUILT_IN[name][0])))
+	for name in main.settings.prio_presets:
+		presets.add_item(String(name) + " " + tr("(yours)"))
+		presets.set_item_metadata(presets.item_count - 1, ["mine", name])
+	var cur := PrioPresets.current(main.sim.human())
+	for i in presets.item_count:
+		if (presets.get_item_metadata(i) as Array)[1] == cur:
+			presets.select(i)
+
+
+func _use_preset() -> void:
+	if presets.selected < 0:
+		return
+	var md: Array = presets.get_item_metadata(presets.selected)
+	var p := main.sim.human()
+	if md[0] == "built":
+		PrioPresets.apply_named(p, String(md[1]))
+	else:
+		var e: Dictionary = main.settings.prio_presets.get(md[1], {})
+		PrioPresets.apply(p, e.get("carry", {}), e.get("work", {}))
+	main.sim.staffing(p)
+	main._show_hint(tr("Priorities set: %s") % presets.get_item_text(presets.selected), 2.5)
+	refresh()
+	# the other window shows the other half of the set
+	var other: UiPriorities = main.work_prio_ui if mode == MODE_CARRY else main.carry_prio_ui
+	if other.win.visible:
+		other.refresh()
+
+
+func _save_preset() -> void:
+	var name := save_name.text.strip_edges()
+	if name == "":
+		main._show_hint(tr("Give your set a name first."), 2.5)
+		return
+	var p := main.sim.human()
+	main.settings.prio_presets[name] = {"carry": p.carry_rank.duplicate(), "work": p.work_rank.duplicate()}
+	main.settings.save_file()
+	save_name.text = ""
+	_fill_presets()
+	main._show_hint(tr("Saved your set \"%s\".") % name, 2.5)
+
+
+func _delete_preset() -> void:
+	if presets.selected < 0:
+		return
+	var md: Array = presets.get_item_metadata(presets.selected)
+	if md[0] != "mine":
+		main._show_hint(tr("Only sets of your own can be deleted."), 2.5)
+		return
+	main.settings.prio_presets.erase(md[1])
+	main.settings.save_file()
+	_fill_presets()
+
+
+## Row `from` was dragged onto row `onto`: it takes that row's number, one less when it moved up (so it
+## comes before it), one more when it moved down.
+func move(from: String, onto: String) -> void:
+	if from == onto:
+		return
+	var p := main.sim.human()
+	var r := _rank(p, onto)
+	var up := _order.find(from) > _order.find(onto)
+	_set_rank(from, clampi(r - 1 if up else r + 1, 1, 9))
+	refresh()
+
+
+class DragName extends Label:
+	var key := ""
+	var ui: UiPriorities
+
+	func _get_drag_data(_at: Vector2) -> Variant:
+		var l := Label.new()
+		l.text = text
+		set_drag_preview(l)
+		return {"prio_key": key}
+
+	func _can_drop_data(_at: Vector2, data: Variant) -> bool:
+		return data is Dictionary and (data as Dictionary).has("prio_key")
+
+	func _drop_data(_at: Vector2, data: Variant) -> void:
+		ui.move(String(data.prio_key), key)
+
+
+class DragIcon extends TextureRect:
+	var key := ""
+	var ui: UiPriorities
+
+	func _get_drag_data(_at: Vector2) -> Variant:
+		var t := TextureRect.new()
+		t.texture = texture
+		t.custom_minimum_size = Vector2(28, 28)
+		t.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		set_drag_preview(t)
+		return {"prio_key": key}
+
+	func _can_drop_data(_at: Vector2, data: Variant) -> bool:
+		return data is Dictionary and (data as Dictionary).has("prio_key")
+
+	func _drop_data(_at: Vector2, data: Variant) -> void:
+		ui.move(String(data.prio_key), key)

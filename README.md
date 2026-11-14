@@ -10,7 +10,7 @@ economy you do.
 ## Download
 
 The ready-made Windows game is on the [Releases page](../../releases/latest): download the
-`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.48.0 build 53** (see
+`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.49.0 build 54** (see
 `CHANGELOG.md`). Every build is a release of its own, made by GitHub Actions
 (`.github/workflows/release.yml`) when a new version reaches `main`; older builds up to 50 are also
 on the [`downloads` branch](../../tree/downloads).
@@ -31,7 +31,7 @@ What is in the game now:
 
 The full plan is in the [roadmap](https://claude.ai/artifact/YVAWwJGUN4FRBYtpz3zgQh).
 
-Done (builds 43 to 53):
+Done (builds 43 to 54):
 
 | Build | What came in |
 |---|---|
@@ -48,6 +48,8 @@ Done (builds 43 to 53):
 | 50 | Transport priorities and worker priorities in numbers (1 to 9), each in its own window |
 | 51 | Smoother big maps (buildings drawn once into a layer and kept), downloads on GitHub Releases |
 | 52 | Warships from a naval yard (guard your harbours, escort landings), coastal forts with guns, field depots that feed armies far from home, generals who gain levels, rivals that take to the sea from islands |
+| 53 | Market prices that move (sell and buy at your market, M), children who grow up and go to school, a bottleneck finder (N), the production chain drawn on the map, rivals that brew beer and hold festivals |
+| 54 | Priority sets (Build up, War, Feed everyone, Research, and your own), drag rows to reorder, rivals that set priorities, the numbers in each building's info |
 
 Later: a story campaign through the ages, multiplayer, scripted scenarios, a chronicle at the end of a
 game, more animations, music for each age, and quality-of-life features (a production chain overlay,
@@ -860,6 +862,16 @@ Two windows, as in The Settlers II, where 1 comes first, 9 last and 5 is as usua
 
 A building's own priority (High, Normal, Low or Paused in its info) still comes first: the numbers
 order the buildings within it. The numbers are saved with the game.
+
+- **Sets** (in both windows): *Build up*, *War*, *Feed everyone* and *Research* put the transport and
+  worker numbers for that aim at once (all others back to 5). Save your own numbers as a set with a
+  name; your sets are kept for later games.
+- **Drag a row** onto another to move it: it takes that row's number, one less when dragged up, one
+  more when dragged down.
+- **In a building's info:** its kind's worker number and the transport number of each good it takes,
+  changed right there.
+- **Rivals** use the sets too: food first when their people go hungry, arms first at war when weapons
+  run short, building materials first while many sites wait.
 
 ## War at sea and army supplies
 

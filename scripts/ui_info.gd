@@ -208,6 +208,9 @@ func _refresh_sel() -> void:
 			kb.set_pressed_no_signal((b.keep if b.keep > 0 else 2) == k)
 			kb.tooltip_text = tr("Carriers bring enough for %d work cycle%s (food for %d). More keeps it working through gaps; less leaves more in the stores for others.") % [k, "s" if k > 1 else "", maxi(1, k / 2)]
 			main.prio_row.add_child(kb)
+	# the numbers of the priority windows for this kind and its goods (build 54), changed from here too
+	if b.p == 1 and b.state == "ready" and (String(b.def.get("worker", "")) != "" or b.def.has("in")):
+		_prio_numbers(b)
 	# a farm: which crop it sows (seeds come from research)
 	if b.p == 1 and Crops.is_farm(b) and b.state != "dead":
 		_crop_ui(b)
@@ -597,3 +600,51 @@ func _garrison_ui(b: Sim.Bld) -> void:
 
 func me_warships() -> int:
 	return main.sim.human().warships
+
+
+## A row with the worker number of building b's kind (L) and the transport number of each good it
+## takes (K): 1 first, 9 last, 5 as usual.
+func _prio_numbers(b: Sim.Bld) -> void:
+	var p := main.sim.human()
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 4)
+	if String(b.def.get("worker", "")) != "":
+		var wl := main._label(tr("Worker no."), 13, Main.DIM)
+		wl.tooltip_text = tr("Worker priority of all your %s (L): kinds with a lower number get workers first.") % String(b.def.name).to_lower()
+		row.add_child(wl)
+		var ty := b.ty
+		row.add_child(_num_box(int(p.work_rank.get(ty, SimLogistics.RANK_DEFAULT)), func(v: int):
+			var pp := main.sim.human()
+			if v == SimLogistics.RANK_DEFAULT: pp.work_rank.erase(ty)
+			else: pp.work_rank[ty] = v
+			main.sim.staffing(pp)))
+	var inp: Dictionary = b.def.get("in", {})
+	if not inp.is_empty():
+		var tl := main._label(tr("  Transport no."), 13, Main.DIM)
+		tl.tooltip_text = tr("Transport priority of each good it takes (K): goods with a lower number are carried first.")
+		row.add_child(tl)
+		for k in inp:
+			var key := String(k)
+			var ic := TextureRect.new()
+			ic.texture = Tex.get_tex("res_bread" if key == "food" else "res_" + key)
+			ic.custom_minimum_size = Vector2(20, 20)
+			ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			ic.tooltip_text = tr("Any food") if key == "food" else GameData.res_name(key)
+			row.add_child(ic)
+			row.add_child(_num_box(int(p.carry_rank.get(key, SimLogistics.RANK_DEFAULT)), func(v: int):
+				var pp := main.sim.human()
+				if v == SimLogistics.RANK_DEFAULT: pp.carry_rank.erase(key)
+				else: pp.carry_rank[key] = v))
+	main.sel_actions.add_child(row)
+
+
+func _num_box(v: int, cb: Callable) -> SpinBox:
+	var sp := SpinBox.new()
+	sp.min_value = 1
+	sp.max_value = 9
+	sp.step = 1
+	sp.value = v
+	sp.custom_minimum_size = Vector2(64, 0)
+	sp.value_changed.connect(func(x): cb.call(int(x)))
+	return sp
