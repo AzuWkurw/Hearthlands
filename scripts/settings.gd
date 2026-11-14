@@ -52,6 +52,7 @@ var sound_on := true
 var master_vol := 0.8
 var sfx_vol := 0.8
 var amb_vol := 0.5
+var music_vol := 0.55
 
 
 func load_file() -> void:
@@ -85,6 +86,7 @@ func load_file() -> void:
 	master_vol = float(cf.get_value("sound", "master", master_vol))
 	sfx_vol = float(cf.get_value("sound", "effects", sfx_vol))
 	amb_vol = float(cf.get_value("sound", "ambience", amb_vol))
+	music_vol = float(cf.get_value("sound", "music", music_vol))
 
 
 func save_file() -> void:
@@ -116,6 +118,7 @@ func save_file() -> void:
 	cf.set_value("sound", "master", master_vol)
 	cf.set_value("sound", "effects", sfx_vol)
 	cf.set_value("sound", "ambience", amb_vol)
+	cf.set_value("sound", "music", music_vol)
 	# keep sections other parts of the game store here (the random events list)
 	var old := ConfigFile.new()
 	if old.load(PATH) == OK and old.has_section("events"):

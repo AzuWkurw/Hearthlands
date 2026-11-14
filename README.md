@@ -101,7 +101,7 @@ Exporting needs Godot 4.3's export templates (in the editor: Editor > Manage Exp
 | Priority | Select your building: High, Normal, Low or Paused buttons. Page Up / Page Down raise or lower it, P pauses and resumes |
 | Demolish | The Demolish tool on the toolbar, then click your building; or select it and press Demolish or the Delete key. A window lists what you get back and what is lost; Enter demolishes, Esc keeps it. "Don't ask again" (or the option under Textures and mods) turns the question off |
 | Production targets | T, the button in Stores, or click a good and use − / + to set how many to keep |
-| Settings | Settings button or F10: renderer (OpenGL or Vulkan), display mode, resolution, interface size, VSync, frame-rate limit, animations, sound and volumes, game features |
+| Settings | Settings button or F10: renderer (OpenGL or Vulkan), display mode, resolution, interface size, VSync, frame-rate limit, animations, sound and volumes (music, effects, ambience), game features |
 | Production statistics | F2, or the Statistics button: goods made and used per minute, every realm's growth and a table of where you stand, and Borders: everyone's land minute by minute, to play back (land you have not seen stays dark until the game is over) |
 | Event log | E, or the Events button. Drag its title to move it and its edges to resize it. Go on an event moves the camera to where it happened |
 | Climate | F4, or the Climate button: seasons, biomes, weather and their effects |
@@ -211,6 +211,14 @@ Exporting needs Godot 4.3's export templates (in the editor: Editor > Manage Exp
   garrisons help defend each other. Rivals make offers to you and treaties with each other. Once at least
   half the rivals are defeated, an alliance with everyone left is an allied victory, and an ally reaching
   the Industrial Revolution counts as a shared victory.
+- **Sound and music.** Four calm pieces (harp, lute, recorder, fiddle) play in turn with silence between
+  them; a war theme takes over while your land is attacked or your soldiers fight, and short cues mark a
+  new age, victory and defeat. Sounds of the world come from where they happen on screen (left or right,
+  quieter further off): axes, saws, anvils, picks, spades, nets, mill wheels, building sites, trees
+  falling, cows, sheep, pigs, the chapel bell, wolves, battles, volleys and marching columns. The
+  ambience follows what you look at and the weather there: birds over meadows and forests, waves on a
+  shore, wind over mountains and in winter, rain and thunderstorms, crickets in summer, a town's bustle,
+  the din of a battle, burning buildings. Music, effects and ambience have their own volumes in Settings.
 - **Building sites.** *Bell when done* in a site's info box plays a sound and says so when it is finished.
   While placing a military building, the spots that would claim the most new land show "+N".
 - **Saving.** Name a save, or use F5/F9 for a quick slot. The game autosaves every 5 minutes of play.
@@ -847,7 +855,7 @@ scripts/
   map_chunks.gd  bakes the map into 16x16-tile images so it draws quickly, blending terrain edges
   tex.gd         texture lookup with user overrides
   settings.gd    options kept between games: renderer, display, resolution, frame rate, sound
-  sound.gd       sound effects and ambience
+  sound.gd       music, sound effects and ambience (mixer buses, sounds placed on screen)
   version.gd     version and build number
   (saves: Sim.to_save / from_save, written compressed by main.gd)
 shaders/
@@ -855,7 +863,8 @@ shaders/
 mods_examples/   an example script mod
 data/            resources, buildings, research tree, population needs, trades
 textures/        default textures (PNG)
-sounds/          sound effects and ambience loops (WAV, made by tools/make_sounds.py)
+sounds/          sound effects (WAV, longer ones OGG) and ambience loops (OGG), made by tools/make_sounds.py
+music/           the music (OGG), composed and rendered by tools/make_music.py
 tools/
   run_all.py         runs every test and says which passed ("quick" for the fast ones)
   check_data.py      checks data/*.json (and mods) for unknown goods, techs and sizes
@@ -869,6 +878,7 @@ tools/
   shot_b37.gd, shot_traffic.gd, shot_bridge.gd   screenshots of the build 37 additions
   shot_scenery.gd, shot_editor.gd, shot_editor2.gd   screenshots of the scenery and the map editor
   make_sounds.py     regenerates the sounds
+  make_music.py      composes and renders the music (the tunes are written out in it)
   bump_build.py      raises the build number before a release
   make_build.py      makes a whole release: version, checks, exports, zips, commit
   readme_tables.py   rebuilds the resource, building and research tables in this README from the data
@@ -886,7 +896,7 @@ tools/
   climate_test.gd    plays the same AI game with and without the optional features and compares them
   shot_features.gd   screenshots of the features (summer, rain, winter, windows)
   oldsave_test.gd    loads saves from older builds and plays on
-  sound_test.gd      checks that every sound loads and the right ones play
+  sound_test.gd      checks that every sound loads, the music follows the game and sounds play where they are
   fog_test.gd        tests carried materials, the fog of war and scouts
   shot_fog.gd        screenshots of the fog, a scout and a watch tower
   geo_test.gd        tests geologists: hidden ore, surveying, mines, rivals

@@ -107,13 +107,15 @@ def main():
                 break
     n_tex = len([f for f in os.listdir(os.path.join(ROOT, "textures")) if f.endswith(".png")])
     n_snd = len([f for f in os.listdir(os.path.join(ROOT, "sounds")) if not f.endswith(".import")])
+    n_mus = len([f for f in os.listdir(os.path.join(ROOT, "music")) if f.endswith(".ogg")])
     total = sum(len(v) for v in by_group.values())
     out = ["# Hearthlands source files", "",
            "Every source file with what it is for, grouped by part. Written by `tools/file_list.py` from the comment at the",
            "top of each file; run it again after adding files. For how the parts work together, read",
            "`docs/SOURCE_GUIDE.md`. Besides these %d files there are %d pictures in `textures/` (made by" % (total, n_tex),
            "`tools/make_textures.py` and `tools/make_scenery.py`, or your own) and %d sounds in `sounds/` (made by" % n_snd,
-           "`tools/make_sounds.py`). Godot's `.import` files next to them are made by the editor.", ""]
+           "`tools/make_sounds.py`) and %d pieces of music in `music/` (made by `tools/make_music.py`). Godot's" % n_mus,
+           "`.import` files next to them are made by the editor.", ""]
     for name, _ in GROUPS:
         rows = by_group[name]
         if not rows:

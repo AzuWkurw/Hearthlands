@@ -45,6 +45,7 @@ TESTS = [
 	("workers and editor", "econ2_test", [], False, True, [r"ECON2 TEST: PASS"]),
 	("map editor",        "editor_test", [], True, True, [r"EDITOR TEST: PASS"]),
 	("ruins and bandits", "places_test", [], False, True, [r"PLACES TEST: PASS"]),
+	("sound and music",   "sound_test", [], True, True, [r"SOUND TEST: PASS"]),
 	("campaign",          "campaign_test", [], True, False, [r"campaign test: ok"]),
 	("spreading fires",   "fire_test", [], False, True, [r"fire test: ok"]),
 	("small touches",     "touches_test", [], True, False, [r"touches test: ok"]),

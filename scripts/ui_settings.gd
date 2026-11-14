@@ -240,7 +240,7 @@ func set_body_sound_rows(g: GridContainer) -> void:
 	_set_row(g, "Sound", _check("Sound on", st.sound_on, func(on):
 		st.sound_on = on
 		st.save_file()))
-	for row in [["Volume", "master_vol"], ["Effects", "sfx_vol"], ["Ambience", "amb_vol"]]:
+	for row in [["Volume", "master_vol"], ["Music", "music_vol"], ["Effects", "sfx_vol"], ["Ambience", "amb_vol"]]:
 		var sl := HSlider.new()
 		sl.min_value = 0.0
 		sl.max_value = 1.0

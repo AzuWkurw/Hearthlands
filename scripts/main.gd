@@ -1469,6 +1469,7 @@ func _on_tile(t: Vector2i) -> void:
 		var r := sim.place(ty, t.x, t.y, sim.human(), view.door, settings.auto_roads)
 		if r != "":
 			_show_hint(r, 2.5)
+			sound.play("deny", 0.7)
 		else:
 			if moving_id != 0:
 				var nb0 := sim.bld_at(t.x, t.y)
@@ -1569,6 +1570,10 @@ func _use_tool(t: Vector2i) -> void:
 				return
 			var joins := sim.inb(t.x, t.y) and (sim.road[sim.idx(t.x, t.y)] == 1 or sim.bld_at(t.x, t.y) != null or sim.door_owner(t.x, t.y, 1) != null)
 			var r := sim.build_road(view.road_start.x, view.road_start.y, t.x, t.y, 1)
+			if r == "":
+				sound.play_at("road", Vector2(t.x + 0.5, t.y + 0.5), 0.7)
+			else:
+				sound.play("deny", 0.6)
 			if r == "":
 				undo_ui.road_built()
 			if r != "":
