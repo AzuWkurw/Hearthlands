@@ -1,5 +1,13 @@
 # Changelog
 
+## Build 56.1 (v0.51.0, 2026-11-15)
+
+Build 56.1: optimization and bug round 1.
+- Fixed: a loaded game could play on differently from the saved one for a second (sickness's effect on work speed was not saved).
+- Fixed: the island check for rivals could use the land of the previous map after a new game of the same size.
+- Faster on your big save: rivals' worker priorities are put in order in one pass instead of a sort (workers about 19 -> 9 ms per game second); the carriers look at a stocked-up workshop again only after 3 seconds, and at one they could send nothing to after 1.5 seconds; each realm's transport numbers are worked out once per change; a farm finds its fields without looking through every field on the map; full stores are seen before the work area is searched.
+- New test tools: save_test2 (save and load from a real save, compared every 30 s) and ui_smoke (opens every new window on a save to catch interface errors).
+
 ## Build 56 (v0.51.0, 2026-11-14)
 
 Build 56: autosaves, interface size, clickable notices, the sea guide.

@@ -15,6 +15,8 @@ func _init() -> void:
 		if a.begins_with("size="): size = int(a.substr(5))
 		if a.begins_with("foes="): foes = int(a.substr(5))
 		if a == "places": places = true
+		if a.begins_with("shape="):
+			opts["gen"] = {"shape": a.substr(6)}
 		if a.begins_with("opt="):
 			for o in a.substr(4).split(","):
 				opts[o] = true

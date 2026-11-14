@@ -89,21 +89,20 @@ func staffing(p: Sim.Player) -> void:
 	# the worker priorities: within each priority, building types with a lower number first (ties: as
 	# they stood)
 	if not p.work_rank.is_empty():
-		var pos := {}
-		for i in ordered.size():
-			pos[ordered[i]] = i
+		# (the same order as sorting by group, then number, then as they stood: buckets, in one pass)
 		var grp := {Sim.PRIO_HIGH: 0, Sim.PRIO_NORMAL: 1, Sim.PRIO_LOW: 2, Sim.PRIO_PAUSED: 3}
-		ordered = ordered.duplicate()
-		ordered.sort_custom(func(a: Sim.Bld, c: Sim.Bld):
-			var ga := int(grp.get(a.prio, 1))
-			var gc := int(grp.get(c.prio, 1))
-			if ga != gc:
-				return ga < gc
-			var ra := int(p.work_rank.get(a.ty, 5))
-			var rc := int(p.work_rank.get(c.ty, 5))
-			if ra != rc:
-				return ra < rc
-			return int(pos[a]) < int(pos[c]))
+		var bk := []
+		for g in 4:
+			var row := []
+			for r in 10:
+				row.append([])
+			bk.append(row)
+		for b: Sim.Bld in ordered:
+			(bk[int(grp.get(b.prio, 1))][clampi(int(p.work_rank.get(b.ty, 5)), 0, 9)] as Array).append(b)
+		ordered = []
+		for g in 4:
+			for r in 10:
+				ordered.append_array(bk[g][r])
 	for b: Sim.Bld in ordered:
 		if b.state == "build":
 			b.staffed = b.prio != Sim.PRIO_PAUSED and ip > 0

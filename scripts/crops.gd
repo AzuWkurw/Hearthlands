@@ -125,6 +125,7 @@ static func grow(sim: Sim) -> void:
 		var b: Sim.Bld = sim.by_id.get(int(f[0]))
 		if b == null or b.dead or sim.bmap[i] != 0 or sim.plot[i] != 0 or sim.road[i] != 0 or sim.deco[i] != 0 or sim.owner[i] != b.p:
 			sim.fields.erase(i)
+			sim._ff_dirty = true
 			continue
 		var c := String(f[1])
 		if not rates.has(c):
@@ -139,14 +140,27 @@ static func free_for_field(sim: Sim, i: int, pid: int) -> bool:
 
 
 ## Fields of farm b: [all, ripe].
+## The fields of each farm (farm id -> tiles), worked out again whenever a field is sown or ends, so a
+## farm does not look through every field on the map each time it starts work.
+static func of_farm(sim: Sim, id: int) -> Array:
+	if sim._ff_dirty:
+		sim._ff_dirty = false
+		sim._farm_fields = {}
+		for i in sim.fields:
+			var fid := int(sim.fields[i][0])
+			if not sim._farm_fields.has(fid):
+				sim._farm_fields[fid] = []
+			(sim._farm_fields[fid] as Array).append(i)
+	return sim._farm_fields.get(id, [])
+
+
 static func count(sim: Sim, b: Sim.Bld) -> Vector2i:
 	var n := 0
 	var r := 0
-	for i in sim.fields:
+	for i in of_farm(sim, b.id):
 		var f: Array = sim.fields[i]
-		if int(f[0]) == b.id:
-			n += 1
-			if float(f[2]) >= GROW: r += 1
+		n += 1
+		if float(f[2]) >= GROW: r += 1
 	return Vector2i(n, r)
 
 
@@ -154,9 +168,9 @@ static func count(sim: Sim, b: Sim.Bld) -> Vector2i:
 static func ripe_field(sim: Sim, b: Sim.Bld) -> int:
 	var best := -1
 	var bd := 1 << 30
-	for i in sim.fields:
+	for i in of_farm(sim, b.id):
 		var f: Array = sim.fields[i]
-		if int(f[0]) == b.id and float(f[2]) >= GROW:
+		if float(f[2]) >= GROW:
 			var dd := absi(i % sim.w - b.x) + absi(i / sim.w - b.y)
 			if dd < bd or (dd == bd and i < best):
 				bd = dd; best = i
@@ -218,6 +232,7 @@ static func farm_finish(sim: Sim, b: Sim.Bld) -> Dictionary:
 	if b.sowing:
 		if free_for_field(sim, tg, b.p):
 			sim.fields[tg] = [b.id, now(sim, b), 0.0]
+			sim._ff_dirty = true
 		return {}
 	var f = sim.fields.get(tg)
 	if f == null or int(f[0]) != b.id or float(f[2]) < GROW:
@@ -228,6 +243,7 @@ static func farm_finish(sim: Sim, b: Sim.Bld) -> Dictionary:
 		sim.fields[tg] = [b.id, c, 0.0]
 	else:
 		sim.fields.erase(tg)
+		sim._ff_dirty = true
 	return got
 
 

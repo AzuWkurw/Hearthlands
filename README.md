@@ -10,7 +10,7 @@ economy you do.
 ## Download
 
 The ready-made Windows game is on the [Releases page](../../releases/latest): download the
-`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.51.0 build 56** (see
+`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.51.0 build 56.1** (see
 `CHANGELOG.md`). Every build is a release of its own, made by GitHub Actions
 (`.github/workflows/release.yml`) when a new version reaches `main`; older builds up to 50 are also
 on the [`downloads` branch](../../tree/downloads).
@@ -52,6 +52,7 @@ Done (builds 43 to 56):
 | 54 | Priority sets (Build up, War, Feed everyone, Research, and your own), drag rows to reorder, rivals that set priorities, the numbers in each building's info |
 | 55 | An isles map (each realm on its own island), dry and wet years, storms that keep ships in harbour, river boats between landings, disasters that ask you to choose (a great fire, plague, a peasant revolt) |
 | 56 | Rolling autosaves (the last 3), a guide to the sea and army supplies, interface size Auto and up to 200% (Ctrl and + or -), notices you can click to go to the place |
+| 56.1 to 56.3 | Bug fixes and speed-ups (a loaded game now goes on exactly as saved; faster carriers, workers and farms on big games) |
 
 Later: a story campaign through the ages, multiplayer, scripted scenarios, a chronicle at the end of a
 game, more animations, music for each age, and quality-of-life features (a production chain overlay,

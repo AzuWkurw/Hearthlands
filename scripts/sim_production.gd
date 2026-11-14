@@ -39,6 +39,42 @@ func start_check(b: Sim.Bld, p: Sim.Player) -> String:
 		if tgt == null:
 			return "No enemy fort in range"
 		b.target = sim.idx(tgt.x, tgt.y)
+	# full stores first: it is quick to see, and a full store stops the work whatever else is ready
+	var outs: Dictionary = Crops.out_of(sim, b)
+	if outs.size() > 0:
+		# goods already on their way (waiting at buildings, on a carrier's back, or being made) count
+		# as in store, so the stores never take more than they hold
+		var extra := _extra_out(p, b.ty)
+		var full := true
+		var by_target := false
+		var full_res := ""
+		for o in outs:
+			if o == "research":
+				full = false
+				continue
+			if o == "ship":
+				full = p.ships >= SimSea.MAX_SHIPS
+				continue
+			if o == "warship":
+				full = p.warships >= SimNavy.MAX_WARSHIPS
+				continue
+			var cap := sim.capacity(p, o)
+			var have := float(p.stock.get(o, 0.0))
+			# goods on their way only matter near the top: far below it, skip counting them
+			if have + float(outs[o]) + extra > cap - maxf(30.0, cap * 0.5):
+				have += coming(p, o)
+			var tg := sim.target_of(p, o)
+			if tg >= 0 and have >= tg:
+				by_target = true
+			elif have + float(outs[o]) + extra <= cap:
+				full = false
+			elif full_res == "":
+				full_res = o
+		if full:
+			if by_target:
+				var o0: String = outs.keys()[0]
+				return "Target reached: %d %s in store" % [int(p.stock.get(o0, 0.0)), GameData.res_name(o0).to_lower()]
+			return "Stores are full of %s (%d of %d): production stops until some is used, or build a storehouse" % [GameData.res_name(full_res).to_lower(), int(p.stock.get(full_res, 0.0)), int(sim.capacity(p, full_res))]
 	var wc := sim.work_center(b)
 	var wr := sim.work_radius(b)
 	match String(d.get("act", "")):
@@ -95,41 +131,6 @@ func start_check(b: Sim.Bld, p: Sim.Player) -> String:
 		var cb := Crops.block(sim, b)
 		if cb != "":
 			return cb
-	var outs: Dictionary = Crops.out_of(sim, b)
-	if outs.size() > 0:
-		# goods already on their way (waiting at buildings, on a carrier's back, or being made) count
-		# as in store, so the stores never take more than they hold
-		var extra := _extra_out(p, b.ty)
-		var full := true
-		var by_target := false
-		var full_res := ""
-		for o in outs:
-			if o == "research":
-				full = false
-				continue
-			if o == "ship":
-				full = p.ships >= SimSea.MAX_SHIPS
-				continue
-			if o == "warship":
-				full = p.warships >= SimNavy.MAX_WARSHIPS
-				continue
-			var cap := sim.capacity(p, o)
-			var have := float(p.stock.get(o, 0.0))
-			# goods on their way only matter near the top: far below it, skip counting them
-			if have + float(outs[o]) + extra > cap - maxf(30.0, cap * 0.5):
-				have += coming(p, o)
-			var tg := sim.target_of(p, o)
-			if tg >= 0 and have >= tg:
-				by_target = true
-			elif have + float(outs[o]) + extra <= cap:
-				full = false
-			elif full_res == "":
-				full_res = o
-		if full:
-			if by_target:
-				var o0: String = outs.keys()[0]
-				return "Target reached: %d %s in store" % [int(p.stock.get(o0, 0.0)), GameData.res_name(o0).to_lower()]
-			return "Stores are full of %s (%d of %d): production stops until some is used, or build a storehouse" % [GameData.res_name(full_res).to_lower(), int(p.stock.get(full_res, 0.0)), int(sim.capacity(p, full_res))]
 	return ""
 
 
@@ -512,6 +513,7 @@ func prod_tick(b: Sim.Bld, p: Sim.Player, _dt: float) -> void:
 		return
 	b.fails = 0
 	var inp: Dictionary = d.get("in", {})
+	b.in_next = 0.0           # it uses its inputs now: the carriers look again at once
 	for k in inp:
 		if k == "food":
 			# the cheapest food it has

@@ -302,7 +302,7 @@ func save_state() -> Dictionary:
 	for k in baths.keys():
 		if not sim.by_id.has(k):
 			baths.erase(k)
-	return {"sick": sick, "dying": dying, "home": home_t, "baths": baths, "died": died, "cured": cured, "rng": rng.state, "seed": rng.seed, "t": _t, "risk": _risk}
+	return {"sick": sick, "dying": dying, "home": home_t, "baths": baths, "died": died, "cured": cured, "rng": rng.state, "seed": rng.seed, "t": _t, "risk": _risk, "speed": _speed}
 
 
 func load_state(d: Dictionary) -> void:
@@ -316,6 +316,11 @@ func load_state(d: Dictionary) -> void:
 	home_t = _ints(d.get("home", {}))
 	baths = _ints(d.get("baths", {}))
 	died = _ints(d.get("died", {}))
+	# the work speed sickness gives this second (worked out once a second): kept, so a loaded game goes on the same
+	_speed = {}
+	var sp: Dictionary = d.get("speed", {})
+	for k in sp:
+		_speed[int(k)] = float(sp[k])
 	cured = _ints(d.get("cured", {}))
 	rng.seed = int(d.get("seed", 0))
 	rng.state = int(d.get("rng", 0))

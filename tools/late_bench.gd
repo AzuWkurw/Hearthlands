@@ -125,7 +125,7 @@ func _init() -> void:
 	var parts2 := []
 	var ks: Array = sim.perf.keys()
 	ks.sort_custom(func(a, b): return int(sim.perf[a]) > int(sim.perf[b]))
-	for k3 in ks.slice(0, 10):
+	for k3 in ks.slice(0, 12):
 		parts2.append("%s %.1f" % [k3, int(sim.perf[k3]) / 1000.0 / 60.0])
 	print("simulation: %.1f ms per game second | %s" % [(Time.get_ticks_usec() - ts) / 1000.0 / 60.0, ", ".join(parts2)])
 	quit()

@@ -252,6 +252,7 @@ class Bld:
 	var inv: Dictionary = {}   # a store's goods (res -> amount); the realm's stock is their total
 	var policy := 0            # a store: 0 normal, 1 gather here (others send it goods), 2 send away (takes nothing new)
 	var keep := 0      # a workshop: how many work cycles of inputs it keeps (0: the usual two)
+	var in_next := 0.0 # its inputs were all there: carriers look again at this time (SimLogistics)
 	var inbuf: Dictionary = {}     # goods carried here for its work (res -> count), used as it works
 	var incoming: Dictionary = {}  # goods on their way here for its work
 	var door := -1     # the side its entrance faces: 0 south, 1 east, 2 north, 3 west; roads join it only
@@ -552,6 +553,8 @@ var attacks: Array[Attack] = []
 var navy: Array = []          # warships afloat (SimNavy)
 var prices: Dictionary = {}   # good -> price factor (SimMarket), 1.0 when not set
 var price_hist: Dictionary = {}   # good -> the factor over the last minutes
+var _farm_fields := {}        # farm id -> its field tiles (Crops.of_farm; worked out from fields)
+var _ff_dirty := true
 
 
 var time := 0.0
@@ -695,6 +698,7 @@ func new_game(p_seed: String, p_foes: int, p_strength: int, p_mix: bool, p_size 
 		places.append(Places.make(String(pl[0]), int(pl[1]), int(pl[2])))
 	pave = PackedByteArray(); pave.resize(w * h)
 	fields = {}
+	_ff_dirty = true
 	changed_tiles = PackedInt32Array()
 	_pending = {}; _supply = {}; _reno = {}; reno_queue = {}; _mil_dirty = true; _tick_dirty = true
 	owner = PackedByteArray(); owner.resize(w * h)
@@ -702,7 +706,7 @@ func new_game(p_seed: String, p_foes: int, p_strength: int, p_mix: bool, p_size 
 	bmap = PackedInt32Array(); bmap.resize(w * h)
 	plot = PackedInt32Array(); plot.resize(w * h)
 	_avail = {}; _avail_at = {}
-	players.clear(); blds.clear(); by_id.clear(); trips.clear(); attacks.clear(); navy.clear(); naval.fx.clear(); prices.clear(); price_hist.clear(); logs.clear()
+	players.clear(); blds.clear(); by_id.clear(); trips.clear(); attacks.clear(); navy.clear(); naval.fx.clear(); naval._comp = PackedInt32Array(); prices.clear(); price_hist.clear(); logs.clear()
 	rel = {}; rel_since = {}; proposals = []; standing = []; _prop_id = 0
 	time = 0.0; over = false; _bid = 0; _acc1 = 0.0; _owned_dirty = true
 	_alloc_path_buffers()
@@ -2486,6 +2490,7 @@ func from_save(d: Dictionary) -> String:
 		_veins_from_old_save()
 	players.clear(); blds.clear(); by_id.clear(); trips.clear(); attacks.clear()
 	navy = (d.get("navy", []) as Array).duplicate(true)
+	naval._comp = PackedInt32Array()
 	prices = (d.get("prices", {}) as Dictionary).duplicate(true)
 	price_hist = (d.get("price_hist", {}) as Dictionary).duplicate(true)
 	naval.fx.clear()
@@ -2531,6 +2536,7 @@ func from_save(d: Dictionary) -> String:
 	if pave.size() != w * h:
 		pave = PackedByteArray(); pave.resize(w * h)
 	fields = {}
+	_ff_dirty = true
 	places = (d.get("places", []) as Array).duplicate(true)
 	map_biome = d.get("map_biome", PackedByteArray())
 	var fd: Dictionary = d.get("fields", {})

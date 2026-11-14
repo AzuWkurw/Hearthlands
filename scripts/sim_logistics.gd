@@ -1510,6 +1510,7 @@ func _dispatch_inputs() -> void:
 		# a hungry realm feeds itself first: the buildings that make food, or what food is made from
 		# (a mill's flour for the bakeries), are served before all others while food is short
 		var hungry := _hungry(p)
+		_rank_memo_check(p)
 		var buckets := [[], [], [], []]
 		for b: Sim.Bld in _input_blds(p):
 			if b.dead or b.state != "ready" or not b.staffed or b.prio == Sim.PRIO_PAUSED or b.reno_to >= 0:
@@ -1524,7 +1525,7 @@ func _dispatch_inputs() -> void:
 			for list0: Array in buckets:
 				var groups := {}
 				for b0: Sim.Bld in list0:
-					var r0 := _bld_rank(p, b0)
+					var r0 := _bld_rank_c(p, b0)
 					if not groups.has(r0):
 						groups[r0] = []
 					(groups[r0] as Array).append(b0)
@@ -1546,14 +1547,20 @@ func _dispatch_inputs() -> void:
 				if porters_free(p) <= 0 and (_stations[p.id - 1] as Array).is_empty() and not road_carriers_on():
 					out_of_carriers = true     # this realm's carriers are all out; the next realm's turn
 					break
+				# a building found stocked up is looked at again a few seconds later, not every round
+				if sim.time < b.in_next:
+					continue
+				var all_ok := true
+				var sent := false
 				var inp: Dictionary = b.def["in"]
-				for k in by_rank(p, inp):
+				for k in _inp_order(p, b):
 					# enough for two work cycles; food for one, so less of it sits about in workshops
 					var cyc := b.keep if b.keep > 0 else 2
 					var want := int(inp[k]) * (maxi(1, cyc / 2) if k == "food" else cyc)
 					var have := food_at(b) if k == "food" else int(b.inbuf.get(k, 0)) + int(b.incoming.get(k, 0))
 					if have >= want:
 						continue
+					all_ok = false
 					var res := String(k)
 					if k == "food":
 						res = ""
@@ -1566,7 +1573,19 @@ func _dispatch_inputs() -> void:
 					elif float(p.stock.get(k, 0.0)) < 1.0:
 						continue
 					if carry_to(b, p, res, want - have, false) > 0:
+						sent = true
 						break
+				if all_ok:
+					b.in_next = sim.time + IN_RECHECK
+				elif not sent:
+					b.in_next = sim.time + IN_WAIT
+
+
+## A building's inputs are looked at again this long after it was found stocked up (unless it starts
+## a cycle, which uses them: see SimProduction.prod_tick).
+const IN_RECHECK := 3.0
+## ... and this long after nothing could be sent to it (the goods not in store, or out of reach).
+const IN_WAIT := 1.5
 
 
 ## A carrier brought inputs to building b. If it is gone or changed hands, they go back to a store.
@@ -1617,6 +1636,34 @@ static func by_rank(p: Sim.Player, d: Dictionary) -> Array:
 		var rb := rank_of(p, String(b))
 		return ra < rb or (ra == rb and int(idx[a]) < int(idx[b])))
 	return ks
+
+
+## Per realm, for its transport numbers as they are: each building type's rank and its inputs in
+## order, worked out once (the numbers change rarely; rivals switch sets at most once a minute).
+var _rank_memo := {}     # realm id -> [carry_rank copy, {ty: rank}, {ty: ordered inputs}]
+
+func _rank_memo_check(p: Sim.Player) -> void:
+	var m = _rank_memo.get(p.id)
+	if m == null or m[0] != p.carry_rank:
+		_rank_memo[p.id] = [p.carry_rank.duplicate(), {}, {}]
+
+
+func _bld_rank_c(p: Sim.Player, b: Sim.Bld) -> int:
+	var m: Dictionary = _rank_memo[p.id][1]
+	var r = m.get(b.ty)
+	if r == null:
+		r = _bld_rank(p, b)
+		m[b.ty] = r
+	return r
+
+
+func _inp_order(p: Sim.Player, b: Sim.Bld) -> Array:
+	var m: Dictionary = _rank_memo[p.id][2]
+	var o = m.get(b.ty)
+	if o == null:
+		o = by_rank(p, b.def["in"])
+		m[b.ty] = o
+	return o
 
 
 ## A building's place in the carriers' order: the best rank of the goods it takes in.
