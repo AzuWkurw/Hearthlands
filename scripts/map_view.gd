@@ -11,7 +11,9 @@ signal cancel_requested
 signal paint(tile: Vector2i, first: bool)   # map editor: the left button is down over this tile
 signal paint_done                           # map editor: the left button was let go
 
-const DETAIL_ZOOM := 10.0        # below this many pixels per tile, the map is drawn from the minimap image
+const DETAIL_ZOOM := 10.0        # below this many pixels per tile, people and goods are drawn as dots
+const FAR_ZOOM := 10.0           # below this, the ground comes from chunks baked at a quarter resolution
+const SCENERY_ZOOM := 7.0        # below this, trees are baked into the ground instead of drawn one by one
 const ANIM_ZOOM := 14.0          # below this, small details (smoke, workers, animals) are skipped
 const LORES_ZOOM := 16.0         # below this, the ground comes from chunks baked at half resolution
 const HIRES_ZOOM := 36.0         # from this on, from chunks baked at double resolution (64 pixels a tile)
@@ -750,11 +752,20 @@ func _draw_ground() -> void:
 		chunks.hi.smooth = chunks.smooth
 		chunks.hi.details = chunks.details
 		chunks.hi.load_images()
-	var ch: MapChunks = chunks.hi if z >= HIRES_ZOOM else (chunks if z >= LORES_ZOOM else chunks.twin)
+	if z < FAR_ZOOM and chunks.far == null:
+		chunks.far = MapChunks.new()
+		chunks.far.TS = 8
+		chunks.far.max_chunks = 900    # 64 KB each: far out the whole map may be on screen
+		chunks.far.bake_trees = true
+		chunks.far.sim = sim
+		chunks.far.smooth = chunks.smooth
+		chunks.far.details = false
+		chunks.far.load_images()
+	var ch: MapChunks = chunks.hi if z >= HIRES_ZOOM else (chunks if z >= LORES_ZOOM else (chunks.twin if z >= FAR_ZOOM else chunks.far))
 	chunks.sim = sim
 	ch.sim = sim
 	ch.begin_frame()
-	if z >= DETAIL_ZOOM:
+	if true:
 		# bake for at most 3 ms per frame (and at least one chunk), so scrolling never stutters
 		var budget := [Time.get_ticks_usec() + 3000, 0]
 		for cy in range(y0 / MapChunks.CH, y1 / MapChunks.CH + 1):
@@ -776,8 +787,6 @@ func _draw_ground() -> void:
 						g.draw_mesh(_chunk_mesh[fk], minimap.base_tex())
 					else:
 						g.draw_texture_rect_region(minimap.base_tex(), r, r)
-	elif minimap != null and minimap.base_tex() != null:
-		draw_map_texture(g, minimap.base_tex())
 	ground_usec = Time.get_ticks_usec() - t_start
 
 
@@ -820,15 +829,12 @@ func _draw() -> void:
 	_cur_lift = 0.0
 	if raised:
 		y1 = mini(sim.h - 1, y1 + 3)
-	# far out the territory comes from the minimap's picture, drawn here so it skips the water shader
-	if z < DETAIL_ZOOM and minimap != null and minimap.own_tex() != null:
-		draw_map_texture(self, minimap.own_tex())
 	if _vary != null:
 		draw_map_texture(self, _vary)
 	if prof_on: _pm("ground")
 	_draw_fields(x0, x1, y0, y1)
 	if prof_on: _pm("fields")
-	if z >= DETAIL_ZOOM:
+	if z >= SCENERY_ZOOM:
 		_draw_scenery(x0, x1, y0, y1)
 	if prof_on: _pm("scenery")
 	if traffic_ui != null and traffic_ui.on:

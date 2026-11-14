@@ -19,6 +19,8 @@ const NB := [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0),
 var sim: Sim
 var twin: MapChunks        # the same map at half resolution, used when zoomed out (see MapView)
 var hi: MapChunks          # the same map at double resolution (64 pixels a tile), used up close
+var far: MapChunks         # the same map at a quarter resolution (8 pixels a tile), used far out
+var bake_trees := false    # far out the trees are too small to draw one by one: baked in as dark crowns
 var smooth := false        # build mipmaps so chunks look smooth when zoomed out; call clear() after changing it
 var _tex: Dictionary = {}  # chunk key -> ImageTexture
 var _dirty: Dictionary = {}
@@ -48,7 +50,7 @@ func _bridge_img(ns: bool, stone: bool) -> Image:
 	var seam := Color("5e3f22") if not stone else Color("6e6a60")
 	var rail := Color("6b4526") if not stone else Color("7c776c")
 	for u in TS:
-		for v in range(a - 2, b + 3):
+		for v in range(maxi(0, a - 2), mini(TS, b + 3)):
 			var c: Color
 			if v < a or v > b:
 				c = Color(0, 0, 0, 0.28)          # shadow on the water
@@ -90,7 +92,7 @@ func load_images() -> void:
 ## The other resolutions of the same map, brought up to date with this one's settings.
 func _subs() -> Array:
 	var out := []
-	for c in [twin, hi]:
+	for c in [twin, hi, far]:
 		if c != null:
 			c.sim = sim
 			c.smooth = smooth
@@ -275,6 +277,9 @@ func _bake(cx: int, cy: int, k: int) -> void:
 			var i := y * w + x
 			var d := sim.deco[i]
 			var pos := Vector2i(lx * TS, ly * TS)
+			if d == Sim.D_TREE and bake_trees:
+				img.blend_rect(_tree_crown(_hash(x, y) % 3), full, pos)
+				continue
 			if d == Sim.D_TREE or d == Sim.D_ROCK or (d == 0 and _has_peak(x, y, i)):
 				continue
 			if d == Sim.D_CLAY:
@@ -355,6 +360,29 @@ func _details(img: Image, pos: Vector2i, x: int, y: int, i: int, t: int) -> void
 			img.fill_rect(Rect2i(rx - maxi(1, int(u / 2)), base_y - top, bw + maxi(1, int(u)), maxi(2, int(5 * u))), Color8(104, 70, 38))
 		return
 	# (grass tufts, flowers and pebbles are in the ground textures themselves)
+
+
+## A tree seen from far off: a dark green crown with a lit upper left and a shadow to the lower right.
+var _crowns: Array = []
+
+func _tree_crown(v: int) -> Image:
+	if _crowns.is_empty():
+		for k in 3:
+			var img := Image.create(TS, TS, false, Image.FORMAT_RGBA8)
+			var base: Color = [Color8(46, 86, 40), Color8(36, 74, 44), Color8(58, 96, 42)][k]
+			var c := Vector2(TS * (0.45 + 0.05 * k), TS * 0.45)
+			var r := TS * 0.42
+			for y in TS:
+				for x in TS:
+					var p := Vector2(x + 0.5, y + 0.5)
+					var sh := p - c - Vector2(TS * 0.12, TS * 0.12)
+					if (p - c).length() <= r:
+						var lit := clampf(1.0 - (p - c + Vector2(r, r) * 0.4).length() / (r * 1.6), 0.0, 1.0)
+						img.set_pixel(x, y, base.lightened(lit * 0.35))
+					elif sh.length() <= r:
+						img.set_pixel(x, y, Color(0, 0.04, 0, 0.35))
+			_crowns.append(img)
+	return _crowns[v]
 
 
 static func _hash(x: int, y: int) -> int:

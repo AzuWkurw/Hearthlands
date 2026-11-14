@@ -2,7 +2,7 @@ extends SceneTree
 ## Screenshots for judging the textures: a town grown by the computer for a few minutes (no weather or
 ## fog, so the ground shows as it is), at four zooms round the headquarters, then a coast and mountains
 ## up close. The game is kept in user://saves/shot_tex.save and reused (fresh makes a new one):
-##   xvfb-run -a -s "-screen 0 1920x1080x24" godot --rendering-driver opengl3 --script res://tools/shot_tex.gd -- out=/dir [tag=now] [fresh]
+##   xvfb-run -a -s "-screen 0 1920x1080x24" godot --rendering-driver opengl3 --script res://tools/shot_tex.gd -- out=/dir [tag=now] [fresh] [zooms=5,8,12]
 
 func _snap(main, path: String) -> void:
 	for i in 30: await process_frame
@@ -14,10 +14,12 @@ func _init() -> void:
 	var out := "user://"
 	var tag := "now"
 	var fresh := false
+	var zooms := [24.0, 40.0, 64.0, 96.0]
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("out="): out = a.substr(4) + "/"
 		if a.begins_with("tag="): tag = a.substr(4)
 		if a == "fresh": fresh = true
+		if a.begins_with("zooms="): zooms = Array(a.substr(6).split(",")).map(func(v): return float(v))
 	DisplayServer.window_set_size(Vector2i(1600, 900)); root.size = Vector2i(1600, 900)
 	var main = load("res://main.tscn").instantiate(); root.add_child(main)
 	for i in 3: await process_frame
@@ -44,9 +46,11 @@ func _init() -> void:
 	main.paused = true
 	main.guide_ui.box.visible = false
 	var hq: Sim.Bld = sim.human().hq
-	for z in [24.0, 40.0, 64.0, 96.0]:
+	for z in zooms:
 		main.view.zoom = z
 		main.view.center_on(Vector2(hq.x + 0.5, hq.y + 2.0))
+		# far out many chunks are baked a few each frame: wait until they are all there
+		for i in (240 if z < 16.0 else 0): await process_frame
 		await _snap(main, out + "tex_%s_town_z%d.png" % [tag, int(z)])
 	# a coast and a mountain side up close
 	var coast := Vector2i(-1, -1)
