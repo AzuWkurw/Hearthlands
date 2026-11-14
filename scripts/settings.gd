@@ -128,14 +128,22 @@ func save_file() -> void:
 
 
 ## The renderer this run actually uses. Vulkan renderers have a RenderingDevice; OpenGL has none.
+## Which Vulkan renderer it is can't be asked from the engine (and "--rendering-method" on the command
+## line is not among OS.get_cmdline_args()), so a restart names it again after "--" as "rm=<id>";
+## otherwise it is the one in the override file or the project.
 static func running_renderer() -> String:
 	if RenderingServer.get_rendering_device() == null:
 		return "gl_compatibility"
-	var args := OS.get_cmdline_args()
-	var i := args.find("--rendering-method")
-	if i >= 0 and i + 1 < args.size():
-		return args[i + 1]
-	return String(ProjectSettings.get_setting("rendering/renderer/rendering_method", "forward_plus"))
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("rm="):
+			return a.substr(3)
+	var cf := ConfigFile.new()
+	if FileAccess.file_exists(OVERRIDE) and cf.load(OVERRIDE) == OK:
+		var m := String(cf.get_value("rendering", "renderer/rendering_method", ""))
+		if m != "" and m != "gl_compatibility":
+			return m
+	var proj := String(ProjectSettings.get_setting("rendering/renderer/rendering_method", "forward_plus"))
+	return proj if proj != "gl_compatibility" else "forward_plus"
 
 
 static func renderer_name(id: String) -> String:

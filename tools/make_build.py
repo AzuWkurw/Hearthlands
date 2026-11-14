@@ -5,6 +5,7 @@ Usage:
     python3 tools/make_build.py "What changed"              a fix build (build + 1)
     python3 tools/make_build.py --minor "What changed"      new features (0.34.0 -> 0.35.0)
     python3 tools/make_build.py --minor --notes-file notes.md
+    python3 tools/make_build.py --fix "What was fixed"      a fix release of the last build (43 -> 43.1)
 
 What it does, in order (any failed step stops it, and says which):
   1. raises the build number (tools/bump_build.py) and puts the notes into CHANGELOG.md
@@ -81,7 +82,9 @@ def version():
     src = open(os.path.join(ROOT, "scripts", "version.gd"), encoding="utf-8").read()
     num = re.search(r'const NUMBER := "([^"]+)"', src).group(1)
     build = int(re.search(r"const BUILD := (\d+)", src).group(1))
-    return num, build
+    fm = re.search(r"const FIX := (\d+)", src)
+    fix = int(fm.group(1)) if fm else 0
+    return num, (str(build) if fix == 0 else f"{build}.{fix}")
 
 
 def project_files():
@@ -101,6 +104,7 @@ def main():
     ap.add_argument("--notes-file")
     ap.add_argument("--minor", action="store_true")
     ap.add_argument("--major", action="store_true")
+    ap.add_argument("--fix", action="store_true", help="a fix release of the last build: 43 -> 43.1")
     ap.add_argument("--godot", default=os.environ.get("GODOT", "godot"))
     ap.add_argument("--out", default=os.path.join(os.path.dirname(ROOT), "build"))
     ap.add_argument("--tests", action="store_true")
@@ -132,9 +136,9 @@ def main():
     step(f"1. Version (now v{old_num} build {old_build})")
     if dry:
         print("   (would raise the build number)")
-        num, build = old_num, old_build + 1
+        num, build = old_num, "next"
     else:
-        flag = ["--major"] if a.major else (["--minor"] if a.minor else [])
+        flag = ["--major"] if a.major else (["--minor"] if a.minor else (["--fix"] if a.fix else []))
         run([py, os.path.join("tools", "bump_build.py")] + flag + ["@@NOTES@@"], dry)
         cl_path = os.path.join(ROOT, "CHANGELOG.md")
         cl = open(cl_path, encoding="utf-8").read()

@@ -313,7 +313,7 @@ func _bake(cx: int, cy: int, k: int) -> void:
 
 
 ## Small things on the ground, baked in with it so they cost nothing to draw: reeds where land meets
-## water, foam along the shore, and snow on the highest mountain tiles. Each tile picks its details from a hash of its position, so
+## water and snow on the highest mountain tiles. Each tile picks its details from a hash of its position, so
 ## they stay put when a chunk is baked again. Nothing is drawn under roads or buildings.
 var details := true
 
@@ -329,26 +329,8 @@ func _details(img: Image, pos: Vector2i, x: int, y: int, i: int, t: int) -> void
 		if nx >= 0 and ny >= 0 and nx < sim.w and ny < sim.h and sim.ter[ny * sim.w + nx] == Sim.WATER:
 			water_nb |= 1 << k
 	if t == Sim.WATER:
-		# foam: a broken light line just off the land
-		var land := 15 & ~water_nb
-		for k in 4:
-			if not (land & (1 << k)):
-				continue
-			for j in 6:
-				if (h >> j) & 1 == 0:
-					continue
-				var a := int((j * 5 + 1) * u)
-				var o := int((2 + ((h >> (j + 6)) & 3)) * u)
-				var th := maxi(1, int(2 * u))
-				var ln := int(6 * u)
-				var r: Rect2i
-				match k:
-					0: r = Rect2i(pos.x + a, pos.y + o, ln, th)
-					1: r = Rect2i(pos.x + TS - o - th, pos.y + a, th, ln)
-					2: r = Rect2i(pos.x + a, pos.y + TS - o - th, ln, th)
-					3: r = Rect2i(pos.x + o, pos.y + a, th, ln)
-				# alpha above open water's, so the water shader moves it only a little
-				img.fill_rect(r.intersection(Rect2i(pos, Vector2i(TS, TS))), Color8(236, 244, 244, 225))
+		# (the foam along the shore is drawn by the ground shader, moving with the waves; straight
+		# baked lines of foam stood out as white dashes where the shoreline is drawn soft)
 		return
 	if sim.deco[i] != 0:
 		return

@@ -183,6 +183,7 @@ func _switch_renderer(id: String) -> void:
 	if resume:
 		main._save_game("autosave", true)
 	extra.append("--")
+	extra.append("rm=" + id)
 	if resume:
 		extra.append("resume")
 	main._show_hint(tr("Restarting with %s...") % Settings.renderer_name(id), 3.0)

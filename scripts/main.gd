@@ -468,6 +468,9 @@ func set_feature(id: String, on: bool) -> void:
 	_rebuild_feature_ui()
 
 
+var _flash_ms := -100000
+
+
 func _ready() -> void:
 	Sim.log_checksums = "checksums" in OS.get_cmdline_user_args()
 	if "vkprobe" in OS.get_cmdline_user_args():
@@ -496,6 +499,11 @@ func _ready() -> void:
 	get_window().size_changed.connect(func(): settings.apply_scale(get_window()))
 	resized.connect(func(): toolbar.fit())
 	sim.log_added.connect(func(_t, _c): log_dirty = true)
+	# an attack on your land: a short red glow at the screen's edges, at most once in 20 seconds
+	sim.log_added.connect(func(t, _c):
+		if "attacks your" in String(t) and Time.get_ticks_msec() - _flash_ms > 20000:
+			_flash_ms = Time.get_ticks_msec()
+			view.flash = 1.0)
 	sound = Sound.new()
 	sound.name = "Sound"
 	add_child(sound)
@@ -541,7 +549,7 @@ func _should_probe_vulkan(running: String) -> bool:
 	if settings.vk_probed or Settings.has_override() or running != "gl_compatibility":
 		return false
 	var a := OS.get_cmdline_args()
-	if "--rendering-driver" in a or "--rendering-method" in a or "--script" in a or "-s" in a:
+	if "--script" in a or "-s" in a or "safe" in OS.get_cmdline_user_args():
 		return false
 	return DisplayServer.get_name() != "headless"
 
@@ -557,7 +565,7 @@ func _probe_vulkan() -> void:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(Settings.PROBE))
 	var pid := OS.create_process(OS.get_executable_path(), Settings.restart_args(PackedStringArray([
 		"--rendering-method", "forward_plus", "--rendering-driver", "vulkan", "--audio-driver", "Dummy",
-		"--resolution", "320x180", "--", "vkprobe"])))
+		"--resolution", "320x180", "--", "vkprobe", "rm=forward_plus"])))
 	if pid <= 0:
 		return
 	var ok := false
@@ -581,7 +589,7 @@ func _probe_vulkan() -> void:
 	if setup.visible:
 		_show_hint("Vulkan works on this PC: restarting with it...", 3.0)
 		await get_tree().create_timer(0.6).timeout
-		OS.set_restart_on_exit(true, Settings.restart_args(PackedStringArray(["--rendering-method", "forward_plus", "--rendering-driver", "vulkan"])))
+		OS.set_restart_on_exit(true, Settings.restart_args(PackedStringArray(["--rendering-method", "forward_plus", "--rendering-driver", "vulkan", "--", "rm=forward_plus"])))
 		get_tree().quit()
 	else:
 		_show_hint("Vulkan works on this PC; it will be used from the next start (or switch now in Settings).", 10.0)
@@ -2009,8 +2017,6 @@ func _refresh_all() -> void:
 	if log_dirty:
 		log_dirty = false
 		log_ui.refresh()
-		if sim.logs.size() > 0 and "attacks your" in String(sim.logs[-1][1]):
-			view.flash = 1.0
 	var m := int(sim.time) / 60
 	lbl_time.text = tr("%02d:%02d") % [m, int(sim.time) % 60]
 	lbl_pop.text = tr("Pop %d / %d") % [sim.pop_total(p), sim.housing(p)]

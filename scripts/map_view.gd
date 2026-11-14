@@ -359,7 +359,7 @@ static func _make_shadow() -> Texture2D:
 		for x in 64:
 			var d := Vector2((x + 0.5 - 32.0) / 32.0, (y + 0.5 - 16.0) / 16.0).length()
 			var a := clampf(1.0 - d, 0.0, 1.0)
-			img.set_pixel(x, y, Color(0.02, 0.03, 0.02, pow(a, 0.8) * 0.62))
+			img.set_pixel(x, y, Color(0.02, 0.03, 0.02, pow(a, 1.2) * 0.5))
 	img.generate_mipmaps()
 	return ImageTexture.create_from_image(img)
 
@@ -1252,9 +1252,27 @@ func _draw() -> void:
 			draw_string_outline(font, sp + Vector2(-110, 0), String(l[1]), HORIZONTAL_ALIGNMENT_CENTER, 220, fs, 4, Color.BLACK)
 			draw_string(font, sp + Vector2(-110, 0), String(l[1]), HORIZONTAL_ALIGNMENT_CENTER, 220, fs, l[2])
 	if flash > 0.0:
-		draw_rect(Rect2(Vector2.ZERO, size), Color(0.85, 0.28, 0.24, flash * 0.25))
+		_draw_alert_edges(flash)
 	if prof_on: _pm("labels")
 	draw_usec = Time.get_ticks_usec() - t_start
+
+
+## The warning of an attack: a red glow along the screen's edges, fading towards the middle, so the
+## map itself stays clear.
+func _draw_alert_edges(f: float) -> void:
+	var w := minf(size.x, size.y) * 0.09
+	var o := Color(0.85, 0.2, 0.16, 0.45 * f)
+	var i := Color(0.85, 0.2, 0.16, 0.0)
+	var a := Vector2.ZERO
+	var b := Vector2(size.x, 0)
+	var c := size
+	var d := Vector2(0, size.y)
+	var ia := Vector2(w, w)
+	var ib := Vector2(size.x - w, w)
+	var ic := size - Vector2(w, w)
+	var id := Vector2(w, size.y - w)
+	for q in [[a, b, ib, ia], [b, c, ic, ib], [c, d, id, ic], [d, a, ia, id]]:
+		draw_polygon(PackedVector2Array(q), PackedColorArray([o, o, i, i]))
 
 
 ## The map editor's climate picture: one pixel a tile, drawn stretched over the map.
@@ -1826,8 +1844,8 @@ func bld_texture(ty: String, era: int) -> Texture2D:
 func _building_shadow(b: Sim.Bld) -> void:
 	var ai := _art_of(b.ty)
 	var sw: float = ai[1]
-	var w := sw * 1.22
-	var h := minf(1.15, sw * 0.52)
+	var w := sw * 1.05
+	var h := minf(1.0, sw * 0.45)
 	var foot := Vector2(b.x + 0.5, b.y + 0.98) + SUN * sw * 1.6
 	if raised:
 		foot.y -= lift_at(b.x + 0.5, b.y + 0.9)

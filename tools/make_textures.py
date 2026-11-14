@@ -1049,11 +1049,11 @@ def make_building(style, wall, roof, cat, res_icon, W=64, H=64, bid=None):
         p.rectangle([14, b - 3, 22, b], fill=(255, 196, 80, 255))
         g.sign(46, b - 13, res_icon) if res_icon is not None else None
     elif style == "stilt":
-        p.rectangle([0, b - 7, 63, b + 2], fill=(56, 114, 160, 200))
-        p.line([(4, b - 4), (14, b - 4)], fill=(150, 196, 226, 200), width=0.6)
-        p.line([(44, b - 2), (56, b - 2)], fill=(150, 196, 226, 200), width=0.6)
+        # piles standing in the water, each with a ring of ripples (the water itself is the map's)
         for x in (14, 26, 38, 50):
+            p.ellipse([x - 3.2, b - 1.4, x + 3.2, b + 1.0], outline=(170, 210, 232, 150), width=0.4)
             p.rectangle([x - 1, b - 14, x + 1, b], fill=(90, 62, 36, 255))
+            p.rectangle([x - 1, b - 2.4, x + 1, b], fill=(60, 52, 40, 255))
         sdeck = [(8, b - 14), (54, b - 14), (60, b - 18), (14, b - 18)]
         p.polygon(sdeck, fill=(150, 112, 70, 255))
         p.texfill(sdeck, lambda W, H, F, sd=g._seed(): BT.wood(W, H, F, (150, 112, 70), sd, board=2.5))
