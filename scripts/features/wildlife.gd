@@ -309,8 +309,27 @@ func building_lines(b: Sim.Bld) -> PackedStringArray:
 
 
 const WIDTH := {"deer": 0.62, "boar": 0.5, "hare": 0.3, "wolf": 0.6}
-var _fish_tiles := PackedInt32Array()   # water tiles with fish (for the jumping fish), refreshed every 10 s
+var _fish_rows: Array = []   # water tiles with fish (for the jumping fish), by map row, refreshed every 2 minutes
 var _fish_t := -100.0
+
+
+## The animals by map rows of AROW tiles (where each set out), made again each game second, or when
+## animals are born or hunted.
+const AROW := 8
+var _rows: Array = []
+var _rows_t := -1.0
+var _rows_n := -1
+
+
+func _index_rows() -> void:
+	_rows_t = sim.time
+	_rows_n = animals.size()
+	_rows = []
+	_rows.resize((sim.h + AROW - 1) / AROW)
+	for r in _rows.size():
+		_rows[r] = []
+	for a in animals:
+		(_rows[clampi(int(float(a[2])) / AROW, 0, _rows.size() - 1)] as Array).append(a)
 
 
 func draw_map(view: CanvasItem, rect: Rect2i) -> void:
@@ -320,7 +339,28 @@ func draw_map(view: CanvasItem, rect: Rect2i) -> void:
 	var fog = sim.get_feature("fog")
 	var r := Rect2(rect.position - Vector2i(1, 1), rect.size + Vector2i(2, 2))
 	var anim := bool(mv.animate)
-	for a in animals:
+	var rx0 := r.position.x
+	var ry0 := r.position.y
+	var rx1 := r.end.x
+	var ry1 := r.end.y
+	# only the map rows on screen (an animal is listed by where it set out, as of up to a second ago:
+	# within two moves of LEG tiles)
+	if absf(sim.time - _rows_t) >= 1.0 or _rows.size() != (sim.h + AROW - 1) / AROW or _rows_n != animals.size():
+		_index_rows()
+	var near := []
+	for row in range(maxi(0, int(ry0 - 2.0 * LEG) / AROW), mini(_rows.size() - 1, int(ry1 + 2.0 * LEG) / AROW) + 1):
+		near.append_array(_rows[row])
+	for a in near:
+		# a quick test on where it set out from and where it is going first: on a big map nearly all of
+		# the thousands of animals are off screen
+		var ax: float = a[1]
+		var bx: float = a[3]
+		if (ax < rx0 and bx < rx0) or (ax > rx1 and bx > rx1):
+			continue
+		var ay: float = a[2]
+		var by: float = a[4]
+		if (ay < ry0 and by < ry0) or (ay > ry1 and by > ry1):
+			continue
 		var at := pos(a)
 		if not r.has_point(at):
 			continue
@@ -334,27 +374,34 @@ func draw_map(view: CanvasItem, rect: Rect2i) -> void:
 	# fish jumping in the fishing grounds, now and then
 	if anim and float(mv.zoom) >= 14.0:
 		var w := sim.w
-		if absf(sim.time - _fish_t) >= 10.0:
+		# the fishing grounds by map row, found again only now and then (fished-out tiles are skipped
+		# below), so only the rows on screen are looked at
+		if absf(sim.time - _fish_t) >= 120.0 or _fish_rows.size() != sim.h:
 			_fish_t = sim.time
-			_fish_tiles = PackedInt32Array()
-			for i in w * sim.h:
-				if sim.ter[i] == Sim.WATER and sim.amt[i] != 0:
-					_fish_tiles.append(i)
-		for i in _fish_tiles:
-			var x := i % w
-			var y := i / w
-			if x < rect.position.x or x > rect.end.x or y < rect.position.y or y > rect.end.y:
-				continue
-			if sim.amt[i] == 0 or (fog != null and not fog.visible_at(i)):
-				continue
-			var ph := fmod(sim.time * 0.15 + float((i * 2654435761) % 1000) / 1000.0, 1.0)
-			if ph < 0.06:
-				var u := ph / 0.06
-				var c := Vector2(x + 0.5, y + 0.6)
-				var p0 := c + Vector2(-0.18 + u * 0.36, -sin(u * PI) * 0.3)
-				view.draw_line(p0, p0 + Vector2(0.12, 0.02 - cos(u * PI) * 0.06), Color(0.85, 0.9, 0.95, 0.9), 0.05)
-				if u > 0.85:
-					view.draw_arc(c, 0.12 + (u - 0.85) * 1.2, 0, TAU, 12, Color(1, 1, 1, 0.5), 0.03)
+			_fish_rows = []
+			_fish_rows.resize(sim.h)
+			for y in sim.h:
+				var row := PackedInt32Array()
+				for x in w:
+					var i := y * w + x
+					if sim.ter[i] == Sim.WATER and sim.amt[i] != 0:
+						row.append(i)
+				_fish_rows[y] = row
+		for y in range(maxi(0, rect.position.y), mini(sim.h - 1, rect.end.y) + 1):
+			for i in (_fish_rows[y] as PackedInt32Array):
+				var x := i % w
+				if x < rect.position.x or x > rect.end.x:
+					continue
+				if sim.amt[i] == 0 or (fog != null and not fog.visible_at(i)):
+					continue
+				var ph := fmod(sim.time * 0.15 + float((i * 2654435761) % 1000) / 1000.0, 1.0)
+				if ph < 0.06:
+					var u := ph / 0.06
+					var c := Vector2(x + 0.5, y + 0.6)
+					var p0 := c + Vector2(-0.18 + u * 0.36, -sin(u * PI) * 0.3)
+					view.draw_line(p0, p0 + Vector2(0.12, 0.02 - cos(u * PI) * 0.06), Color(0.85, 0.9, 0.95, 0.9), 0.05)
+					if u > 0.85:
+						view.draw_arc(c, 0.12 + (u - 0.85) * 1.2, 0, TAU, 12, Color(1, 1, 1, 0.5), 0.03)
 
 
 func save_state() -> Dictionary:

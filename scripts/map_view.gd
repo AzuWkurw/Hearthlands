@@ -234,6 +234,31 @@ func _grid_mesh(x0: int, y0: int, nx: int, ny: int, step: int, uv0: Vector2, uv1
 	return m
 
 
+## The buildings by map rows of BROW tiles, and those with a town name, so a frame looks only at the
+## rows on screen (a big map holds well over a thousand buildings). Made again when buildings are
+## added or removed.
+const BROW := 8
+var _bld_rows: Array = []
+var _towns: Array = []
+var _bld_key := Vector2i(-1, -1)
+
+
+func _index_blds() -> void:
+	var key := Vector2i(sim.blds.size(), sim.blds[-1].id if not sim.blds.is_empty() else 0)
+	if key == _bld_key and _bld_rows.size() == (sim.h + BROW - 1) / BROW:
+		return
+	_bld_key = key
+	_bld_rows = []
+	_bld_rows.resize((sim.h + BROW - 1) / BROW)
+	for r in _bld_rows.size():
+		_bld_rows[r] = []
+	_towns = []
+	for b: Sim.Bld in sim.blds:
+		(_bld_rows[clampi(b.y / BROW, 0, _bld_rows.size() - 1)] as Array).append(b)
+		if b.town != "" or b.def.has("store"):
+			_towns.append(b)
+
+
 func _finish_chunk_jobs() -> void:
 	for c in [chunks, chunks.twin, chunks.hi, chunks.far]:
 		if c != null:
@@ -909,11 +934,13 @@ func _draw() -> void:
 	var fog = sim.get_feature("fog")
 	var fv: PackedByteArray = PackedByteArray() if fog == null else fog.vis
 	var fog_on: bool = fog != null and fv.size() == sim.w * sim.h
-	for b in sim.blds:
-		if b.x >= x0 - 3 and b.x <= x1 + 3 and b.y >= y0 - 1 and b.y <= y1 + 4:
-			if fog_on and b.p != 1 and fv[b.y * w + b.x] == 0:
-				continue
-			vis.append(b)
+	_index_blds()
+	for row in range(maxi(0, (y0 - 1) / BROW), mini(_bld_rows.size() - 1, (y1 + 4) / BROW) + 1):
+		for b: Sim.Bld in _bld_rows[row]:
+			if b.x >= x0 - 3 and b.x <= x1 + 3 and b.y >= y0 - 1 and b.y <= y1 + 4:
+				if fog_on and b.p != 1 and fv[b.y * w + b.x] == 0:
+					continue
+				vis.append(b)
 	vis.sort_custom(func(a, b): return a.y < b.y or (a.y == b.y and a.x < b.x))
 	if prof_on: _pm("bld_list")
 	# ruins and bandit camps (hand-made maps), under the buildings
@@ -1289,7 +1316,7 @@ func _draw() -> void:
 		var tfont := get_theme_default_font()
 		var tfs := clampi(int(z * 0.5), 11, 22)
 		var fogf = sim.get_feature("fog")
-		for b in sim.blds:
+		for b: Sim.Bld in _towns:
 			if b.town == "" or b.dead or b.x < x0 - 2 or b.x > x1 + 2 or b.y < y0 - 2 or b.y > y1 + 3:
 				continue
 			if fogf != null and b.p != 1 and not fogf.explored_at(sim.idx(b.x, b.y)):

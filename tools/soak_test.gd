@@ -8,14 +8,18 @@ extends SceneTree
 func _init() -> void:
 	GameData.ensure()
 	var seed := "valley"; var mins := 60; var size := 0; var foes := 5; var places := false
+	var opts := {}     # new-game options switched on: opt=road_carriers,all_research
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("seed="): seed = a.substr(5)
 		if a.begins_with("mins="): mins = int(a.substr(5))
 		if a.begins_with("size="): size = int(a.substr(5))
 		if a.begins_with("foes="): foes = int(a.substr(5))
 		if a == "places": places = true
+		if a.begins_with("opt="):
+			for o in a.substr(4).split(","):
+				opts[o] = true
 	var sim := Sim.new()
-	sim.new_game(seed, foes, 6, true, size)
+	sim.new_game(seed, foes, 6, true, size, false, opts)
 	if places:
 		# ruins and bandit camps on free grass between the realms (as a hand-made map would have)
 		var put := 0

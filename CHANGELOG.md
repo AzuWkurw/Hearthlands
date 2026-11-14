@@ -1,5 +1,16 @@
 # Changelog
 
+## Build 48.5 (v0.43.0, 2026-11-14)
+
+Bug fixes and speed-ups round 5: smoother frames on the biggest maps.
+
+- Map drawing on a 448 map with 8 rivals and about 1,400 buildings is about twice as fast: close up from 17 to 8 ms a frame, at middle zoom from 20 to 9 ms, over an empty corner from 13 to 3 ms (2560x1440 screen).
+  - The wild animals (thousands on a big map) were looked at one by one every frame: now only those in the map rows on screen.
+  - The jumping fish looked at every fishing tile of the map each frame, and searched the whole map every 10 seconds (a stutter): now only the rows on screen, searched every two minutes.
+  - Buildings and town names: only the map rows on screen are looked at, not every building.
+- Two more 60-minute games played without errors: one with road carriers, one with all research done and ruins and bandit camps.
+- The long-game test can switch on new-game options (opt=road_carriers,all_research).
+
 ## Build 48.4 (v0.43.0, 2026-11-14)
 
 Bug fixes round 4: no more starving with full stores.
