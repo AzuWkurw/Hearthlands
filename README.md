@@ -10,7 +10,7 @@ economy you do.
 ## Download
 
 The ready-made Windows game is on the [`downloads` branch](../../tree/downloads): download the zip,
-unzip it and run `Hearthlands.exe`. Current version: **v0.44.0 build 49.1** (see `CHANGELOG.md`).
+unzip it and run `Hearthlands.exe`. Current version: **v0.45.0 build 50** (see `CHANGELOG.md`).
 
 What is in the game now:
 
@@ -42,7 +42,8 @@ Done (builds 43 to 49):
 | 48.1 to 48.6 | Bug fixes and speed-ups: square clouds and the orange map at dusk fixed, no starving with full stores, ox carts as an upgrade for the mule station (and in 49.1 the scriptorium to a library), map baking on all processor cores, about twice as fast drawing on big maps |
 | 49 | War at sea: landings on a rival's coast from your harbours, fleets that fight and sink enemy ships; armies that need supplies far from home; a new-game option to land from the sea with a harbour headquarters |
 
-Next: a window for logistics priorities and one for worker priorities, with numbers.
+| 49.1 | The scriptorium can be upgraded to a library |
+| 50 | Transport priorities and worker priorities in numbers (1 to 9), each in its own window |
 
 Later: a story campaign through the ages, multiplayer, scripted scenarios, a chronicle at the end of a
 game, more animations, music for each age, and quality-of-life features (a production chain overlay,
@@ -113,6 +114,8 @@ Exporting needs Godot 4.3's export templates (in the editor: Editor > Manage Exp
 | Farm crops | Select a farm: Crop buttons (greyed ones show which study unlocks the seed) and Winter rye when out of season |
 | Crops by season | Select a farm: a crop for each season (blank: the main crop); Use for all farms copies the plan |
 | Buildings window | J or Buildings: how many of each kind you have, workers, priority for a whole kind, a limit on workers per kind, Next jumps to them; Keep one builder free |
+| Transport priorities | K or Transport: which goods the carriers take first, 1 to 9 |
+| Worker priorities | L or Workers: which kinds of building get workers first, 1 to 9 |
 | Upgrade a military building | Select it: Upgrade to (a bigger one of the same size); soldiers stay inside |
 | Border settings | Select a military building: how much inland buildings hold, and new soldiers to the border first |
 | Map editor: open a map | In the editor, Map tab: pick a saved map and press Open |
@@ -832,6 +835,21 @@ A mod in `user://data/techs.json` with the same id changes an existing tech; new
 
 The AI builds the buildings it knows by id. Your new buildings are available to you, and AI rivals keep
 playing with the standard set.
+
+## Priorities in numbers
+
+Two windows, as in The Settlers II, where 1 comes first, 9 last and 5 is as usual:
+
+- **Transport priorities** (K, or Transport in the top bar): which goods the carriers take first.
+  Goods waiting at workshops are picked up, workshops get what they use, and building sites get
+  their materials, lower numbers first. "Any food" counts for inns, mines and others that take
+  whatever food there is.
+- **Worker priorities** (L, or Workers in the top bar): which kinds of building get new workers and
+  builders first when there are not enough for all. Each row shows how many of that kind have
+  their workers.
+
+A building's own priority (High, Normal, Low or Paused in its info) still comes first: the numbers
+order the buildings within it. The numbers are saved with the game.
 
 ## War at sea and army supplies
 

@@ -321,6 +321,8 @@ class Player:
 	var border_first := true  # new soldiers go to buildings near the border first
 	var spare_builder := false  # one builder stays at headquarters, ready for the next building site
 	var job_limit := {}     # building type -> at most this many of the kind get workers (the Buildings window)
+	var carry_rank := {}    # good (or "food") -> 1..9, carriers take lower numbers first (the Transport priorities window; 5 when not set)
+	var work_rank := {}     # building type -> 1..9, lower numbers get workers first (the Worker priorities window; 5 when not set)
 	var used_artisan := 0
 	var hq: Bld = null
 	var start := Vector2i.ZERO

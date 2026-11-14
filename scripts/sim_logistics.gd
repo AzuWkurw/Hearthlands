@@ -1248,7 +1248,7 @@ func _dispatch_supply() -> void:
 			if waiting >= 6:
 				continue
 			var res := ""
-			for k in b.need:
+			for k in by_rank(p, b.need):
 				if float(p.stock.get(k, 0.0)) >= 1.0:
 					res = k
 					break
@@ -1518,6 +1518,21 @@ func _dispatch_inputs() -> void:
 				buckets[0].append(b)
 			else:
 				buckets[1 + Sim.PRIO_HIGH - b.prio].append(b)
+		# the transport priorities: within each priority, buildings whose goods have a lower number first
+		if not p.carry_rank.is_empty():
+			var split := []
+			for list0: Array in buckets:
+				var groups := {}
+				for b0: Sim.Bld in list0:
+					var r0 := _bld_rank(p, b0)
+					if not groups.has(r0):
+						groups[r0] = []
+					(groups[r0] as Array).append(b0)
+				var rs := groups.keys()
+				rs.sort()
+				for r1 in rs:
+					split.append(groups[r1])
+			buckets = split
 		var out_of_carriers := false
 		for list: Array in buckets:
 			if out_of_carriers:
@@ -1532,7 +1547,7 @@ func _dispatch_inputs() -> void:
 					out_of_carriers = true     # this realm's carriers are all out; the next realm's turn
 					break
 				var inp: Dictionary = b.def["in"]
-				for k in inp:
+				for k in by_rank(p, inp):
 					# enough for two work cycles; food for one, so less of it sits about in workshops
 					var cyc := b.keep if b.keep > 0 else 2
 					var want := int(inp[k]) * (maxi(1, cyc / 2) if k == "food" else cyc)
@@ -1576,6 +1591,42 @@ func input_arrival(t: Sim.Trip, p: Sim.Player) -> void:
 			give(p, t.res2, float(t.n2), t.path[0] if t.path.size() > 0 else -1)
 
 
+# ---------------------------------------------------------------- transport priorities
+const RANK_DEFAULT := 5
+
+## Realm p's transport priority for good res (1 first .. 9 last; 5 when not set). Inputs that take
+## any food ask for "food".
+static func rank_of(p: Sim.Player, res: String) -> int:
+	if p.carry_rank.is_empty():
+		return RANK_DEFAULT
+	if GameData.food_ids.has(res) and not p.carry_rank.has(res):
+		return int(p.carry_rank.get("food", RANK_DEFAULT))
+	return int(p.carry_rank.get(res, RANK_DEFAULT))
+
+
+## The goods of dictionary d (needs, inputs, goods waiting) in transport priority order (ties: as listed).
+static func by_rank(p: Sim.Player, d: Dictionary) -> Array:
+	var ks := d.keys()
+	if p.carry_rank.is_empty() or ks.size() < 2:
+		return ks
+	var idx := {}
+	for i in ks.size():
+		idx[ks[i]] = i
+	ks.sort_custom(func(a, b):
+		var ra := rank_of(p, String(a))
+		var rb := rank_of(p, String(b))
+		return ra < rb or (ra == rb and int(idx[a]) < int(idx[b])))
+	return ks
+
+
+## A building's place in the carriers' order: the best rank of the goods it takes in.
+static func _bld_rank(p: Sim.Player, b: Sim.Bld) -> int:
+	var r := 9
+	for k in b.def.get("in", {}):
+		r = mini(r, rank_of(p, String(k)))
+	return r
+
+
 ## Sends free carriers to buildings with goods waiting. Carts first, then mules, then porters.
 func _dispatch() -> void:
 	if _stations.size() != sim.players.size():
@@ -1590,6 +1641,20 @@ func _dispatch() -> void:
 	# filled (a loaded game rebuilds it in another order, and must go on exactly the same)
 	for bk: Array in buckets:
 		bk.sort()
+		# the transport priorities: goods with a lower number are picked up first (ties: oldest first)
+		var ranked := false
+		for q in sim.players:
+			if not q.carry_rank.is_empty():
+				ranked = true
+		if ranked:
+			var rk := {}
+			for id in bk:
+				var pb2: Sim.Bld = sim.by_id.get(id)
+				var r := RANK_DEFAULT
+				if pb2 != null and not pb2.out_buf.is_empty():
+					r = rank_of(sim.players[pb2.p - 1], String(by_rank(sim.players[pb2.p - 1], pb2.out_buf)[0]))
+				rk[id] = r
+			bk.sort_custom(func(a, c): return int(rk[a]) < int(rk[c]) or (int(rk[a]) == int(rk[c]) and a < c))
 	for id in buckets[0] + buckets[1] + buckets[2] + buckets[3]:
 		if not sim._pending.has(id):
 			continue
@@ -1603,7 +1668,7 @@ func _dispatch() -> void:
 		var path := store_path(b)
 		if path.is_empty():
 			continue
-		var res: String = b.out_buf.keys()[0]
+		var res: String = by_rank(p, b.out_buf)[0]
 		var have := int(b.out_buf[res])
 		var kind := "porter"
 		var speed := 1.0

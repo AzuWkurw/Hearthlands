@@ -108,6 +108,8 @@ var rivals_label: RichTextLabel
 var problems_ui := UiProblems.new(self)  # the Problems list (ui_problems.gd)
 var traffic_ui := UiTraffic.new(self)    # the traffic map, F7 (ui_traffic.gd)
 var workers_ui := UiWorkers.new(self)    # the Buildings and workers window, J (ui_workers.gd)
+var carry_prio_ui := UiPriorities.new(self, UiPriorities.MODE_CARRY)  # transport priorities, K (ui_priorities.gd)
+var work_prio_ui := UiPriorities.new(self, UiPriorities.MODE_WORK)    # worker priorities, L
 var undo_ui := UiUndo.new(self)          # Ctrl+Z (ui_undo.gd)
 var minimap_filter: OptionButton
 var achievements := Achievements.new(self)
@@ -745,6 +747,12 @@ func _build_ui() -> void:
 	var wkb := _button("Buildings", func(): workers_ui.toggle())
 	wkb.tooltip_text = "How many buildings of each kind you have, their workers, and limits and priorities for each kind (J)"
 	tb.add_child(wkb)
+	var cpb := _button("Transport", func(): carry_prio_ui.toggle())
+	cpb.tooltip_text = "Transport priorities: which goods the carriers take first, in numbers (K)"
+	tb.add_child(cpb)
+	var wpb := _button("Workers", func(): work_prio_ui.toggle())
+	wpb.tooltip_text = "Worker priorities: which kinds of building get workers first, in numbers (L)"
+	tb.add_child(wpb)
 	var trb := _button("Traffic", func(): traffic_ui.toggle())
 	trb.tooltip_text = "Colour your roads by how busy they are (F7)"
 	tb.add_child(trb)
@@ -893,6 +901,8 @@ func _build_ui() -> void:
 	problems_ui.build()
 	traffic_ui.build()
 	workers_ui.build()
+	carry_prio_ui.build()
+	work_prio_ui.build()
 	sim.tech_done.connect(func(pid, tid):
 		if pid != 1:
 			return
@@ -1816,6 +1826,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event.keycode == KEY_J and not setup.visible and not editor_ui.open:
 		workers_ui.toggle()
+		return
+	if event.keycode == KEY_K and not setup.visible and not editor_ui.open:
+		carry_prio_ui.toggle()
+		return
+	if event.keycode == KEY_L and not setup.visible and not editor_ui.open:
+		work_prio_ui.toggle()
 		return
 	if event.keycode == KEY_B and not setup.visible and not save_panel.visible:
 		toolbar.toggle_sites()

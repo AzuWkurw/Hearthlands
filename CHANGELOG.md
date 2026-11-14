@@ -1,5 +1,14 @@
 # Changelog
 
+## Build 50 (v0.45.0, 2026-11-14)
+
+Priorities in numbers: a transport priorities window and a worker priorities window, as in The Settlers II.
+
+- Transport priorities (K, or Transport in the top bar): every good gets a number from 1 (first) to 9 (last), 5 as usual. Carriers pick up goods waiting at workshops, bring workshops what they use, and bring building sites their materials, lower numbers first. "Any food" counts for inns, mines and others that take whatever food there is. Show every good lists also goods you have none of yet.
+- Worker priorities (L, or Workers in the top bar): every kind of building gets a number from 1 to 9. When there are not enough peasants or artisans for all, kinds with a lower number get new workers and builders first. Each row shows how many of that kind have their workers.
+- A building's own priority (High, Normal, Low, Paused in its info) still comes first: the numbers order the buildings within it. All back to 5 resets a window. The numbers are saved with the game; with every number at 5 the game plays exactly as before.
+- New test: priorities (42 tests).
+
 ## Build 49.1 (v0.44.0, 2026-11-14)
 
 The scriptorium can be upgraded to a library.

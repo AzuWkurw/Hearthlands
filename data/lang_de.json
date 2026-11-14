@@ -301,5 +301,19 @@
 	"%d soldiers on %d ships, %d rations": "%d Soldaten auf %d Schiffen, %d Rationen",
 	"Set sail": "Segel setzen",
 	"The fleet sets sail.": "Die Flotte setzt die Segel.",
-	"Land from the sea: your headquarters is a harbour on the coast, with a ship": "Vom Meer aus landen: dein Hauptquartier ist ein Hafen an der Küste, mit einem Schiff"
+	"Land from the sea: your headquarters is a harbour on the coast, with a ship": "Vom Meer aus landen: dein Hauptquartier ist ein Hafen an der Küste, mit einem Schiff",
+	"Transport priorities": "Transportprioritäten",
+	"Worker priorities": "Arbeiterprioritäten",
+	"Transport": "Transport",
+	"Workers": "Arbeiter",
+	"Carriers take goods with a lower number first: 1 first, 9 last, 5 as usual. A building's own priority (in its info) still comes first.": "Träger nehmen Waren mit kleinerer Zahl zuerst: 1 zuerst, 9 zuletzt, 5 wie üblich. Die eigene Priorität eines Gebäudes (in seiner Info) geht weiterhin vor.",
+	"Kinds of building with a lower number get new workers and builders first when there are not enough for all: 1 first, 9 last, 5 as usual. A building's own priority (in its info) still comes first.": "Gebäudearten mit kleinerer Zahl bekommen zuerst neue Arbeiter und Bauleute, wenn nicht genug für alle da sind: 1 zuerst, 9 zuletzt, 5 wie üblich. Die eigene Priorität eines Gebäudes (in seiner Info) geht weiterhin vor.",
+	"Show every good": "Alle Waren zeigen",
+	"Show every kind (also those you have none of)": "Alle Arten zeigen (auch solche, die du nicht hast)",
+	"All back to 5": "Alle zurück auf 5",
+	"Any food": "Beliebige Nahrung",
+	"for inns, mines and others that take any food": "für Gasthäuser, Minen und andere, die jede Nahrung nehmen",
+	"%d of %d have workers": "%d von %d haben Arbeiter",
+	"Transport priorities: which goods the carriers take first, in numbers (K)": "Transportprioritäten: welche Waren die Träger zuerst nehmen, in Zahlen (K)",
+	"Worker priorities: which kinds of building get workers first, in numbers (L)": "Arbeiterprioritäten: welche Gebäudearten zuerst Arbeiter bekommen, in Zahlen (L)"
 }
