@@ -2,7 +2,7 @@
 
 Every source file with what it is for, grouped by part. Written by `tools/file_list.py` from the comment at the
 top of each file; run it again after adding files. For how the parts work together, read
-`docs/SOURCE_GUIDE.md`. Besides these 220 files there are 969 pictures in `textures/` (made by
+`docs/SOURCE_GUIDE.md`. Besides these 221 files there are 969 pictures in `textures/` (made by
 `tools/make_textures.py` and `tools/make_scenery.py`, or your own) and 76 sounds in `sounds/` (made by
 `tools/make_sounds.py`) and 8 pieces of music in `music/` (made by `tools/make_music.py`). Godot's
 `.import` files next to them are made by the editor.
@@ -92,7 +92,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 
 | File | Lines | What it is |
 |---|---:|---|
-| `data/buildings.json` | 2268 | Every building: name, group, size, cost, build time, worker, inputs and outputs, work cycle, garrison, store room, art style and info text. |
+| `data/buildings.json` | 2486 | Every building: name, group, size, cost, build time, worker, inputs and outputs, work cycle, garrison, store room, art style and info text. |
 | `data/campaign.json` | 397 | The campaign: its chapters, their place on the campaign map, story before and after, what carries over, and the mission of each. |
 | `data/lang_de.json` | 275 | German translation of the interface. |
 | `data/map_iron_coast.json` | 1 | The hand-made map of the Iron Coast mission (made by tools/make_mission_map.gd). |
@@ -254,6 +254,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 | File | Lines | What it is |
 |---|---:|---|
 | `tools/bld_tex.py` | 243 | Surface textures for the building pictures (used by make_textures.py). |
+| `tools/bld_variants.py` | 2327 | Own pictures for buildings that share a drawing style in make_textures.py. |
 | `tools/bump_build.py` | 53 | Raise the build number before a release. |
 | `tools/check_data.py` | 104 | Check the data files (and optionally a mod's JSON files) for mistakes. |
 | `tools/extract_strings.py` | 76 | Collect the interface text from the scripts into the translation files. |
@@ -264,7 +265,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `tools/make_music.py` | 545 | Compose and render Hearthlands' music into ../music (OGG Vorbis, stereo, 44.1 kHz). |
 | `tools/make_scenery.py` | 273 | Trees, mountain peaks and boulders for the map, drawn with light and shade so they look round. |
 | `tools/make_sounds.py` | 542 | Generate Hearthlands' sound effects and ambience into ../sounds. |
-| `tools/make_textures.py` | 1709 | Generate Hearthlands' default textures into ../textures. |
+| `tools/make_textures.py` | 1720 | Generate Hearthlands' default textures into ../textures. |
 | `tools/readme_tables.py` | 128 | Rebuilds the Resources, Buildings and Research tree tables in README.md from the data files. |
 | `tools/tech_icons.py` | 820 | Emblems for the research icons (used by make_textures.techs()). |
 
@@ -272,9 +273,9 @@ top of each file; run it again after adding files. For how the parts work togeth
 
 | File | Lines | What it is |
 |---|---:|---|
-| `CHANGELOG.md` | 561 | What changed in each build. |
+| `CHANGELOG.md` | 579 | What changed in each build. |
 | `README.md` | 912 | How to play, the rules, controls, settings, modding and the project layout. |
-| `docs/FILES.md` | 279 | This list (written by tools/file_list.py). |
+| `docs/FILES.md` | 283 | This list (written by tools/file_list.py). |
 | `docs/SOURCE_GUIDE.md` | 439 | A tour of the code for programmers: the parts, how a game tick runs, where things live. |
 | `docs/SUGGESTIONS.md` | 203 | Ideas and their status after each round of work. |
 | `export_presets.cfg` | 61 | Godot export settings for the Windows and Linux builds. |

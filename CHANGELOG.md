@@ -1,5 +1,23 @@
 # Changelog
 
+## Build 42 (v0.37.0, 2026-11-14)
+
+More detailed textures everywhere, and buildings that each look like their trade.
+
+Buildings
+- 72 buildings that used to be the same house in another colour now have their own shape and the tools and goods of their trade: a log on the saw trestle at the sawmill, a bread oven at the bakery, a copper and barrels at the brewery, an open forge and grindstone at the toolsmith, weapon racks, armour stands, hides on frames, cloth drying, a slipway with a ship at the shipyard, a factory with a cog and tall stacks, a textile mill with rows of windows, a tavern with two floors and a tankard sign, a bathhouse with a dome...
+- Farms: fruit trees, hop poles and an oast house, sheep and pigs in their pens, flax, vines, a granary on stones, donkeys in a paddock, a cow at the dairy.
+- Small workplaces: a chopping block, a tree nursery, a clay pit, salt pans, beehives, sand heaps, a lookout platform.
+- Furnaces: a smoking charcoal mound, a bloomery shaft, a bottle furnace, a glass cone, a steel converter.
+- Halls and castles: a log lodge, a chapel with a spire, a cloister, a library with columns and a dome, a manor, a university with a clock tower, a walled fortress, a fortified depot.
+- Mines show their ore (coal, iron, gold, copper); the keep, watch tower, guardhouse, redoubt and paper mill (with a water wheel) have their own look.
+- Smoke and furnace glow come from the new chimneys and fire mouths.
+
+Textures
+- Walls, roofs and doors are drawn with real materials: stone blocks, bricks, plaster, timber framing, planks, roof tiles, slates and thatch, in the style of each age.
+- The ground has more detail and is drawn at double resolution when you zoom in close; hills and mountains are shaded by their slope.
+- New pictures for the research tree.
+
 ## Build 41 (v0.36.0, 2026-11-14)
 
 Better graphics, a much bigger map editor, ruins and bandit camps, music and new sound, and a faster game.
