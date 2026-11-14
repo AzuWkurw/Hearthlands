@@ -1,5 +1,15 @@
 # Changelog
 
+## Build 43.3 (v0.38.0, 2026-11-14)
+
+Fixes for the flat green or orange map, and for bridges.
+
+- Flat green or orange land (mostly with Vulkan): the seasons' see-through tints for summer, autumn, the climates and snow were drawn solid, covering the whole land. They are now laid onto the ground by its shader, so they look the same in OpenGL and Vulkan and line up with raised hills.
+- On a big screen, or with a small interface size, parts of the map could stay in the minimap's flat colours: the game now keeps every part on screen ready.
+- The minimap's picture is made in a format every graphics card shows.
+- Bridges: a bridge can now cross up to 6 tiles of water (was 3), straight across, inside your land, 2 planks a tile.
+- When no road can cross the water, the hint says why: too wide, the far shore or the water is not your land, or something is in the way on the far shore. Clicking on the water explains to click the far shore instead.
+
 ## Build 43.2 (v0.38.0, 2026-11-14)
 
 Fix for the plain green map when zoomed out.
