@@ -1,5 +1,18 @@
 # Changelog
 
+## Build 47 (v0.42.0, 2026-11-14)
+
+Events that ask you to choose, and allies who ask for help.
+
+- Four new events ask what you will do, in a window that pauses the game:
+  - Pilgrims at the gate: feed them (10 food, some may stay as peasants), take a toll, or send them on.
+  - A comet: hold a day of prayers (10 candles or beer; all work faster for 2 minutes), let the scholars study it (research points), or tell the people it means nothing.
+  - Grumbling over taxes: ease them (15 gold; faster work), send soldiers to keep order, or do nothing (slower work).
+  - A strange ship: let it land and trade (rare goods, but maybe sickness) or turn it away.
+- "Later" puts a question off for a minute; unanswered, it takes the last answer after two game minutes. Rivals choose at once.
+- Diplomacy: an ally at war asks you to join it. Accept and it trusts you more; refuse, or let the offer lapse, and it trusts you less.
+- An ally whose trust has fallen low ends the alliance (and stays at peace).
+
 ## Build 46 (v0.41.0, 2026-11-14)
 
 Luxuries and more production buildings.
