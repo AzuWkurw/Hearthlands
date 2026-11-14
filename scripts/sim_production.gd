@@ -136,42 +136,50 @@ func start_check(b: Sim.Bld, p: Sim.Player) -> String:
 const COMING_TICKS := 10
 
 func coming(p: Sim.Player, res: String) -> float:
-	if sim._ticks - sim._coming_tick >= COMING_TICKS or sim._coming_tick > sim._ticks:
-		sim._coming_tick = sim._ticks
-		sim._coming = {}
-	if not sim._coming.has(p.id):
-		# worked out for one realm at a time, at most once a tick, and only when one of its stores is
-		# nearly full (see start_check)
-		var c: Dictionary = {}
-		for b: Sim.Bld in sim.realm_blds(p):
-			if not b.out_buf.is_empty():
-				for k in b.out_buf:
-					c[k] = float(c.get(k, 0.0)) + float(b.out_buf[k])
-			if b.working and b.def.has("out"):
-				if Crops.is_farm(b):
-					_count_cycle(b, p, c)
-				else:
-					# what a cycle of this type makes, with research's extra, worked out once per type
-					if not sim._type_bonus.has(p.id):
-						sim._type_bonus[p.id] = {}
-					var tb: Dictionary = sim._type_bonus[p.id]
-					var key := "*" + b.ty
-					if not tb.has(key):
-						var adds := []
-						var extra := _extra_out(p, b.ty)
-						for k in b.def.out:
-							if k != "research" and k != "ship":
-								adds.append([k, float(b.def.out[k]) + extra])
-						tb[key] = adds
-					for a in tb[key]:
-						c[a[0]] = float(c.get(a[0], 0.0)) + float(a[1])
-		# goods carried to the stores (worked out for each realm on its own, so a loaded game, which
-		# keeps these counts, goes on exactly as before)
-		for t: Sim.Trip in sim.trips:
-			if t.p == p.id and not t.delivered and t.site == 0 and t.dest == 0:
-				c[t.res] = float(c.get(t.res, 0.0)) + t.n
-		sim._coming[p.id] = c
+	if sim._ticks - sim._coming_tick >= COMING_TICKS or sim._coming_tick > sim._ticks or not sim._coming.has(p.id):
+		_count_coming()
 	return float((sim._coming[p.id] as Dictionary).get(res, 0.0))
+
+
+## Counts the goods on their way for every realm at once: one walk over the buildings and one over
+## the trips. All realms are counted at the same moment, so a loaded game (which keeps the counts)
+## goes on exactly as before.
+func _count_coming() -> void:
+	sim._coming_tick = sim._ticks
+	sim._coming = {}
+	for q: Sim.Player in sim.players:
+		sim._coming[q.id] = {}
+	for b: Sim.Bld in sim.blds:
+		if b.dead or not sim._coming.has(b.p):
+			continue
+		var c: Dictionary = sim._coming[b.p]
+		if not b.out_buf.is_empty():
+			for k in b.out_buf:
+				c[k] = float(c.get(k, 0.0)) + float(b.out_buf[k])
+		if b.working and b.def.has("out"):
+			var p := sim.players[b.p - 1]
+			if Crops.is_farm(b):
+				_count_cycle(b, p, c)
+			else:
+				# what a cycle of this type makes, with research's extra, worked out once per type
+				if not sim._type_bonus.has(p.id):
+					sim._type_bonus[p.id] = {}
+				var tb: Dictionary = sim._type_bonus[p.id]
+				var key := "*" + b.ty
+				if not tb.has(key):
+					var adds := []
+					var extra := _extra_out(p, b.ty)
+					for k in b.def.out:
+						if k != "research" and k != "ship":
+							adds.append([k, float(b.def.out[k]) + extra])
+					tb[key] = adds
+				for a2 in tb[key]:
+					c[a2[0]] = float(c.get(a2[0], 0.0)) + float(a2[1])
+	# goods carried to the stores
+	for t: Sim.Trip in sim.trips:
+		if not t.delivered and t.site == 0 and t.dest == 0 and sim._coming.has(t.p):
+			var c: Dictionary = sim._coming[t.p]
+			c[t.res] = float(c.get(t.res, 0.0)) + t.n
 
 
 func _count_cycle(b: Sim.Bld, p: Sim.Player, c: Dictionary) -> void:

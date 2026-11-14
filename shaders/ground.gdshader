@@ -37,12 +37,31 @@ uniform vec4 green_col = vec4(0.0);
 uniform vec4 snow_amt = vec4(0.0);
 uniform vec4 ice_col = vec4(0.0);
 
+// Tiles along each side of a chunk (MapChunks.CH).
+uniform float chunk_tiles = 16.0;
+
 // Position of the pixel on the map, in tiles, handed from the vertex step to the pixel step.
 varying vec2 world;
+// The same on the flat map, worked out from what the drawing hands over (see vertex()), or -1 when
+// the drawing did not say (the dark background beyond the map edge).
+varying vec2 flat_pos;
 
 void vertex() {
 	// VERTEX is the corner position in the drawing's own units, which the map view sets to tiles.
 	world = VERTEX;
+	// The renderers do not agree on VERTEX: with Vulkan it can start again at each chunk, which cut
+	// the cloud shadows (and hills and season tints) into squares. So the map view tells the shader
+	// where each picture lies, in the colour it draws it with (blue 0.75: a chunk, its number in red
+	// and green; blue 0.5: a part of the minimap picture), and the place comes from the picture's own
+	// UV, which every renderer hands over the same way.
+	flat_pos = vec2(-1.0);
+	if (COLOR.a > 0.99 && abs(COLOR.b - 0.75) < 0.02) {
+		flat_pos = floor(COLOR.rg * 64.0 + 0.5) * chunk_tiles + UV * chunk_tiles;
+		COLOR = vec4(1.0);
+	} else if (COLOR.a > 0.99 && abs(COLOR.b - 0.5) < 0.02 && COLOR.r > 0.99) {
+		flat_pos = UV * map_size;
+		COLOR = vec4(1.0);
+	}
 }
 
 // A repeatable pseudo-random number between 0 and 1 for each whole grid cell.
@@ -86,13 +105,16 @@ void fragment() {
 	}
 	// where on the flat map this pixel lies (raised ground is drawn lifted)
 	vec2 p = world;
-	if (raised && (use_relief || use_season)) {
+	bool on_map = flat_pos.x >= 0.0;
+	if (on_map) {
+		p = flat_pos;
+	} else if (raised && (use_relief || use_season)) {
 		for (int k = 0; k < 3; k++) {
 			p.y = world.y + texture(lift_map, (p + 0.5) / (map_size + 1.0)).r * 4.0;
 		}
 	}
-	// hills, on land only
-	if (use_relief) {
+	// hills, on land only (and nothing of it beyond the map edge)
+	if (use_relief && on_map) {
 		float rv = texture(relief_map, p / map_size).r * 2.0 - 1.0;
 		float land = 1.0 - water;
 		if (rv > 0.0) {
@@ -102,7 +124,7 @@ void fragment() {
 		}
 	}
 	// climates and seasons, on land (the ice on the taiga's water)
-	if (use_season) {
+	if (use_season && on_map) {
 		vec4 m = texture(season_mask, p / map_size);
 		float land = 1.0 - water;
 		vec4 tints[4] = vec4[4](tint0, tint1, tint2, tint3);
@@ -120,9 +142,9 @@ void fragment() {
 		}
 	}
 	// cloud shadows: big soft patches drifting with the wind (more of them on a cloudy day)
-	if (clouds > 0.01) {
-		vec2 p = world * 0.055 - drift * TIME * 0.055;
-		float n = noise(p) * 0.65 + noise(p * 2.3 + 7.1) * 0.35;
+	if (clouds > 0.01 && on_map) {
+		vec2 cp = p * 0.055 - drift * TIME * 0.055;
+		float n = noise(cp) * 0.65 + noise(cp * 2.3 + 7.1) * 0.35;
 		float cover = smoothstep(0.78 - clouds * 0.45, 0.95 - clouds * 0.35, n);
 		c.rgb *= 1.0 - (0.07 + 0.15 * clouds) * cover;
 	}

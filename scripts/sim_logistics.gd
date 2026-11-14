@@ -1476,7 +1476,12 @@ func _dispatch_inputs() -> void:
 		for list: Array in buckets:
 			if out_of_carriers:
 				break
-			for b: Sim.Bld in list:
+			# each round starts at another building, so when carriers are short every building gets its
+			# turn (always starting with the oldest left new ones, like a late brewery, waiting for ever)
+			var n0 := list.size()
+			var start := (sim._ticks / 3) % n0 if n0 > 0 else 0
+			for j in n0:
+				var b: Sim.Bld = list[(start + j) % n0]
 				if porters_free(p) <= 0 and (_stations[p.id - 1] as Array).is_empty() and not road_carriers_on():
 					out_of_carriers = true     # this realm's carriers are all out; the next realm's turn
 					break

@@ -1,7 +1,10 @@
 // Map shader: everything the map view draws itself (buildings, people, trees, fields...) passes
 // through here. It only touches corners that are marked to sway: the tops of trees and of crops
 // in the fields bend in the wind, each a little out of step with its neighbours.
-// A corner is marked by the alpha of its colour, a value nothing else on the map is drawn with:
+// A corner is marked by the alpha of its colour, just short of fully solid (254 or 253 of 255).
+// (They were 3 and 5 of 255 before build 48.2: a see-through layer fading in, like the night's veil at
+// dusk, passed through those values and was turned solid, covering the whole map. Anything drawn
+// almost solid that happens to match now is made solid, which looks the same.)
 //   SWAY_TREE  - the top of a tree: bends a lot, slowly
 //   SWAY_CROP  - the tip of a crop: bends a little, quickly, in waves running across the field
 // The marked corners get their alpha set back to 1. Every other corner and every pixel is drawn
@@ -12,8 +15,8 @@ uniform bool animate = true;
 // How hard the wind blows: 1 normal, about 2.5 in a storm, 0.3 on a still day.
 uniform float wind = 1.0;
 
-const float SWAY_TREE = 0.0117647;   // 3 / 255 (mesh colours are stored as 8 bits a channel)
-const float SWAY_CROP = 0.0196078;   // 5 / 255
+const float SWAY_TREE = 0.9960784;   // 254 / 255 (mesh colours are stored as 8 bits a channel)
+const float SWAY_CROP = 0.9921569;   // 253 / 255
 
 void vertex() {
 	float a = COLOR.a;

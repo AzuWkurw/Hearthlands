@@ -19,6 +19,8 @@ func _init() -> void:
 	var win := Vector2i(1600, 900)
 	var ui := 1.0
 	var at_time := -1.0
+	var night := false
+	var raised := false
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("out="): out = a.substr(4) + "/"
 		if a.begins_with("tag="): tag = a.substr(4)
@@ -27,6 +29,8 @@ func _init() -> void:
 		if a.begins_with("size="): win = Vector2i(int(a.substr(5).get_slice("x", 0)), int(a.substr(5).get_slice("x", 1)))
 		if a.begins_with("scale="): ui = float(a.substr(6))
 		if a.begins_with("time="): at_time = float(a.substr(5))
+		if a == "night": night = true
+		if a == "raised": raised = true
 		if a.begins_with("zooms="): zooms = Array(a.substr(6).split(",")).map(func(v): return float(v))
 	DisplayServer.window_set_size(win); root.size = win
 	var main = load("res://main.tscn").instantiate(); root.add_child(main)
@@ -55,6 +59,10 @@ func _init() -> void:
 	if at_time >= 0.0:
 		sim.time = at_time
 	main._after_world_change()
+	if night:
+		main.view.daynight = true
+	if raised:
+		main.view.raised = true
 	main.setup.visible = false
 	main.side_box.visible = false
 	main.paused = true

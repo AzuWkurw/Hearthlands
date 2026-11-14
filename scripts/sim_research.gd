@@ -363,6 +363,11 @@ func _ai_pick_tech(p: Sim.Player) -> String:
 		if p.pers == "warlord" and military: sc *= 0.6
 		if p.pers == "builder" and (eff.has("research") or eff.has("speed:all") or eff.has("speed:farm")): sc *= 0.7
 		if t.get("final", false): sc *= 0.5
+		# techs that open new buildings first, as a player would: a study that only adds a percentage
+		# can wait. The brewery's (beer for the taverns, so festivals and content people) comes soonest.
+		var opens := GameData.unlocks(id).filter(func(b): return sim.bld_enabled(b))
+		if not opens.is_empty():
+			sc *= 0.35 if opens.has("brewery") and sim.time > 8 * 60.0 else 0.7
 		if int(t.get("age", 0)) > p.age: sc *= 0.3 if push else 0.85
 		if sc < best_sc:
 			best_sc = sc; best = id

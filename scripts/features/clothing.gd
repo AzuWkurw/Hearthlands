@@ -152,7 +152,8 @@ func panel_lines(p: Sim.Player) -> PackedStringArray:
 
 
 func save_state() -> Dictionary:
-	return {"warm": warm, "light": light}
+	# this second's speed and food factors too: a game loaded mid-second goes on exactly the same
+	return {"warm": warm, "light": light, "speed": _speed, "food": _food}
 
 
 func load_state(d: Dictionary) -> void:
@@ -162,3 +163,9 @@ func load_state(d: Dictionary) -> void:
 		warm[int(k)] = float(d.warm[k])
 	for k in d.get("light", {}):
 		light[int(k)] = float(d.light[k])
+	_speed = {}
+	_food = {}
+	for k in d.get("speed", {}):
+		_speed[int(k)] = float(d.speed[k])
+	for k in d.get("food", {}):
+		_food[int(k)] = float(d.food[k])

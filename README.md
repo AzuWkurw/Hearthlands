@@ -10,7 +10,7 @@ economy you do.
 ## Download
 
 The ready-made Windows game is on the [`downloads` branch](../../tree/downloads): download the zip,
-unzip it and run `Hearthlands.exe`. Current version: **v0.43.0 build 48.1** (see `CHANGELOG.md`).
+unzip it and run `Hearthlands.exe`. Current version: **v0.43.0 build 48.2** (see `CHANGELOG.md`).
 
 What is in the game now:
 
@@ -40,7 +40,7 @@ Done (builds 43 to 48):
 | 47 | Events with a choice (pilgrims, a comet, grumbling, a strange ship), merchants who buy your surplus, allies who ask for help and leave when trust falls |
 | 48 | A living world: working buildings move (saws, water wheels, sparks, steam), and snow settles on roofs in winter |
 
-In progress: five rounds of bug fixes and speed-ups (48.1 to 48.5; 48.1 is out, about a fifth faster in big games): long AI games played to find errors,
+In progress: five rounds of bug fixes and speed-ups (48.1 to 48.5; 48.1 and 48.2 are out): long AI games played to find errors,
 and the slowest parts of the game made faster.
 
 Next (build 49): battles at sea and landings on a rival's coast, armies that need supplies in the

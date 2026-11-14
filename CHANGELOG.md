@@ -1,5 +1,17 @@
 # Changelog
 
+## Build 48.2 (v0.43.0, 2026-11-14)
+
+Fixes for the map turning one colour at dusk and for square cloud shadows, and bug fixes and speed-ups round 2.
+
+- Fixed: at dusk and dawn (with Day and night on) the whole map could turn solid orange or brown for a moment, with only window lights, rain and names left. The night's veil fading in was taken for a swaying tree top and drawn solid.
+- Fixed: cloud shadows drawn as squares (with Vulkan): the ground shader now gets each chunk's place from the map itself, so clouds, hills and season colours are smooth across chunks with every renderer. The grey band beyond the map edge far out is gone too.
+- Fixed: buildings that use goods (a brewery, say) could wait for ever with full stores when carriers were short: the carriers now take every building in turn.
+- Rivals now study techs that open new buildings first (Monasteries, and so the brewery, tavern and festivals, much sooner).
+- Fixed: a loaded game could go a little differently from the saved one (summer and winter clothes' speed was not saved).
+- Faster: goods on their way to the stores are counted for all realms at once.
+- Two more two-hour games with 3 and 8 rivals played without errors.
+
 ## Build 48.1 (v0.43.0, 2026-11-14)
 
 Bug fixes and speed-ups, round 1: the game runs about a fifth faster in big games.

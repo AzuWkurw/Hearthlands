@@ -96,8 +96,8 @@ var _ground: Control
 var _ground_mat: ShaderMaterial
 var _sway_mat: ShaderMaterial      # the map view's own shader (swaying trees and crops)
 var _shadow: Texture2D             # a soft dark ellipse, laid under buildings, people and trees
-const SWAY_TREE := 3.0 / 255.0     # colour alphas the sway shader recognises (see map_sway.gdshader)
-const SWAY_CROP := 5.0 / 255.0
+const SWAY_TREE := 254.0 / 255.0   # colour alphas the sway shader recognises (see map_sway.gdshader)
+const SWAY_CROP := 253.0 / 255.0
 const SUN := Vector2(0.16, 0.04)   # shadows fall a little to the right: the sun stands to the upper left
 var _origin := Vector2.ZERO
 var _folk_roads: Dictionary = {}   # house id -> [game time worked out, straight runs of road nearby: [from, to]]
@@ -232,6 +232,11 @@ func _grid_mesh(x0: int, y0: int, nx: int, ny: int, step: int, uv0: Vector2, uv1
 	var m := ArrayMesh.new()
 	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
 	return m
+
+
+## Drawing colour that tells the ground shader a picture is part of the minimap picture (see its vertex()).
+const MINI_TAG := Color(1.0, 1.0, 0.5, 1.0)
+var _shader_map_size := Vector2.ZERO
 
 
 func _chunk_grid(cx: int, cy: int) -> ArrayMesh:
@@ -746,6 +751,10 @@ func _draw_ground() -> void:
 	var y0 := maxi(0, floori(cam.y - half.y / z) - 1)
 	var y1 := mini(sim.h - 1, ceili(cam.y + half.y / z) + (5 if raised else 2))
 	_ensure_lift()
+	if _shader_map_size != Vector2(sim.w, sim.h):
+		_shader_map_size = Vector2(sim.w, sim.h)
+		_ground_mat.set_shader_parameter("map_size", _shader_map_size)
+		_ground_mat.set_shader_parameter("chunk_tiles", float(MapChunks.CH))
 	g.draw_set_transform(half - cam * z, 0.0, Vector2(z, z))
 	# the dark background beyond the map edge, given in tiles like everything on this layer
 	g.draw_rect(Rect2(cam - half / z, size / z), Color("0d0f0c"))
@@ -799,11 +808,13 @@ func _draw_ground() -> void:
 			for cx in range(x0 / MapChunks.CH, x1 / MapChunks.CH + 1):
 				var tex := ch.get_chunk(cx, cy, budget)
 				var r := Rect2(cx * MapChunks.CH, cy * MapChunks.CH, MapChunks.CH, MapChunks.CH)
+				# the chunk's place, for the ground shader (see its vertex())
+				var tag := Color(cx / 64.0, cy / 64.0, 0.75, 1.0)
 				if tex != null:
 					if raised:
-						g.draw_mesh(_chunk_grid(cx, cy), tex)
+						g.draw_mesh(_chunk_grid(cx, cy), tex, Transform2D(), tag)
 					else:
-						g.draw_texture_rect(tex, r, false)
+						g.draw_texture_rect(tex, r, false, tag)
 				elif minimap != null and minimap.base_tex() != null:
 					# not baked yet: that part of the minimap picture, raised the same way
 					if raised:
@@ -811,9 +822,9 @@ func _draw_ground() -> void:
 						if not _chunk_mesh.has(fk):
 							var CHN := MapChunks.CH
 							_chunk_mesh[fk] = _grid_mesh(cx * CHN, cy * CHN, CHN, CHN, 1, Vector2(cx * CHN / float(sim.w), cy * CHN / float(sim.h)), Vector2((cx + 1) * CHN / float(sim.w), (cy + 1) * CHN / float(sim.h)))
-						g.draw_mesh(_chunk_mesh[fk], minimap.base_tex())
+						g.draw_mesh(_chunk_mesh[fk], minimap.base_tex(), Transform2D(), MINI_TAG)
 					else:
-						g.draw_texture_rect_region(minimap.base_tex(), r, r)
+						g.draw_texture_rect_region(minimap.base_tex(), r, r, MINI_TAG)
 	ground_usec = Time.get_ticks_usec() - t_start
 
 
