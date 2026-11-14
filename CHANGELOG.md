@@ -1,5 +1,19 @@
 # Changelog
 
+## Build 43 (v0.38.0, 2026-11-14)
+
+A special study at the end of each age opens the next one.
+
+Ages
+- Five new studies open the ages: The new kingdoms (Early Medieval), Rise of the towns (High Medieval), Rebirth of learning (Renaissance), Age of reason (Enlightenment) and Dawn of industry (Industrial). Each gives a small bonus of its own.
+- Every tech of an age needs its opening study, and the study needs a number of techs of the age before (8 for the medieval ages and the Renaissance, 7 after that). Entering a new age is now a choice you make, not a side effect of one cheap tech.
+- In the research tree each opening study stands in its own column with a gold band; its card shows how many of the needed techs you have, and the details list them.
+- "Queue the way there" for a later tech also queues the cheapest techs needed to open the age.
+- Saved games keep working: a realm already in an age gets its opening study.
+
+Fixes
+- The archer test no longer fails on one unlucky fight.
+
 ## Build 42 (v0.37.0, 2026-11-14)
 
 More detailed textures everywhere, and buildings that each look like their trade.

@@ -2,7 +2,7 @@
 
 Every source file with what it is for, grouped by part. Written by `tools/file_list.py` from the comment at the
 top of each file; run it again after adding files. For how the parts work together, read
-`docs/SOURCE_GUIDE.md`. Besides these 221 files there are 969 pictures in `textures/` (made by
+`docs/SOURCE_GUIDE.md`. Besides these 221 files there are 974 pictures in `textures/` (made by
 `tools/make_textures.py` and `tools/make_scenery.py`, or your own) and 76 sounds in `sounds/` (made by
 `tools/make_sounds.py`) and 8 pieces of music in `music/` (made by `tools/make_music.py`). Godot's
 `.import` files next to them are made by the editor.
@@ -13,14 +13,14 @@ top of each file; run it again after adding files. For how the parts work togeth
 |---|---:|---|
 | `scripts/crops.gd` | 278 | What a farm grows. A farm sows one crop at a time, chosen on its panel. Wheat is known from the start; other seeds are unlocked by research. Each crop has its seasons: how much faster or slower it grows in spring, summer, autumn and winter, and OFF where it does not grow at all (the farm stands idle then). With the Three-field system studied, a farm can be set to sow winter rye when its own crop is out of season. Without the seasons feature every crop grows all year. |
 | `scripts/diplomacy.gd` | 546 | Relations between realms (war, peace or alliance), each rival's opinion of every other realm, proposals (peace, alliance, trade and gifts) and how rival AIs decide on them. The state itself lives in Sim (rel, rel_since, proposals, and Player.opinion) so it is saved with the game. |
-| `scripts/game_data.gd` | 348 | Loads the game's content from data/*.json. Files with the same name in user://data/ are merged on top, so players can add or change resources, buildings and population needs without editing the project. |
-| `scripts/sim.gd` | 2673 | The whole game state and rules: map, players, economy, territory, combat and rival AI. Runs without any rendering, so it can be tested headless (see tools/sim_test.gd). |
+| `scripts/game_data.gd` | 356 | Loads the game's content from data/*.json. Files with the same name in user://data/ are merged on top, so players can add or change resources, buildings and population needs without editing the project. |
+| `scripts/sim.gd` | 2677 | The whole game state and rules: map, players, economy, territory, combat and rival AI. Runs without any rendering, so it can be tested headless (see tools/sim_test.gd). |
 | `scripts/sim_ai.gd` | 667 | How rival realms think: what to build and where, when to attack, what to research. Part of the simulation: sim.gd holds the shared state and calls in here; the functions reach the rest of the game through `sim`. |
 | `scripts/sim_logistics.gd` | 1812 | Roads, the road network, stores, carriers and work areas. Part of the simulation: sim.gd holds the shared state and calls in here; the functions reach the rest of the game through `sim`. |
 | `scripts/sim_military.gd` | 1110 | Territory, soldiers, attacks, duels and conquest. Part of the simulation: sim.gd holds the shared state and calls in here; the functions reach the rest of the game through `sim`. |
 | `scripts/sim_people.gd` | 558 | People: housing, jobs and specialists, homes where people wait, people walking to work and soldiers to their posts, needs and food. Part of the simulation: sim.gd holds the shared state and calls in here; the functions reach the rest of the game through `sim` (sim.gd keeps a one-line wrapper for each, so callers did not change). |
 | `scripts/sim_production.gd` | 522 | Production: buildings working in cycles (inputs, outputs, tools, experience) and construction sites. Part of the simulation: sim.gd holds the shared state and calls in here; the functions reach the rest of the game through `sim` (sim.gd keeps a one-line wrapper for each, so callers did not change). |
-| `scripts/sim_research.gd` | 277 | Research points, techs and the ages. Part of the simulation: sim.gd holds the shared state and calls in here; the functions reach the rest of the game through `sim`. |
+| `scripts/sim_research.gd` | 325 | Research points, techs and the ages. Part of the simulation: sim.gd holds the shared state and calls in here; the functions reach the rest of the game through `sim`. |
 | `scripts/sim_sea.gd` | 258 | Ships and harbours. A shipyard on the coast builds ships (Player.ships). A harbour is a store on the coast that also holds a little land and a soldier, and people can wait there. From a harbour an expedition (a ship, 4 planks, 2 stone and a soldier) sails to another free coast and founds a new harbour there: a colony. Ships then carry goods between harbours that no road joins, from where there is plenty to where there is little. Ships are Trips of kind "ship" along a path over water; `aim` is the tile an expedition lands on. |
 | `scripts/world_gen.gd` | 522 | Random map generation. Terrain: 0 water, 1 beach, 2 grass, 3 mountain. Decorations: 1 tree, 2 rock, 3 clay patch. Ore (on mountains): see GameData.ORE_NAMES. |
 
@@ -50,7 +50,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `scripts/map_chunks.gd` | 475 | Bakes the parts of the map that rarely change (ground, roads, scenery, ore, territory) into large images of 16 x 16 tiles called chunks. Drawing a few dozen chunks each frame is far cheaper than drawing thousands of separate tiles. A chunk is baked again only when something inside it changes. Where two kinds of ground meet, the higher one (beach over water, grass over beach, mountain over grass) spills softly over the edge. Open water is baked half transparent: the ground shader uses that as a marker to make the water shimmer. |
 | `scripts/map_view.gd` | 2788 | Draws the world and turns mouse input into tile clicks. The ground, roads, scenery and borders come from pre-baked chunks (map_chunks.gd), drawn by a child layer whose shader makes the water shimmer. Everything that moves or changes often (buildings, carriers, soldiers, workers, smoke, selections, tool previews) is drawn every frame on top. Animations follow the game clock, so they freeze while the game is paused and speed up with it. |
 | `scripts/minimap.gd` | 239 | Whole-map overview: terrain, roads, territory, military buildings and the camera frame. Its images double as the far-zoom picture of the main map. |
-| `scripts/tech_tree_view.gd` | 582 | The tech tree drawn as a map: ages run left to right, each band is a branch of the realm, and lines run from what a tech needs to what it leads to. The places come from data/techs.json ("lane", "col", "row", worked out to cross as few lines as possible); techs added by a mod without them are put in an "Other" band. Repeatable studies sit in the Mastery band at the bottom. Drag (or the arrow keys) to move, the wheel to scroll, Ctrl + wheel or a pinch to zoom. |
+| `scripts/tech_tree_view.gd` | 611 | The tech tree drawn as a map: ages run left to right, each band is a branch of the realm, and lines run from what a tech needs to what it leads to. The places come from data/techs.json ("lane", "col", "row", worked out to cross as few lines as possible); techs added by a mod without them are put in an "Other" band. Repeatable studies sit in the Mastery band at the bottom. Drag (or the arrow keys) to move, the wheel to scroll, Ctrl + wheel or a pinch to zoom. |
 | `scripts/tex.gd` | 201 | Texture lookup with user overrides. For an id like "bld_sawmill" the game looks for, in order: 1. user://textures/bld_sawmill.png   (your custom texture, any size) 2. res://textures/bld_sawmill.png    (the default shipped with the project) 3. a magenta placeholder, so a missing file is obvious in game. |
 
 ## Game: interface
@@ -76,7 +76,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `scripts/ui_log.gd` | 119 | The event log: a small window, at first in the upper-left corner of the map, that you can move by its title bar and resize from its edges. Its place, size and whether it is open are remembered in Settings. E (or the Events button on the top bar) shows and hides it. Events that happened somewhere on the map end with a Go button that moves the camera there. |
 | `scripts/ui_missions.gd` | 93 | The missions list, opened from the new-game screen: games with goals and often a deadline, from data/missions.json (a mod's data/missions.json adds more). Each mission plays on a map made from its seed or on a hand-made map file; its goals show in the box on the left while playing. |
 | `scripts/ui_problems.gd` | 242 | The Problems list: every one of your buildings that cannot work and why, and attacks on you, longest waiting first, each with a Go button. Opened from the top bar (or the key, O by default). The same problems blink on the minimap: red where you are attacked, amber where a building is stuck. A problem can be hidden with its x (or all at once with "Hide all"): it leaves the list, the count and the minimap until its reason changes, or for an attack until that attack is over. "Show hidden" brings them all back. Only the interface: it reads the game and changes nothing in it. |
-| `scripts/ui_research.gd` | 431 | The research window: the tech tree from Rome to the Industrial Revolution. Part of the interface: main.gd holds the shared state and calls in here; the functions reach the rest of the game through `main`. |
+| `scripts/ui_research.gd` | 439 | The research window: the tech tree from Rome to the Industrial Revolution. Part of the interface: main.gd holds the shared state and calls in here; the functions reach the rest of the game through `main`. |
 | `scripts/ui_saves.gd` | 148 | Saving and loading games, and the Save / Load window. Part of the interface: main.gd holds the shared state and calls in here; the functions reach the rest of the game through `main`. |
 | `scripts/ui_settings.gd` | 283 | The Settings window: renderer, display, resolution and options. Part of the interface: main.gd holds the shared state and calls in here; the functions reach the rest of the game through `main`. |
 | `scripts/ui_side.gd` | 166 | The side panel: stores, people, the build list, research and rivals, refreshed once a second. Part of the interface: main.gd holds the shared state and calls in here; the functions reach the rest of the game through `main` (main.gd keeps a one-line wrapper for each, so callers did not change). |
@@ -99,7 +99,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `data/missions.json` | 63 | The missions: story, map or seed, rivals, options, time limit and goals. |
 | `data/needs.json` | 13 | What each class of people (peasants, artisans, nobles, soldiers) uses up to stay content. |
 | `data/resources.json` | 503 | Every good: name, icon shape, colour, store room and info. |
-| `data/techs.json` | 155 | The research tree: techs, ages, costs, what each unlocks or improves. |
+| `data/techs.json` | 160 | The research tree: techs, ages, costs, what each unlocks or improves. |
 | `data/trades.json` | 67 | The trades (woodland, mining, farming...): their names, tools and levels. |
 
 ## Shaders
@@ -116,7 +116,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `tools/age_test.gd` | 58 | Tests the looks of the ages, renovation and soldier kinds. Run: godot --headless --script res://tools/age_test.gd |
 | `tools/ai_roads_test.gd` | 18 | Rival realms' buildings all get roads (entrances and all): godot --headless --script res://tools/ai_roads_test.gd |
 | `tools/ai_space_test.gd` | 45 | Where rival realms run out of room: godot --headless --script res://tools/ai_space_test.gd [-- seed=perf mins=20] |
-| `tools/archer_test.gd` | 45 | Archers shoot attackers on the way in, take bows from the stores; sallies meet attacks in the open: godot --headless --script res://tools/archer_test.gd |
+| `tools/archer_test.gd` | 54 | Archers shoot attackers on the way in, take bows from the stores; sallies meet attacks in the open: godot --headless --script res://tools/archer_test.gd |
 | `tools/battle_test.gd` | 59 | Battles between kinds of soldier: an attack of A soldiers of one kind on a hut held by D of another, repeated many times, prints how often the attackers take it and how many fall on each side. Run: godot --headless --script res://tools/battle_test.gd |
 | `tools/bridge_test.gd` | 54 | Bridges: roads across narrow water, paid in planks; too wide water is refused: godot --headless --script res://tools/bridge_test.gd |
 | `tools/campaign_test.gd` | 47 | The campaign: chapters open one after another, a won chapter is recorded and carries soldiers over. xvfb-run -a godot --rendering-driver opengl3 --script res://tools/campaign_test.gd -- out=/dir |
@@ -205,7 +205,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `tools/shot_look.gd` | 28 | Screenshots of a mid-game town at three zooms, for judging the graphics: xvfb-run godot --rendering-driver opengl3 --script res://tools/shot_look.gd -- out=/dir [tag=now] |
 | `tools/shot_missions.gd` | 53 | The map editor, the missions list and a mission being played. xvfb-run -a -s "-screen 0 1920x1080x24" godot --rendering-driver opengl3 --script res://tools/shot_missions.gd -- out=/dir |
 | `tools/shot_raised.gd` | 43 | Raised ground (2.5D) on and off, same view: xvfb-run -a -s "-screen 0 1920x1080x24" godot --rendering-driver opengl3 --script res://tools/shot_raised.gd -- out=/dir |
-| `tools/shot_research.gd` | 37 | Screenshots of the research window: xvfb-run godot --rendering-driver opengl3 --script res://tools/shot_research.gd -- out=/dir |
+| `tools/shot_research.gd` | 45 | Screenshots of the research window: xvfb-run godot --rendering-driver opengl3 --script res://tools/shot_research.gd -- out=/dir |
 | `tools/shot_scenery.gd` | 45 | Trees, peaks and boulders standing on hilly ground, close up and further out. xvfb-run -a -s "-screen 0 1920x1080x24" godot --rendering-driver opengl3 --script res://tools/shot_scenery.gd -- out=/dir tag=new |
 | `tools/shot_sea.gd` | 67 | An expedition at sea and the colony it founds. xvfb-run -a -s "-screen 0 1920x1080x24" godot --rendering-driver opengl3 --script res://tools/shot_sea.gd -- out=/dir |
 | `tools/shot_sites.gd` | 27 | The Sites button showing building places: xvfb-run -a -s "-screen 0 1920x1080x24" godot --rendering-driver opengl3 --script res://tools/shot_sites.gd -- out=/dir |
@@ -267,15 +267,15 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `tools/make_sounds.py` | 542 | Generate Hearthlands' sound effects and ambience into ../sounds. |
 | `tools/make_textures.py` | 1720 | Generate Hearthlands' default textures into ../textures. |
 | `tools/readme_tables.py` | 128 | Rebuilds the Resources, Buildings and Research tree tables in README.md from the data files. |
-| `tools/tech_icons.py` | 820 | Emblems for the research icons (used by make_textures.techs()). |
+| `tools/tech_icons.py` | 823 | Emblems for the research icons (used by make_textures.techs()). |
 
 ## Project and documents
 
 | File | Lines | What it is |
 |---|---:|---|
-| `CHANGELOG.md` | 579 | What changed in each build. |
+| `CHANGELOG.md` | 593 | What changed in each build. |
 | `README.md` | 912 | How to play, the rules, controls, settings, modding and the project layout. |
-| `docs/FILES.md` | 283 | This list (written by tools/file_list.py). |
+| `docs/FILES.md` | 284 | This list (written by tools/file_list.py). |
 | `docs/SOURCE_GUIDE.md` | 439 | A tour of the code for programmers: the parts, how a game tick runs, where things live. |
 | `docs/SUGGESTIONS.md` | 203 | Ideas and their status after each round of work. |
 | `export_presets.cfg` | 61 | Godot export settings for the Windows and Linux builds. |
