@@ -1,5 +1,14 @@
 # Changelog
 
+## Build 51 (v0.46.0, 2026-11-14)
+
+Smoother big maps, and downloads on GitHub Releases.
+
+- The building layer: below zoom 30, fields, trees and buildings are drawn once into a layer of their own and kept; a frame only moves and scales it with the camera. It is drawn again once a second (work bars, badges, flags), when buildings are added or removed, or when you scroll beyond it or zoom a lot. Up close (zoom 14 to 30) what moves is still drawn every frame: windmill sails, smoke, glow, workers and animals. Measured on a player's 448 map with 2,129 buildings: map drawing zoomed out from 7.7 to about 4 ms a frame, at middle zoom from 14.8 to 11 ms (buildings alone from 13 to 6 ms).
+  - In the layer, flags and the warning ring at an entrance without a road move once a second, and people walk in front of buildings rather than behind them; up close (zoom 30 and more) everything is as before.
+- Downloads: every build is now a GitHub Release of its own (the Windows zip and the source zip), made by GitHub Actions when a new version reaches main, so the repository no longer grows by a zip with every build. The README's Download link goes to the latest release; builds up to 50 stay on the downloads branch.
+- The build script can package a version as it is (--no-bump), and its source zip never takes in its own output (a build placed inside the project filled the disk).
+
 ## Build 50 (v0.45.0, 2026-11-14)
 
 Priorities in numbers: a transport priorities window and a worker priorities window, as in The Settlers II.

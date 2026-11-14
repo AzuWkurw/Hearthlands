@@ -9,8 +9,11 @@ economy you do.
 
 ## Download
 
-The ready-made Windows game is on the [`downloads` branch](../../tree/downloads): download the zip,
-unzip it and run `Hearthlands.exe`. Current version: **v0.45.0 build 50** (see `CHANGELOG.md`).
+The ready-made Windows game is on the [Releases page](../../releases/latest): download the
+`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.46.0 build 51** (see
+`CHANGELOG.md`). Every build is a release of its own, made by GitHub Actions
+(`.github/workflows/release.yml`) when a new version reaches `main`; older builds up to 50 are also
+on the [`downloads` branch](../../tree/downloads).
 
 What is in the game now:
 
@@ -44,6 +47,7 @@ Done (builds 43 to 49):
 
 | 49.1 | The scriptorium can be upgraded to a library |
 | 50 | Transport priorities and worker priorities in numbers (1 to 9), each in its own window |
+| 51 | Smoother big maps (buildings drawn once into a layer and kept), downloads on GitHub Releases |
 
 Later: a story campaign through the ages, multiplayer, scripted scenarios, a chronicle at the end of a
 game, more animations, music for each age, and quality-of-life features (a production chain overlay,

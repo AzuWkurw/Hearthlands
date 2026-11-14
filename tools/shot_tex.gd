@@ -21,6 +21,7 @@ func _init() -> void:
 	var at_time := -1.0
 	var night := false
 	var raised := false
+	var nolayer := false
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("out="): out = a.substr(4) + "/"
 		if a.begins_with("tag="): tag = a.substr(4)
@@ -31,6 +32,7 @@ func _init() -> void:
 		if a.begins_with("time="): at_time = float(a.substr(5))
 		if a == "night": night = true
 		if a == "raised": raised = true
+		if a == "nolayer": nolayer = true
 		if a.begins_with("zooms="): zooms = Array(a.substr(6).split(",")).map(func(v): return float(v))
 	DisplayServer.window_set_size(win); root.size = win
 	var main = load("res://main.tscn").instantiate(); root.add_child(main)
@@ -63,6 +65,8 @@ func _init() -> void:
 		main.view.daynight = true
 	if raised:
 		main.view.raised = true
+	if nolayer:
+		main.view.layer_on = false
 	main.setup.visible = false
 	main.side_box.visible = false
 	main.paused = true

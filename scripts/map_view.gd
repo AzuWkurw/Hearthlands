@@ -195,7 +195,7 @@ func lift_at(fx: float, fy: float) -> float:
 func _lift_to(fx: float, fy: float) -> void:
 	_cur_lift = lift_at(fx, fy)
 	_origin = _base_origin + Vector2(0, -_cur_lift * zoom)
-	draw_set_transform(_origin, 0.0, Vector2(zoom, zoom))
+	_cv.draw_set_transform(_origin, 0.0, Vector2(zoom, zoom))
 
 
 func _unlift() -> void:
@@ -203,7 +203,7 @@ func _unlift() -> void:
 		return
 	_cur_lift = 0.0
 	_origin = _base_origin
-	draw_set_transform(_origin, 0.0, Vector2(zoom, zoom))
+	_cv.draw_set_transform(_origin, 0.0, Vector2(zoom, zoom))
 
 
 ## A grid of quads over tiles (x0, y0) to (x0 + nx * step, y0 + ny * step) through the raised corners,
@@ -268,6 +268,9 @@ func _finish_chunk_jobs() -> void:
 
 func _exit_tree() -> void:
 	_finish_chunk_jobs()
+	if _lrid.is_valid():
+		RenderingServer.free_rid(_lrid)
+		_lrid = RID()
 
 
 ## Drawing colour that tells the ground shader a picture is part of the minimap picture (see its vertex()).
@@ -390,9 +393,9 @@ func _draw_birds(x0: int, y0: int, x1: int, y1: int) -> void:
 			var flap := sin(t * 11.0 + i * 0.9) if fmod(t + i * 0.37, 3.0) < 1.6 else 0.25
 			var wing := Vector2(sz, -sz * 0.55 * flap)
 			var col := Color(0.12, 0.12, 0.14, 0.85)
-			draw_polyline(PackedVector2Array([p - Vector2(wing.x, wing.y), p + Vector2(0, sz * 0.1), p + Vector2(wing.x, -wing.y)]), col, sz * 0.22)
+			_cv.draw_polyline(PackedVector2Array([p - Vector2(wing.x, wing.y), p + Vector2(0, sz * 0.1), p + Vector2(wing.x, -wing.y)]), col, sz * 0.22)
 			# its shadow far below on the ground
-			draw_circle(p + Vector2(sz * 6.0, sz * 9.0), sz * 0.35, Color(0, 0, 0, 0.12))
+			_cv.draw_circle(p + Vector2(sz * 6.0, sz * 9.0), sz * 0.35, Color(0, 0, 0, 0.12))
 
 
 ## How cloudy it is where you are looking: 0 clear .. 1 overcast (cloud shadows on the ground).
@@ -899,7 +902,7 @@ func _draw() -> void:
 	var y1 := mini(sim.h - 1, ceili(cam.y + half.y / z) + 2)
 	var w := sim.w
 	var detail := animate and z >= ANIM_ZOOM
-	draw_set_transform(origin, 0.0, Vector2(z, z))
+	_cv.draw_set_transform(origin, 0.0, Vector2(z, z))
 	_ensure_lift()
 	_base_origin = origin
 	_cur_lift = 0.0
@@ -908,9 +911,13 @@ func _draw() -> void:
 	if _vary != null:
 		draw_map_texture(self, _vary)
 	if prof_on: _pm("ground")
-	_draw_fields(x0, x1, y0, y1)
+	# zoomed out, fields, trees and buildings come from the building layer (see _layer_draw)
+	var layered := layer_on and z < LAYER_MAX and not editor
+	if not layered:
+		_layer_off()
+		_draw_fields(x0, x1, y0, y1)
 	if prof_on: _pm("fields")
-	if z >= SCENERY_ZOOM:
+	if z >= SCENERY_ZOOM and not layered:
 		_draw_scenery(x0, x1, y0, y1)
 	if prof_on: _pm("scenery")
 	if traffic_ui != null and traffic_ui.on:
@@ -948,11 +955,15 @@ func _draw() -> void:
 	# ruins and bandit camps (hand-made maps), under the buildings
 	if not sim.places.is_empty():
 		_draw_places(x0, y0, x1, y1, fog_on, fog)
+	var labels: Array = []
+	if layered:
+		_layer_draw(x0, x1, y0, y1, origin, z, fog_on, fv, 1 if detail else 0)
+		labels.append_array(_layer_labels)
+		if prof_on: _pm("bld_layer")
 	# soft shadows on the ground first, so no building's shadow falls over another building
-	for b in vis:
+	for b in (vis if not layered else []):
 		_building_shadow(b)
 	if prof_on: _pm("bld_shadows")
-	var labels: Array = []
 	# townsfolk about the houses and roads (close up only), drawn in turn with the buildings so a house
 	# in front hides the people behind it
 	var tfk := Time.get_ticks_usec() if prof_on else 0
@@ -961,7 +972,7 @@ func _draw() -> void:
 		prof["x_collect_folk"] = int(prof.get("x_collect_folk", 0)) + Time.get_ticks_usec() - tfk
 		prof["n_folk"] = int(prof.get("n_folk", 0)) + folk.size() * 1000
 	var fi := 0
-	for b in vis:
+	for b in (vis if not layered else []):
 		while fi < folk.size() and float(folk[fi][0]) < b.y + 0.98:
 			_draw_folk_one(folk[fi]); fi += 1
 		if raised: _lift_to(b.x + 0.5, b.y + 0.9)
@@ -976,9 +987,18 @@ func _draw() -> void:
 		_unlift()
 	while fi < folk.size():
 		_draw_folk_one(folk[fi]); fi += 1
+	# over the building layer: what moves (sails, smoke, glow, workers, waving flags)
+	if layered and detail:
+		for b in vis:
+			if not _moves(b):
+				continue
+			if raised: _lift_to(b.x + 0.5, b.y + 0.9)
+			_draw_building(b, labels, detail, 2)
+			_unlift()
 	if prof_on: _pm("buildings_folk")
 	# entrance flags of your buildings, close up; one still without a road waves a warning ring
-	if detail:
+	# (in the building layer when it is on)
+	if detail and not layered:
 		for b in vis:
 			if b.p == 1 and b.door >= 0 and not b.dead:
 				var dt := sim.door_tile(b)
@@ -1067,7 +1087,7 @@ func _draw() -> void:
 		var pc: Color = sim.players[t.p - 1].color
 		if z < DETAIL_ZOOM:
 			# far out a carrier is a few pixels: a dot in the realm's colour is enough
-			draw_rect(Rect2(pos.x - 0.2, pos.y - 0.45, 0.4, 0.4), pc.lightened(0.3))
+			_cv.draw_rect(Rect2(pos.x - 0.2, pos.y - 0.45, 0.4, 0.4), pc.lightened(0.3))
 			continue
 		if waiting:
 			# goods waiting at a flag for the next stretch's carrier
@@ -1195,12 +1215,12 @@ func _draw() -> void:
 						var u := (hit - 0.45) / 0.2
 						for s in 4:
 							var ang := s * PI / 2.0 + 0.6 + k
-							draw_line(sp, sp + Vector2(cos(ang), sin(ang)) * (0.04 + u * 0.12), Color(1.0, 0.92, 0.55, 1.0 - u), 0.025)
+							_cv.draw_line(sp, sp + Vector2(cos(ang), sin(ang)) * (0.04 + u * 0.12), Color(1.0, 0.92, 0.55, 1.0 - u), 0.025)
 			if animate:
 				var t2 := Time.get_ticks_msec() / 1000.0
 				for k in 4:
 					var dph := fmod(t2 * 0.7 + k * 0.25, 1.0)
-					draw_circle(at + Vector2((k - 1.5) * 0.25 + sin(t2 + k) * 0.08, 0.05 - dph * 0.35), 0.1 + dph * 0.15, Color(0.75, 0.68, 0.55, 0.3 * (1.0 - dph)))
+					_cv.draw_circle(at + Vector2((k - 1.5) * 0.25 + sin(t2 + k) * 0.08, 0.05 - dph * 0.35), 0.1 + dph * 0.15, Color(0.75, 0.68, 0.55, 0.3 * (1.0 - dph)))
 			_track_losses(a.uid, a.n, at + Vector2(0.35 * sgn, 0), aid, col, left)
 			labels.append([at + Vector2(0, -0.85), str(a.n), Color.WHITE])
 		elif sim.military.at_sea(a):
@@ -1211,25 +1231,25 @@ func _draw() -> void:
 				_draw_ship(fpos - cdir * 1.1 * k + Vector2(-cdir.y, cdir.x) * 0.35 * (k % 2), left, sim.players[a.p - 1].color, a.uid + k, "", true)
 			if a.field != 0:
 				var swp := fpos + Vector2(0, -1.7)
-				draw_line(swp + Vector2(-0.22, -0.22), swp + Vector2(0.22, 0.22), Color(0.95, 0.93, 0.85), 0.07)
-				draw_line(swp + Vector2(0.22, -0.22), swp + Vector2(-0.22, 0.22), Color(0.95, 0.93, 0.85), 0.07)
+				_cv.draw_line(swp + Vector2(-0.22, -0.22), swp + Vector2(0.22, 0.22), Color(0.95, 0.93, 0.85), 0.07)
+				_cv.draw_line(swp + Vector2(0.22, -0.22), swp + Vector2(-0.22, 0.22), Color(0.95, 0.93, 0.85), 0.07)
 			labels.append([fpos + Vector2(0, -1.45), str(a.n), Color.WHITE])
 		else:
 			var pos2: Vector2 = sim.military.column_pos(a) + Vector2(0.5, 0.75)
 			if a.field != 0:
 				# a battle in the open: crossed swords over the column, dust and the flash of blades
 				var sw := pos2 + Vector2(0, -1.25)
-				draw_line(sw + Vector2(-0.22, -0.22), sw + Vector2(0.22, 0.22), Color(0.95, 0.93, 0.85), 0.07)
-				draw_line(sw + Vector2(0.22, -0.22), sw + Vector2(-0.22, 0.22), Color(0.95, 0.93, 0.85), 0.07)
+				_cv.draw_line(sw + Vector2(-0.22, -0.22), sw + Vector2(0.22, 0.22), Color(0.95, 0.93, 0.85), 0.07)
+				_cv.draw_line(sw + Vector2(0.22, -0.22), sw + Vector2(-0.22, 0.22), Color(0.95, 0.93, 0.85), 0.07)
 				if animate:
 					var t3 := Time.get_ticks_msec() / 1000.0 + a.uid
 					for k in 5:
 						var dph := fmod(t3 * 0.6 + k * 0.2, 1.0)
-						draw_circle(pos2 + Vector2((k - 2) * 0.3 + sin(t3 + k) * 0.1, -dph * 0.4), 0.14 + dph * 0.2, Color(0.75, 0.68, 0.55, 0.28 * (1.0 - dph)))
+						_cv.draw_circle(pos2 + Vector2((k - 2) * 0.3 + sin(t3 + k) * 0.1, -dph * 0.4), 0.14 + dph * 0.2, Color(0.75, 0.68, 0.55, 0.28 * (1.0 - dph)))
 					if fmod(t3 * 2.0, 1.0) < 0.15:
 						var sp2 := pos2 + Vector2(sin(t3 * 7.0) * 0.3, -0.4)
 						for s in 4:
-							draw_line(sp2, sp2 + Vector2(cos(s * 1.6), sin(s * 1.6)) * 0.12, Color(1, 0.93, 0.6, 0.9), 0.025)
+							_cv.draw_line(sp2, sp2 + Vector2(cos(s * 1.6), sin(s * 1.6)) * 0.12, Color(1, 0.93, 0.6, 0.9), 0.025)
 			_track_losses(a.uid, a.n, pos2 + Vector2(0, 0.2), _soldier_id(roundi(a.era)), col, left)
 			var walked := (sim.time - a.t0) * 0.9
 			var dir := cdir
@@ -1257,27 +1277,27 @@ func _draw() -> void:
 			# the column's banner, carried at its head, waving
 			var bp := pos2 + Vector2(0.12 * (-1.0 if left else 1.0), -0.02)
 			var top := bp + Vector2(0, -0.95)
-			draw_line(bp, top, Color("4a3520"), 0.035)
+			_cv.draw_line(bp, top, Color("4a3520"), 0.035)
 			var wv := sin(Time.get_ticks_msec() / 1000.0 * 6.0 + a.uid) * 0.04 if animate else 0.0
 			var fdir := -1.0 if left else 1.0
-			draw_colored_polygon(PackedVector2Array([top, top + Vector2(0.32 * fdir, 0.05 + wv), top + Vector2(0.3 * fdir, 0.2 + wv), top + Vector2(0, 0.22)]), sim.players[a.p - 1].color)
-			draw_polyline(PackedVector2Array([top, top + Vector2(0.32 * fdir, 0.05 + wv), top + Vector2(0.3 * fdir, 0.2 + wv), top + Vector2(0, 0.22)]), Color(0, 0, 0, 0.45), 0.015)
+			_cv.draw_colored_polygon(PackedVector2Array([top, top + Vector2(0.32 * fdir, 0.05 + wv), top + Vector2(0.3 * fdir, 0.2 + wv), top + Vector2(0, 0.22)]), sim.players[a.p - 1].color)
+			_cv.draw_polyline(PackedVector2Array([top, top + Vector2(0.32 * fdir, 0.05 + wv), top + Vector2(0.3 * fdir, 0.2 + wv), top + Vector2(0, 0.22)]), Color(0, 0, 0, 0.45), 0.015)
 			# gunfire: smoke and flashes at the shooters, streaks toward the other side
 			var tgt2: Sim.Bld = sim.by_id.get(a.tgt)
 			if sim.time - a.shot_t < 0.45:
 				var u := (sim.time - a.shot_t) / 0.45
 				var muzzle := pos2 + Vector2(0.25 * (-1 if left else 1), -0.3)
-				draw_circle(muzzle + Vector2(0, -u * 0.25), 0.12 + u * 0.22, Color(0.92, 0.92, 0.88, 0.75 * (1.0 - u)))
+				_cv.draw_circle(muzzle + Vector2(0, -u * 0.25), 0.12 + u * 0.22, Color(0.92, 0.92, 0.88, 0.75 * (1.0 - u)))
 				if u < 0.25:
-					draw_circle(muzzle, 0.07, Color(1.0, 0.85, 0.4, 0.95))
-					draw_line(muzzle, a.to + Vector2(0.5, 0.5), Color(1.0, 0.95, 0.7, 0.5), 0.03)
+					_cv.draw_circle(muzzle, 0.07, Color(1.0, 0.85, 0.4, 0.95))
+					_cv.draw_line(muzzle, a.to + Vector2(0.5, 0.5), Color(1.0, 0.95, 0.7, 0.5), 0.03)
 			if tgt2 != null and a.chase == 0 and sim.time - a.dshot_t < 0.45:
 				var u2 := (sim.time - a.dshot_t) / 0.45
 				var gate := Vector2(tgt2.x + 0.5, tgt2.y + 0.4)
-				draw_circle(gate + Vector2(0, -u2 * 0.25), 0.15 + u2 * 0.25, Color(0.92, 0.92, 0.88, 0.75 * (1.0 - u2)))
+				_cv.draw_circle(gate + Vector2(0, -u2 * 0.25), 0.15 + u2 * 0.25, Color(0.92, 0.92, 0.88, 0.75 * (1.0 - u2)))
 				if u2 < 0.25:
-					draw_circle(gate, 0.08, Color(1.0, 0.85, 0.4, 0.95))
-					draw_line(gate, pos2 + Vector2(0, -0.3), Color(1.0, 0.95, 0.7, 0.5), 0.03)
+					_cv.draw_circle(gate, 0.08, Color(1.0, 0.85, 0.4, 0.95))
+					_cv.draw_line(gate, pos2 + Vector2(0, -0.3), Color(1.0, 0.95, 0.7, 0.5), 0.03)
 			labels.append([pos2 + Vector2(0, -0.85), str(a.n), Color.WHITE])
 		# arrows: a volley from a tower's archers, arcing down onto the column
 		if sim.time - a.arrow_t < 1.0 and a.arrow_n > 0:
@@ -1292,9 +1312,9 @@ func _draw() -> void:
 				var p0 := src.lerp(dst + off, uk) + Vector2(0, -sin(uk * PI) * 1.2)
 				var p1 := src.lerp(dst + off, uk + 0.04) + Vector2(0, -sin((uk + 0.04) * PI) * 1.2)
 				var d := (p1 - p0).normalized() * 0.34
-				draw_line(p0 - d, p0, Color(0.28, 0.2, 0.1), 0.035)
-				draw_line(p0 - d, p0 - d * 0.72, Color(0.95, 0.95, 0.92), 0.06)
-				draw_line(p0, p0 - d.rotated(0.5) * 0.25, Color(0.5, 0.5, 0.52), 0.03)
+				_cv.draw_line(p0 - d, p0, Color(0.28, 0.2, 0.1), 0.035)
+				_cv.draw_line(p0 - d, p0 - d * 0.72, Color(0.95, 0.95, 0.92), 0.06)
+				_cv.draw_line(p0, p0 - d.rotated(0.5) * 0.25, Color(0.5, 0.5, 0.52), 0.03)
 		for li in range(nl2, labels.size()):
 			labels[li][0] = (labels[li][0] as Vector2) + Vector2(0, -_cur_lift)
 		_unlift()
@@ -1311,7 +1331,7 @@ func _draw() -> void:
 	_draw_selection_and_tools()
 	if prof_on: _pm("selection")
 	# screen-space text
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	_cv.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	for f: Feature in sim.features:
 		f.draw_overlay(self, screen_to_tile)
 		if prof_on: _pm("overlay:" + f.id)
@@ -1362,7 +1382,7 @@ func _draw_alert_edges(f: float) -> void:
 	var ic := size - Vector2(w, w)
 	var id := Vector2(w, size.y - w)
 	for q in [[a, b, ib, ia], [b, c, ic, ib], [c, d, id, ic], [d, a, ia, id]]:
-		draw_polygon(PackedVector2Array(q), PackedColorArray([o, o, i, i]))
+		_cv.draw_polygon(PackedVector2Array(q), PackedColorArray([o, o, i, i]))
 
 
 ## The map editor's climate picture: one pixel a tile, drawn stretched over the map.
@@ -1387,27 +1407,27 @@ func _draw_editor() -> void:
 		if _clim_dirty:
 			_clim_tex.update(_clim_img)
 			_clim_dirty = false
-		draw_texture_rect(_clim_tex, Rect2(0, 0, sim.w, sim.h), false)
+		_cv.draw_texture_rect(_clim_tex, Rect2(0, 0, sim.w, sim.h), false)
 	if editor_mirror != "off":
 		# the lines the brush mirrors across
 		var mc := Color(1, 1, 1, 0.3)
 		if editor_mirror == "left-right" or editor_mirror == "four ways":
-			draw_line(Vector2(sim.w / 2.0, 0), Vector2(sim.w / 2.0, sim.h), mc, 0.12)
+			_cv.draw_line(Vector2(sim.w / 2.0, 0), Vector2(sim.w / 2.0, sim.h), mc, 0.12)
 		if editor_mirror == "top-bottom" or editor_mirror == "four ways":
-			draw_line(Vector2(0, sim.h / 2.0), Vector2(sim.w, sim.h / 2.0), mc, 0.12)
+			_cv.draw_line(Vector2(0, sim.h / 2.0), Vector2(sim.w, sim.h / 2.0), mc, 0.12)
 		if editor_mirror == "turned":
-			draw_circle(Vector2(sim.w / 2.0, sim.h / 2.0), 0.6, mc)
+			_cv.draw_circle(Vector2(sim.w / 2.0, sim.h / 2.0), 0.6, mc)
 	if editor_line.size() == 2:
 		var a: Vector2i = editor_line[0]
 		var b: Vector2i = editor_line[1]
-		draw_line(Vector2(a) + Vector2(0.5, 0.5), Vector2(b) + Vector2(0.5, 0.5), Color(0.35, 0.65, 1.0, 0.85), 0.5)
-		draw_circle(Vector2(a) + Vector2(0.5, 0.5), 0.5, Color(0.35, 0.65, 1.0))
+		_cv.draw_line(Vector2(a) + Vector2(0.5, 0.5), Vector2(b) + Vector2(0.5, 0.5), Color(0.35, 0.65, 1.0, 0.85), 0.5)
+		_cv.draw_circle(Vector2(a) + Vector2(0.5, 0.5), 0.5, Color(0.35, 0.65, 1.0))
 	if editor_rect.size.x > 0:
-		draw_rect(Rect2(editor_rect), Color(1.0, 0.9, 0.4, 0.15))
-		draw_rect(Rect2(editor_rect), Color(1.0, 0.9, 0.4, 0.95), false, 0.12)
+		_cv.draw_rect(Rect2(editor_rect), Color(1.0, 0.9, 0.4, 0.15))
+		_cv.draw_rect(Rect2(editor_rect), Color(1.0, 0.9, 0.4, 0.95), false, 0.12)
 	if editor_paste.x > 0 and sim.inb(ghost.x, ghost.y):
-		draw_rect(Rect2(Vector2(ghost), Vector2(editor_paste)), Color(0.5, 1.0, 0.6, 0.12))
-		draw_rect(Rect2(Vector2(ghost), Vector2(editor_paste)), Color(0.5, 1.0, 0.6, 0.95), false, 0.12)
+		_cv.draw_rect(Rect2(Vector2(ghost), Vector2(editor_paste)), Color(0.5, 1.0, 0.6, 0.12))
+		_cv.draw_rect(Rect2(Vector2(ghost), Vector2(editor_paste)), Color(0.5, 1.0, 0.6, 0.95), false, 0.12)
 		return
 	if sim.inb(ghost.x, ghost.y):
 		for p: Vector2i in EditorTools.mirrored(ghost.x, ghost.y, sim.w, sim.h, editor_mirror):
@@ -1415,23 +1435,23 @@ func _draw_editor() -> void:
 			var col := Color(1, 1, 1, 0.9) if p == ghost else Color(1, 1, 1, 0.45)
 			if editor_round and editor_brush > 2:
 				var c := Vector2(p.x + (0.5 if editor_brush % 2 == 1 else 0.0), p.y + (0.5 if editor_brush % 2 == 1 else 0.0) - gl)
-				draw_arc(c, editor_brush / 2.0, 0, TAU, 48, col, 0.08)
+				_cv.draw_arc(c, editor_brush / 2.0, 0, TAU, 48, col, 0.08)
 			else:
 				var r := editor_brush / 2
-				draw_rect(Rect2(p.x - r, p.y - r - gl, editor_brush, editor_brush), col, false, 0.08)
+				_cv.draw_rect(Rect2(p.x - r, p.y - r - gl, editor_brush, editor_brush), col, false, 0.08)
 
 
 func _draw_selection_and_tools() -> void:
 	var w := sim.w
 	if not preview_tiles.is_empty() or not preview_blds.is_empty():
 		for i in preview_tiles:
-			draw_rect(Rect2(i % w, i / w, 1, 1), Color(0.9, 0.2, 0.15, 0.38))
+			_cv.draw_rect(Rect2(i % w, i / w, 1, 1), Color(0.9, 0.2, 0.15, 0.38))
 		for id in preview_blds:
 			var o: Sim.Bld = sim.by_id.get(id)
 			if o != null:
 				var c := Vector2(o.x + 0.5, o.y + 0.4)
-				draw_line(c + Vector2(-0.45, -0.45), c + Vector2(0.45, 0.45), Color("ff4a3a"), 0.14)
-				draw_line(c + Vector2(0.45, -0.45), c + Vector2(-0.45, 0.45), Color("ff4a3a"), 0.14)
+				_cv.draw_line(c + Vector2(-0.45, -0.45), c + Vector2(0.45, 0.45), Color("ff4a3a"), 0.14)
+				_cv.draw_line(c + Vector2(0.45, -0.45), c + Vector2(-0.45, 0.45), Color("ff4a3a"), 0.14)
 	if editor:
 		for a in editor_animals:
 			var ap := Vector2(int(a[1]) + 0.5, int(a[2]) + 0.8)
@@ -1441,35 +1461,35 @@ func _draw_selection_and_tools() -> void:
 		for k in editor_starts.size():
 			var st: Vector2i = editor_starts[k]
 			var c := Vector2(st.x + 0.5, st.y + 0.5 - lift_at(st.x + 0.5, st.y + 0.5))
-			draw_rect(Rect2(c.x - 3.5, c.y - 3.5, 7, 7), Color(Sim.PCOL[k % Sim.PCOL.size()], 0.18))
-			draw_rect(Rect2(c.x - 3.5, c.y - 3.5, 7, 7), Sim.PCOL[k % Sim.PCOL.size()], false, 0.1)
-			draw_circle(c, 0.7, Sim.PCOL[k % Sim.PCOL.size()])
+			_cv.draw_rect(Rect2(c.x - 3.5, c.y - 3.5, 7, 7), Color(Sim.PCOL[k % Sim.PCOL.size()], 0.18))
+			_cv.draw_rect(Rect2(c.x - 3.5, c.y - 3.5, 7, 7), Sim.PCOL[k % Sim.PCOL.size()], false, 0.1)
+			_cv.draw_circle(c, 0.7, Sim.PCOL[k % Sim.PCOL.size()])
 			_tool_labels.append([c + Vector2(0, -0.9), "Start %d%s" % [k + 1, " (you)" if k == 0 else ""], Color.WHITE])
 		_draw_editor()
 		return
 	var sel: Sim.Bld = sim.by_id.get(sel_id)
 	if sel != null:
 		if raised: _lift_to(sel.x + 0.5, sel.y + 0.5)
-		draw_rect(Rect2(sel.x, sel.y, 1, 1), Color("ffe28a"), false, 0.08)
+		_cv.draw_rect(Rect2(sel.x, sel.y, 1, 1), Color("ffe28a"), false, 0.08)
 		if sel.p == 1 and sim.is_mil(sel):
-			draw_arc(Vector2(sel.x + 0.5, sel.y + 0.5), Sim.RANGE, 0, TAU, 96, Color(1, 1, 1, 0.35), 0.08)
+			_cv.draw_arc(Vector2(sel.x + 0.5, sel.y + 0.5), Sim.RANGE, 0, TAU, 96, Color(1, 1, 1, 0.35), 0.08)
 			for t2 in sim.blds:
 				if t2.p != 1 and sim.is_mil(t2) and t2.state == "ready" and Vector2(t2.x - sel.x, t2.y - sel.y).length() <= Sim.RANGE:
-					draw_arc(Vector2(t2.x + 0.5, t2.y + 0.5), 0.8, 0, TAU, 32, Color("ff6a4a"), 0.1)
+					_cv.draw_arc(Vector2(t2.x + 0.5, t2.y + 0.5), 0.8, 0, TAU, 32, Color("ff6a4a"), 0.1)
 		var wr := sim.work_radius(sel)
 		if wr > 0:
 			var wc := sim.work_center(sel)
 			var cpos := Vector2(wc.x + 0.5, wc.y + 0.5)
-			draw_arc(cpos, wr + 0.5, 0, TAU, 64, Color(1.0, 1.0, 0.6, 0.6), 0.07)
+			_cv.draw_arc(cpos, wr + 0.5, 0, TAU, 64, Color(1.0, 1.0, 0.6, 0.6), 0.07)
 			if wc != Vector2i(sel.x, sel.y):
-				draw_line(Vector2(sel.x + 0.5, sel.y + 0.5), cpos, Color(1.0, 1.0, 0.6, 0.6), 0.06)
+				_cv.draw_line(Vector2(sel.x + 0.5, sel.y + 0.5), cpos, Color(1.0, 1.0, 0.6, 0.6), 0.06)
 		if sel.def.has("carriers"):
-			draw_arc(Vector2(sel.x + 0.5, sel.y + 0.5), float(sel.def.carriers.range), 0, TAU, 64, Color(0.6, 0.9, 1.0, 0.5), 0.07)
+			_cv.draw_arc(Vector2(sel.x + 0.5, sel.y + 0.5), float(sel.def.carriers.range), 0, TAU, 64, Color(0.6, 0.9, 1.0, 0.5), 0.07)
 	_unlift()
 	if sel_tile >= 0:
 		var q := tile_quad(sel_tile % w, sel_tile / w)
 		q.append(q[0])
-		draw_polyline(q, Color("8fe0ff"), 0.08)
+		_cv.draw_polyline(q, Color("8fe0ff"), 0.08)
 	if place_type == "" or not sim.inb(ghost.x, ghost.y):
 		return
 	# the tool's marks lie on the ground at the mouse
@@ -1478,7 +1498,7 @@ func _draw_selection_and_tools() -> void:
 	match place_type:
 		"@road":
 			if road_start.x >= 0:
-				draw_rect(Rect2(road_start.x, road_start.y, 1, 1), Color("ffe28a"), false, 0.1)
+				_cv.draw_rect(Rect2(road_start.x, road_start.y, 1, 1), Color("ffe28a"), false, 0.1)
 				var path := road_preview()
 				# the planned road, each step coloured by how steep it is (yellow to red), as on roads
 				for k in path.size():
@@ -1488,33 +1508,33 @@ func _draw_selection_and_tools() -> void:
 					if k < path.size() - 1: sl = maxi(sl, sim.slope_level(i, path[k + 1]))
 					var col := Color(0.66, 0.55, 0.37, 0.85) if sl == 0 else (MapChunks.SLOPE_COL[sl] as Color)
 					var dl := lift_at(i % w + 0.5, i / w + 0.5) - _cur_lift
-					draw_rect(Rect2(i % w + 0.25, i / w + 0.25 - dl, 0.5, 0.5), col)
-				draw_rect(g, Color("86ad5c") if path.size() > 0 else Color("d9483d"), false, 0.08)
+					_cv.draw_rect(Rect2(i % w + 0.25, i / w + 0.25 - dl, 0.5, 0.5), col)
+				_cv.draw_rect(g, Color("86ad5c") if path.size() > 0 else Color("d9483d"), false, 0.08)
 			else:
 				var ok := sim.road[sim.idx(ghost.x, ghost.y)] == 1 or (sim.bld_at(ghost.x, ghost.y) != null and sim.bld_at(ghost.x, ghost.y).p == 1) or sim.door_owner(ghost.x, ghost.y, 1) != null
-				draw_rect(g, Color("86ad5c") if ok else Color("d9483d"), false, 0.08)
+				_cv.draw_rect(g, Color("86ad5c") if ok else Color("d9483d"), false, 0.08)
 		"@demolish":
 			var db := sim.bld_at(ghost.x, ghost.y)
 			var can := db != null and db.p == 1 and db.ty != "hq"
 			var dc := Color("e0402f") if can else Color(0.6, 0.6, 0.6, 0.8)
-			draw_rect(g, Color(dc, 0.25))
-			draw_rect(g, dc, false, 0.08)
+			_cv.draw_rect(g, Color(dc, 0.25))
+			_cv.draw_rect(g, dc, false, 0.08)
 			if can:
-				draw_line(g.position + Vector2(0.2, 0.2), g.end - Vector2(0.2, 0.2), dc, 0.1)
-				draw_line(Vector2(g.position.x + 0.8, g.position.y + 0.2), Vector2(g.position.x + 0.2, g.position.y + 0.8), dc, 0.1)
+				_cv.draw_line(g.position + Vector2(0.2, 0.2), g.end - Vector2(0.2, 0.2), dc, 0.1)
+				_cv.draw_line(Vector2(g.position.x + 0.8, g.position.y + 0.2), Vector2(g.position.x + 0.2, g.position.y + 0.8), dc, 0.1)
 		"@pave", "@unroad":
 			var on_road := sim.road[sim.idx(ghost.x, ghost.y)] == 1
-			draw_rect(g, Color("86ad5c") if on_road else Color("d9483d"), false, 0.08)
+			_cv.draw_rect(g, Color("86ad5c") if on_road else Color("d9483d"), false, 0.08)
 		"@work":
 			if sel != null and sim.work_radius(sel) > 0:
 				var lim := int(sel.def.work.get("move", 6))
 				var ok2 := Vector2(ghost.x - sel.x, ghost.y - sel.y).length() <= lim + 0.01
-				draw_arc(Vector2(sel.x + 0.5, sel.y + 0.5), lim + 0.5, 0, TAU, 64, Color(1, 1, 1, 0.35), 0.06)
-				draw_arc(Vector2(ghost.x + 0.5, ghost.y + 0.5), sim.work_radius(sel) + 0.5, 0, TAU, 64, Color("86ad5c") if ok2 else Color("d9483d"), 0.08)
+				_cv.draw_arc(Vector2(sel.x + 0.5, sel.y + 0.5), lim + 0.5, 0, TAU, 64, Color(1, 1, 1, 0.35), 0.06)
+				_cv.draw_arc(Vector2(ghost.x + 0.5, ghost.y + 0.5), sim.work_radius(sel) + 0.5, 0, TAU, 64, Color("86ad5c") if ok2 else Color("d9483d"), 0.08)
 		_:
 			if not GameData.bld.has(place_type):
 				# a feature's tool (send scout, send geologist...): a plain marker
-				draw_rect(g, Color(1, 1, 1, 0.8), false, 0.08)
+				_cv.draw_rect(g, Color(1, 1, 1, 0.8), false, 0.08)
 				return
 			var why := sim.can_place(place_type, ghost.x, ghost.y, 1, door)
 			var gc := Color("d9483d") if why != "" else Color("86ad5c")
@@ -1530,13 +1550,13 @@ func _draw_selection_and_tools() -> void:
 							ring[ny * w + nx] = true
 			for t in ring:
 				var bad: bool = sim.plot[t] != 0
-				draw_rect(Rect2(t % w + 0.06, t / w + 0.06, 0.88, 0.88), Color("d9483d", 0.75) if bad else Color(1, 1, 1, 0.22), false, 0.04)
+				_cv.draw_rect(Rect2(t % w + 0.06, t / w + 0.06, 0.88, 0.88), Color("d9483d", 0.75) if bad else Color(1, 1, 1, 0.22), false, 0.04)
 			for t in tiles:
-				draw_rect(Rect2(t % w, t / w, 1, 1), Color(gc, 0.4))
-				draw_rect(Rect2(t % w, t / w, 1, 1), gc, false, 0.06)
+				_cv.draw_rect(Rect2(t % w, t / w, 1, 1), Color(gc, 0.4))
+				_cv.draw_rect(Rect2(t % w, t / w, 1, 1), gc, false, 0.06)
 			if tiles.is_empty():
-				draw_rect(g, Color(gc, 0.4))
-			draw_rect(g, gc, false, 0.08)
+				_cv.draw_rect(g, Color(gc, 0.4))
+			_cv.draw_rect(g, gc, false, 0.08)
 			# the entrance: an arrow out of the building to its flag on the tile in front (R turns it)
 			var dt := sim.door_at(ghost.x, ghost.y, door)
 			if dt >= 0:
@@ -1545,9 +1565,9 @@ func _draw_selection_and_tools() -> void:
 				var dirv := (a1 - a0).normalized()
 				var perp := Vector2(-dirv.y, dirv.x)
 				var tip := a0 + dirv * 0.95
-				draw_line(a0 + dirv * 0.3, tip - dirv * 0.2, Color(1, 0.95, 0.6, 0.95), 0.1)
-				draw_colored_polygon(PackedVector2Array([tip, tip - dirv * 0.28 + perp * 0.17, tip - dirv * 0.28 - perp * 0.17]), Color(1, 0.95, 0.6, 0.95))
-				draw_rect(Rect2(dt % w, dt / w, 1, 1), Color(1, 0.95, 0.6, 0.8), false, 0.06)
+				_cv.draw_line(a0 + dirv * 0.3, tip - dirv * 0.2, Color(1, 0.95, 0.6, 0.95), 0.1)
+				_cv.draw_colored_polygon(PackedVector2Array([tip, tip - dirv * 0.28 + perp * 0.17, tip - dirv * 0.28 - perp * 0.17]), Color(1, 0.95, 0.6, 0.95))
+				_cv.draw_rect(Rect2(dt % w, dt / w, 1, 1), Color(1, 0.95, 0.6, 0.8), false, 0.06)
 				_door_flag(dt, sim.players[0].color, false)
 				# with auto roads on, the road it would get
 				if auto_roads and why == "":
@@ -1559,16 +1579,16 @@ func _draw_selection_and_tools() -> void:
 						var i := _auto_path[k]
 						if sim.road[i] != 1:
 							var dl2 := lift_at(i % w + 0.5, i / w + 0.5) - _cur_lift
-							draw_rect(Rect2(i % w + 0.3, i / w + 0.3 - dl2, 0.4, 0.4), Color(0.66, 0.55, 0.37, 0.75))
+							_cv.draw_rect(Rect2(i % w + 0.3, i / w + 0.3 - dl2, 0.4, 0.4), Color(0.66, 0.55, 0.37, 0.75))
 			var d: Dictionary = GameData.bld[place_type]
 			if d.has("radius"):
-				draw_arc(Vector2(ghost.x + 0.5, ghost.y + 0.5), float(d.radius), 0, TAU, 64, Color(1, 1, 1, 0.5), 0.08)
+				_cv.draw_arc(Vector2(ghost.x + 0.5, ghost.y + 0.5), float(d.radius), 0, TAU, 64, Color(1, 1, 1, 0.5), 0.08)
 				if why == "":
 					_tool_labels.append([Vector2(ghost.x + 0.5, ghost.y - 0.6), "+%d land" % land_gain(ghost.x, ghost.y, int(d.radius), 1), Color("f2cf5a")])
 			if d.has("work"):
-				draw_arc(Vector2(ghost.x + 0.5, ghost.y + 0.5), float(d.work.radius) + 0.5, 0, TAU, 48, Color(1, 1, 0.6, 0.35), 0.06)
+				_cv.draw_arc(Vector2(ghost.x + 0.5, ghost.y + 0.5), float(d.work.radius) + 0.5, 0, TAU, 48, Color(1, 1, 0.6, 0.35), 0.06)
 			if d.has("carriers"):
-				draw_arc(Vector2(ghost.x + 0.5, ghost.y + 0.5), float(d.carriers.range), 0, TAU, 64, Color(0.6, 0.9, 1.0, 0.4), 0.06)
+				_cv.draw_arc(Vector2(ghost.x + 0.5, ghost.y + 0.5), float(d.carriers.range), 0, TAU, 64, Color(0.6, 0.9, 1.0, 0.4), 0.06)
 
 
 ## Marks the free spots: while placing a building, every spot it fits (with the current entrance);
@@ -1647,7 +1667,7 @@ func _site_markers(x0: int, y0: int, x1: int, y1: int) -> void:
 		for t in _gain:
 			if t >= 0 and not skip.has(t):
 				if raised: _lift_to(t % sim.w + 0.5, t / sim.w + 0.5)
-				draw_circle(Vector2(t % sim.w + 0.5, t / sim.w + 0.5), 0.42, Color(0.95, 0.8, 0.3, 0.3))
+				_cv.draw_circle(Vector2(t % sim.w + 0.5, t / sim.w + 0.5), 0.42, Color(0.95, 0.8, 0.3, 0.3))
 				_tool_labels.append([Vector2(t % sim.w + 0.5, t / sim.w - 0.15), "+%d" % int(_gain[t]), Color("f2cf5a")])
 	for t in _sites:
 		if not skip.has(t):
@@ -1659,8 +1679,8 @@ func _site_markers(x0: int, y0: int, x1: int, y1: int) -> void:
 				if dt2 >= 0:
 					var c0 := Vector2(t % sim.w + 0.5, t / sim.w + 0.5)
 					var c1 := c0 + (Vector2(dt2 % sim.w + 0.5, dt2 / sim.w + 0.5) - c0) * 0.42
-					draw_line(c1, c1 + Vector2(0, -0.26), Color(0.2, 0.15, 0.08, 0.9), 0.035)
-					draw_colored_polygon(PackedVector2Array([c1 + Vector2(0, -0.26), c1 + Vector2(0.15, -0.2), c1 + Vector2(0, -0.14)]), Color(sim.players[0].color, 0.95))
+					_cv.draw_line(c1, c1 + Vector2(0, -0.26), Color(0.2, 0.15, 0.08, 0.9), 0.035)
+					_cv.draw_colored_polygon(PackedVector2Array([c1 + Vector2(0, -0.26), c1 + Vector2(0.15, -0.2), c1 + Vector2(0, -0.14)]), Color(sim.players[0].color, 0.95))
 	_unlift()
 
 
@@ -1710,8 +1730,8 @@ func _draw_night(vis: Array, x0: int, y0: int, x1: int, y1: int) -> void:
 		return
 	var area := Rect2(x0 - 2, y0 - 6, x1 - x0 + 5, y1 - y0 + 9)
 	var dusk := sin(n * PI)
-	draw_rect(area, Color(1.0, 0.55, 0.25, 0.10 * dusk))
-	draw_rect(area, Color(0.04, 0.06, 0.17, 0.58 * n))
+	_cv.draw_rect(area, Color(1.0, 0.55, 0.25, 0.10 * dusk))
+	_cv.draw_rect(area, Color(0.04, 0.06, 0.17, 0.58 * n))
 	if _glow == null:
 		return
 	for b: Sim.Bld in vis:
@@ -1728,8 +1748,8 @@ func _draw_night(vis: Array, x0: int, y0: int, x1: int, y1: int) -> void:
 			continue
 		var fl := 0.85 + 0.15 * sin(sim.time * 3.0 + b.id * 1.7)
 		var r := 0.34 * sw if not sim.is_mil(b) else 0.5
-		draw_texture_rect(_glow, Rect2(c.x - r, c.y - r, r * 2.0, r * 2.0), false, Color(1.0, 0.78, 0.4, 0.75 * n * fl))
-		draw_circle(c + Vector2(0.06, 0.05), minf(0.08, 0.04 * sw), Color(1.0, 0.85, 0.45, 0.9 * n))
+		_cv.draw_texture_rect(_glow, Rect2(c.x - r, c.y - r, r * 2.0, r * 2.0), false, Color(1.0, 0.78, 0.4, 0.75 * n * fl))
+		_cv.draw_circle(c + Vector2(0.06, 0.05), minf(0.08, 0.04 * sw), Color(1.0, 0.85, 0.45, 0.9 * n))
 
 
 ## A moving part of a working building (see "anim" in buildings.json, written by tools/bld_variants.py):
@@ -1742,23 +1762,23 @@ func _draw_anim(b: Sim.Bld, rect: Rect2, an: Array) -> void:
 		"saw":
 			# a frame saw working up and down
 			var off := sin(t * 9.0) * s * 0.18
-			draw_line(p + Vector2(0, -s * 0.5 + off), p + Vector2(0, s * 0.5 + off), Color(0.86, 0.87, 0.9), 0.025)
-			draw_line(p + Vector2(-0.03, -s * 0.5 + off), p + Vector2(0.03, -s * 0.5 + off), Color(0.45, 0.32, 0.2), 0.03)
+			_cv.draw_line(p + Vector2(0, -s * 0.5 + off), p + Vector2(0, s * 0.5 + off), Color(0.86, 0.87, 0.9), 0.025)
+			_cv.draw_line(p + Vector2(-0.03, -s * 0.5 + off), p + Vector2(0.03, -s * 0.5 + off), Color(0.45, 0.32, 0.2), 0.03)
 			if fmod(t * 9.0 / TAU, 1.0) < 0.5:
 				for k in 2:
 					var dp := fmod(t * 1.7 + k * 0.5, 1.0)
-					draw_circle(p + Vector2(0.04 + dp * 0.1, s * 0.5 - dp * 0.05), 0.012 + 0.01 * dp, Color(0.92, 0.84, 0.62, 0.8 * (1.0 - dp)))
+					_cv.draw_circle(p + Vector2(0.04 + dp * 0.1, s * 0.5 - dp * 0.05), 0.012 + 0.01 * dp, Color(0.92, 0.84, 0.62, 0.8 * (1.0 - dp)))
 		"wheel":
 			# a water wheel turning: rim, spokes and paddles
 			var ang := t * 0.9
-			draw_circle(p, s * 0.86, Color(0.36, 0.25, 0.16))
+			_cv.draw_circle(p, s * 0.86, Color(0.36, 0.25, 0.16))
 			for k in 10:
 				var a := ang + k * TAU / 10.0
 				var d := Vector2(cos(a), sin(a))
-				draw_line(p, p + d * s * 0.82, Color(0.5, 0.36, 0.22), 0.025)
-				draw_line(p + d * s * 0.8, p + d * s, Color(0.55, 0.4, 0.25), 0.06)
-			draw_arc(p, s * 0.82, 0, TAU, 24, Color(0.48, 0.34, 0.2), 0.03)
-			draw_circle(p, s * 0.1, Color(0.25, 0.2, 0.15))
+				_cv.draw_line(p, p + d * s * 0.82, Color(0.5, 0.36, 0.22), 0.025)
+				_cv.draw_line(p + d * s * 0.8, p + d * s, Color(0.55, 0.4, 0.25), 0.06)
+			_cv.draw_arc(p, s * 0.82, 0, TAU, 24, Color(0.48, 0.34, 0.2), 0.03)
+			_cv.draw_circle(p, s * 0.1, Color(0.25, 0.2, 0.15))
 		"cog":
 			# a cog wheel turning
 			var ang2 := t * 1.4 * (1.0 if s > 0.15 else -2.0)
@@ -1770,12 +1790,12 @@ func _draw_anim(b: Sim.Bld, rect: Rect2, an: Array) -> void:
 				for dd in [-0.32, 0.32]:
 					var a: float = a0 + dd * PI / teeth
 					pts.append(p + Vector2(cos(a), sin(a)) * rr)
-			draw_colored_polygon(pts, Color(0.3, 0.31, 0.35))
-			draw_circle(p, s * 0.55, Color(0.42, 0.43, 0.48))
+			_cv.draw_colored_polygon(pts, Color(0.3, 0.31, 0.35))
+			_cv.draw_circle(p, s * 0.55, Color(0.42, 0.43, 0.48))
 			for k in 4:
 				var a := ang2 + k * PI / 2.0 + 0.4
-				draw_line(p, p + Vector2(cos(a), sin(a)) * s * 0.5, Color(0.55, 0.56, 0.62), s * 0.12)
-			draw_circle(p, s * 0.14, Color(0.2, 0.2, 0.24))
+				_cv.draw_line(p, p + Vector2(cos(a), sin(a)) * s * 0.5, Color(0.55, 0.56, 0.62), s * 0.12)
+			_cv.draw_circle(p, s * 0.14, Color(0.2, 0.2, 0.24))
 		"sparks":
 			# hammer blows on the anvil: a burst of sparks with each
 			var beat := fmod(t * 1.6, 1.0)
@@ -1784,12 +1804,12 @@ func _draw_anim(b: Sim.Bld, rect: Rect2, an: Array) -> void:
 				for k in 6:
 					var a := -PI * (0.15 + 0.7 * float(_hash(b.id + k, int(t * 1.6)) % 100) / 100.0)
 					var d := Vector2(cos(a), sin(a)) * (0.06 + f * s * 0.08)
-					draw_line(p + d * 0.5, p + d, Color(1.0, 0.85, 0.4, 1.0 - f), 0.018)
+					_cv.draw_line(p + d * 0.5, p + d, Color(1.0, 0.85, 0.4, 1.0 - f), 0.018)
 		"steam":
 			for k in 3:
 				var ph := fmod(t * 0.5 + k * 0.33, 1.0)
 				var c := p + Vector2(sin(ph * 4.0 + k) * 0.05 + ph * 0.1, -ph * 0.6)
-				draw_circle(c, s * 0.02 + ph * 0.12, Color(0.95, 0.96, 0.98, 0.45 * (1.0 - ph)))
+				_cv.draw_circle(c, s * 0.02 + ph * 0.12, Color(0.95, 0.96, 0.98, 0.45 * (1.0 - ph)))
 
 
 ## Where a road-carriers load is: Vector3(tile from, tile to, how far between them); z < 0 when it lies
@@ -1826,25 +1846,25 @@ func _site_icon(c: Vector2, size: String) -> void:
 			var s := 0.12 if size == "small" else 0.17
 			var body := Rect2(c.x - s, c.y - s * 1.3, s * 2.0, s * 1.3)
 			var roof := PackedVector2Array([Vector2(c.x - s * 1.3, c.y - s * 1.3), Vector2(c.x, c.y - s * 2.5), Vector2(c.x + s * 1.3, c.y - s * 1.3)])
-			draw_rect(body.grow(0.025), edge)
-			draw_colored_polygon(PackedVector2Array([roof[0] + Vector2(-0.04, 0.02), roof[1] + Vector2(0, -0.045), roof[2] + Vector2(0.04, 0.02)]), edge)
-			draw_rect(body, gold)
-			draw_colored_polygon(roof, gold.darkened(0.15))
+			_cv.draw_rect(body.grow(0.025), edge)
+			_cv.draw_colored_polygon(PackedVector2Array([roof[0] + Vector2(-0.04, 0.02), roof[1] + Vector2(0, -0.045), roof[2] + Vector2(0.04, 0.02)]), edge)
+			_cv.draw_rect(body, gold)
+			_cv.draw_colored_polygon(roof, gold.darkened(0.15))
 		"large":
 			var s := 0.2
 			var body := Rect2(c.x - s * 1.2, c.y - s * 1.4, s * 2.4, s * 1.4)
-			draw_rect(body.grow(0.025), edge)
-			draw_rect(body, gold)
+			_cv.draw_rect(body.grow(0.025), edge)
+			_cv.draw_rect(body, gold)
 			for k in 3:
 				var bx := c.x - s * 1.2 + k * s * 0.9
-				draw_rect(Rect2(bx - 0.02, c.y - s * 1.85 - 0.02, s * 0.6 + 0.04, s * 0.5 + 0.03), edge)
-				draw_rect(Rect2(bx, c.y - s * 1.85, s * 0.6, s * 0.5), gold)
+				_cv.draw_rect(Rect2(bx - 0.02, c.y - s * 1.85 - 0.02, s * 0.6 + 0.04, s * 0.5 + 0.03), edge)
+				_cv.draw_rect(Rect2(bx, c.y - s * 1.85, s * 0.6, s * 0.5), gold)
 		"mine":
 			var s := 0.16
 			var arch := PackedVector2Array([Vector2(c.x - s * 1.4, c.y), Vector2(c.x - s * 0.9, c.y - s * 1.7), Vector2(c.x + s * 0.9, c.y - s * 1.7), Vector2(c.x + s * 1.4, c.y)])
-			draw_colored_polygon(PackedVector2Array([arch[0] + Vector2(-0.04, 0.02), arch[1] + Vector2(-0.02, -0.04), arch[2] + Vector2(0.02, -0.04), arch[3] + Vector2(0.04, 0.02)]), edge)
-			draw_colored_polygon(arch, gold)
-			draw_rect(Rect2(c.x - s * 0.45, c.y - s * 0.9, s * 0.9, s * 0.9), Color(0.15, 0.1, 0.05))
+			_cv.draw_colored_polygon(PackedVector2Array([arch[0] + Vector2(-0.04, 0.02), arch[1] + Vector2(-0.02, -0.04), arch[2] + Vector2(0.02, -0.04), arch[3] + Vector2(0.04, 0.02)]), edge)
+			_cv.draw_colored_polygon(arch, gold)
+			_cv.draw_rect(Rect2(c.x - s * 0.45, c.y - s * 0.9, s * 0.9, s * 0.9), Color(0.15, 0.1, 0.05))
 
 
 ## A small flag in colour col on tile i: a building's entrance. warn adds a pulsing ring (no road yet).
@@ -1878,8 +1898,8 @@ func _door_flag(i: int, col: Color, warn: bool) -> void:
 	var c := Vector2(i % sim.w + 0.5, i / sim.w + 0.62)
 	if warn:
 		var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.006)
-		draw_arc(c + Vector2(0, -0.05), 0.36 + 0.06 * pulse, 0, TAU, 24, Color(1.0, 0.85, 0.3, 0.55 + 0.4 * pulse), 0.06)
-	draw_texture_rect(_flag_picture(col), Rect2(c.x - 0.25, c.y - 0.875, 0.5, 1.0), false)
+		_cv.draw_arc(c + Vector2(0, -0.05), 0.36 + 0.06 * pulse, 0, TAU, 24, Color(1.0, 0.85, 0.3, 0.55 + 0.4 * pulse), 0.06)
+	_cv.draw_texture_rect(_flag_picture(col), Rect2(c.x - 0.25, c.y - 0.875, 0.5, 1.0), false)
 
 
 ## Draws frame f of an animated texture with its bottom centre at foot, wid tiles wide, mirrored when
@@ -1914,11 +1934,11 @@ func _sprite(id: String, foot: Vector2, wid: float, f: int, flip: bool, col := C
 		if _batching:
 			_shadows.append(sr)
 		else:
-			draw_texture_rect(_shadow, sr, false)
+			_cv.draw_texture_rect(_shadow, sr, false)
 	if _batching:
 		_batch_add(tex, dst, src, col)
 	else:
-		draw_texture_rect_region(tex, dst, src, col)
+		_cv.draw_texture_rect_region(tex, dst, src, col)
 	return hgt
 
 
@@ -1952,12 +1972,12 @@ func _batch_add(tex: Texture2D, dst: Rect2, src: Rect2, col: Color) -> void:
 func _flush_batches() -> void:
 	_batching = false
 	for sr: Rect2 in _shadows:
-		draw_texture_rect(_shadow, sr, false)
+		_cv.draw_texture_rect(_shadow, sr, false)
 	_shadows.clear()
 	for layer: Dictionary in _batches:
 		for tex: Texture2D in layer:
 			for c: Array in layer[tex]:
-				draw_texture_rect_region(tex, c[0], c[1], c[2])
+				_cv.draw_texture_rect_region(tex, c[0], c[1], c[2])
 		layer.clear()
 	_batch_layer = 0
 
@@ -1966,15 +1986,15 @@ func _flush_batches() -> void:
 ## a grey arrow down for low, two bars for paused. It is drawn after the building, so it stays visible.
 func _prio_badge(b: Sim.Bld) -> void:
 	var c := Vector2(b.x + 0.14, b.y + 0.86)
-	draw_circle(c, 0.17, Color(0, 0, 0, 0.7))
+	_cv.draw_circle(c, 0.17, Color(0, 0, 0, 0.7))
 	match b.prio:
 		Sim.PRIO_HIGH:
-			draw_colored_polygon(PackedVector2Array([c + Vector2(0, -0.12), c + Vector2(0.1, 0.07), c + Vector2(-0.1, 0.07)]), Color("f0a040"))
+			_cv.draw_colored_polygon(PackedVector2Array([c + Vector2(0, -0.12), c + Vector2(0.1, 0.07), c + Vector2(-0.1, 0.07)]), Color("f0a040"))
 		Sim.PRIO_LOW:
-			draw_colored_polygon(PackedVector2Array([c + Vector2(0, 0.12), c + Vector2(0.1, -0.07), c + Vector2(-0.1, -0.07)]), Color("a0b0c0"))
+			_cv.draw_colored_polygon(PackedVector2Array([c + Vector2(0, 0.12), c + Vector2(0.1, -0.07), c + Vector2(-0.1, -0.07)]), Color("a0b0c0"))
 		Sim.PRIO_PAUSED:
-			draw_rect(Rect2(c.x - 0.085, c.y - 0.09, 0.055, 0.18), Color("e0e0e0"))
-			draw_rect(Rect2(c.x + 0.03, c.y - 0.09, 0.055, 0.18), Color("e0e0e0"))
+			_cv.draw_rect(Rect2(c.x - 0.085, c.y - 0.09, 0.055, 0.18), Color("e0e0e0"))
+			_cv.draw_rect(Rect2(c.x + 0.03, c.y - 0.09, 0.055, 0.18), Color("e0e0e0"))
 
 
 ## A point on a building's picture, given as fractions of its width and height.
@@ -1988,7 +2008,7 @@ func _smoke_at(p: Vector2, seed: float, strength: float) -> void:
 		var ph := fposmod(sim.time * 0.35 + i * 0.25 + seed, 1.0)
 		var c := p + Vector2(sin(ph * 5.0 + seed * 7.0) * 0.06 + ph * 0.35, -ph * 0.95)
 		var r := 0.1 + ph * 0.25
-		draw_texture_rect(_smoke, Rect2(c.x - r, c.y - r, r * 2.0, r * 2.0), false, Color(1, 1, 1, (1.0 - ph) * 0.9 * strength))
+		_cv.draw_texture_rect(_smoke, Rect2(c.x - r, c.y - r, r * 2.0, r * 2.0), false, Color(1, 1, 1, (1.0 - ph) * 0.9 * strength))
 
 
 ## A little ship at pos: brown hull, a white sail with the realm's colour; its cargo on deck (res), or,
@@ -1997,15 +2017,15 @@ func _draw_ship(pos: Vector2, left: bool, pc: Color, seed: float, res: String, w
 	var fl := -1.0 if left else 1.0
 	var bob := 0.03 * sin(sim.time * 3.0 + seed)
 	var hp := pos + Vector2(0, -0.2 + bob)
-	draw_colored_polygon(PackedVector2Array([hp + 1.6 * Vector2(-0.45 * fl, -0.1), hp + 1.6 * Vector2(0.5 * fl, -0.1), hp + 1.6 * Vector2(0.3 * fl, 0.12), hp + 1.6 * Vector2(-0.35 * fl, 0.12)]), Color("5a3a22") if war else Color("6b4a2a"))
-	draw_line(hp + 1.6 * Vector2(0, -0.1), hp + 1.6 * Vector2(0, -0.75), Color("3a2a18"), 0.07)
-	draw_colored_polygon(PackedVector2Array([hp + 1.6 * Vector2(0.03 * fl, -0.72), hp + 1.6 * Vector2(0.34 * fl, -0.2), hp + 1.6 * Vector2(0.03 * fl, -0.2)]), pc.lightened(0.55) if war else Color("f2efe4"))
-	draw_rect(Rect2(hp + 1.6 * Vector2(-0.02, -0.82), Vector2(0.16 * fl, 0.08)).abs(), Color("c03020") if war else pc)
+	_cv.draw_colored_polygon(PackedVector2Array([hp + 1.6 * Vector2(-0.45 * fl, -0.1), hp + 1.6 * Vector2(0.5 * fl, -0.1), hp + 1.6 * Vector2(0.3 * fl, 0.12), hp + 1.6 * Vector2(-0.35 * fl, 0.12)]), Color("5a3a22") if war else Color("6b4a2a"))
+	_cv.draw_line(hp + 1.6 * Vector2(0, -0.1), hp + 1.6 * Vector2(0, -0.75), Color("3a2a18"), 0.07)
+	_cv.draw_colored_polygon(PackedVector2Array([hp + 1.6 * Vector2(0.03 * fl, -0.72), hp + 1.6 * Vector2(0.34 * fl, -0.2), hp + 1.6 * Vector2(0.03 * fl, -0.2)]), pc.lightened(0.55) if war else Color("f2efe4"))
+	_cv.draw_rect(Rect2(hp + 1.6 * Vector2(-0.02, -0.82), Vector2(0.16 * fl, 0.08)).abs(), Color("c03020") if war else pc)
 	if war:
 		for k in 3:
-			draw_circle(hp + 1.6 * Vector2((-0.25 + k * 0.2) * fl, -0.02), 0.07, pc)
+			_cv.draw_circle(hp + 1.6 * Vector2((-0.25 + k * 0.2) * fl, -0.02), 0.07, pc)
 	elif res != "" and _res_tex.has(res):
-		draw_texture_rect(_res_tex[res], Rect2(hp + 1.6 * Vector2(-0.32 * fl - 0.1, -0.32), Vector2(0.32, 0.32)), false)
+		_cv.draw_texture_rect(_res_tex[res], Rect2(hp + 1.6 * Vector2(-0.32 * fl - 0.1, -0.32), Vector2(0.32, 0.32)), false)
 
 
 ## The red "!" badge as one small picture (made once): a dark ring, a red disc and a white "!".
@@ -2068,7 +2088,7 @@ func _building_shadow(b: Sim.Bld) -> void:
 	if raised:
 		foot.y -= lift_at(b.x + 0.5, b.y + 0.9)
 	var a := 0.55 if b.state == "build" else 1.0
-	draw_texture_rect(_shadow, Rect2(foot.x - w / 2.0, foot.y - h * 0.62, w, h), false, Color(1, 1, 1, a))
+	_cv.draw_texture_rect(_shadow, Rect2(foot.x - w / 2.0, foot.y - h * 0.62, w, h), false, Color(1, 1, 1, a))
 
 
 ## What drawing a building of a type needs from its data, looked up once per type:
@@ -2088,12 +2108,158 @@ func _art_of(ty: String) -> Array:
 	return e
 
 
+## Where the map view's drawing calls go: the map view itself, or, while the building layer is being
+## recorded, a RidCanvas (see _layer_draw).
+var _cv = self
+
+# ---------------------------------------------------------------- the building layer
+## Below LAYER_MAX zoom, the fields, trees and buildings are recorded once into a canvas item of their
+## own, under the rest of the map, for an area half a screen larger than the view (below ANIM_ZOOM all
+## of each building; nearer, only what stays still: sails, smoke, workers and flags are drawn over it
+## every frame, and people walk in front of the buildings rather than behind them). A frame then only moves and scales it with the camera; it is
+## recorded again once a second (work bars, flags, badges), when buildings are added or removed, when
+## the view leaves the recorded area or the zoom changes a lot. A big map shows hundreds of buildings
+## at once out there, and drawing them all every frame was the slowest part of the game.
+var layer_on := true
+const LAYER_MAX := 30.0          # the building layer is used below this zoom
+var _lpart := -1                 # what it holds: 0 everything (no animations out there), 1 what stays still
+var _lrid := RID()
+var _lrc: RidCanvas = null
+var _lo := Vector2.ZERO          # the map's origin and zoom when it was recorded
+var _lz := 1.0
+var _lrect := Rect2i()           # the tiles it covers
+var _lms := -100000              # when (Time.get_ticks_msec)
+var _lkey := Vector2i(-2, -2)    # the buildings' key then (_index_blds)
+var _lver := -1                  # the chunks' version then (trees)
+var _lraised := false
+var _lfog := false
+var _lmore := false              # trees still to be made: record again next frame
+var _layer_labels: Array = []    # the labels its buildings put up (soldier counts), in tiles
+var _lused := false
+
+
+## Whether building b has anything that moves (what _draw_building draws with part 2).
+func _moves(b: Sim.Bld) -> bool:
+	if b.state == "build":
+		return b.builder == 2
+	var ai := _art_of(b.ty)
+	if (ai[2] as Array).size() == 2 or ANIMALS.has(b.ty):
+		return true
+	if ai[6] and b.target >= 0:
+		return true
+	if b.working:
+		return (ai[3] as Array).size() == 2 or not (ai[7] as Array).is_empty() or (ai[4] as Array).size() == 2 \
+				or (b.target >= 0 and TOOL.has(String(b.def.get("act", ""))))
+	return (ai[4] as Array).size() == 2 and String(ai[0]) in HOME_SMOKE and b.state == "ready"
+
+
+func _layer_init() -> void:
+	if _lrid.is_valid():
+		return
+	_lrid = RenderingServer.canvas_item_create()
+	RenderingServer.canvas_item_set_parent(_lrid, get_canvas_item())
+	RenderingServer.canvas_item_set_draw_behind_parent(_lrid, true)
+	RenderingServer.canvas_item_set_draw_index(_lrid, 1000)     # over the ground, under the rest
+	_lrc = RidCanvas.new(_lrid)
+
+
+## Not zoomed out: the layer is emptied (the map draws everything itself).
+func _layer_off() -> void:
+	if _lused:
+		_lrc.clear()
+		_lused = false
+		_lkey = Vector2i(-2, -2)
+
+
+func _layer_draw(x0: int, x1: int, y0: int, y1: int, origin: Vector2, z: float, fog_on: bool, fv: PackedByteArray, part: int) -> void:
+	_layer_init()
+	var view_r := Rect2i(x0, y0, x1 - x0 + 1, y1 - y0 + 1)
+	var redo := not _lused or _lpart != part or _lmore or _lkey != _bld_key or _lver != chunks.ver or _lraised != raised or _lfog != fog_on \
+			or Time.get_ticks_msec() - _lms > 1000 or z / _lz > 1.5 or z / _lz < 0.67 or not _lrect.encloses(view_r)
+	if redo:
+		if prof_on:
+			prof["n_layer_fills"] = int(prof.get("n_layer_fills", 0)) + 1000
+			var why := []
+			if _lpart != part: why.append("part")
+			if _lmore: why.append("more")
+			if _lkey != _bld_key: why.append("key")
+			if not _lrect.encloses(view_r): why.append("rect")
+			if _lver != chunks.ver: why.append("ver")
+			for wy in why: prof["why " + wy] = int(prof.get("why " + wy, 0)) + 1000
+		_lpart = part
+		_layer_fill(x0, x1, y0, y1, origin, z, fog_on, fv)
+	# the recording, moved and scaled from where it was made to where the map is now
+	var k := z / _lz
+	RenderingServer.canvas_item_set_transform(_lrid, Transform2D(0.0, Vector2(k, k), 0.0, origin - _lo * k))
+
+
+func _layer_fill(x0: int, x1: int, y0: int, y1: int, origin: Vector2, z: float, fog_on: bool, fv: PackedByteArray) -> void:
+	_lused = true
+	_lo = origin
+	_lz = z
+	_lms = Time.get_ticks_msec()
+	_lkey = _bld_key
+	_lver = chunks.ver
+	_lraised = raised
+	_lfog = fog_on
+	var mx := (x1 - x0) / 2 + 4
+	var my := (y1 - y0) / 2 + 4
+	var fx0 := maxi(0, x0 - mx)
+	var fy0 := maxi(0, y0 - my)
+	var fx1 := mini(sim.w - 1, x1 + mx)
+	var fy1 := mini(sim.h - 1, y1 + my)
+	_lrect = Rect2i(fx0, fy0, fx1 - fx0 + 1, fy1 - fy0 + 1)
+	_lrc.clear()
+	_cv = _lrc
+	_cv.draw_set_transform(origin, 0.0, Vector2(z, z))
+	_draw_fields(fx0, fx1, fy0, fy1)
+	_lmore = false
+	if z >= SCENERY_ZOOM:
+		_draw_scenery(fx0, fx1, fy0, fy1)
+		var CHN := MapChunks.CH
+		for cy in range(fy0 / CHN, mini(sim.h - 1, fy1 + 2) / CHN + 1):
+			for cx in range(fx0 / CHN, fx1 / CHN + 1):
+				if not _scn_mesh.has(cy * 1000 + cx):
+					_lmore = true
+	var w := sim.w
+	var vis2: Array = []
+	for row in range(maxi(0, (fy0 - 1) / BROW), mini(_bld_rows.size() - 1, (fy1 + 4) / BROW) + 1):
+		for b: Sim.Bld in _bld_rows[row]:
+			if b.x >= fx0 - 3 and b.x <= fx1 + 3 and b.y >= fy0 - 1 and b.y <= fy1 + 4:
+				if fog_on and b.p != 1 and fv[b.y * w + b.x] == 0:
+					continue
+				vis2.append(b)
+	vis2.sort_custom(func(a, b): return a.y < b.y or (a.y == b.y and a.x < b.x))
+	for b in vis2:
+		_building_shadow(b)
+	var labels2: Array = []
+	for b in vis2:
+		if raised: _lift_to(b.x + 0.5, b.y + 0.9)
+		var nl := labels2.size()
+		_draw_building(b, labels2, false, _lpart)
+		for li in range(nl, labels2.size()):
+			labels2[li][0] = (labels2[li][0] as Vector2) + Vector2(0, -_cur_lift)
+		_unlift()
+	_layer_labels = labels2
+	if _lpart == 1:
+		for b in vis2:
+			if b.p == 1 and b.door >= 0 and not b.dead:
+				var dt := sim.door_tile(b)
+				if dt >= 0:
+					if raised: _lift_to(dt % w + 0.5, dt / w + 0.6)
+					_door_flag(dt, sim.players[0].color, not sim.connected(b))
+					_unlift()
+	_cv = self
+
+
 ## What drawing a building needs that changes only with its type and age, kept for each building
 ## (a big map has hundreds on screen): [type, age, picture, art, rectangle, top of the picture, snow].
 var _bd: Dictionary = {}
 
 
-func _draw_building(b: Sim.Bld, labels: Array, detail: bool) -> void:
+## part: 0 all of it; 1 only what stays still (the building layer keeps it); 2 only what moves (sails,
+## smoke, glow, workers, the waving flag), drawn every frame over the layer.
+func _draw_building(b: Sim.Bld, labels: Array, detail: bool, part := 0) -> void:
 	var bc = _bd.get(b)
 	if bc == null or bc[0] != b.ty or bc[1] != b.era:
 		# a site is drawn in the look it will have: its realm's age when it was placed
@@ -2117,16 +2283,19 @@ func _draw_building(b: Sim.Bld, labels: Array, detail: bool) -> void:
 	var rect: Rect2 = bc[4]
 	var top: float = bc[5]
 	var pc: Color = sim.players[b.p - 1].color
+	var st := part != 2
+	var lv := part != 1
 	if b.state == "build":
 		# the building rises from the ground as work progresses, inside a scaffold
 		var p := clampf(b.prog, 0.0, 1.0)
-		draw_texture_rect(tex, rect, false, Color(1, 1, 1, 0.22))
-		var th := float(tex.get_height())
-		draw_texture_rect_region(tex, Rect2(rect.position.x, rect.end.y - rect.size.y * p, rect.size.x, rect.size.y * p),
-			Rect2(0, th * (1.0 - p), tex.get_width(), th * p))
-		var cs := minf(sw, 1.6)
-		draw_texture_rect(_constr, Rect2(b.x + 0.5 - cs / 2.0, b.y + 1.0 - cs, cs, cs), false)
-		if detail and b.builder == 2:
+		if st:
+			_cv.draw_texture_rect(tex, rect, false, Color(1, 1, 1, 0.22))
+			var th := float(tex.get_height())
+			_cv.draw_texture_rect_region(tex, Rect2(rect.position.x, rect.end.y - rect.size.y * p, rect.size.x, rect.size.y * p),
+				Rect2(0, th * (1.0 - p), tex.get_width(), th * p))
+			var cs := minf(sw, 1.6)
+			_cv.draw_texture_rect(_constr, Rect2(b.x + 0.5 - cs / 2.0, b.y + 1.0 - cs, cs, cs), false)
+		if lv and detail and b.builder == 2:
 			var bt := sim.time * 4.0 + b.id
 			var beat := int(bt)
 			var hp := Vector2(b.x + 0.12, b.y + 1.0)
@@ -2138,30 +2307,32 @@ func _draw_building(b: Sim.Bld, labels: Array, detail: bool) -> void:
 					var sp := hp + Vector2(0.2, -0.22)
 					for k in 3:
 						var a := -0.6 - k * 0.5
-						draw_line(sp, sp + Vector2(cos(a), sin(a)) * (0.05 + ph * 0.25), Color(1.0, 0.9, 0.5, 1.0 - ph * 3.0), 0.02)
+						_cv.draw_line(sp, sp + Vector2(cos(a), sin(a)) * (0.05 + ph * 0.25), Color(1.0, 0.9, 0.5, 1.0 - ph * 3.0), 0.02)
 				var tt := Time.get_ticks_msec() / 1000.0
 				for k in 3:
 					var dph := fmod(tt * 0.45 + k * 0.33 + b.id * 0.17, 1.0)
 					var dp := Vector2(b.x + 0.2 + k * 0.3 + sin(tt + k) * 0.05, b.y + 0.95 - dph * 0.7)
-					draw_circle(dp, 0.07 + dph * 0.12, Color(0.78, 0.7, 0.58, 0.32 * (1.0 - dph)))
+					_cv.draw_circle(dp, 0.07 + dph * 0.12, Color(0.78, 0.7, 0.58, 0.32 * (1.0 - dph)))
+		if not st:
+			return
 		# materials lying at the site, waiting to be used
 		if zoom >= 18.0 and not b.onsite.is_empty():
 			var k := 0
 			for r in b.onsite:
 				if _res_tex.has(r) and k < 3:
-					draw_texture_rect(_res_tex[r], Rect2(b.x - 0.05 + k * 0.24, b.y + 0.66, 0.3, 0.3), false)
+					_cv.draw_texture_rect(_res_tex[r], Rect2(b.x - 0.05 + k * 0.24, b.y + 0.66, 0.3, 0.3), false)
 					k += 1
-		draw_rect(Rect2(b.x, b.y + 1.02, 1.0, 0.1), Color(0, 0, 0, 0.6))
+		_cv.draw_rect(Rect2(b.x, b.y + 1.02, 1.0, 0.1), Color(0, 0, 0, 0.6))
 		if b.mat_total > 0:
-			draw_rect(Rect2(b.x, b.y + 1.02, float(b.mat_used + _count(b.onsite)) / b.mat_total, 0.1), Color(0.55, 0.45, 0.3, 0.9))
-		draw_rect(Rect2(b.x, b.y + 1.02, b.prog, 0.1), Color("d8aa4a"))
+			_cv.draw_rect(Rect2(b.x, b.y + 1.02, float(b.mat_used + _count(b.onsite)) / b.mat_total, 0.1), Color(0.55, 0.45, 0.3, 0.9))
+		_cv.draw_rect(Rect2(b.x, b.y + 1.02, b.prog, 0.1), Color("d8aa4a"))
 		if b.p == 1 and b.prio != Sim.PRIO_NORMAL:
 			_prio_badge(b)
 		return
-	if detail and ANIMALS.has(b.ty):
+	if lv and detail and ANIMALS.has(b.ty):
 		_draw_animals(b, String(ANIMALS[b.ty]), true)
 	# the ships waiting at a harbour (or a headquarters that landed from the sea), moored beside it
-	if zoom >= 9.0 and sim.sea.is_harbour(b) and b.state == "ready":
+	if st and zoom >= 9.0 and sim.sea.is_harbour(b) and b.state == "ready":
 		var pl := sim.players[b.p - 1]
 		var moor := sim.sea._moorings(b.x, b.y)
 		var free := sim.sea.free_ships(pl)
@@ -2169,44 +2340,45 @@ func _draw_building(b: Sim.Bld, labels: Array, detail: bool) -> void:
 			for k in mini(free, 2):
 				var mi := moor[(k * 3) % moor.size()]
 				_draw_ship(Vector2(mi % sim.w + 0.5, mi / sim.w + 0.75), k % 2 == 1, sim.players[b.p - 1].color, b.id + k, "", false)
-	draw_texture_rect(tex, rect, false)
+	if st:
+		_cv.draw_texture_rect(tex, rect, false)
 	# snow on the roofs in winter (the seasons feature says how much lies here)
-	if _snow_any:
+	if st and _snow_any:
 		var sn: float = _seasons.snow_at(sim.idx(b.x, b.y))
 		if sn > 0.03:
-			var st: Texture2D = bc[6]
-			if st != null:
-				draw_texture_rect(st, rect, false, Color(1, 1, 1, minf(1.0, sn * 1.5)))
-	if detail and ANIMALS.has(b.ty):
+			var snow_t: Texture2D = bc[6]
+			if snow_t != null:
+				_cv.draw_texture_rect(snow_t, rect, false, Color(1, 1, 1, minf(1.0, sn * 1.5)))
+	if lv and detail and ANIMALS.has(b.ty):
 		_draw_animals(b, String(ANIMALS[b.ty]), false)
-	if b.reno_to >= 0:
+	if st and b.reno_to >= 0:
 		# renovation: scaffolding over the building, the new look rising behind it
 		var ntex := bld_texture(b.upg if b.upg != "" else b.ty, b.reno_to)
 		var th := float(ntex.get_height())
 		var rp := clampf(b.reno_prog, 0.0, 1.0)
 		var nh := sw * th / maxf(1.0, ntex.get_width())
 		var nrect := Rect2(b.x + 0.5 - sw / 2.0, b.y + 1.0 - nh, sw, nh)
-		draw_texture_rect_region(ntex, Rect2(nrect.position.x, nrect.end.y - nrect.size.y * rp, nrect.size.x, nrect.size.y * rp), Rect2(0, th * (1.0 - rp), ntex.get_width(), th * rp))
+		_cv.draw_texture_rect_region(ntex, Rect2(nrect.position.x, nrect.end.y - nrect.size.y * rp, nrect.size.x, nrect.size.y * rp), Rect2(0, th * (1.0 - rp), ntex.get_width(), th * rp))
 		var cs := minf(sw, 1.6)
-		draw_texture_rect(_constr, Rect2(b.x + 0.5 - cs / 2.0, b.y + 1.0 - cs, cs, cs), false, Color(1, 1, 1, 0.85))
-		draw_rect(Rect2(b.x, b.y + 1.02, 1.0, 0.1), Color(0, 0, 0, 0.6))
-		draw_rect(Rect2(b.x, b.y + 1.02, rp, 0.1), Color("9fd0e8"))
+		_cv.draw_texture_rect(_constr, Rect2(b.x + 0.5 - cs / 2.0, b.y + 1.0 - cs, cs, cs), false, Color(1, 1, 1, 0.85))
+		_cv.draw_rect(Rect2(b.x, b.y + 1.02, 1.0, 0.1), Color(0, 0, 0, 0.6))
+		_cv.draw_rect(Rect2(b.x, b.y + 1.02, rp, 0.1), Color("9fd0e8"))
 	# moving parts: windmill sails, furnace glow and chimney smoke
 	var hub: Array = ai[2]
-	if hub.size() == 2:
+	if lv and hub.size() == 2:
 		var turn := sim.time * 1.6 if b.working and animate else float(b.id)
 		var hp := _anchor(rect, hub)
 		var ss := sw * 0.9
-		draw_set_transform(_origin + hp * zoom, turn, Vector2(zoom, zoom))
-		draw_texture_rect(_sails, Rect2(-ss / 2.0, -ss / 2.0, ss, ss), false)
-		draw_set_transform(_origin, 0.0, Vector2(zoom, zoom))
-	if detail:
+		_cv.draw_set_transform(_origin + hp * zoom, turn, Vector2(zoom, zoom))
+		_cv.draw_texture_rect(_sails, Rect2(-ss / 2.0, -ss / 2.0, ss, ss), false)
+		_cv.draw_set_transform(_origin, 0.0, Vector2(zoom, zoom))
+	if lv and detail:
 		var glow: Array = ai[3]
 		if glow.size() == 2 and b.working:
 			var fl := 0.65 + 0.35 * sin(sim.time * 13.0 + b.id) * sin(sim.time * 7.3)
 			var gp := _anchor(rect, glow)
 			var gr := 0.28 * sw / 2.0
-			draw_texture_rect(_glow, Rect2(gp.x - gr, gp.y - gr, gr * 2.0, gr * 2.0), false, Color(1, 1, 1, fl))
+			_cv.draw_texture_rect(_glow, Rect2(gp.x - gr, gp.y - gr, gr * 2.0, gr * 2.0), false, Color(1, 1, 1, fl))
 		if b.working and animate and not (ai[7] as Array).is_empty():
 			for an in ai[7]:
 				_draw_anim(b, rect, an)
@@ -2215,7 +2387,7 @@ func _draw_building(b: Sim.Bld, labels: Array, detail: bool) -> void:
 			_smoke_at(_anchor(rect, smoke), b.id * 0.137, 1.0 if b.working else 0.5)
 		_draw_worker(b, pc)
 	# a catapult's stone in flight, and dust where it lands
-	if ai[6] and b.target >= 0:
+	if lv and ai[6] and b.target >= 0:
 		var tp := Vector2(b.target % sim.w + 0.5, b.target / sim.w + 0.4)
 		var sp := Vector2(b.x + 0.3, b.y + 0.1)
 		if b.working:
@@ -2223,29 +2395,32 @@ func _draw_building(b: Sim.Bld, labels: Array, detail: bool) -> void:
 			if u > 0.8:
 				var f := (u - 0.8) / 0.2
 				var pos := sp.lerp(tp, f) + Vector2(0, -sin(f * PI) * maxf(2.0, sp.distance_to(tp) * 0.35))
-				draw_circle(pos, 0.12, Color(0.6, 0.6, 0.56))
-				draw_circle(pos + Vector2(-0.03, -0.03), 0.05, Color(0.8, 0.8, 0.76))
+				_cv.draw_circle(pos, 0.12, Color(0.6, 0.6, 0.56))
+				_cv.draw_circle(pos + Vector2(-0.03, -0.03), 0.05, Color(0.8, 0.8, 0.76))
 		var since := sim.time - b.sxp
 		if b.sxp > 0.0 and since < 0.8:
 			for k in 5:
 				var ang := k * 1.3 + b.id
-				draw_circle(tp + Vector2(cos(ang), sin(ang) * 0.5) * (0.2 + since * 0.6), 0.14 + since * 0.15, Color(0.75, 0.7, 0.6, 0.7 * (1.0 - since / 0.8)))
+				_cv.draw_circle(tp + Vector2(cos(ang), sin(ang) * 0.5) * (0.2 + since * 0.6), 0.14 + since * 0.15, Color(0.75, 0.7, 0.6, 0.7 * (1.0 - since / 0.8)))
 	var ff := int(sim.time * 5.0 + b.id) if animate else 0
-	_sprite("unit_flag", Vector2(rect.position.x + rect.size.x * 0.85, rect.position.y + rect.size.y * top + 0.17), 0.3, ff, false, pc)
+	if st:
+		_sprite("unit_flag", Vector2(rect.position.x + rect.size.x * 0.85, rect.position.y + rect.size.y * top + 0.17), 0.3, ff, false, pc)
+	if not st:
+		return
 	if b.working and b.cyc > 0.0:
-		draw_rect(Rect2(b.x + 0.1, b.y + 1.02, 0.8, 0.08), Color(0, 0, 0, 0.6))
-		draw_rect(Rect2(b.x + 0.1, b.y + 1.02, 0.8 * sim.work_progress(b), 0.08), Color("86ad5c"))
+		_cv.draw_rect(Rect2(b.x + 0.1, b.y + 1.02, 0.8, 0.08), Color(0, 0, 0, 0.6))
+		_cv.draw_rect(Rect2(b.x + 0.1, b.y + 1.02, 0.8 * sim.work_progress(b), 0.08), Color("86ad5c"))
 	elif b.p == 1 and b.cyc > 0.0 and b.msg != "" and b.msg != "Working":
 		# a "!" badge on the building's roof: it can't work (the reason shows when you click it)
 		var bcp := Vector2(rect.position.x + rect.size.x * 0.28, rect.position.y + rect.size.y * top + 0.12)
-		draw_texture_rect(_badge(), Rect2(bcp.x - 0.15, bcp.y - 0.15, 0.3, 0.3), false)
+		_cv.draw_texture_rect(_badge(), Rect2(bcp.x - 0.15, bcp.y - 0.15, 0.3, 0.3), false)
 	var waiting := 0
 	for r in b.out_buf:
 		waiting += int(b.out_buf[r])
 	if waiting > 0 and zoom >= 18.0:
 		var first: String = b.out_buf.keys()[0]
 		if _res_tex.has(first):
-			draw_texture_rect(_res_tex[first], Rect2(b.x + 0.62, b.y + 0.55, 0.36, 0.36), false)
+			_cv.draw_texture_rect(_res_tex[first], Rect2(b.x + 0.62, b.y + 0.55, 0.36, 0.36), false)
 	if ai[5]:
 		labels.append([Vector2(b.x + 0.5, rect.position.y - 0.05), str(sim.own_def(b)), pc.lightened(0.5)])
 	if b.p == 1 and b.prio != Sim.PRIO_NORMAL:
@@ -2286,7 +2461,7 @@ func _draw_fields(_x0: int, _x1: int, _y0: int, _y1: int) -> void:
 		wi.fill(Color.WHITE)
 		_white = ImageTexture.create_from_image(wi)
 	if _field_mesh != null:
-		draw_mesh(_field_mesh, _white)
+		_cv.draw_mesh(_field_mesh, _white)
 
 
 func _make_field_mesh() -> ArrayMesh:
@@ -2399,7 +2574,7 @@ func _draw_worker(b: Sim.Bld, pc: Color) -> void:
 		var hh := _person(id, p2, int(spot.distance_to(p2) * 8.0) % nw, home.x < spot.x, col)
 		var outs: Dictionary = Crops.out_of(sim, b)
 		if outs.size() > 0 and _res_tex.has(outs.keys()[0]):
-			draw_texture_rect(_res_tex[outs.keys()[0]], Rect2(p2.x - 0.13, p2.y - hh - 0.2, 0.26, 0.26), false)
+			_cv.draw_texture_rect(_res_tex[outs.keys()[0]], Rect2(p2.x - 0.13, p2.y - hh - 0.2, 0.26, 0.26), false)
 	elif act == "fish" and dist > 1.2:
 		# out in his boat over the fishing ground, rocking on the water, casting now and then
 		var bp := spot.lerp(tgt, 0.6) + Vector2(0, 0.04 * sin(sim.time * 2.1 + b.id))
@@ -2409,9 +2584,9 @@ func _draw_worker(b: Sim.Bld, pc: Color) -> void:
 		# the line, and rings on the water where it goes in
 		var tipp := bp + Vector2(0.32 * fl, -0.42)
 		var bob := bp + Vector2(0.62 * fl, 0.08)
-		draw_line(tipp, bob, Color(0.9, 0.9, 0.85, 0.7), 0.012)
+		_cv.draw_line(tipp, bob, Color(0.9, 0.9, 0.85, 0.7), 0.012)
 		var rr := fmod(sim.time * 0.8 + b.id * 0.3, 1.0)
-		draw_arc(bob, 0.05 + rr * 0.18, 0, TAU, 16, Color(1, 1, 1, 0.5 * (1.0 - rr)), 0.02)
+		_cv.draw_arc(bob, 0.05 + rr * 0.18, 0, TAU, 16, Color(1, 1, 1, 0.5 * (1.0 - rr)), 0.02)
 	else:
 		_person(id, spot, nw + int(sim.time * 3.0 + b.id) % 2, tgt.x < spot.x, col)
 		_work_fx(act, b, spot, tgt)
@@ -2432,13 +2607,13 @@ func _work_fx(act: String, b: Sim.Bld, at: Vector2, tgt: Vector2) -> void:
 				for k in 5:
 					var d := Vector2(fl * (0.15 + k * 0.07), -0.25)
 					var p := at + Vector2(0, -0.28) + d * ph + Vector2(0, 0.6 * ph * ph)
-					draw_circle(p, 0.018, Color(0.85, 0.75, 0.45, 1.0 - ph * 0.6))
+					_cv.draw_circle(p, 0.018, Color(0.85, 0.75, 0.45, 1.0 - ph * 0.6))
 			else:
 				# reaping: chaff and straw flying from the sickle
 				for k in 6:
 					var ph := fmod(t * 0.9 + k * 0.17, 1.0)
 					var p := at + Vector2(fl * (0.2 + ph * 0.3) + sin(t * 3.0 + k) * 0.05, -0.15 - sin(ph * PI) * 0.35)
-					draw_line(p, p + Vector2(0.04, -0.02).rotated(t * 4.0 + k), Color(0.95, 0.82, 0.42, 1.0 - ph), 0.02)
+					_cv.draw_line(p, p + Vector2(0.04, -0.02).rotated(t * 4.0 + k), Color(0.95, 0.82, 0.42, 1.0 - ph), 0.02)
 		"cut_tree", "cut_rock":
 			# chips flying from each blow
 			var ph := fmod(t * 1.6, 1.0)
@@ -2448,7 +2623,7 @@ func _work_fx(act: String, b: Sim.Bld, at: Vector2, tgt: Vector2) -> void:
 				for k in 4:
 					var a := -PI / 2.0 + (k - 1.5) * 0.45 - fl * 0.6
 					var p := src + Vector2(cos(a), sin(a)) * ph * 0.45 + Vector2(0, ph * ph * 0.5)
-					draw_rect(Rect2(p, Vector2(0.04, 0.03)), Color(c, 1.0 - ph / 0.6))
+					_cv.draw_rect(Rect2(p, Vector2(0.04, 0.03)), Color(c, 1.0 - ph / 0.6))
 
 
 # ---------------------------------------------------------------- effects: a tree falls, a building is done
@@ -2515,18 +2690,18 @@ func _draw_fx(x0: int, y0: int, x1: int, y1: int) -> void:
 				var alpha := 1.0 if age < 1.6 else clampf(1.0 - (age - 1.6) / 1.2, 0.0, 1.0)
 				var tex := Tex.get_tex(String(SCENERY[int(e[3])]))
 				if tex != null:
-					draw_set_transform(_origin + lp * zoom, ang, Vector2(zoom, zoom))
-					draw_texture_rect(tex, Rect2(-0.5, -1.5, 1.0, 1.5), false, Color(1, 1, 1, alpha))
-					draw_set_transform(_origin, 0.0, Vector2(zoom, zoom))
+					_cv.draw_set_transform(_origin + lp * zoom, ang, Vector2(zoom, zoom))
+					_cv.draw_texture_rect(tex, Rect2(-0.5, -1.5, 1.0, 1.5), false, Color(1, 1, 1, alpha))
+					_cv.draw_set_transform(_origin, 0.0, Vector2(zoom, zoom))
 				# a stump stays
-				draw_rect(Rect2(lp.x - 0.06, lp.y - 0.1, 0.12, 0.1), Color(0.45, 0.3, 0.18, alpha))
+				_cv.draw_rect(Rect2(lp.x - 0.06, lp.y - 0.1, 0.12, 0.1), Color(0.45, 0.3, 0.18, alpha))
 				if age > 1.0 and age < 1.8:
 					var u := (age - 1.0) / 0.8
 					var land := lp + Vector2(dirn * 1.1, -0.1)
 					for k in 7:
 						var a := -PI / 2.0 + (k - 3) * 0.4
-						draw_circle(land + Vector2(cos(a), sin(a) * 0.5) * u * 0.5, 0.05 + u * 0.08, Color(0.75, 0.68, 0.5, 0.45 * (1.0 - u)))
-						draw_circle(land + Vector2(cos(a + 0.2), sin(a + 0.2)) * u * 0.6 + Vector2(0, u * u * 0.3), 0.03, Color(0.35, 0.55, 0.25, 0.8 * (1.0 - u)))
+						_cv.draw_circle(land + Vector2(cos(a), sin(a) * 0.5) * u * 0.5, 0.05 + u * 0.08, Color(0.75, 0.68, 0.5, 0.45 * (1.0 - u)))
+						_cv.draw_circle(land + Vector2(cos(a + 0.2), sin(a + 0.2)) * u * 0.6 + Vector2(0, u * u * 0.3), 0.03, Color(0.35, 0.55, 0.25, 0.8 * (1.0 - u)))
 			"fall":
 				# a fallen soldier: he topples over, lies a while and fades
 				if age > 2.8:
@@ -2539,10 +2714,10 @@ func _draw_fx(x0: int, y0: int, x1: int, y1: int) -> void:
 				var fw: float = ec[2]
 				var src := Rect2(0, 0, fw, float(ec[3]))
 				var hgt := 0.5 * src.size.y / maxf(1.0, src.size.x)
-				draw_set_transform(_origin + lp * zoom, tilt, Vector2(zoom, zoom))
+				_cv.draw_set_transform(_origin + lp * zoom, tilt, Vector2(zoom, zoom))
 				var cc: Color = info[1]
-				draw_texture_rect_region(stex, Rect2(-0.25, -hgt, 0.5, hgt), src, Color(cc.r, cc.g, cc.b, fa))
-				draw_set_transform(_origin, 0.0, Vector2(zoom, zoom))
+				_cv.draw_texture_rect_region(stex, Rect2(-0.25, -hgt, 0.5, hgt), src, Color(cc.r, cc.g, cc.b, fa))
+				_cv.draw_set_transform(_origin, 0.0, Vector2(zoom, zoom))
 			"done":
 				# a ring of dust rolling out from the walls, and sparkles rising
 				if age > 1.8:
@@ -2552,13 +2727,13 @@ func _draw_fx(x0: int, y0: int, x1: int, y1: int) -> void:
 				for k in 10:
 					var a := k * TAU / 10.0
 					var d := Vector2(cos(a) * w * (0.6 + u * 0.9), sin(a) * 0.35 * (0.6 + u * 0.9))
-					draw_circle(lp + d, 0.12 + u * 0.25, Color(0.86, 0.82, 0.72, 0.5 * (1.0 - u)))
+					_cv.draw_circle(lp + d, 0.12 + u * 0.25, Color(0.86, 0.82, 0.72, 0.5 * (1.0 - u)))
 				for k in 6:
 					var sx := lp + Vector2((k - 2.5) * w * 0.35, -0.6 - u * 1.4 - float(k % 3) * 0.2)
 					var r := 0.08 * (1.0 - u)
 					var sc := Color(1.0, 0.92, 0.55, 1.0 - u)
-					draw_line(sx - Vector2(r, 0), sx + Vector2(r, 0), sc, 0.03)
-					draw_line(sx - Vector2(0, r), sx + Vector2(0, r), sc, 0.03)
+					_cv.draw_line(sx - Vector2(r, 0), sx + Vector2(r, 0), sc, 0.03)
+					_cv.draw_line(sx - Vector2(0, r), sx + Vector2(0, r), sc, 0.03)
 	_fx = keep
 
 
@@ -2578,33 +2753,33 @@ func _draw_places(x0: int, y0: int, x1: int, y1: int, fog_on: bool, fog) -> void
 			base.y -= lift_at(base.x, base.y - 0.2)
 		if pl.kind == "ruins":
 			var stone := Color(0.62, 0.6, 0.55) if not bool(pl.done) else Color(0.5, 0.49, 0.46)
-			draw_texture_rect(_shadow, Rect2(base.x - 0.9, base.y - 0.35, 1.9, 0.6), false)
+			_cv.draw_texture_rect(_shadow, Rect2(base.x - 0.9, base.y - 0.35, 1.9, 0.6), false)
 			# a broken wall: blocks of uneven height, a gap, an arch stump
 			for k in 5:
 				var hgt: float = [0.55, 0.85, 0.3, 0.7, 0.45][k]
 				var bx := base.x - 0.8 + k * 0.33
-				draw_rect(Rect2(bx, base.y - hgt, 0.28, hgt), stone)
-				draw_rect(Rect2(bx, base.y - hgt, 0.28, 0.06), stone.lightened(0.2))
-				draw_line(Vector2(bx, base.y - hgt * 0.5), Vector2(bx + 0.28, base.y - hgt * 0.5), stone.darkened(0.25), 0.02)
+				_cv.draw_rect(Rect2(bx, base.y - hgt, 0.28, hgt), stone)
+				_cv.draw_rect(Rect2(bx, base.y - hgt, 0.28, 0.06), stone.lightened(0.2))
+				_cv.draw_line(Vector2(bx, base.y - hgt * 0.5), Vector2(bx + 0.28, base.y - hgt * 0.5), stone.darkened(0.25), 0.02)
 			for k in 4:
-				draw_circle(base + Vector2(-0.6 + k * 0.4, 0.05), 0.08, stone.darkened(0.15))
+				_cv.draw_circle(base + Vector2(-0.6 + k * 0.4, 0.05), 0.08, stone.darkened(0.15))
 			if not bool(pl.done) and animate:
 				# something glints among the stones
 				if fmod(t * 0.7 + x, 3.0) < 0.25:
 					var g := base + Vector2(0.15, -0.25)
-					draw_line(g - Vector2(0.08, 0), g + Vector2(0.08, 0), Color(1, 0.95, 0.6), 0.03)
-					draw_line(g - Vector2(0, 0.08), g + Vector2(0, 0.08), Color(1, 0.95, 0.6), 0.03)
+					_cv.draw_line(g - Vector2(0.08, 0), g + Vector2(0.08, 0), Color(1, 0.95, 0.6), 0.03)
+					_cv.draw_line(g - Vector2(0, 0.08), g + Vector2(0, 0.08), Color(1, 0.95, 0.6), 0.03)
 			continue
 		# a bandit camp
 		var cleared := bool(pl.done)
-		draw_texture_rect(_shadow, Rect2(base.x - 1.2, base.y - 0.4, 2.4, 0.7), false)
+		_cv.draw_texture_rect(_shadow, Rect2(base.x - 1.2, base.y - 0.4, 2.4, 0.7), false)
 		for k in 3:
 			var tp := base + Vector2(-0.8 + k * 0.75, -0.05 * k)
 			var tc := Color(0.55, 0.32, 0.22) if k != 1 else Color(0.45, 0.36, 0.25)
 			if cleared:
 				tc = tc.darkened(0.4)
-			draw_colored_polygon(PackedVector2Array([tp + Vector2(-0.35, 0), tp + Vector2(0, -0.6), tp + Vector2(0.35, 0)]), tc)
-			draw_colored_polygon(PackedVector2Array([tp + Vector2(-0.08, 0), tp + Vector2(0, -0.25), tp + Vector2(0.08, 0)]), Color(0.12, 0.08, 0.05))
+			_cv.draw_colored_polygon(PackedVector2Array([tp + Vector2(-0.35, 0), tp + Vector2(0, -0.6), tp + Vector2(0.35, 0)]), tc)
+			_cv.draw_colored_polygon(PackedVector2Array([tp + Vector2(-0.08, 0), tp + Vector2(0, -0.25), tp + Vector2(0.08, 0)]), Color(0.12, 0.08, 0.05))
 		if cleared:
 			continue
 		# the fire, its smoke, and bandits standing about
@@ -2612,10 +2787,10 @@ func _draw_places(x0: int, y0: int, x1: int, y1: int, fog_on: bool, fog) -> void
 		if animate:
 			for k in 3:
 				var fl := 0.18 + 0.08 * sin(t * 11.0 + k * 2.0)
-				draw_colored_polygon(PackedVector2Array([fp + Vector2(-0.08 + k * 0.06, 0), fp + Vector2(-0.04 + k * 0.06, -fl), fp + Vector2(0.0 + k * 0.06, 0)]), Color(1.0, 0.55, 0.15, 0.9))
+				_cv.draw_colored_polygon(PackedVector2Array([fp + Vector2(-0.08 + k * 0.06, 0), fp + Vector2(-0.04 + k * 0.06, -fl), fp + Vector2(0.0 + k * 0.06, 0)]), Color(1.0, 0.55, 0.15, 0.9))
 			for k in 3:
 				var ph := fmod(t * 0.4 + k * 0.33, 1.0)
-				draw_circle(fp + Vector2(sin(t + k) * 0.1 + ph * 0.3, -0.3 - ph * 1.2), 0.08 + ph * 0.15, Color(0.3, 0.3, 0.3, 0.4 * (1.0 - ph)))
+				_cv.draw_circle(fp + Vector2(sin(t + k) * 0.1 + ph * 0.3, -0.3 - ph * 1.2), 0.08 + ph * 0.15, Color(0.3, 0.3, 0.3, 0.4 * (1.0 - ph)))
 		for k in mini(int(pl.n), 3):
 			var bp := base + Vector2(-0.55 + k * 0.55, 0.55)
 			_sprite(_soldier_id(0), bp, 0.42, int(t * 2.0 + k) % 2, k % 2 == 0, Color(0.35, 0.3, 0.28))
@@ -2648,11 +2823,11 @@ func _track_losses(key: int, n: int, where: Vector2, sid: String, col: Color, fl
 ## A rowing boat with its keel at p, facing right when fl is 1 (left at -1), sz tiles long.
 func _boat(p: Vector2, fl: float, sz: float) -> void:
 	var w := sz
-	draw_colored_polygon(PackedVector2Array([p + Vector2(-w * 0.5 * fl, -0.08), p + Vector2(w * 0.55 * fl, -0.1), p + Vector2(w * 0.38 * fl, 0.04), p + Vector2(-w * 0.4 * fl, 0.04)]), Color("6b4a2a"))
-	draw_line(p + Vector2(-w * 0.5 * fl, -0.08), p + Vector2(w * 0.55 * fl, -0.1), Color("8a6440"), 0.03)
+	_cv.draw_colored_polygon(PackedVector2Array([p + Vector2(-w * 0.5 * fl, -0.08), p + Vector2(w * 0.55 * fl, -0.1), p + Vector2(w * 0.38 * fl, 0.04), p + Vector2(-w * 0.4 * fl, 0.04)]), Color("6b4a2a"))
+	_cv.draw_line(p + Vector2(-w * 0.5 * fl, -0.08), p + Vector2(w * 0.55 * fl, -0.1), Color("8a6440"), 0.03)
 	# its wake: two thin ripples spreading behind it
 	var rr := fmod(Time.get_ticks_msec() / 1000.0 * 0.6, 1.0)
-	draw_arc(p + Vector2(0, 0.03), w * (0.5 + rr * 0.4), 0.2, PI - 0.2, 12, Color(1, 1, 1, 0.35 * (1.0 - rr)), 0.02)
+	_cv.draw_arc(p + Vector2(0, 0.03), w * (0.5 + rr * 0.4), 0.2, PI - 0.2, 12, Color(1, 1, 1, 0.35 * (1.0 - rr)), 0.02)
 
 
 ## A worker: the picture as it is, then the tunic in the realm's colour (an older single-layer picture
@@ -2706,10 +2881,10 @@ func draw_ghost(ty: String, x: int, y: int, col: Color, building: bool, era := 1
 	var sw := float(art.get("sw", 2.0))
 	var hgt := sw * tex.get_height() / maxf(1.0, tex.get_width())
 	var rect := Rect2(x + 0.5 - sw / 2.0, y + 1.0 - hgt - lift_at(x + 0.5, y + 0.9), sw, hgt)
-	draw_texture_rect(tex, rect, false, Color(0.85, 0.85, 0.85, 0.45 if building else 0.95))
+	_cv.draw_texture_rect(tex, rect, false, Color(0.85, 0.85, 0.85, 0.45 if building else 0.95))
 	if building:
 		var cs := minf(sw, 1.6)
-		draw_texture_rect(_constr, Rect2(x + 0.5 - cs / 2.0, rect.end.y - cs, cs, cs), false)
+		_cv.draw_texture_rect(_constr, Rect2(x + 0.5 - cs / 2.0, rect.end.y - cs, cs, cs), false)
 	_sprite("unit_flag", Vector2(rect.position.x + rect.size.x * 0.85, rect.position.y + rect.size.y * _tex_top(tex) + 0.17), 0.3, 0, false, col.darkened(0.2))
 
 
@@ -3057,4 +3232,4 @@ func _draw_scenery(x0: int, x1: int, y0: int, y1: int) -> void:
 				made += 1
 			var m: ArrayMesh = _scn_mesh[k]
 			if m != null:
-				draw_mesh(m, _scn_atlas)
+				_cv.draw_mesh(m, _scn_atlas)
