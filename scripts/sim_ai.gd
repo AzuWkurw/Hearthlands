@@ -90,27 +90,72 @@ func _pack_score(ty: String, x: int, y: int, p: Sim.Player) -> float:
 	return score + nb * 0.08
 
 
+## Spots looked at for a new building (each costs a full can_place), and how many good ones are enough
+## to pick from.
+const SITE_TRIES := 300
+const SITE_CANDS := 40
+const MIL_TRIES := 220
+## Spots that had no room for a building of some size are skipped for this long (game seconds): the
+## rivals test thousands of spots a minute, and most of the free tiles in a grown town are scraps
+## between plots. Land that opens up meanwhile (a building pulled down) is found again after it.
+const BAD_KEEP := 30.0
+
+
+## The tiles of realm p known to have no room for a building of this size (see BAD_KEEP).
+func _bad_of(p: Sim.Player, size: String) -> Dictionary:
+	if sim.time - p.site_bad_t >= BAD_KEEP or sim.time < p.site_bad_t:
+		p.site_bad = {}
+		p.site_bad_t = sim.time
+	if not p.site_bad.has(size):
+		p.site_bad[size] = {}
+	return p.site_bad[size]
+
+
+## Whether can_place failed for want of room (the plot, its entrance, a way in), which holds for
+## every building of that size, rather than for something about the building type.
+static func _no_room(why: String) -> bool:
+	return why == "x" or why.begins_with("No road can") or why.ends_with("of the plot") or why.begins_with("Too close to the edge")
+
+
+## can_place for the rivals: remembers spots with no room, and skips them while they are remembered.
+func _try_spot(p: Sim.Player, ty: String, i: int, bad: Dictionary) -> bool:
+	var why := sim.can_place(ty, i % sim.w, i / sim.w, p.id)
+	if why == "":
+		return true
+	if _no_room(why):
+		bad[i] = true
+	return false
+
+
 func _ai_sites(p: Sim.Player, ty: String) -> Array:
 	var d: Dictionary = GameData.bld[ty]
 	var lists := sim.owned(p.id)
 	var cands := PackedInt32Array()
+	var bad := _bad_of(p, sim.size_of(ty))
 	if d.has("mine"):
 		for i in lists[1]:
-			if sim.can_place(ty, i % sim.w, i / sim.w, p.id) == "":
+			if not bad.has(i) and _try_spot(p, ty, i, bad):
 				cands.append(i)
 	else:
 		# spots are drawn from the free, buildable tiles only, so the search rarely comes back empty
 		var list := _free_tiles(p, lists[0])
 		if list.is_empty():
 			return []
-		if list.size() <= 300:
+		if list.size() <= SITE_TRIES:
 			for i in list:
-				if sim.can_place(ty, i % sim.w, i / sim.w, p.id) == "":
+				if not bad.has(i) and _try_spot(p, ty, i, bad):
 					cands.append(i)
 		else:
-			for k in 300:
+			# SITE_TRIES real tries; spots known to have no room don't count (up to a limit of draws)
+			var tries := 0
+			var draws := 0
+			while tries < SITE_TRIES and draws < SITE_TRIES * 4 and cands.size() < SITE_CANDS:
+				draws += 1
 				var i := list[sim.rng.randi() % list.size()]
-				if sim.can_place(ty, i % sim.w, i / sim.w, p.id) == "":
+				if bad.has(i):
+					continue
+				tries += 1
+				if _try_spot(p, ty, i, bad):
 					cands.append(i)
 	var scored := []
 	var large := sim.size_of(ty) == "large"
@@ -235,11 +280,18 @@ func _ai_mil_sites(p: Sim.Player, ty: String) -> Array:
 			if dd < ed: ed = dd; enemy = q
 	var r := int(d.radius)
 	var out := []
-	for k in 220:
+	var bad := _bad_of(p, sim.size_of(ty))
+	var tries := 0
+	var draws := 0
+	while tries < MIL_TRIES and draws < MIL_TRIES * 4:
+		draws += 1
 		var i := list[sim.rng.randi() % list.size()]
+		if bad.has(i):
+			continue
+		tries += 1
 		var x := i % sim.w
 		var y := i / sim.w
-		if sim.can_place(ty, x, y, p.id) != "" or _near_reserved(p, x, y) >= 0:
+		if _near_reserved(p, x, y) >= 0 or not _try_spot(p, ty, i, bad):
 			continue
 		var gain := 0.0
 		for yy in range(maxi(0, y - r), mini(sim.h - 1, y + r) + 1):

@@ -301,6 +301,8 @@ class Player:
 	var swap_t := -999.0      # rivals only: when it last pulled down a house to make room for a key building
 	var swap_key := ""        # rivals only: the building that room was made for (built first)
 	var reserved := PackedInt32Array()  # rivals only: large spots kept free for a farm or another large building
+	var site_bad := {}                  # rivals only: building size -> tiles that had no room for it (SimAi._bad_of)
+	var site_bad_t := 0.0               # when site_bad was started; it is forgotten SimAi.BAD_KEEP seconds later
 	var keep_artisans := 0    # rivals only: artisans kept free of workshop jobs so the barracks can train soldiers
 	var sat: Dictionary = {"artisan": 0.0, "noble": 0.0}
 	var tax := 0.0
@@ -579,7 +581,6 @@ var _acc1 := 0.0
 var _ticks := 0                     # counts ticks, so work can be spread over several of them
 var _coming: Dictionary = {}        # realm id -> good -> on its way to the stores (see coming())
 var _coming_tick := -1
-var _coming_trips: Dictionary = {}  # realm id -> its trips carrying goods to the stores (this tick)
 var _type_bonus: Dictionary = {}    # realm id -> building type -> speed bonus from research (see rate()); emptied when research changes
 
 
@@ -2103,6 +2104,7 @@ func tick(dt: float) -> void:
 			elif t.site != 0:
 				_site_arrival(t, p)
 			elif p.alive:
+				production.arrived(p, t.res, t.n)
 				logistics.arrive_at_store(t, p)
 		if t.delivered and time >= t.t2:
 			_free_carrier(t)
@@ -2348,6 +2350,7 @@ func to_save() -> Dictionary:
 		"vein": vein, "vein_amt": vein_amt, "vein_tiles": vein_tiles, "pave": pave, "fields": fields, "places": places, "map_biome": map_biome,
 		"rel": rel, "rel_since": rel_since, "proposals": proposals, "standing": standing, "prop_id": _prop_id,
 		"mission": mission, "mission_done": mission_done, "ticks": _ticks,
+		"coming": _coming, "coming_tick": _coming_tick,
 	}
 
 
@@ -2375,6 +2378,9 @@ func from_save(d: Dictionary) -> String:
 	# the tick count decides which ticks hand out work (every 2nd, 3rd...): a loaded game must go on in
 	# the same rhythm (saves from before build 34 did not keep it; the time gives it closely enough)
 	_ticks = int(d.get("ticks", roundi(time / TICK)))
+	# goods on their way to the stores, as counted (SimProduction.coming): kept so the game goes on the same
+	_coming = d.get("coming", {}).duplicate(true)
+	_coming_tick = int(d.get("coming_tick", -1000))
 	if d.has("vein"):
 		vein = d.vein; vein_amt = d.vein_amt; vein_tiles = d.vein_tiles
 	else:

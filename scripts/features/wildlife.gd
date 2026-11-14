@@ -224,15 +224,35 @@ func _nearest(at: Vector2, r: float, kinds: Array):
 
 ## Game a hunter can find: in his grounds, or tracked a few tiles beyond them.
 const TRACK := 4.0
+const GAME := ["deer", "boar", "hare", "wolf"]
+const LEG := 11.0
 
 
 func _game_near(b: Sim.Bld):
 	var c := sim.work_center(b)
-	return _nearest(Vector2(c.x, c.y), float(sim.work_radius(b)) + TRACK, ["deer", "boar", "hare", "wolf"])
+	return _nearest(Vector2(c.x, c.y), float(sim.work_radius(b)) + TRACK, GAME)
+
+
+## True when any game is within the hunter's grounds (stops at the first one found).
+func _any_game(b: Sim.Bld) -> bool:
+	var c := sim.work_center(b)
+	var at := Vector2(c.x, c.y)
+	var r := float(sim.work_radius(b)) + TRACK
+	var r2 := r * r
+	for a in animals:
+		# a quick test on where it is heading first (one move is at most LEG tiles): only animals near
+		# the grounds need the exact place
+		var dx := float(a[3]) - at.x
+		var dy := float(a[4]) - at.y
+		if dx * dx + dy * dy > (r + LEG) * (r + LEG):
+			continue
+		if a[0] in GAME and pos(a).distance_squared_to(at) <= r2:
+			return true
+	return false
 
 
 func work_block(_p: Sim.Player, b: Sim.Bld) -> String:
-	if b.ty == "hunter" and _game_near(b) == null:
+	if b.ty == "hunter" and not _any_game(b):
 		return "No game in the hunting grounds"
 	if scared.has(b.id):
 		return "Wolves scared the herd"

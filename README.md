@@ -10,7 +10,7 @@ economy you do.
 ## Download
 
 The ready-made Windows game is on the [`downloads` branch](../../tree/downloads): download the zip,
-unzip it and run `Hearthlands.exe`. Current version: **v0.43.0 build 48** (see `CHANGELOG.md`).
+unzip it and run `Hearthlands.exe`. Current version: **v0.43.0 build 48.1** (see `CHANGELOG.md`).
 
 What is in the game now:
 
@@ -24,7 +24,31 @@ What is in the game now:
 - A map editor (painting, mirrored maps, rivers, starts, missions), missions and a campaign.
 - Music and positional sound; OpenGL or Vulkan; German and English.
 
-The plans for the next builds are in the [roadmap](https://claude.ai/artifact/YVAWwJGUN4FRBYtpz3zgQh).
+## Roadmap
+
+The full plan is in the [roadmap](https://claude.ai/artifact/YVAWwJGUN4FRBYtpz3zgQh).
+
+Done (builds 43 to 48):
+
+| Build | What came in |
+|---|---|
+| 43 | Age gates: a special study at the end of each age opens the next |
+| 43.1 to 43.3 | Fixes: red screen and artefacts, the Vulkan switch, the plain green or orange map, bridges (now up to 6 tiles, and the hint says why one can't be built) |
+| 44 | Ages as events: a window shows what the new age brings, and you choose its path (wealth, war or learning) |
+| 45 | A wonder for every age (great hall, cathedral, grand academy, observatory, exhibition palace), and a wonder victory |
+| 46 | Luxuries and 8 new production buildings: spices, silk, porcelain, coffee and more, wanted by nobles for contentment and taxes |
+| 47 | Events with a choice (pilgrims, a comet, grumbling, a strange ship), merchants who buy your surplus, allies who ask for help and leave when trust falls |
+| 48 | A living world: working buildings move (saws, water wheels, sparks, steam), and snow settles on roofs in winter |
+
+In progress: five rounds of bug fixes and speed-ups (48.1 to 48.5; 48.1 is out, about a fifth faster in big games): long AI games played to find errors,
+and the slowest parts of the game made faster.
+
+Next (build 49): battles at sea and landings on a rival's coast, armies that need supplies in the
+field, and a new-game option to start by landing from the sea with a harbour instead of a headquarters.
+
+Later: a story campaign through the ages, multiplayer, scripted scenarios, a chronicle at the end of a
+game, more animations, music for each age, and quality-of-life features (a production chain overlay,
+a build queue, rebindable keys, interface scale).
 
 ## Run it
 

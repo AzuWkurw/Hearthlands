@@ -1,5 +1,14 @@
 # Changelog
 
+## Build 48.1 (v0.43.0, 2026-11-14)
+
+Bug fixes and speed-ups, round 1: the game runs about a fifth faster in big games.
+
+- Two 90-minute games with 5 and 7 rivals were played to the end to look for errors: none found.
+- Faster: buildings checking whether the stores are full (goods on their way are now counted once a game second instead of every tick), hunters looking for game, rivals looking for building spots (spots with no room are remembered for 30 seconds), and carriers (a store is only searched when a carrier is free). In a 20-minute game with 7 rivals the simulation went from about 80 to about 65 ms per game second.
+- Saves keep the new counts, so a loaded game goes on exactly as before.
+- The sound test no longer fails now and then when the game plays a sound of its own.
+
 ## Build 48 (v0.43.0, 2026-11-14)
 
 A living world: buildings at work move, and snow settles on the roofs.

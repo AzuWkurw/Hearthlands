@@ -57,14 +57,19 @@ func _init() -> void:
 	var hq := sim.human().hq
 	main.view.center_on(Vector2(hq.x, hq.y)); main.view.zoom = 30.0
 	await process_frame
-	var busy := func(): return snd._world.filter(func(p): return p.playing).size()
+	# the game goes on meanwhile and may be playing sounds of its own: only the players these two calls
+	# start count (the test was flaky before)
+	for p in snd._world:
+		p.stop()
+	var was := snd._world.filter(func(p): return p.playing)
 	snd._last.clear()
 	snd.play_at("chop", Vector2(hq.x + 3, hq.y))
-	var on := int(busy.call())
+	var started := snd._world.filter(func(p): return p.playing and not was.has(p))
+	var on := started.size()
 	snd._last.clear()
 	snd.play_at("chop", Vector2(hq.x + 200, hq.y))
-	var off := int(busy.call()) - on
-	var p0: AudioStreamPlayer2D = snd._world.filter(func(p): return p.playing)[0]
+	var off := snd._world.filter(func(p): return p.playing and not was.has(p)).size() - on
+	var p0: AudioStreamPlayer2D = started[0] if not started.is_empty() else snd._world[0]
 	var right: bool = p0.global_position.x > main.view.get_global_rect().get_center().x
 	print("a sound on screen plays: %s (to the right: %s), far off it: %s" % [on == 1, right, off == 1])
 	if on != 1 or off != 0 or not right: ok = false; print("FAIL: sounds where they happen")

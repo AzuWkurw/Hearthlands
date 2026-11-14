@@ -131,12 +131,14 @@ func start_check(b: Sim.Bld, p: Sim.Player) -> String:
 
 
 ## Goods of res on their way to realm p's stores: waiting at buildings for a carrier, carried, or
-## being made right now. Worked out once a tick.
+## being made right now. Worked out at most once a game second (COMING_TICKS) and kept up to date in
+## between: a cycle that starts adds to it, goods that reach a store come off it.
+const COMING_TICKS := 10
+
 func coming(p: Sim.Player, res: String) -> float:
-	if sim._coming_tick != sim._ticks:
+	if sim._ticks - sim._coming_tick >= COMING_TICKS or sim._coming_tick > sim._ticks:
 		sim._coming_tick = sim._ticks
 		sim._coming = {}
-		sim._coming_trips = {}
 	if not sim._coming.has(p.id):
 		# worked out for one realm at a time, at most once a tick, and only when one of its stores is
 		# nearly full (see start_check)
@@ -163,15 +165,11 @@ func coming(p: Sim.Player, res: String) -> float:
 						tb[key] = adds
 					for a in tb[key]:
 						c[a[0]] = float(c.get(a[0], 0.0)) + float(a[1])
-		# goods carried to the stores: one walk over the trips for every realm at once
-		if sim._coming_trips.is_empty():
-			for q in sim.players:
-				sim._coming_trips[q.id] = []
-			for t in sim.trips:
-				if not t.delivered and t.site == 0 and t.dest == 0:
-					(sim._coming_trips[t.p] as Array).append(t)
-		for t: Sim.Trip in sim._coming_trips[p.id]:
-			c[t.res] = float(c.get(t.res, 0.0)) + t.n
+		# goods carried to the stores (worked out for each realm on its own, so a loaded game, which
+		# keeps these counts, goes on exactly as before)
+		for t: Sim.Trip in sim.trips:
+			if t.p == p.id and not t.delivered and t.site == 0 and t.dest == 0:
+				c[t.res] = float(c.get(t.res, 0.0)) + t.n
 		sim._coming[p.id] = c
 	return float((sim._coming[p.id] as Dictionary).get(res, 0.0))
 
@@ -199,6 +197,14 @@ func _extra_out(p: Sim.Player, ty: String) -> int:
 ## Puts n of res in realm p's stores, as much as there is room for (the rest is lost).
 func store_goods(p: Sim.Player, res: String, n: float, at := -1) -> void:
 	sim.give(p, res, n, at)
+
+
+## Goods carried to a store have arrived: they are in the stores now, no longer on their way.
+func arrived(p: Sim.Player, res: String, n: float) -> void:
+	if sim._coming.has(p.id):
+		var c: Dictionary = sim._coming[p.id]
+		if c.has(res):
+			c[res] = maxf(0.0, float(c[res]) - n)
 
 
 func deliver(b: Sim.Bld, p: Sim.Player, res: String, n: int) -> void:
@@ -508,8 +514,8 @@ func prod_tick(b: Sim.Bld, p: Sim.Player, _dt: float) -> void:
 			sim.used(p, k, float(inp[k]))
 	# the cycle's length is fixed now, from the walk and the current work speed
 	b.working = true
-	if sim._coming_tick == sim._ticks and sim._coming.has(p.id):
-		_count_cycle(b, p, sim._coming[p.id])     # so the next building this tick sees it
+	if sim._coming.has(p.id):
+		_count_cycle(b, p, sim._coming[p.id])     # so the next building to check sees it
 	b.msg = "Working"
 	b.t_start = sim.time
 	b.rate_c = sim.rate(p, b)

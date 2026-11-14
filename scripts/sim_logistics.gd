@@ -1371,10 +1371,7 @@ func store_field(s: Sim.Bld, to := -1) -> Array:
 ## construction site (site true) or as input for its work. A mule or ox cart takes it when one is
 ## free close by, else a porter. Returns how many he carries (0: no store has any, or nobody free).
 func carry_to(b: Sim.Bld, p: Sim.Player, res: String, want: int, site: bool) -> int:
-	var src := source_for(p, b, res)
-	if src.is_empty():
-		return 0
-	var s: Sim.Bld = src[0]
+	# who would carry it is known before the store: with nobody free, the search for a store is skipped
 	var kind := "porter"
 	var speed := 1.0
 	var load := Sim.PORTER_LOAD
@@ -1384,6 +1381,12 @@ func carry_to(b: Sim.Bld, p: Sim.Player, res: String, want: int, site: bool) -> 
 		if m.busy < int(c.count) and int(c.load) > load and Vector2(m.x - b.x, m.y - b.y).length() <= float(c.range):
 			st = m; kind = String(c.kind); speed = float(c.speed); load = int(c.load)
 	var chain := st == null and road_carriers_on()
+	if st == null and not chain and porters_free(p) <= 0:
+		return 0
+	var src := source_for(p, b, res)
+	if src.is_empty():
+		return 0
+	var s: Sim.Bld = src[0]
 	if chain:
 		if plan_chain(p, src[1], false, false).is_empty():
 			return 0
