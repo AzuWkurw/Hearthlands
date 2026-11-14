@@ -617,7 +617,7 @@ class B:
             return
         self.p.texfill(pts, tex, mult)
 
-    def walls(self, x0, x1, top, mat, dx=7, dy=5):
+    def walls(self, x0, x1, top, mat, dx=7, dy=5, grass=True):
         """Front wall and right side wall of a box; mat is 'timber', 'stone' or 'planks'.
         The age decides the real material: stone stays stone, the rest follow the age's style."""
         p, b, w = self.p, self.b, self.wall
@@ -638,8 +638,9 @@ class B:
             p.line([(x0, fy), (x1, fy), (x1 + dx, fy - dy)], fill=(96, 92, 84, 255), width=0.5)
         p.shade(front, top, b, (255, 255, 255, 26), (0, 0, 0, 46))
         # where the walls meet the ground: a dark band of grime and shadow
-        p.shade([(x0, b - 3), (x1, b - 3), (x1, b), (x0, b)], b - 3, b, (0, 0, 0, 0), (0, 0, 0, 80))
-        p.shade([(x1, b - 3), (x1 + dx, b - dy - 3), (x1 + dx, b - dy), (x1, b)], b - dy - 3, b, (0, 0, 0, 10), (0, 0, 0, 70))
+        if grass:
+            p.shade([(x0, b - 3), (x1, b - 3), (x1, b), (x0, b)], b - 3, b, (0, 0, 0, 0), (0, 0, 0, 80))
+            p.shade([(x1, b - 3), (x1 + dx, b - dy - 3), (x1 + dx, b - dy), (x1, b)], b - dy - 3, b, (0, 0, 0, 10), (0, 0, 0, 70))
         # the corner where front and side meet catches a little light
         p.line([(x1, top), (x1, b)], fill=sh(w, 1.18), width=0.35)
         p.polygon(side, outline=sh(w, 0.38), width=0.5)
@@ -656,6 +657,8 @@ class B:
             p.line([(x0 - 1, top + 1.6), (x1 + 0.5, top + 1.6)], fill=sh(w, 0.7), width=0.4)
             p.line([(x1 + 0.5, top + 0.8), (x1 + dx, top - dy + 0.8)], fill=sh(w, 1.0), width=1.1)
         # tufts of grass along the foot
+        if not grass:
+            return
         rnd = random.Random(int(x0 * 31 + b))
         for _ in range(int((x1 - x0 + dx) / 3)):
             gx = rnd.uniform(x0 - 1, x1 + dx)
@@ -890,10 +893,15 @@ class B:
         return self.p.done()
 
 
-def make_building(style, wall, roof, cat, res_icon, W=64, H=64):
+def make_building(style, wall, roof, cat, res_icon, W=64, H=64, bid=None):
     random.seed(zlib.crc32(repr((style, wall, roof)).encode()) & 0xffff)
     g = B(W, H, wall, roof, cat)
     p, b = g.p, g.b
+    # buildings that share a style get their own shape and the tools of their trade (bld_variants.py)
+    if bid is not None:
+        import bld_variants as BV
+        if BV.draw(sys.modules[__name__], g, bid, res_icon):
+            return g.done()
     if style == "house":
         top = b - 20
         g.walls(14, 42, top, "timber")
@@ -1263,13 +1271,16 @@ def buildings():
             if bid == "hq":
                 im = make_building("hq", wall, roof, cat, None, 128, 96)
             elif style in ("castle", "apartments"):
-                im = make_building(style, wall, roof, cat, ic, 64, 72)
+                im = make_building(style, wall, roof, cat, ic, 64, 72, bid=bid)
             else:
-                im = make_building(style, wall, roof, cat, ic)
+                im = make_building(style, wall, roof, cat, ic, bid=bid)
             save(im, "bld_%s_e%d" % (bid, era))
             if era == 1:
                 save(im, "bld_" + bid)
         ERA = 1
+    import bld_variants as BV
+    if BV.write_anchors(os.path.join(ROOT, "data", "buildings.json")):
+        print("buildings.json: smoke and glow places updated")
 
 
 # ---------------------------------------------------------------- people, animals and effects

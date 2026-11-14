@@ -35,7 +35,9 @@
   "art": {
    "style": "shed",
    "wall": "#9b7348",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
   },
   "work": {
    "radius": 5,
@@ -58,7 +60,9 @@
   "art": {
    "style": "shed",
    "wall": "#5f8a4c",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
   },
   "work": {
    "radius": 5,
@@ -114,7 +118,9 @@
   "art": {
    "style": "workshop",
    "wall": "#b58a55",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
   },
   "trade": "woodwork"
  },
@@ -137,7 +143,9 @@
   "art": {
    "style": "shed",
    "wall": "#b8793f",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
   },
   "work": {
    "radius": 4,
@@ -166,7 +174,15 @@
   "art": {
    "style": "kiln",
    "wall": "#6a5a4a",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [
+    0.312,
+    0.703
+   ],
+   "glow": [
+    0.297,
+    0.914
+   ]
   },
   "trade": "woodland"
  },
@@ -189,7 +205,9 @@
   "art": {
    "style": "shed",
    "wall": "#c8d0d4",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
   },
   "tech": "salt_trade",
   "trade": "mining"
@@ -240,7 +258,9 @@
   "art": {
    "style": "shed",
    "wall": "#8a6a55",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
   },
   "work": {
    "radius": 8,
@@ -294,7 +314,9 @@
   "art": {
    "style": "barn",
    "wall": "#a8c05a",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
   },
   "trade": "farming"
  },
@@ -317,7 +339,9 @@
   "art": {
    "style": "barn",
    "wall": "#8fae4c",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
   },
   "tech": "monasteries",
   "trade": "farming"
@@ -344,7 +368,9 @@
   "art": {
    "style": "barn",
    "wall": "#e0dccc",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
   },
   "tech": "wool_trade",
   "trade": "farming"
@@ -373,7 +399,9 @@
   "art": {
    "style": "barn",
    "wall": "#d0a0a0",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
   },
   "tech": "heavy_plough",
   "trade": "farming"
@@ -447,7 +475,15 @@
   "art": {
    "style": "workshop",
    "wall": "#cf9a5a",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [
+    0.156,
+    0.531
+   ],
+   "glow": [
+    0.172,
+    0.844
+   ]
   },
   "trade": "victuals"
  },
@@ -474,7 +510,12 @@
   "art": {
    "style": "kiln",
    "wall": "#8a5a3a",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [
+    0.305,
+    0.125
+   ],
+   "glow": []
   },
   "tech": "salt_trade",
   "trade": "victuals"
@@ -502,7 +543,12 @@
   "art": {
    "style": "workshop",
    "wall": "#c9a05a",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [
+    0.367,
+    0.148
+   ],
+   "glow": []
   },
   "tech": "monasteries",
   "trade": "victuals"
@@ -529,7 +575,9 @@
   "art": {
    "style": "mine",
    "wall": "#444444",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
   },
   "trade": "mining"
  },
@@ -555,7 +603,9 @@
   "art": {
    "style": "mine",
    "wall": "#7a5a4a",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
   },
   "trade": "mining"
  },
@@ -581,7 +631,9 @@
   "art": {
    "style": "mine",
    "wall": "#a68a2a",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
   },
   "trade": "mining"
  },
@@ -607,7 +659,9 @@
   "art": {
    "style": "mine",
    "wall": "#8a5a3a",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
   },
   "trade": "mining"
  },
@@ -659,7 +713,15 @@
   "art": {
    "style": "kiln",
    "wall": "#7d7d88",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [
+    0.297,
+    0.375
+   ],
+   "glow": [
+    0.297,
+    0.891
+   ]
   },
   "trade": "metal"
  },
@@ -685,7 +747,15 @@
   "art": {
    "style": "kiln",
    "wall": "#a8703a",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [
+    0.234,
+    0.297
+   ],
+   "glow": [
+    0.234,
+    0.883
+   ]
   },
   "trade": "metal"
  },
@@ -711,7 +781,12 @@
   "art": {
    "style": "workshop",
    "wall": "#b89a3a",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [
+    0.578,
+    0.258
+   ],
+   "glow": []
   },
   "trade": "metal"
  },
@@ -734,7 +809,15 @@
   "art": {
    "style": "workshop",
    "wall": "#5f7f5a",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [
+    0.148,
+    0.375
+   ],
+   "glow": [
+    0.148,
+    0.812
+   ]
   },
   "trade": "metal",
   "makes_tools": 2
@@ -761,7 +844,15 @@
   "art": {
    "style": "workshop",
    "wall": "#8c4a4a",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [
+    0.188,
+    0.18
+   ],
+   "glow": [
+    0.336,
+    0.844
+   ]
   },
   "trade": "metal"
  },
@@ -788,7 +879,9 @@
    "wall": "#9a7a50",
    "sw": 1.6,
    "sign": "bow",
-   "sign_color": "#c0a060"
+   "sign_color": "#c0a060",
+   "smoke": [],
+   "glow": []
   },
   "trade": "woodwork"
  },
@@ -815,7 +908,12 @@
   "art": {
    "style": "workshop",
    "wall": "#6f7f96",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [
+    0.562,
+    0.258
+   ],
+   "glow": []
   },
   "tech": "chainmail",
   "trade": "metal"
@@ -842,7 +940,9 @@
   "art": {
    "style": "workshop",
    "wall": "#8a5a3a",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
   },
   "trade": "textiles"
  },
@@ -867,7 +967,9 @@
   "art": {
    "style": "workshop",
    "wall": "#8aa6c9",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
   },
   "tech": "wool_trade",
   "trade": "textiles"
@@ -893,7 +995,9 @@
   "art": {
    "style": "workshop",
    "wall": "#b86ab0",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
   },
   "tech": "guilds",
   "trade": "textiles"
@@ -916,7 +1020,9 @@
   "art": {
    "style": "barn",
    "wall": "#9fb6d8",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
   },
   "trade": "farming",
   "feature": "clothing"
@@ -942,7 +1048,9 @@
   "art": {
    "style": "workshop",
    "wall": "#d8ccb0",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
   },
   "trade": "textiles",
   "feature": "clothing"
@@ -968,7 +1076,9 @@
   "art": {
    "style": "workshop",
    "wall": "#7a5636",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
   },
   "trade": "textiles",
   "feature": "clothing"
@@ -996,7 +1106,9 @@
   "art": {
    "style": "workshop",
    "wall": "#e0d070",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
   },
   "tech": "guilds",
   "trade": "fine"
@@ -1022,7 +1134,9 @@
   "art": {
    "style": "workshop",
    "wall": "#9a6a3a",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
   },
   "tech": "guilds",
   "trade": "woodwork"
@@ -1058,7 +1172,9 @@
   "art": {
    "style": "school",
    "wall": "#c4a676",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
   }
  },
  "apartments": {
@@ -1148,7 +1264,12 @@
   "art": {
    "style": "castle",
    "wall": "#a78fc0",
-   "sw": 2.6
+   "sw": 2.6,
+   "smoke": [
+    0.25,
+    0.243
+   ],
+   "glow": []
   },
   "tech": "feudalism",
   "trade": "learning"
@@ -1171,7 +1292,9 @@
   "art": {
    "style": "shed",
    "wall": "#6aa84f",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
   },
   "trade": "farming",
   "feature": "diseases"
@@ -1197,7 +1320,9 @@
   "art": {
    "style": "workshop",
    "wall": "#c84a6a",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
   },
   "trade": "healing",
   "feature": "diseases"
@@ -1222,7 +1347,9 @@
    "wall": "#e8e0d0",
    "sw": 2.2,
    "sign": "cross",
-   "sign_color": "#d04a4a"
+   "sign_color": "#d04a4a",
+   "smoke": [],
+   "glow": []
   },
   "trade": "healing",
   "feature": "diseases"
@@ -1248,7 +1375,12 @@
    "wall": "#7fb0c8",
    "sw": 2.0,
    "sign": "drop",
-   "sign_color": "#5a9ad0"
+   "sign_color": "#5a9ad0",
+   "smoke": [
+    0.469,
+    0.375
+   ],
+   "glow": []
   },
   "trade": "healing",
   "feature": "diseases"
@@ -1274,7 +1406,12 @@
    "wall": "#b08458",
    "sw": 2.0,
    "sign": "mug",
-   "sign_color": "#d8a040"
+   "sign_color": "#d8a040",
+   "smoke": [
+    0.188,
+    0.18
+   ],
+   "glow": []
   },
   "trade": "victuals",
   "feature": "contentment"
@@ -1299,7 +1436,9 @@
    "wall": "#d8d0bc",
    "sw": 2.0,
    "sign": "candle",
-   "sign_color": "#f0e0a0"
+   "sign_color": "#f0e0a0",
+   "smoke": [],
+   "glow": []
   },
   "trade": "healing",
   "feature": "contentment"
@@ -1320,7 +1459,9 @@
    "wall": "#b04a3a",
    "sw": 1.6,
    "sign": "pail",
-   "sign_color": "#5a9ad0"
+   "sign_color": "#5a9ad0",
+   "smoke": [],
+   "glow": []
   },
   "trade": "healing",
   "feature": "fires"
@@ -1395,7 +1536,9 @@
   "art": {
    "style": "hut",
    "wall": "#8e8a80",
-   "sw": 2.2
+   "sw": 2.2,
+   "smoke": [],
+   "glow": []
   }
  },
  "tower": {
@@ -1433,7 +1576,9 @@
   "art": {
    "style": "tower",
    "wall": "#8a8478",
-   "sw": 2.1
+   "sw": 2.1,
+   "smoke": [],
+   "glow": []
   }
  },
  "castle": {
@@ -1480,7 +1625,9 @@
    "wall": "#6a8a50",
    "sw": 2.0,
    "sign": "bow",
-   "sign_color": "#9a7040"
+   "sign_color": "#9a7040",
+   "smoke": [],
+   "glow": []
   },
   "trade": "hunting",
   "feature": "fog"
@@ -1500,7 +1647,9 @@
   "art": {
    "style": "tower",
    "wall": "#8a6a48",
-   "sw": 1.3
+   "sw": 1.3,
+   "smoke": [],
+   "glow": []
   },
   "feature": "fog"
  },
@@ -1525,7 +1674,9 @@
   "art": {
    "style": "school",
    "wall": "#c8b8a0",
-   "sw": 2
+   "sw": 2,
+   "smoke": [],
+   "glow": []
   },
   "trade": "learning"
  },
@@ -1551,7 +1702,9 @@
   "art": {
    "style": "school",
    "wall": "#a8b0c8",
-   "sw": 2.2
+   "sw": 2.2,
+   "smoke": [],
+   "glow": []
   },
   "trade": "learning"
  },
@@ -1578,7 +1731,10 @@
   "art": {
    "style": "mill",
    "wall": "#e0dccc",
-   "sw": 2
+   "sw": 2,
+   "smoke": [],
+   "glow": [],
+   "hub": []
   },
   "trade": "woodwork"
  },
@@ -1606,7 +1762,9 @@
   "art": {
    "style": "castle",
    "wall": "#9aa8c8",
-   "sw": 2.6
+   "sw": 2.6,
+   "smoke": [],
+   "glow": []
   },
   "trade": "learning"
  },
@@ -1628,7 +1786,9 @@
   "art": {
    "style": "castle",
    "wall": "#7d7d70",
-   "sw": 3.4
+   "sw": 3.4,
+   "smoke": [],
+   "glow": []
   }
  },
  "bastion": {
@@ -1709,7 +1869,9 @@
   "art": {
    "style": "bastion",
    "wall": "#8a5a48",
-   "sw": 3.4
+   "sw": 3.4,
+   "smoke": [],
+   "glow": []
   }
  },
  "steelworks": {
@@ -1736,7 +1898,15 @@
   "art": {
    "style": "kiln",
    "wall": "#5a5a62",
-   "sw": 2.4
+   "sw": 2.4,
+   "smoke": [
+    0.695,
+    0.031
+   ],
+   "glow": [
+    0.181,
+    0.531
+   ]
   },
   "trade": "metal"
  },
@@ -1764,7 +1934,12 @@
   "art": {
    "style": "workshop",
    "wall": "#6a6e78",
-   "sw": 2.4
+   "sw": 2.4,
+   "smoke": [
+    0.883,
+    0.062
+   ],
+   "glow": []
   },
   "trade": "metal",
   "makes_tools": 3
@@ -1794,7 +1969,12 @@
   "art": {
    "style": "workshop",
    "wall": "#8a7a9a",
-   "sw": 2.4
+   "sw": 2.4,
+   "smoke": [
+    0.891,
+    0.031
+   ],
+   "glow": []
   },
   "trade": "textiles"
  },
@@ -1812,7 +1992,9 @@
   "art": {
    "style": "barn",
    "wall": "#a89068",
-   "sw": 2
+   "sw": 2,
+   "smoke": [],
+   "glow": []
   },
   "porters": 8
  },
@@ -1850,7 +2032,9 @@
   "art": {
    "style": "workshop",
    "wall": "#9a8460",
-   "sw": 2.4
+   "sw": 2.4,
+   "smoke": [],
+   "glow": []
   },
   "porters": 12
  },
@@ -1870,7 +2054,9 @@
   "art": {
    "style": "castle",
    "wall": "#8a7a68",
-   "sw": 3
+   "sw": 3,
+   "smoke": [],
+   "glow": []
   },
   "porters": 20
  },
@@ -1899,7 +2085,9 @@
   "art": {
    "style": "barn",
    "wall": "#a07850",
-   "sw": 2
+   "sw": 2,
+   "smoke": [],
+   "glow": []
   },
   "trade": "transport"
  },
@@ -1929,7 +2117,9 @@
   "art": {
    "style": "workshop",
    "wall": "#8a6a48",
-   "sw": 2.2
+   "sw": 2.2,
+   "smoke": [],
+   "glow": []
   },
   "trade": "transport"
  },
@@ -1951,7 +2141,9 @@
   "art": {
    "style": "shed",
    "wall": "#d8c48a",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
   },
   "tech": "guilds",
   "trade": "mining"
@@ -1975,7 +2167,9 @@
   "art": {
    "style": "shed",
    "wall": "#e6c35a",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
   },
   "trade": "woodland"
  },
@@ -2002,7 +2196,9 @@
   "art": {
    "style": "barn",
    "wall": "#c9b28a",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
   },
   "tech": "heavy_plough",
   "trade": "farming"
@@ -2029,7 +2225,9 @@
   "art": {
    "style": "workshop",
    "wall": "#e8d7a0",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
   },
   "tech": "salt_trade",
   "trade": "victuals"
@@ -2056,7 +2254,9 @@
   "art": {
    "style": "workshop",
    "wall": "#b86a5a",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
   },
   "tech": "salt_trade",
   "trade": "victuals"
@@ -2080,7 +2280,9 @@
   "art": {
    "style": "barn",
    "wall": "#9a6aa8",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
   },
   "tech": "monasteries",
   "trade": "farming"
@@ -2106,7 +2308,9 @@
   "art": {
    "style": "workshop",
    "wall": "#a85a6a",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
   },
   "tech": "monasteries",
   "trade": "victuals"
@@ -2132,7 +2336,9 @@
   "art": {
    "style": "workshop",
    "wall": "#d8c890",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
   },
   "tech": "monasteries",
   "trade": "fine"
@@ -2160,7 +2366,15 @@
   "art": {
    "style": "kiln",
    "wall": "#8ab8c0",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [
+    0.328,
+    0.266
+   ],
+   "glow": [
+    0.312,
+    0.891
+   ]
   },
   "tech": "guilds",
   "trade": "kilns"
@@ -2213,7 +2427,9 @@
   "art": {
    "style": "barn",
    "wall": "#a08a68",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
   },
   "trade": "farming"
  },
@@ -2234,7 +2450,7 @@
   "site": "shore:2",
   "info": "A store on the coast. Expeditions sail from here to found a colony on another shore (a ship, 4 planks, 2 stone and a soldier), and ships carry goods between your harbours that no road joins. Holds a little land, a soldier, and 8 people.",
   "art": {
-   "style": "barn",
+   "style": "harbour",
    "wall": "#6f8fa8",
    "sw": 2.0
   }
@@ -2261,7 +2477,9 @@
   "art": {
    "style": "workshop",
    "wall": "#8a7050",
-   "sw": 2.0
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
   },
   "trade": "woodwork"
  }
