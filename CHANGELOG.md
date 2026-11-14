@@ -1,5 +1,46 @@
 # Changelog
 
+## Build 41 (v0.36.0, 2026-11-14)
+
+Better graphics, a much bigger map editor, ruins and bandit camps, music and new sound, and a faster game.
+
+Sound and music
+- Music: four calm pieces (harp, lute, recorder, fiddle) in turn with silence between them, a war theme while your land is attacked or your soldiers fight, and cues for a new age, victory and defeat. Its own volume in Settings.
+- Sounds of the world come from where they happen on screen, left or right, quieter further off: axes, saws, anvils, picks, spades, nets, mill wheels, building sites, falling trees, cows, sheep, pigs, the chapel bell, wolves, battles, volleys, marching columns.
+- The ambience follows what you look at and the weather there: birds over meadows and forests, waves on a shore, wind over mountains and in winter, rain and thunderstorms, crickets in summer, a town's bustle, the din of a battle, burning buildings.
+- Sounds for windows, roads and a building site that can't go where you clicked.
+
+Graphics
+- Soft shadows under buildings, people and trees; trees and crops sway in the wind (harder in a storm); drifting cloud shadows and foam on the shores.
+- Fields drawn as ploughed plots with rows of crops that grow and ripen; birds over the land; fishermen in boats.
+- Work shows: chips fly from axes and picks, seeds and chaff on farms, sparks and dust from builders, trees fall, a finished building puffs dust.
+- Battles: soldiers fight in front of the gate, arrows fly from archers, banners and up to five figures on a column, soldiers fall.
+- A clear "!" badge on idle buildings.
+
+Map editor
+- Tabs: Paint, Map, Starts, Mission, Check.
+- Undo and redo (Ctrl+Z, Ctrl+Y); round or square brushes from 1 to 15 tiles; mirrored painting (left-right, top-bottom, four ways, turned) for fair maps.
+- Fill bucket, smoothing, rivers with fords, copy and paste (turned or mirrored).
+- Climate painting (temperate, taiga, steppe, wetland), ruins and bandit camps.
+- Open saved maps, and make new ones with a seed, a size, starts and landscape settings (island, continent, lakes, archipelago; water, mountains, forests, ore, landform size).
+- Set up each start: a name, more or fewer goods, extra soldiers, the rival's strength and manner.
+- Write missions with goals on your map, save them to the Missions list or play them at once.
+- Check: what lies around each start, so you can make the starts fair.
+- Bigger maps: Colossal (320), Titanic (384) and Vast (448).
+- Landscape settings on the new-game screen too.
+
+Ruins and bandit camps
+- The first realm whose land reaches ruins finds planks, stone, gold and tools there.
+- Nobody builds next to a bandit camp, and the bandits steal from realms nearby. Click a camp to send soldiers; clearing it gives its gold and weapons. Rivals clear camps too.
+
+Faster
+- The game runs about 20% faster in a big late game (rivals choose building spots much faster, workers' speed is worked out only when work starts).
+- No more stutters on big maps when borders move (the minimap and the fog redraw only what changed). Big maps load faster.
+
+Fixes
+- Map editor: clearing things over water no longer empties its fish.
+- Bandit camps hidden in the fog can't be clicked.
+
 ## Build 40 (v0.35.0, 2026-11-13)
 
 Fixes and features from the playtest list.

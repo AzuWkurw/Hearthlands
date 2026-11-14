@@ -268,9 +268,9 @@ top of each file; run it again after adding files. For how the parts work togeth
 
 | File | Lines | What it is |
 |---|---:|---|
-| `CHANGELOG.md` | 520 | What changed in each build. |
+| `CHANGELOG.md` | 561 | What changed in each build. |
 | `README.md` | 910 | How to play, the rules, controls, settings, modding and the project layout. |
-| `docs/FILES.md` | 277 | This list (written by tools/file_list.py). |
+| `docs/FILES.md` | 279 | This list (written by tools/file_list.py). |
 | `docs/SOURCE_GUIDE.md` | 439 | A tour of the code for programmers: the parts, how a game tick runs, where things live. |
 | `docs/SUGGESTIONS.md` | 203 | Ideas and their status after each round of work. |
 | `export_presets.cfg` | 61 | Godot export settings for the Windows and Linux builds. |
