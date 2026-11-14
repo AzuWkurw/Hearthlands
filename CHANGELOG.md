@@ -1,5 +1,15 @@
 # Changelog
 
+## Build 44 (v0.39.0, 2026-11-14)
+
+Ages as events: a new age now opens with a window and a choice of path.
+
+- When your realm enters an age, the game pauses and a window shows what the age brings: the soldiers your barracks now train, the new building style, how many studies open and the new buildings they lead to, the mastery studies, and what the next age needs.
+- Choose your realm's path for the age: wealth, war or learning, each with its own lasting bonus (for example Royal estates, War bands or Monastic schools in the Early Medieval age; Banking houses, Military revolution or Patronage of the arts in the Renaissance). Fifteen paths in all.
+- Rivals choose too: warlords take war, builders wealth, the others learning or wealth.
+- The research panel shows the way to the next age: its opening study and how many of the needed techs you have.
+- The new texts are in German too.
+
 ## Build 43.3 (v0.38.0, 2026-11-14)
 
 Fixes for the flat green or orange map, and for bridges.
