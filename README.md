@@ -10,7 +10,7 @@ economy you do.
 ## Download
 
 The ready-made Windows game is on the [`downloads` branch](../../tree/downloads): download the zip,
-unzip it and run `Hearthlands.exe`. Current version: **v0.42.0 build 47** (see `CHANGELOG.md`).
+unzip it and run `Hearthlands.exe`. Current version: **v0.43.0 build 48** (see `CHANGELOG.md`).
 
 What is in the game now:
 
@@ -810,6 +810,14 @@ A mod in `user://data/techs.json` with the same id changes an existing tech; new
 
 The AI builds the buildings it knows by id. Your new buildings are available to you, and AI rivals keep
 playing with the standard set.
+
+## A living world
+
+Working buildings move: the sawmill's frame saw, sparks on the smiths' anvils, the paper mill's water
+wheel, the machine works' cogs, steam over the brewery's copper, the bathhouse and the coffee roaster
+(`"anim"` in a building's art, placed by `tools/bld_variants.py`). In winter snow settles on the roofs
+as it does on the ground (`bld_<id>_e<era>_snow.png`, made with each building's picture). Day and night
+(Settings) lights the windows of homes and workshops.
 
 ## Events that ask you to choose, and allies
 

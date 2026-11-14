@@ -46,6 +46,12 @@ class BlendPen:
         return call
 
 
+def _anim(kind, x, y, size):
+    """A moving part the game draws while the building works: saw, wheel, cog, sparks or steam."""
+    if _cur is not None:
+        ANCH[_cur].setdefault("anim", []).append((kind, x, y, size))
+
+
 def C(c, a=255):
     return tuple(c[:3]) + (a,)
 
@@ -368,6 +374,8 @@ def dome(g, cx, base, rx, ry, col, ribs=6, tex="tiles"):
         u = -1 + 2 * k / ribs
         p.line([(cx + rx * u, base), (cx + rx * u * 0.55, base - ry * 0.8), (cx, base - ry)], fill=sh(c, 0.7), width=0.4)
     p.polygon(pts, outline=sh(c, 0.45), width=0.5)
+    if tex == "tiles":
+        g.add_roof(pts)
 
 
 def cone(g, cx, base, r, h, col, mat="tiles"):
@@ -385,6 +393,7 @@ def cone(g, cx, base, r, h, col, mat="tiles"):
     p.polygon([(cx, base - h), (cx + r, base), (cx + r * 0.25, base)], fill=(0, 0, 0, 70))
     p.polygon([(cx, base - h), (cx - r, base), (cx - r * 0.6, base)], fill=(255, 255, 255, 30))
     p.polygon(pts, outline=sh(c, 0.45), width=0.5)
+    g.add_roof(pts)
 
 
 def tall_stack(g, x, top, base, w=5, col=(128, 62, 46), square=False):
@@ -539,6 +548,7 @@ def v_sawmill(g, icon):
     p.line([(12.5, b - 26), (12.5, b - 5)], fill=(200, 204, 212, 255), width=0.6)
     p.line([(9, b - 26.5), (16, b - 26.5)], fill=C(mt.WOOD), width=1.2)
     log_pile(g, 0, b, 2, 1.8)
+    _anim("saw", 12.5, b - 15, 20)
 
 
 def v_bakery(g, icon):
@@ -596,6 +606,7 @@ def v_brewery(g, icon):
     barrel(g, 25, b, 5, 6.5)
     barrel(g, 31, b, 5, 6.5, (140, 96, 54))
     barrel(g, 28, b - 6.5, 5, 6, (120, 80, 46))
+    _anim("steam", 54, b - 17, 6)
 
 
 def v_mint(g, icon):
@@ -654,6 +665,7 @@ def v_toolsmith(g, icon):
     p.disc(57.6, b - 6.4, 3.2, (186, 180, 166, 255))
     p.disc(58, b - 6, 0.8, (60, 50, 40, 255))
     p.line([(58, b - 6), (61.5, b - 9)], fill=(60, 50, 40, 255), width=0.6)
+    _anim("sparks", 20, b - 7, 4)
 
 
 def v_weaponsmith(g, icon):
@@ -680,6 +692,7 @@ def v_weaponsmith(g, icon):
     p.ellipse([39, b - 9, 46, b - 1], fill=(170, 50, 44, 255), outline=(80, 30, 26, 255), width=0.5)
     p.disc(42.5, b - 5, 1.3, (210, 200, 160, 255))
     p.line([(42.5, b - 8.5), (42.5, b - 1.5)], fill=(230, 210, 150, 255), width=0.5)
+    _anim("sparks", 30, b - 7, 4)
 
 
 def v_bowyer(g, icon):
@@ -732,6 +745,7 @@ def v_armorer(g, icon):
     p.polygon(sh_, fill=(60, 80, 150, 255), outline=(30, 36, 60, 255), width=0.4)
     p.line([(47, b - 11.4), (47, b - 2.4)], fill=(230, 200, 90, 255), width=0.6)
     p.line([(44.6, b - 8.5), (49.4, b - 8.5)], fill=(230, 200, 90, 255), width=0.6)
+    _anim("sparks", 28, b - 7, 4)
 
 
 def v_tannery(g, icon):
@@ -887,6 +901,7 @@ def v_carpenter(g, icon):
         p.line([(x, b - 3.4), (x, b)], fill=(120, 84, 50, 255), width=0.5)
     p.line([(cx + 3.6, b - 3.6), (cx + 3.6, b - 9)], fill=(120, 84, 50, 255), width=0.6)
     p.line([(cx + 3.6, b - 8), (cx + 3.6, b - 5.4)], fill=(150, 104, 60, 255), width=1.2)
+    _anim("saw", 15, b - 9, 5)
 
 
 def v_apothecary(g, icon):
@@ -934,6 +949,7 @@ def v_bathhouse(g, icon):
     p.ellipse([44, b - 7, 63, b + 1], fill=(160, 156, 146, 255), outline=(96, 92, 84, 255), width=0.5)
     p.ellipse([46, b - 5.8, 61, b - 0.2], fill=(90, 160, 196, 255))
     p.arc([48, b - 5, 56, b - 2], 200, 300, fill=(200, 236, 250, 255), width=0.4)
+    _anim("steam", 53, b - 5, 6)
 
 
 def v_tavern(g, icon):
@@ -1011,6 +1027,8 @@ def v_machine_works(g, icon):
     p.rectangle([46, b - 3, 54, b - 1], fill=(80, 64, 46, 255))
     p.disc(48, b - 0.6, 1.1, (40, 40, 44, 255)); p.disc(52.4, b - 0.6, 1.1, (40, 40, 44, 255))
     p.rectangle([47.4, b - 6.6, 52.6, b - 3], fill=(60, 64, 72, 255), outline=(30, 30, 34, 255), width=0.3)
+    _anim("cog", 14, b - 12, 7.5)
+    _anim("cog", 21.6, b - 18.4, 3.6)
 
 
 def v_textile_mill(g, icon):
@@ -1226,6 +1244,7 @@ def barn_body(g, x0, x1, h, rh=14, mat="planks", doors=True):
         p.line([(cx + 6, b - 14), (cx - 6, b)], fill=(230, 220, 200, 255), width=0.7)
         p.line([(cx, b - 14), (cx, b)], fill=mt.DARK, width=0.6)
     return top, ridge
+    _anim("sparks", 33, b - 18, 3)
 
 
 def v_orchard(g, icon):
@@ -1739,6 +1758,7 @@ def v_iron_smelter(g, icon):
     heap(g, 34, 50, b, 8, (150, 80, 56), "rock", glints=(196, 110, 70))
     anvil(g, 53, b)
     p.ellipse([53, b - 9, 58, b - 6.4], fill=(255, 150, 60, 255), outline=(150, 60, 30, 255), width=0.3)
+    _anim("sparks", 55.5, b - 8, 3)
 
 
 def v_copper_smelter(g, icon):
@@ -1793,6 +1813,7 @@ def v_steelworks(g, icon):
     p.line([(0, b + 0.6), (64, b + 0.6)], fill=(70, 70, 74, 255), width=0.6)
     p.line([(0, b - 1.2), (64, b - 1.2)], fill=(70, 70, 74, 255), width=0.5)
     p.rectangle([56, b - 4, 63, b - 1.6], fill=(220, 120, 50, 255), outline=(100, 50, 20, 255), width=0.3)
+    _anim("sparks", 11.6, b - 25, 6)
 
 
 def v_glassworks(g, icon):
@@ -2403,6 +2424,7 @@ def v_coffee_roaster(g, icon):
     for x, col in ((52, (190, 160, 110)), (57, (176, 146, 100))):
         sack(g, x, b, col)
     sack(g, 54.4, b - 4.8, (200, 170, 120))
+    _anim("steam", 9, b - 13, 4)
 
 
 # ------------------------------------------------------------------ mines
@@ -2545,6 +2567,7 @@ def v_paper_mill(g, icon):
     p.line([(1, b - 14), (6, b - 13)], fill=(220, 214, 196, 255), width=0.3)
     for k in range(2):
         p.rectangle([1.4 + k * 2.4, b - 13.6 + k * 0.4, 3.2 + k * 2.4, b - 10.6 + k * 0.4], fill=(250, 248, 240, 255), outline=(180, 176, 166, 255), width=0.2)
+    _anim("wheel", 51, b - 10, 12.2)
 
 
 def v_guardhouse(g, icon):
@@ -2664,6 +2687,10 @@ def write_anchors(path):
         W, H = a["_wh"]
         for key in ("smoke", "glow"):
             art[key] = [round(a[key][0] / W, 3), round(a[key][1] / H, 3)] if key in a else []
+        if "anim" in a:
+            art["anim"] = [[k, round(x / W, 3), round(y / H, 3), round(sz / W, 3)] for k, x, y, sz in a["anim"]]
+        elif "anim" in art:
+            del art["anim"]
         if art.get("style") == "mill" and bid != "mill":
             art["hub"] = []
     out = json.dumps(data, indent=1)

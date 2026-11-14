@@ -524,6 +524,13 @@ func _mask_tex(data: PackedByteArray) -> ImageTexture:
 	return ImageTexture.create_from_image(img)
 
 
+## How much snow lies on tile i now (0 none .. 1 a full cover), for the snow on roofs.
+func snow_at(i: int) -> float:
+	if biome.is_empty() or i < 0 or i >= biome.size():
+		return 0.0
+	return float(_snow[biome[i]])
+
+
 ## How much snow should lie in biome k: from nothing above 1 C to a full cover at -7 C.
 func _snow_target(k: int) -> float:
 	var t := biome_temp(k)

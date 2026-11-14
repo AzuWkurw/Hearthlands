@@ -868,6 +868,7 @@ func _draw() -> void:
 		traffic_ui.draw(self, x0, x1, y0, y1)
 	# features draw on the ground (season colours, snow) under the buildings
 	_season_on = false
+	_seasons = sim.get_feature("seasons")
 	if not sim.features.is_empty():
 		var vr := Rect2i(x0, y0, x1 - x0 + 1, y1 - y0 + 1)
 		for f: Feature in sim.features:
@@ -1677,6 +1678,66 @@ func _draw_night(vis: Array, x0: int, y0: int, x1: int, y1: int) -> void:
 		draw_circle(c + Vector2(0.06, 0.05), minf(0.08, 0.04 * sw), Color(1.0, 0.85, 0.45, 0.9 * n))
 
 
+## A moving part of a working building (see "anim" in buildings.json, written by tools/bld_variants.py):
+## [kind, u, v, size] with u, v the place on its picture and size a share of the picture's width.
+func _draw_anim(b: Sim.Bld, rect: Rect2, an: Array) -> void:
+	var p := _anchor(rect, [an[1], an[2]])
+	var s := float(an[3]) * rect.size.x
+	var t := sim.time + b.id * 0.37
+	match String(an[0]):
+		"saw":
+			# a frame saw working up and down
+			var off := sin(t * 9.0) * s * 0.18
+			draw_line(p + Vector2(0, -s * 0.5 + off), p + Vector2(0, s * 0.5 + off), Color(0.86, 0.87, 0.9), 0.025)
+			draw_line(p + Vector2(-0.03, -s * 0.5 + off), p + Vector2(0.03, -s * 0.5 + off), Color(0.45, 0.32, 0.2), 0.03)
+			if fmod(t * 9.0 / TAU, 1.0) < 0.5:
+				for k in 2:
+					var dp := fmod(t * 1.7 + k * 0.5, 1.0)
+					draw_circle(p + Vector2(0.04 + dp * 0.1, s * 0.5 - dp * 0.05), 0.012 + 0.01 * dp, Color(0.92, 0.84, 0.62, 0.8 * (1.0 - dp)))
+		"wheel":
+			# a water wheel turning: rim, spokes and paddles
+			var ang := t * 0.9
+			draw_circle(p, s * 0.86, Color(0.36, 0.25, 0.16))
+			for k in 10:
+				var a := ang + k * TAU / 10.0
+				var d := Vector2(cos(a), sin(a))
+				draw_line(p, p + d * s * 0.82, Color(0.5, 0.36, 0.22), 0.025)
+				draw_line(p + d * s * 0.8, p + d * s, Color(0.55, 0.4, 0.25), 0.06)
+			draw_arc(p, s * 0.82, 0, TAU, 24, Color(0.48, 0.34, 0.2), 0.03)
+			draw_circle(p, s * 0.1, Color(0.25, 0.2, 0.15))
+		"cog":
+			# a cog wheel turning
+			var ang2 := t * 1.4 * (1.0 if s > 0.15 else -2.0)
+			var pts := PackedVector2Array()
+			var teeth := 12 if s > 0.15 else 8
+			for k in teeth * 2:
+				var a0 := ang2 + k * PI / teeth
+				var rr := s if k % 2 == 0 else s * 0.78
+				for dd in [-0.32, 0.32]:
+					var a: float = a0 + dd * PI / teeth
+					pts.append(p + Vector2(cos(a), sin(a)) * rr)
+			draw_colored_polygon(pts, Color(0.3, 0.31, 0.35))
+			draw_circle(p, s * 0.55, Color(0.42, 0.43, 0.48))
+			for k in 4:
+				var a := ang2 + k * PI / 2.0 + 0.4
+				draw_line(p, p + Vector2(cos(a), sin(a)) * s * 0.5, Color(0.55, 0.56, 0.62), s * 0.12)
+			draw_circle(p, s * 0.14, Color(0.2, 0.2, 0.24))
+		"sparks":
+			# hammer blows on the anvil: a burst of sparks with each
+			var beat := fmod(t * 1.6, 1.0)
+			if beat < 0.35:
+				var f := beat / 0.35
+				for k in 6:
+					var a := -PI * (0.15 + 0.7 * float(_hash(b.id + k, int(t * 1.6)) % 100) / 100.0)
+					var d := Vector2(cos(a), sin(a)) * (0.06 + f * s * 0.08)
+					draw_line(p + d * 0.5, p + d, Color(1.0, 0.85, 0.4, 1.0 - f), 0.018)
+		"steam":
+			for k in 3:
+				var ph := fmod(t * 0.5 + k * 0.33, 1.0)
+				var c := p + Vector2(sin(ph * 4.0 + k) * 0.05 + ph * 0.1, -ph * 0.6)
+				draw_circle(c, s * 0.02 + ph * 0.12, Color(0.95, 0.96, 0.98, 0.45 * (1.0 - ph)))
+
+
 ## Where a road-carriers load is: Vector3(tile from, tile to, how far between them); z < 0 when it lies
 ## waiting at the flag (tile from) for the stretch's carrier.
 var _leg_donkey := false     # set by _leg_pos: the load is on a donkey's back on this stretch
@@ -1865,6 +1926,18 @@ func _smoke_at(p: Vector2, seed: float, strength: float) -> void:
 		draw_texture_rect(_smoke, Rect2(c.x - r, c.y - r, r * 2.0, r * 2.0), false, Color(1, 1, 1, (1.0 - ph) * 0.9 * strength))
 
 
+## The snow lying on a building's roofs (bld_<id>_e<era>_snow.png, made with the building), or null.
+var _snow_tex := {}
+var _seasons = null       # the seasons feature while it is on (set each frame)
+
+func bld_snow_texture(ty: String, era: int) -> Texture2D:
+	var key := "%s:%d" % [ty, era]
+	if not _snow_tex.has(key):
+		var id := "%s_e%d_snow" % [GameData.bld_tex_id(ty), clampi(maxi(era, 0), 0, 5)]
+		_snow_tex[key] = Tex.get_tex(id) if ResourceLoader.exists("res://textures/%s.png" % id) else null
+	return _snow_tex[key]
+
+
 ## A building's picture in the look of age era (built-in or your own; see Tex.bld_era_tex).
 func bld_texture(ty: String, era: int) -> Texture2D:
 	var list: Array = _era_tex.get(ty, [])
@@ -1900,7 +1973,7 @@ func _art_of(ty: String) -> Array:
 		var style := String(art.get("style", "house"))
 		var anchors: Dictionary = ANCHORS.get(style, {})
 		e = [style, float(art.get("sw", 2.0)), art.get("hub", anchors.get("hub", [])), art.get("glow", anchors.get("glow", [])),
-			art.get("smoke", anchors.get("smoke", [])), ty == "hq" or d.has("garrison"), d.has("siege")]
+			art.get("smoke", anchors.get("smoke", [])), ty == "hq" or d.has("garrison"), d.has("siege"), art.get("anim", [])]
 		_art[ty] = e
 	return e
 
@@ -1958,6 +2031,13 @@ func _draw_building(b: Sim.Bld, labels: Array, detail: bool) -> void:
 	if detail and ANIMALS.has(b.ty):
 		_draw_animals(b, String(ANIMALS[b.ty]), true)
 	draw_texture_rect(tex, rect, false)
+	# snow on the roofs in winter (the seasons feature says how much lies here)
+	if _seasons != null:
+		var sn: float = _seasons.snow_at(sim.idx(b.x, b.y))
+		if sn > 0.03:
+			var st := bld_snow_texture(b.ty, b.era)
+			if st != null:
+				draw_texture_rect(st, rect, false, Color(1, 1, 1, minf(1.0, sn * 1.5)))
 	if detail and ANIMALS.has(b.ty):
 		_draw_animals(b, String(ANIMALS[b.ty]), false)
 	if b.reno_to >= 0:
@@ -1988,6 +2068,9 @@ func _draw_building(b: Sim.Bld, labels: Array, detail: bool) -> void:
 			var gp := _anchor(rect, glow)
 			var gr := 0.28 * sw / 2.0
 			draw_texture_rect(_glow, Rect2(gp.x - gr, gp.y - gr, gr * 2.0, gr * 2.0), false, Color(1, 1, 1, fl))
+		if b.working and animate and not (ai[7] as Array).is_empty():
+			for an in ai[7]:
+				_draw_anim(b, rect, an)
 		var smoke: Array = ai[4]
 		if smoke.size() == 2 and (b.working or (style in HOME_SMOKE and b.state == "ready")):
 			_smoke_at(_anchor(rect, smoke), b.id * 0.137, 1.0 if b.working else 0.5)

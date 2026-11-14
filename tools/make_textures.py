@@ -593,7 +593,48 @@ class B:
         self.wall = wall + (255,)
         self.roof = roof + (255,)
         self.cat = cat
+        self.roofs = []                     # [(polygon, the picture just after it was drawn)] for snow
         self.p.ellipse([4, self.b - 5, W - 4, self.b + 3], fill=(0, 0, 0, 64))
+
+    def add_roof(self, *polys):
+        """Marks polygons as roof: in winter the game lays snow on what of them stays in view."""
+        snap = self.p.im.copy()
+        for pts in polys:
+            self.roofs.append((pts, snap))
+
+    def snow_layer(self):
+        """The snow for this picture: white where a roof is and nothing was drawn over it afterwards,
+        whiter towards the top, at the picture's final size. None for a building without roofs."""
+        if not self.roofs:
+            return None
+        pen = self.p.pen if hasattr(self.p, "pen") else self.p
+        final = np.asarray(pen.im)
+        H, W = final.shape[0], final.shape[1]
+        out = np.zeros((H, W, 4), dtype=np.float32)
+        yy = np.arange(H, dtype=np.float32)[:, None]
+        rnd = np.random.default_rng(len(self.roofs) * 7 + W)
+        grain = rnd.random((H, W)).astype(np.float32)
+        for pts, snap in self.roofs:
+            m = Image.new("L", (W, H), 0)
+            ImageDraw.Draw(m).polygon(pen._p(pts), fill=255)
+            mask = np.asarray(m) > 0
+            same = np.all(np.asarray(snap) == final, axis=2)
+            mask &= same
+            if not mask.any():
+                continue
+            ys = np.nonzero(mask)[0]
+            y0, y1 = ys.min(), ys.max()
+            t = np.clip((yy - y0) / max(1.0, y1 - y0), 0.0, 1.0)
+            # snow thick on the upper slope, thinning towards the eaves, with a little sparkle
+            a = (1.0 - 0.3 * t ** 2) * (0.94 + 0.06 * grain)
+            shade = 1.0 - 0.06 * t
+            col = np.stack([236 * shade, 242 * shade, 250 * shade + 0 * t], axis=-1)
+            sel = mask
+            out[sel, 0:3] = np.broadcast_to(col, (H, W, 3))[sel]
+            out[sel, 3] = np.maximum(out[sel, 3], (a * 252.0)[sel])
+        img = Image.fromarray(np.clip(out, 0, 255).astype(np.uint8), "RGBA")
+        img = img.convert("RGBa").resize((round(pen.w * pen.k), round(pen.h * pen.k)), Image.LANCZOS).convert("RGBA")
+        return img
 
     # ---- surfaces: every wall, roof and door is filled with a texture (bld_tex.py) over its base colour
     def _seed(self):
@@ -732,6 +773,7 @@ class B:
             p.line([(x0 - 2 + dx / 2, ridge - 0.3), (x1 + dx / 2 + 1, ridge - 0.3)], fill=sh(r, 1.35), width=0.5)
         p.line([(x0 - 2, top + 1.5), (x1 + 1, top + 1.5)], fill=sh(r, 0.55), width=0.7)
         p.polygon(slope, outline=sh(r, 0.42), width=0.5)
+        self.add_roof(slope, back)
         return ridge
 
     def flat_top(self, x0, x1, top, dx=7, dy=5, crenel=True):
@@ -893,7 +935,12 @@ class B:
         return self.p.done()
 
 
+LAST_SNOW = None   # the snow layer of the last picture make_building made (or None)
+
+
 def make_building(style, wall, roof, cat, res_icon, W=64, H=64, bid=None):
+    global LAST_SNOW
+    LAST_SNOW = None
     random.seed(zlib.crc32(repr((style, wall, roof)).encode()) & 0xffff)
     g = B(W, H, wall, roof, cat)
     p, b = g.p, g.b
@@ -901,6 +948,7 @@ def make_building(style, wall, roof, cat, res_icon, W=64, H=64, bid=None):
     if bid is not None:
         import bld_variants as BV
         if BV.draw(sys.modules[__name__], g, bid, res_icon):
+            LAST_SNOW = g.snow_layer()
             return g.done()
     if style == "house":
         top = b - 20
@@ -1245,6 +1293,7 @@ def make_building(style, wall, roof, cat, res_icon, W=64, H=64, bid=None):
         g.walls(14, 44, top, "timber")
         g.roof_gable(14, 44, top, 12)
         g.door(25, 7, 10)
+    LAST_SNOW = g.snow_layer()
     return g.done()
 
 
@@ -1277,6 +1326,9 @@ def buildings():
             save(im, "bld_%s_e%d" % (bid, era))
             if era == 1:
                 save(im, "bld_" + bid)
+            if LAST_SNOW is not None:
+                # (saved as it is: the finishing pass's outline and grain are for the building itself)
+                LAST_SNOW.save(os.path.join(OUT, "bld_%s_e%d_snow.png" % (bid, era)))
         ERA = 1
     import bld_variants as BV
     if BV.write_anchors(os.path.join(ROOT, "data", "buildings.json")):
