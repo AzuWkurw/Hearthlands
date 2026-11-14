@@ -29,14 +29,17 @@ jobs:
           echo "TITLE=Hearthlands v$NUM build $NAME" >> "$GITHUB_ENV"
 
       - name: Godot 4.3 and its export templates
+        # (downloaded outside the project, so the source zip does not take them in)
         run: |
+          cd "$RUNNER_TEMP"
           wget -q https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_linux.x86_64.zip
           wget -q https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_export_templates.tpz
           unzip -q Godot_v4.3-stable_linux.x86_64.zip -d godot
           unzip -q Godot_v4.3-stable_export_templates.tpz -d tpl
           mkdir -p ~/.local/share/godot/export_templates/4.3.stable
           mv tpl/templates/* ~/.local/share/godot/export_templates/4.3.stable/
-          echo "GODOT=$PWD/godot/Godot_v4.3-stable_linux.x86_64" >> "$GITHUB_ENV"
+          rm -f Godot_v4.3-stable_linux.x86_64.zip Godot_v4.3-stable_export_templates.tpz
+          echo "GODOT=$RUNNER_TEMP/godot/Godot_v4.3-stable_linux.x86_64" >> "$GITHUB_ENV"
 
       # (the tests run before every build is made: python3 tools/run_all.py)
       - name: Build the zips
@@ -49,6 +52,7 @@ jobs:
           target_commitish: ${{ github.sha }}
           name: ${{ env.TITLE }}
           make_latest: true
+          overwrite_files: true
           body_path: ${{ runner.temp }}/out/release_notes.md
           files: |
             ${{ runner.temp }}/out/Hearthlands-*-Windows.zip
