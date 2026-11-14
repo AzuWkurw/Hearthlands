@@ -10,7 +10,7 @@ economy you do.
 ## Download
 
 The ready-made Windows game is on the [Releases page](../../releases/latest): download the
-`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.47.0 build 52** (see
+`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.48.0 build 53** (see
 `CHANGELOG.md`). Every build is a release of its own, made by GitHub Actions
 (`.github/workflows/release.yml`) when a new version reaches `main`; older builds up to 50 are also
 on the [`downloads` branch](../../tree/downloads).
@@ -31,7 +31,7 @@ What is in the game now:
 
 The full plan is in the [roadmap](https://claude.ai/artifact/YVAWwJGUN4FRBYtpz3zgQh).
 
-Done (builds 43 to 52):
+Done (builds 43 to 53):
 
 | Build | What came in |
 |---|---|
@@ -120,6 +120,9 @@ Exporting needs Godot 4.3's export templates (in the editor: Editor > Manage Exp
 | Buildings window | J or Buildings: how many of each kind you have, workers, priority for a whole kind, a limit on workers per kind, Next jumps to them; Keep one builder free |
 | Transport priorities | K or Transport: which goods the carriers take first, 1 to 9 |
 | Worker priorities | L or Workers: which kinds of building get workers first, 1 to 9 |
+| Bottleneck finder | N or Bottlenecks: what holds your economy back, biggest first, with Go and Map |
+| Market prices | M or Market: every good's price in gold and its trend; sell or buy 10 at your market |
+| Production chain on the map | Map in the bottleneck finder, or Show on map in a good's chain window; Esc hides it |
 | Upgrade a military building | Select it: Upgrade to (a bigger one of the same size); soldiers stay inside |
 | Border settings | Select a military building: how much inland buildings hold, and new soldiers to the border first |
 | Map editor: open a map | In the editor, Map tab: pick a saved map and press Open |
@@ -891,6 +894,27 @@ order the buildings within it. The numbers are saved with the game.
 - **Rivals at sea:** a rival with no way to reach anyone by land builds a harbour and ships early, sends
   expeditions and lands on its enemies' coasts; rivals at war by the sea build naval yards and coastal
   forts, and warlords keep field depots near the front.
+
+## Prices, families and bottlenecks
+
+- **Prices that move:** every good has a price in gold that follows what all realms have in store.
+  Goods that are short grow dear (up to 2.5 times their worth), goods everyone has plenty of grow cheap
+  (down to 0.4). Prices move once a minute; selling pushes a price down at once, buying pushes it up.
+  With a market you can sell 10 at 80% of the price or buy 10 at 125% (Market window, M). Travelling
+  merchants pay market prices too, and rivals with a market sell their surplus and buy stone and planks.
+- **Children:** while there is food and room in the homes, families have children (about one a minute
+  for every 170 grown people). A child eats a little, takes half a place in a home and grows up after
+  5 minutes. With a school at work (a teacher and bread for the pupils' lunch) it comes out an artisan,
+  otherwise a peasant. The side panel shows how many children you have and how many were schooled.
+- **Bottleneck finder (N):** what holds your economy back, biggest first: workshops that wait, grouped
+  by kind and reason, and for a missing good one step back (who makes it, how many of them work, what
+  stops the others). Go moves the map there; Map draws the good's chain on the map.
+- **Production chain on the map:** green rings on the buildings that make the good (amber when they are
+  not at work), rings on those that use it (red when they wait for it), and an arrow to each user from
+  its nearest maker.
+- **Festivals:** a realm holds one when its working taverns reach 15% of its homes and it has 10 beer
+  and 10 bread to spare. Rivals now build hop farms and breweries early and put taverns among their
+  homes, so they hold festivals too.
 
 ## A living world
 

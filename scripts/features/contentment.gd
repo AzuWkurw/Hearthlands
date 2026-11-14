@@ -12,6 +12,7 @@ const SERVED_FOR := 75.0   # seconds a tavern or chapel counts as working after 
 const FESTIVAL := 180.0
 const FEST_COST := 5       # beer and bread a festival takes
 const LOW := 0.3           # below this the realm is unhappy
+const FEST_COVER := 0.15   # share of homes its taverns must reach for a festival (0.3 before build 53)
 
 var served := {}           # building id -> time of its last cycle
 var mood_of := {}          # realm id -> contentment now
@@ -96,7 +97,7 @@ func on_second() -> void:
 		m = clampf(m, 0.0, 1.0)
 		mood_of[p.id] = m
 		# a festival, when a tavern serves a good part of the town and there is beer and bread to spare
-		if float(cv[0]) >= 0.3 and not in_festival(p) and sim.time >= float(next_fest.get(p.id, 600.0)) \
+		if float(cv[0]) >= FEST_COVER and not in_festival(p) and sim.time >= float(next_fest.get(p.id, 600.0)) \
 				and float(p.stock.get("beer", 0.0)) >= FEST_COST * 2 and float(p.stock.get("bread", 0.0)) >= FEST_COST * 2:
 			sim.take(p, "beer", FEST_COST)
 			sim.take(p, "bread", FEST_COST)
@@ -107,6 +108,8 @@ func on_second() -> void:
 			next_fest[p.id] = sim.time + FESTIVAL + 300.0 + float((p.id * 97 + _t) % 180)
 			if not p.ai:
 				sim.emit_log("A festival at the tavern! Everyone works 10% faster for 3 minutes.", Color("e8c870"))
+			elif Diplomacy.relation(sim, 1, p.id) != Diplomacy.WAR and sim.players[0].alive:
+				sim.emit_log("%s holds a festival: its people work faster for a while." % p.name, p.color.lightened(0.35))
 		# unhappy for long: idle peasants leave, one a minute
 		if m < LOW:
 			if not low_since.has(p.id):
@@ -169,7 +172,8 @@ func ai_steps(p: Sim.Player, have: Callable) -> Array:
 	var mins := sim.time / 60.0
 	var pop := sim.pop_total(p)
 	return [
-		["tavern", (1 + pop / 150) if mins > 14 and int(have.call("brewery")) > 0 and float(p.stock.get("bread", 0.0)) > 12.0 and float(p.stock.get("beer", 0.0)) >= 4.0 else 0],
+		# enough taverns for a festival: they must reach a good part of the homes (build 53)
+		["tavern", (1 + pop / 80) if mins > 14 and int(have.call("brewery")) > 0 and float(p.stock.get("bread", 0.0)) > 12.0 else 0],
 		["chapel", (1 + pop / 120) if mins > 18 and int(have.call("chandler")) > 0 and float(p.stock.get("candles", 0.0)) > 6.0 else 0],
 	]
 

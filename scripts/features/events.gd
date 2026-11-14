@@ -222,7 +222,7 @@ func _apply(p: Sim.Player, k: String) -> String:
 			sim.made(p, "gold", gold)
 			sim.made(p, g, n)
 			var txt := "a merchant paid %d gold for lodging and left %d %s" % [gold, n, GameData.res_name(g).to_lower()]
-			# and buys from what you have most of (not food, tools or weapons), at four fifths of its worth
+			# and buys from what you have most of (not food, tools or weapons), at four fifths of the market price
 			var best := ""
 			var most := 60.0
 			for r in GameData.res_by_id:
@@ -233,7 +233,7 @@ func _apply(p: Sim.Player, k: String) -> String:
 					most = float(p.stock.get(r, 0.0)); best = r
 			if best != "":
 				var nbuy := 10
-				var pay := maxi(1, roundi(GameData.res_value(best) * nbuy * 0.8 / maxf(0.5, GameData.res_value("gold"))))
+				var pay := maxi(1, roundi(sim.market.price(best) * nbuy * 0.8))
 				var got := sim.take(p, best, float(nbuy))
 				if got >= 1.0:
 					sim.give(p, "gold", pay)

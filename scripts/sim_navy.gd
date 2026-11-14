@@ -23,11 +23,11 @@ extends RefCounted
 var sim: Sim
 
 const MAX_WARSHIPS := 8
-const SPEED := 1.8          # tiles a second
+const SPEED := 2.2          # tiles a second
 const GUARD_R := 9.0        # how far from its harbour a warship patrols
 const SEE := 6.0            # how far it spots a target
-const GUARD_OUT := 10.0     # a guard goes out this much further than it patrols, to meet what comes
-const GUN_R := 2.2          # how near it must be to fire
+const GUARD_OUT := 14.0     # a guard goes out this much further than it patrols, to meet what comes
+const GUN_R := 3.0          # how near it must be to fire
 const HP := 3
 const HIT := 0.35           # warship against warship, a second
 const HIT_FLEET := 0.4      # a soldier on a landing fleet killed, a second
@@ -121,7 +121,7 @@ func _go(w: Dictionary, tx: float, ty: float, dt: float) -> bool:
 		# blocked by land: find the way round (not again for a while if there is none)
 		if sim.time < float(w.get("noway", -1.0)):
 			return true
-		var path := sim.sea.water_path(roundi(w.x), roundi(w.y), roundi(tx), roundi(ty))
+		var path := _water_way(floori(float(w.x) + 0.5), floori(float(w.y) + 0.5), tx, ty)
 		if path.size() < 2:
 			w.noway = sim.time + 3.0
 			return true
@@ -132,6 +132,52 @@ func _go(w: Dictionary, tx: float, ty: float, dt: float) -> bool:
 		way.pop_front()
 	w.way = way
 	return false
+
+
+## The way over water from tile (ax, ay) to within a tile and a half of (tx, ty): breadth-first, eight
+## directions but no cutting across a corner of land (both tiles beside a diagonal step are water), so a
+## ship can sail it. Empty when there is none (within a limit).
+func _water_way(ax: int, ay: int, tx: float, ty: float) -> PackedInt32Array:
+	if not sim.inb(ax, ay) or sim.ter[sim.idx(ax, ay)] != Sim.WATER:
+		return PackedInt32Array()
+	var start := sim.idx(ax, ay)
+	var came := {start: -1}
+	var q := PackedInt32Array([start])
+	var head := 0
+	var found := -1
+	var tgt := Vector2(tx, ty)
+	while head < q.size() and head < 60000:
+		var cur := q[head]
+		head += 1
+		var cx := cur % sim.w
+		var cy := cur / sim.w
+		if Vector2(cx, cy).distance_to(tgt) <= 1.5:
+			found = cur
+			break
+		for ddy in range(-1, 2):
+			for ddx in range(-1, 2):
+				if ddx == 0 and ddy == 0:
+					continue
+				var nx := cx + ddx
+				var ny := cy + ddy
+				if not sim.inb(nx, ny):
+					continue
+				var ni := ny * sim.w + nx
+				if came.has(ni) or sim.ter[ni] != Sim.WATER:
+					continue
+				if ddx != 0 and ddy != 0 and (sim.ter[cy * sim.w + nx] != Sim.WATER or sim.ter[ny * sim.w + cx] != Sim.WATER):
+					continue
+				came[ni] = cur
+				q.append(ni)
+	if found < 0:
+		return PackedInt32Array()
+	var out := PackedInt32Array()
+	var c := found
+	while c != -1:
+		out.append(c)
+		c = came[c]
+	out.reverse()
+	return out
 
 
 ## A new place to sail to on patrol: open water within GUARD_R of its harbour.

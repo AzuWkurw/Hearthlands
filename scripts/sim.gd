@@ -27,6 +27,7 @@ var logistics := SimLogistics.new(self)
 var research := SimResearch.new(self)
 var sea := SimSea.new(self)
 var naval := SimNavy.new(self)
+var market := SimMarket.new(self)
 var people := SimPeople.new(self)
 var production := SimProduction.new(self)
 
@@ -308,6 +309,9 @@ class Player:
 	var escort := true                     # warships sail with the realm's landings to shield them
 	var island := false                    # rivals: no enemy can be reached by land (they take to the sea)
 	var island_t := -1000.0                # when that was last worked out
+	var kids: Array = []                   # children: the time each was born (SimPeople.families)
+	var born := 0.0                        # births building up to the next child
+	var schooled := 0                      # children who came out of school as artisans
 	var general_xp := 0.0                  # the realm's general: his experience (SimMilitary.GENERAL_XP)
 	var general_uid := 0                   # the column he leads now (0: at home)
 	var general_back := 0.0                # after he falls, a new general is ready at this time
@@ -542,7 +546,9 @@ var trips: Array[Trip] = []
 
 
 var attacks: Array[Attack] = []
-var navy: Array = []          # warships afloat: SimSea.WS_* dictionaries
+var navy: Array = []          # warships afloat (SimNavy)
+var prices: Dictionary = {}   # good -> price factor (SimMarket), 1.0 when not set
+var price_hist: Dictionary = {}   # good -> the factor over the last minutes
 
 
 var time := 0.0
@@ -693,7 +699,7 @@ func new_game(p_seed: String, p_foes: int, p_strength: int, p_mix: bool, p_size 
 	bmap = PackedInt32Array(); bmap.resize(w * h)
 	plot = PackedInt32Array(); plot.resize(w * h)
 	_avail = {}; _avail_at = {}
-	players.clear(); blds.clear(); by_id.clear(); trips.clear(); attacks.clear(); navy.clear(); naval.fx.clear(); logs.clear()
+	players.clear(); blds.clear(); by_id.clear(); trips.clear(); attacks.clear(); navy.clear(); naval.fx.clear(); prices.clear(); price_hist.clear(); logs.clear()
 	rel = {}; rel_since = {}; proposals = []; standing = []; _prop_id = 0
 	time = 0.0; over = false; _bid = 0; _acc1 = 0.0; _owned_dirty = true
 	_alloc_path_buffers()
@@ -2314,6 +2320,7 @@ func _secondly() -> void:
 		var _tf := Time.get_ticks_usec()
 		f.on_second()
 		_pf("f " + f.id, _tf)
+	market.on_second()
 	if not over:
 		_check_alliance_end()
 	for p in players:
@@ -2329,7 +2336,7 @@ func _secondly() -> void:
 				if float(p.stock.get(r.id, 0.0)) < half:
 					give(p, r.id, half - float(p.stock.get(r.id, 0.0)))
 		t0 = Time.get_ticks_usec()
-		var rt := (p.peasant * 0.004 + p.artisan * 0.005 + p.noble * 0.008 + (soldiers(p) + p.scout) * 0.004) * maxf(0.4, 1.0 + mod(p, "food"))
+		var rt := (p.peasant * 0.004 + p.artisan * 0.005 + p.noble * 0.008 + (soldiers(p) + p.scout) * 0.004 + p.kids.size() * 0.002) * maxf(0.4, 1.0 + mod(p, "food"))
 		for f: Feature in features:
 			rt *= f.food_factor(p)
 		p.hunger += rt
@@ -2352,8 +2359,9 @@ func _secondly() -> void:
 		else:
 			p.die_t = 0
 		p.imm_t += 1
-		if p.imm_t >= 8.0 / (1.0 + mod(p, "immigration")) and p.starve == 0 and pop_total(p) < housing(p) and food_total(p) >= 8.0 + pop_total(p) * 0.2:
+		if p.imm_t >= 8.0 / (1.0 + mod(p, "immigration")) and p.starve == 0 and pop_total(p) + p.kids.size() / 2 < housing(p) and food_total(p) >= 8.0 + pop_total(p) * 0.2:
 			p.peasant += 1; p.imm_t = 0
+		people.families(p)
 		update_needs(p)
 		_pf("people", t0)
 		t0 = Time.get_ticks_usec()
@@ -2435,7 +2443,7 @@ func to_save() -> Dictionary:
 		"vein": vein, "vein_amt": vein_amt, "vein_tiles": vein_tiles, "pave": pave, "fields": fields, "places": places, "map_biome": map_biome,
 		"rel": rel, "rel_since": rel_since, "proposals": proposals, "standing": standing, "prop_id": _prop_id,
 		"mission": mission, "mission_done": mission_done, "ticks": _ticks,
-		"coming": _coming, "coming_tick": _coming_tick, "navy": navy,
+		"coming": _coming, "coming_tick": _coming_tick, "navy": navy, "prices": prices, "price_hist": price_hist,
 	}
 
 
@@ -2472,6 +2480,8 @@ func from_save(d: Dictionary) -> String:
 		_veins_from_old_save()
 	players.clear(); blds.clear(); by_id.clear(); trips.clear(); attacks.clear()
 	navy = (d.get("navy", []) as Array).duplicate(true)
+	prices = (d.get("prices", {}) as Dictionary).duplicate(true)
+	price_hist = (d.get("price_hist", {}) as Dictionary).duplicate(true)
 	naval.fx.clear()
 	for bd in d.blds:
 		if not GameData.bld.has(bd.ty):

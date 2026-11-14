@@ -1359,6 +1359,8 @@ func _draw() -> void:
 			f.draw_top(self, vr2)
 	if prof_on: _pm("soldiers_top")
 	_draw_fx(x0, y0, x1, y1)
+	if chain_res != "":
+		_draw_chain(labels)
 	if animate and z >= 9.0:
 		_draw_birds(x0, y0, x1, y1)
 	_draw_night(vis, x0, y0, x1, y1)
@@ -2048,6 +2050,60 @@ func _smoke_at(p: Vector2, seed: float, strength: float) -> void:
 
 ## A little ship at pos: brown hull, a white sail with the realm's colour; its cargo on deck (res), or,
 ## for a fleet carrying soldiers to a landing (war), a red war pennant and shields along the side.
+## The production chain overlay (build 53): the good shown (the chain window's or the bottleneck
+## finder's "Map"), "" when off. Esc hides it.
+var chain_res := ""
+
+## Draws chain_res's flow over your buildings: a ring on each that makes it (green at work, amber
+## not) and on each that uses it, and an arrow to every user from the nearest maker, red where the
+## user waits for it.
+func _draw_chain(labels: Array) -> void:
+	var me := sim.human()
+	var makers := []
+	var users := []
+	for b: Sim.Bld in sim.realm_blds(me):
+		if b.dead or b.state != "ready":
+			continue
+		if (b.def.get("out", {}) as Dictionary).has(chain_res):
+			makers.append(b)
+		if (b.def.get("in", {}) as Dictionary).has(chain_res) or (b.def.get("in", {}) as Dictionary).has("food") and GameData.food_ids.has(chain_res):
+			users.append(b)
+	var nm := GameData.res_name(chain_res).to_lower()
+	for b: Sim.Bld in makers:
+		var c := Vector2(b.x + 0.5, b.y + 0.4)
+		var ok := b.working
+		_cv.draw_arc(c, 0.85, 0.0, TAU, 28, Color("7ac060") if ok else Color("e0a040"), 0.12, true)
+	var shown := 0
+	for b: Sim.Bld in users:
+		var c := Vector2(b.x + 0.5, b.y + 0.4)
+		var waits := b.msg.to_lower().contains(nm) and not b.working
+		var col := Color("e05a3a") if waits else Color("8fc0e8")
+		_cv.draw_arc(c, 0.7, 0.0, TAU, 24, col, 0.09, true)
+		if shown >= 300 or makers.is_empty():
+			continue
+		var best: Sim.Bld = null
+		var bd := 1e9
+		for m: Sim.Bld in makers:
+			var d := float((m.x - b.x) * (m.x - b.x) + (m.y - b.y) * (m.y - b.y))
+			if d < bd and m != b:
+				bd = d; best = m
+		if best == null:
+			continue
+		shown += 1
+		var a := Vector2(best.x + 0.5, best.y + 0.4)
+		var dirv := (c - a)
+		if dirv.length() < 1.2:
+			continue
+		var u := dirv.normalized()
+		var p0 := a + u * 0.9
+		var p1 := c - u * 0.8
+		_cv.draw_line(p0, p1, Color(col, 0.85), 0.08, true)
+		_cv.draw_colored_polygon(PackedVector2Array([p1, p1 - u * 0.35 + Vector2(-u.y, u.x) * 0.2, p1 - u * 0.35 - Vector2(-u.y, u.x) * 0.2]), Color(col, 0.95))
+	var cam := get_viewport_rect().size
+	var tl := screen_to_world(Vector2(cam.x * 0.45, 160))
+	labels.append([tl, tr("Chain of %s: %d makers, %d users (Esc hides it)") % [GameData.res_name(chain_res), makers.size(), users.size()], Color("f2d58a")])
+
+
 ## A five-pointed star of radius r at c.
 func _star(c: Vector2, r: float, col: Color) -> void:
 	var pts := PackedVector2Array()

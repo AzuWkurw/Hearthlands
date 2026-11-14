@@ -57,6 +57,17 @@ func _site_score(ty: String, x: int, y: int, p: Sim.Player) -> float:
 				elif b.def.has("housing") or b.def.has("residence"): homes += 1
 		return work * 0.6 - homes * 1.0 + minf(dist, 14.0) * 0.25
 	if s.begins_with("forest"): return sim.count_near(x, y, 8, "tree") - dist * 0.05
+	if ty == "tavern" or ty == "chapel":
+		# among the homes, and away from the other taverns (chapels), so they reach as many as they can
+		var room := 0.0
+		var same := 0
+		for b: Sim.Bld in sim.realm_blds(p):
+			var dd := Vector2(b.x - x, b.y - y).length()
+			if dd <= 9.0:
+				room += float(b.def.get("housing", 0))
+				if b.ty == ty:
+					same += 1
+		return room * 0.6 - same * 8.0 - dist * 0.05
 	return -dist
 
 
@@ -470,6 +481,9 @@ func ai_think(p: Sim.Player) -> void:
 	# alone on its island makes for the sea. These few come early, once the basic economy stands.
 	var war_by_sea: bool = c.call("harbour") > 0 and _at_war_any(p)
 	extra.append_array([
+		# beer for the taverns, so the people are content and the realm holds festivals (build 53)
+		["hop_farm", (2 if mins > 20 and c.call("tavern") > 0 else 1) if mins > 10 else 0],
+		["brewery", (2 if mins > 20 and c.call("hop_farm") > 1 else 1) if mins > 10 and c.call("hop_farm") > 0 else 0],
 		["harbour", 1 if mins > 8 and p.island else 0],
 		["shipyard", 1 if p.island and c.call("harbour") > 0 else 0],
 		["naval_yard", 1 if mins > 40 and war_by_sea else 0],

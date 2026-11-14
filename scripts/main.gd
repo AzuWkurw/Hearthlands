@@ -110,6 +110,8 @@ var traffic_ui := UiTraffic.new(self)    # the traffic map, F7 (ui_traffic.gd)
 var workers_ui := UiWorkers.new(self)    # the Buildings and workers window, J (ui_workers.gd)
 var carry_prio_ui := UiPriorities.new(self, UiPriorities.MODE_CARRY)  # transport priorities, K (ui_priorities.gd)
 var work_prio_ui := UiPriorities.new(self, UiPriorities.MODE_WORK)    # worker priorities, L
+var market_ui := UiMarket.new(self)            # market prices, M (ui_market.gd)
+var neck_ui := UiBottlenecks.new(self)         # the bottleneck finder, N (ui_bottlenecks.gd)
 var undo_ui := UiUndo.new(self)          # Ctrl+Z (ui_undo.gd)
 var minimap_filter: OptionButton
 var achievements := Achievements.new(self)
@@ -753,6 +755,12 @@ func _build_ui() -> void:
 	var wpb := _button("Workers", func(): work_prio_ui.toggle())
 	wpb.tooltip_text = "Worker priorities: which kinds of building get workers first, in numbers (L)"
 	tb.add_child(wpb)
+	var nkb := _button("Bottlenecks", func(): neck_ui.toggle())
+	nkb.tooltip_text = "What holds your economy back, biggest first (N)"
+	tb.add_child(nkb)
+	var mkb := _button("Market", func(): market_ui.toggle())
+	mkb.tooltip_text = "Market prices: what each good is worth now, and selling and buying at your market (M)"
+	tb.add_child(mkb)
 	var trb := _button("Traffic", func(): traffic_ui.toggle())
 	trb.tooltip_text = "Colour your roads by how busy they are (F7)"
 	tb.add_child(trb)
@@ -903,6 +911,8 @@ func _build_ui() -> void:
 	workers_ui.build()
 	carry_prio_ui.build()
 	work_prio_ui.build()
+	market_ui.build()
+	neck_ui.build()
 	sim.tech_done.connect(func(pid, tid):
 		if pid != 1:
 			return
@@ -1673,6 +1683,10 @@ const KEY_ACTIONS := [
 	["demolish", "Demolish the selected building", KEY_DELETE],
 	["quicksave", "Quick save", KEY_F5],
 	["quickload", "Quick load", KEY_F9],
+	["transport", "Transport priorities", KEY_K],
+	["workers", "Worker priorities", KEY_L],
+	["bottlenecks", "Bottleneck finder", KEY_N],
+	["market", "Market prices", KEY_M],
 ]
 var expedition_from := 0   # the harbour an expedition will leave from (the @expedition tool)
 var watch := {}     # building sites the player wants to hear about when finished (id -> true)
@@ -1833,6 +1847,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.keycode == KEY_L and not setup.visible and not editor_ui.open:
 		work_prio_ui.toggle()
 		return
+	if event.keycode == KEY_N and not setup.visible and not editor_ui.open:
+		neck_ui.toggle()
+		return
+	if event.keycode == KEY_M and not setup.visible and not editor_ui.open:
+		market_ui.toggle()
+		return
 	if event.keycode == KEY_B and not setup.visible and not save_panel.visible:
 		toolbar.toggle_sites()
 		return
@@ -1867,6 +1887,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_T: _open_targets()
 		KEY_ESCAPE:
 			if view.follow != null: view.follow = null
+			elif view.chain_res != "": view.chain_res = ""
 			elif attack_ui.panel.visible: attack_ui.close()
 			elif chain_ui.panel.visible: chain_ui.close()
 			elif set_panel.visible: set_panel.visible = false

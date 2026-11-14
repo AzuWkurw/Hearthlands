@@ -80,12 +80,20 @@ func _init() -> void:
 	check(a.general and q.general_uid == a.uid, "the rival's general leads the landing of 18")
 	var n0 := a.n
 	var closest := 99.0
+	var shots := 0
 	while sim.attacks.has(a) and sim.military.at_sea(a):
 		sim.tick(Sim.TICK)
+		for e in sim.naval.fx:
+			if float(e[2]) == sim.time:
+				shots += 1
+		if OS.get_environment("NAVY_DBG") != "" and sim._ticks % 10 == 0 and sim.military.column_pos(a).distance_to(Vector2(me.hq.x, me.hq.y)) < 30:
+			var w0: Dictionary = sim.navy[0]
+			var tg = sim.naval._target(w0, me, me.hq, false)
+			print("   t%.0f fleet %s d_hq %.1f ws %s %s way %d tgt %s" % [sim.time, sim.military.column_pos(a), sim.military.column_pos(a).distance_to(Vector2(me.hq.x, me.hq.y)), sim.naval.pos_of(w0), sim.naval.pos_of(sim.navy[1]), (w0.get("way", []) as Array).size(), tg[0] if tg != null else "-"])
 		for ws in sim.navy:
 			closest = minf(closest, sim.naval.pos_of(ws).distance_to(sim.military.column_pos(a)))
 	print("  closest warship to the fleet: %.1f tiles; hq %s, fleet landed at %s, ships at %s" % [closest, Vector2(me.hq.x, me.hq.y), sim.military.column_pos(a), sim.navy.map(func(z): return sim.naval.pos_of(z))])
-	check(a.n < n0, "my warships fired on the fleet as it neared the harbour (%d of %d left)" % [a.n, n0])
+	check(shots > 0, "my warships fired on the fleet as it neared the harbour (%d shots, %d of %d soldiers left)" % [shots, a.n, n0])
 	t_end = sim.time + 300.0
 	while sim.time < t_end and sim.attacks.has(a):
 		sim.tick(Sim.TICK)

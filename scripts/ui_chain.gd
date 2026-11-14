@@ -122,6 +122,9 @@ func open(res: String) -> void:
 	var tl := main._label(tr("Production chain: %s") % GameData.res_name(res), 22, Main.BRASS)
 	tl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(tl)
+	head.add_child(main._button(tr("Show on map"), func():
+		main.view.chain_res = good
+		close()))
 	head.add_child(main._button("Close (Esc)", close))
 	body.add_child(main._label("Rates are a minute of game time. \"made\" is the last ten minutes (needs Statistics), \"can\" is at full speed with the workers you have.", 12, Main.DIM))
 	var sc := ScrollContainer.new()

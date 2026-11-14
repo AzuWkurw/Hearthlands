@@ -1,5 +1,16 @@
 # Changelog
 
+## Build 53 (v0.48.0, 2026-11-14)
+
+Build 53: prices that move, children and schooling, the bottleneck finder, the chain on the map.
+- Market prices that move: every good's price in gold follows what all realms have in store (0.4 to 2.5 times its worth). Sell or buy 10 at your market in the new Market window (M); merchants pay market prices; rivals with a market sell surplus and buy stone and planks.
+- Children: families have children while there is food and room; they grow up after 5 minutes, as artisans if a school is at work (with bread for lunch), otherwise as peasants. Shown in the side panel.
+- Bottleneck finder (N): what holds your economy back, grouped by kind and reason, with one step back to who makes the missing good. Go and Map buttons.
+- Production chain on the map: makers, users and arrows, red where a user waits (Map in the finder, Show on map in the chain window; Esc hides it).
+- Rivals hold festivals: they build hop farms and breweries early and put taverns among their homes; a festival now needs taverns reaching 15% of the homes.
+- Warships find their way round headlands and close in faster; they now hit landing fleets much more often.
+- Keys K, L, N and M can be changed in Settings.
+
 ## Build 52 (v0.47.0, 2026-11-14)
 
 Build 52: warships, coastal forts, field depots, generals.

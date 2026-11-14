@@ -597,3 +597,56 @@ func take_food(p: Sim.Player, at := -1) -> float:
 			sim.used(p, f, 1.0)
 			return GameData.food_value(f)
 	return 0.0
+
+
+# ---------------------------------------------------------------- families (build 53)
+## Families have children: while there is food and room in the homes, every grown person adds BIRTH
+## of a child a minute. A child eats a little, takes half a place in a home and grows up after GROW
+## seconds: with a school at work (a teacher, and bread for the pupils' lunch) it comes out an artisan
+## (while there are at least twice as many peasants), otherwise a peasant.
+const BIRTH := 0.006
+const GROW := 300.0
+
+
+func families(p: Sim.Player) -> void:
+	var adults := p.peasant + p.artisan + p.noble
+	if p.starve == 0 and sim.food_total(p) >= 10.0 + pop_total(p) * 0.2 and pop_total(p) + p.kids.size() / 2 < housing(p):
+		p.born += adults * BIRTH / 60.0
+		if p.born >= 1.0:
+			p.born -= 1.0
+			p.kids.append(sim.time)
+	while not p.kids.is_empty() and sim.time - float(p.kids[0]) >= GROW:
+		p.kids.pop_front()
+		var sc := _school_with_lunch(p)
+		if sc != null and p.peasant >= (p.artisan + 1) * 2:
+			p.artisan += 1
+			p.schooled += 1
+			if not p.ai:
+				sim.emit_log("A child finished school and became an artisan.", Color("86ad5c"), Vector2i(sc.x, sc.y))
+		else:
+			p.peasant += 1
+
+
+## A school of realm p at work with bread for a pupil's lunch (the bread is eaten), or null.
+func _school_with_lunch(p: Sim.Player) -> Sim.Bld:
+	for b: Sim.Bld in sim.realm_blds(p):
+		if b.ty != "school" or b.dead or b.state != "ready" or not b.staffed:
+			continue
+		if int(b.inbuf.get("bread", 0)) >= 1:
+			b.inbuf["bread"] = int(b.inbuf["bread"]) - 1
+			if int(b.inbuf["bread"]) <= 0:
+				b.inbuf.erase("bread")
+			sim.used(p, "bread", 1.0)
+			return b
+	return null
+
+
+## Children at school age (the older half) and all children, for the side panel.
+func kids_text(p: Sim.Player) -> String:
+	if p.kids.is_empty():
+		return "none yet"
+	var older := 0
+	for t in p.kids:
+		if sim.time - float(t) >= GROW * 0.5:
+			older += 1
+	return "%d (%d of school age)" % [p.kids.size(), older]

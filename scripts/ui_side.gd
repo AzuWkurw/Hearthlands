@@ -36,6 +36,7 @@ func _refresh_folk() -> void:
 	if worn > 0:
 		t += "[color=#e0b060]  %d soldiers have worn weapons; new ones come from the stores (%d weapons there)[/color]\n" % [worn, int(p.stock.get("weapons", 0.0))]
 	t += "Housing  [b]%d / %d[/b]\n" % [main.sim.pop_total(p), main.sim.housing(p)]
+	t += tr("Children  [b]%s[/b]") % main.sim.people.kids_text(p) + (tr(", %d schooled") % p.schooled if p.schooled > 0 else "") + "\n"
 	# specialists: workers level up only in their own trade
 	var ts := main.sim.trade_summary(p)
 	var parts := []
