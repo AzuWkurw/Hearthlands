@@ -15,8 +15,8 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `scripts/diplomacy.gd` | 609 | Relations between realms (war, peace or alliance), each rival's opinion of every other realm, proposals (peace, alliance, trade and gifts) and how rival AIs decide on them. The state itself lives in Sim (rel, rel_since, proposals, and Player.opinion) so it is saved with the game. |
 | `scripts/game_data.gd` | 374 | Loads the game's content from data/*.json. Files with the same name in user://data/ are merged on top, so players can add or change resources, buildings and population needs without editing the project. |
 | `scripts/sim.gd` | 2739 | The whole game state and rules: map, players, economy, territory, combat and rival AI. Runs without any rendering, so it can be tested headless (see tools/sim_test.gd). |
-| `scripts/sim_ai.gd` | 730 | How rival realms think: what to build and where, when to attack, what to research. Part of the simulation: sim.gd holds the shared state and calls in here; the functions reach the rest of the game through `sim`. |
-| `scripts/sim_logistics.gd` | 1867 | Roads, the road network, stores, carriers and work areas. Part of the simulation: sim.gd holds the shared state and calls in here; the functions reach the rest of the game through `sim`. |
+| `scripts/sim_ai.gd` | 736 | How rival realms think: what to build and where, when to attack, what to research. Part of the simulation: sim.gd holds the shared state and calls in here; the functions reach the rest of the game through `sim`. |
+| `scripts/sim_logistics.gd` | 1904 | Roads, the road network, stores, carriers and work areas. Part of the simulation: sim.gd holds the shared state and calls in here; the functions reach the rest of the game through `sim`. |
 | `scripts/sim_military.gd` | 1110 | Territory, soldiers, attacks, duels and conquest. Part of the simulation: sim.gd holds the shared state and calls in here; the functions reach the rest of the game through `sim`. |
 | `scripts/sim_people.gd` | 577 | People: housing, jobs and specialists, homes where people wait, people walking to work and soldiers to their posts, needs and food. Part of the simulation: sim.gd holds the shared state and calls in here; the functions reach the rest of the game through `sim` (sim.gd keeps a one-line wrapper for each, so callers did not change). |
 | `scripts/sim_production.gd` | 558 | Production: buildings working in cycles (inputs, outputs, tools, experience) and construction sites. Part of the simulation: sim.gd holds the shared state and calls in here; the functions reach the rest of the game through `sim` (sim.gd keeps a one-line wrapper for each, so callers did not change). |
@@ -243,7 +243,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `tools/checksum_run.gd` | 17 | Plays a game with rivals only and prints the state checksum each minute. Two versions that should behave the same (a pure code move, say) must print the same numbers. godot --headless --script res://tools/checksum_run.gd [-- seed=valley mins=6] |
 | `tools/econ_diag.gd` | 26 | What buildings wait for: godot --headless --script res://tools/econ_diag.gd [-- seed=valley mins=12] |
 | `tools/food_diag.gd` | 34 | Why a rival goes hungry: godot --headless --script res://tools/food_diag.gd [-- who=1] |
-| `tools/late_bench.gd` | 110 | Late-game drawing benchmark: a big game with every realm (yours too) played by the computer until there are about 750 buildings, then frame times at three zooms, with the map drawing split into its parts, and the frames while placing a building and turning its entrance. xvfb-run godot --rendering-driver opengl3 --script res://tools/late_bench.gd -- [blds=750] [fresh] The late game is kept in user://saves/late_bench.save and reused (fresh makes a new one). |
+| `tools/late_bench.gd` | 116 | Late-game drawing benchmark: a big game with every realm (yours too) played by the computer until there are about 750 buildings, then frame times at three zooms, with the map drawing split into its parts, and the frames while placing a building and turning its entrance. xvfb-run godot --rendering-driver opengl3 --script res://tools/late_bench.gd -- [blds=750] [fresh] [size=448 foes=8]   (a big map; kept as late_bench_<size>.save) The late game is kept in user://saves/late_bench.save and reused (fresh makes a new one). |
 | `tools/make_mission_map.gd` | 38 | Makes data/map_iron_coast.json, the hand-made map of mission 3, the way the map editor would: a generated map with an iron ridge (two passes) between your start in the south and the rivals. godot --headless --script res://tools/make_mission_map.gd |
 | `tools/map_hash.gd` | 8 | Prints a hash of the maps a few seeds make (to check map generation has not changed): godot --headless --script res://tools/map_hash.gd |
 | `tools/rel_diag.gd` | 21 | Diagnosis of how rivals see each other after 22 minutes on the valley map: crowding, reserve, strength, and the nearest distance between their military buildings (why they go to war or not). godot --headless --script res://tools/rel_diag.gd |
@@ -282,9 +282,9 @@ top of each file; run it again after adding files. For how the parts work togeth
 
 | File | Lines | What it is |
 |---|---:|---|
-| `CHANGELOG.md` | 701 | What changed in each build. |
+| `CHANGELOG.md` | 710 | What changed in each build. |
 | `README.md` | 1022 | How to play, the rules, controls, settings, modding and the project layout. |
-| `docs/FILES.md` | 292 | This list (written by tools/file_list.py). |
+| `docs/FILES.md` | 293 | This list (written by tools/file_list.py). |
 | `docs/SOURCE_GUIDE.md` | 439 | A tour of the code for programmers: the parts, how a game tick runs, where things live. |
 | `docs/SUGGESTIONS.md` | 203 | Ideas and their status after each round of work. |
 | `export_presets.cfg` | 61 | Godot export settings for the Windows and Linux builds. |

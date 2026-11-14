@@ -1,5 +1,14 @@
 # Changelog
 
+## Build 48.4 (v0.43.0, 2026-11-14)
+
+Bug fixes round 4: no more starving with full stores.
+
+- Fixed: a realm whose carriers were all busy could starve with full stores: grain and flour sat in the warehouse while mills and bakeries waited, people died, and fewer carriers made it worse. Now, while a realm is short of food, carriers serve the food chain first (farms' and mills' goods to the mills and bakeries, water to the bakeries, and so on). This works for your realm too.
+- Rivals no longer put up new workshops when every peasant is already at work (the worker would come from the carriers); they build homes, food and stores first. In a test on a 448 map, a rival that used to collapse to 6 people now keeps about a hundred.
+- A 90-minute game on the biggest map (448, 8 rivals) played without errors.
+- The drawing benchmark can now use a big map (size= and foes=).
+
 ## Build 48.3 (v0.43.0, 2026-11-14)
 
 Ox carts as an upgrade for the mule station, the map baked on all processor cores, and faster big maps.

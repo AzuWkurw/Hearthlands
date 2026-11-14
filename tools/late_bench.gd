@@ -3,6 +3,7 @@ extends SceneTree
 ## there are about 750 buildings, then frame times at three zooms, with the map drawing split into its
 ## parts, and the frames while placing a building and turning its entrance.
 ##   xvfb-run godot --rendering-driver opengl3 --script res://tools/late_bench.gd -- [blds=750] [fresh]
+##     [size=448 foes=8]   (a big map; kept as late_bench_<size>.save)
 ## The late game is kept in user://saves/late_bench.save and reused (fresh makes a new one).
 
 var main
@@ -28,16 +29,21 @@ func _frames(n: int) -> Array:
 func _init() -> void:
 	var want := 750
 	var fresh := false
+	var size := 2
+	var foes := 4
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("blds="): want = int(a.substr(5))
 		if a == "fresh": fresh = true
+		if a.begins_with("size="): size = int(a.substr(5))
+		if a.begins_with("foes="): foes = int(a.substr(5))
 	DisplayServer.window_set_size(Vector2i(1600, 900)); root.size = Vector2i(1600, 900)
 	main = load("res://main.tscn").instantiate(); root.add_child(main)
 	for i in 3: await process_frame
 	sim = main.sim
-	var path := Main.SAVE_DIR + "/late_bench.save"
+	var save_name := "late_bench" if size == 2 else "late_bench_%d" % size
+	var path := Main.SAVE_DIR + "/" + save_name + ".save"
 	if fresh or not FileAccess.file_exists(path):
-		main._start("latebench", 4, 6, true, 2)
+		main._start("latebench", foes, 6, true, size)
 		main.setup.visible = false
 		var me := sim.human()
 		me.ai = true; me.skill = 6; me.pers = "balanced"; me.prod = 1.0; me.think = 3.0; me.max_b = 2
@@ -46,9 +52,9 @@ func _init() -> void:
 			for i in 100: sim.tick(Sim.TICK)
 		me.ai = false
 		print("made a late game: %d min, %d buildings, %d trips (%d s)" % [int(sim.time / 60.0), sim.blds.size(), sim.trips.size(), (Time.get_ticks_msec() - t0) / 1000])
-		main._save_game("late_bench", true)
+		main._save_game(save_name, true)
 	else:
-		main._load_game("late_bench")
+		main._load_game(save_name)
 	main.setup.visible = false
 	main.paused = false
 	var me2 := sim.human()

@@ -1461,17 +1461,54 @@ func food_at(b: Sim.Bld, with_coming := true) -> int:
 	return n
 
 
+static var _food_chain := {}
+
+## The building types that make food, or what food is made from (worked out once from the data).
+static func food_chain() -> Dictionary:
+	if _food_chain.is_empty():
+		var feeds := {}
+		for f in GameData.food_ids:
+			feeds[f] = true
+		# goods that go into a food maker are food's makings too (grain -> flour -> bread)
+		for pass_n in 3:
+			for ty in GameData.bld:
+				var d: Dictionary = GameData.bld[ty]
+				for o in d.get("out", {}):
+					if feeds.has(o):
+						_food_chain[ty] = true
+						for k in d.get("in", {}):
+							feeds[k] = true
+						break
+	return _food_chain
+
+
+## Short of food: starving, or less in store than a few minutes' eating.
+func _hungry(p: Sim.Player) -> bool:
+	if p.starve > 0:
+		return true
+	var n := 0.0
+	for f in GameData.food_ids:
+		n += float(p.stock.get(f, 0.0))
+	return n < 15.0
+
+
 ## Carriers bring workshops, mines and the like what they use, from the nearest store that has it, so
 ## each keeps enough for two work cycles. One load per building per round; high priority first.
 func _dispatch_inputs() -> void:
 	for p in sim.players:
 		if not p.alive:
 			continue
-		var buckets := [[], [], []]
+		# a hungry realm feeds itself first: the buildings that make food, or what food is made from
+		# (a mill's flour for the bakeries), are served before all others while food is short
+		var hungry := _hungry(p)
+		var buckets := [[], [], [], []]
 		for b: Sim.Bld in _input_blds(p):
 			if b.dead or b.state != "ready" or not b.staffed or b.prio == Sim.PRIO_PAUSED or b.reno_to >= 0:
 				continue
-			buckets[Sim.PRIO_HIGH - b.prio].append(b)
+			if hungry and food_chain().has(b.ty):
+				buckets[0].append(b)
+			else:
+				buckets[1 + Sim.PRIO_HIGH - b.prio].append(b)
 		var out_of_carriers := false
 		for list: Array in buckets:
 			if out_of_carriers:

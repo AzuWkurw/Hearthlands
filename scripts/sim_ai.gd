@@ -483,11 +483,17 @@ func ai_think(p: Sim.Player) -> void:
 			return
 	var nosite := 0
 	var no_room := {}      # sizes that found no spot this time: others of that size will not either
+	# every peasant at work and none idle: a new workshop's worker would come from the carriers, and a
+	# realm without carriers starves with full stores. Only homes (more people), food and stores then.
+	var no_hands := p.peasant - p.used_peasant <= 0 and p.store_porters <= 0
 	for st in steps:
 		if made >= p.max_b:
 			break
 		var t := String(st[0])
 		if c.call(t) >= int(st[1]):
+			continue
+		if no_hands and t != "house" and t != "storehouse" and not SimLogistics.food_chain().has(t) \
+				and not GameData.bld.get(t, {}).has("garrison"):
 			continue
 		if no_room.has(sim.size_of(t)) and not GameData.bld.get(t, {}).has("garrison"):
 			continue
