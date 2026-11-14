@@ -151,6 +151,8 @@ var guide_ui := UiGuide.new(self)  # the first-game checklist (ui_guide.gd)
 var side_ui := UiSide.new(self)
 var info_ui := UiInfo.new(self)
 var log_ui := UiLog.new(self)      # the movable event log window (ui_log.gd)
+var notices_ui := UiNotices.new(self)   # notices you can click (ui_notices.gd)
+var sea_guide_ui := UiSeaGuide.new(self)  # the guide to ships, landings and supplies (ui_sea_guide.gd)
 var toolbar := UiToolbar.new(self) # the bottom toolbar: building menus, roads, demolish, scouts (ui_toolbar.gd)
 var sound: Sound                    # sound effects and ambience (sound.gd)
 var top_bar: HFlowContainer
@@ -515,6 +517,7 @@ func _ready() -> void:
 	add_child(sound)
 	sound.setup(self)
 	sim.log_added.connect(sound.on_log)
+	sim.log_added.connect(func(t, c): notices_ui.on_log(String(t), c))
 	sim.ended.connect(_on_end)
 	seed_edit.text = _rand_seed()
 	_start(seed_edit.text, 3, 5, true)
@@ -903,6 +906,8 @@ func _build_ui() -> void:
 
 	log_ui.build()
 	guide_ui.build()
+	notices_ui.build()
+	sea_guide_ui.build()
 	editor_ui.build()
 	missions_ui.build()
 	campaign_ui.build()
@@ -1322,6 +1327,7 @@ func game_running() -> bool:
 
 func _after_world_change() -> void:
 	has_played = false
+	notices_ui.clear()
 	new_blds = {}
 	moving_id = 0
 	if toolbar != null:
@@ -1847,6 +1853,16 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.keycode == KEY_L and not setup.visible and not editor_ui.open:
 		work_prio_ui.toggle()
 		return
+	# Ctrl and + or -: the interface a size bigger or smaller (build 56)
+	if event.ctrl_pressed and event.keycode in [KEY_EQUAL, KEY_KP_ADD, KEY_MINUS, KEY_KP_SUBTRACT]:
+		settings.step_scale(1 if event.keycode in [KEY_EQUAL, KEY_KP_ADD] else -1)
+		settings.apply_scale(get_window())
+		settings.save_file()
+		_show_hint(tr("Interface size %d%% (Ctrl and + or -; Auto in Settings)") % roundi(settings.scale_now() * 100.0), 2.5)
+		return
+	if event.keycode == KEY_H and event.shift_pressed and not setup.visible:
+		sea_guide_ui.open()
+		return
 	if event.keycode == KEY_N and not setup.visible and not editor_ui.open:
 		neck_ui.toggle()
 		return
@@ -2061,6 +2077,8 @@ func _refresh_all() -> void:
 	_refresh_sel()
 	_refresh_rivals()
 	guide_ui.refresh()
+	notices_ui.tick()
+	sea_guide_ui.check()
 	problems_ui.refresh()
 	traffic_ui.update()
 	_check_watch()

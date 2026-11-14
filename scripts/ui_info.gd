@@ -225,6 +225,7 @@ func _refresh_sel() -> void:
 		eb.tooltip_text = "A ship, 4 planks and 2 stone from this harbour and a soldier from the headquarters sail to another coast and found a harbour there, with land around it."
 		eb.disabled = main.sim.sea.free_ships(me) < 1
 		main.sel_actions.add_child(eb)
+		main.sel_actions.add_child(main._button(tr("Sea and supplies guide"), func(): main.sea_guide_ui.open()))
 	# warships: how many, and whether they sail with your landings
 	if b.p == 1 and b.state == "ready" and (main.sim.sea.is_harbour(b) or b.ty == "naval_yard") and (me_warships() > 0 or b.ty == "naval_yard"):
 		var me2 := main.sim.human()

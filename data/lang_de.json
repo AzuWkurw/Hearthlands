@@ -362,5 +362,15 @@
 	"Worker no.": "Arbeiter-Nr.",
 	"  Transport no.": "  Transport-Nr.",
 	"Worker priority of all your %s (L): kinds with a lower number get workers first.": "Arbeiterpriorität aller deiner %s (L): Arten mit kleinerer Zahl bekommen zuerst Arbeiter.",
-	"Transport priority of each good it takes (K): goods with a lower number are carried first.": "Transportpriorität jeder Ware, die es nimmt (K): Waren mit kleinerer Zahl werden zuerst getragen."
+	"Transport priority of each good it takes (K): goods with a lower number are carried first.": "Transportpriorität jeder Ware, die es nimmt (K): Waren mit kleinerer Zahl werden zuerst getragen.",
+	"Auto (%d%%)": "Auto (%d%%)",
+	"Auto (fits the screen)": "Auto (passt zum Bildschirm)",
+	"Interface size %d%% (Ctrl and + or -; Auto in Settings)": "Oberflächengröße %d%% (Strg und + oder -; Auto in den Einstellungen)",
+	"Click to go there.": "Klicken, um dorthin zu gehen.",
+	"Sea and supplies guide": "Leitfaden Meer und Nachschub",
+	"Harbours and ships": "Häfen und Schiffe",
+	"Landings": "Landungen",
+	"Warships and coastal forts": "Kriegsschiffe und Küstenforts",
+	"River boats": "Flussboote",
+	"Supplies far from home": "Nachschub fern der Heimat"
 }

@@ -181,6 +181,7 @@ func _open_sea(t: Sim.Bld, sea: Array) -> void:
 	var dm: Array = sim.military.mix_of(sim.military._defending(t))
 	body.add_child(main._label(tr("Defenders: %d (%s)") % [sim.defenders(t), Sim.mix_text(dm)], 14, Main.DIM))
 	body.add_child(main._label(general_words(), 13, Color("e8c860")))
+	body.add_child(main._button(tr("Sea and supplies guide"), func(): main.sea_guide_ui.open()))
 	var me_w := sim.human()
 	if me_w.warships > 0:
 		body.add_child(main._label(tr("Warships: %d afloat; escorts %s (up to %d sail with the fleet).") % [me_w.warships, tr("on") if me_w.escort else tr("off"), SimNavy.ESCORTS], 13, Color("9fd0e8")))

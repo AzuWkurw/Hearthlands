@@ -10,7 +10,7 @@ economy you do.
 ## Download
 
 The ready-made Windows game is on the [Releases page](../../releases/latest): download the
-`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.50.0 build 55** (see
+`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.51.0 build 56** (see
 `CHANGELOG.md`). Every build is a release of its own, made by GitHub Actions
 (`.github/workflows/release.yml`) when a new version reaches `main`; older builds up to 50 are also
 on the [`downloads` branch](../../tree/downloads).
@@ -31,7 +31,7 @@ What is in the game now:
 
 The full plan is in the [roadmap](https://claude.ai/artifact/YVAWwJGUN4FRBYtpz3zgQh).
 
-Done (builds 43 to 55):
+Done (builds 43 to 56):
 
 | Build | What came in |
 |---|---|
@@ -51,6 +51,7 @@ Done (builds 43 to 55):
 | 53 | Market prices that move (sell and buy at your market, M), children who grow up and go to school, a bottleneck finder (N), the production chain drawn on the map, rivals that brew beer and hold festivals |
 | 54 | Priority sets (Build up, War, Feed everyone, Research, and your own), drag rows to reorder, rivals that set priorities, the numbers in each building's info |
 | 55 | An isles map (each realm on its own island), dry and wet years, storms that keep ships in harbour, river boats between landings, disasters that ask you to choose (a great fire, plague, a peasant revolt) |
+| 56 | Rolling autosaves (the last 3), a guide to the sea and army supplies, interface size Auto and up to 200% (Ctrl and + or -), notices you can click to go to the place |
 
 Later: a story campaign through the ages, multiplayer, scripted scenarios, a chronicle at the end of a
 game, more animations, music for each age, and quality-of-life features (a production chain overlay,
@@ -125,6 +126,9 @@ Exporting needs Godot 4.3's export templates (in the editor: Editor > Manage Exp
 | Worker priorities | L or Workers: which kinds of building get workers first, 1 to 9 |
 | Bottleneck finder | N or Bottlenecks: what holds your economy back, biggest first, with Go and Map |
 | Market prices | M or Market: every good's price in gold and its trend; sell or buy 10 at your market |
+| Interface size | Ctrl and + or -, or Settings > Interface size (Auto fits big screens) |
+| Sea and supplies guide | Shift+H, or the button in a harbour's info and the attack window |
+| Notices | Important news with a place (attacks, ships sunk, starving soldiers) shows under the top bar for a while: click it to go there |
 | Production chain on the map | Map in the bottleneck finder, or Show on map in a good's chain window; Esc hides it |
 | Upgrade a military building | Select it: Upgrade to (a bigger one of the same size); soldiers stay inside |
 | Border settings | Select a military building: how much inland buildings hold, and new soldiers to the border first |
@@ -949,6 +953,18 @@ order the buildings within it. The numbers are saved with the game.
   the land* (shut the gates for 5 minutes, send for healers with 10 medicine, or carry on), and a
   *peasant revolt* when people are unhappy (a feast of 20 bread and 10 beer, send the soldiers, or wait
   until they tire). Rivals face them too.
+
+## Saves, interface size, notices and the sea guide
+
+- **Rolling autosaves:** the game saves itself every 5 minutes of play and keeps the last three
+  (*autosave*, *autosave 2*, *autosave 3* in Save / Load), so a bad turn can be undone.
+- **Interface size:** Auto (100% up to 1080 lines, more on bigger screens, up to 200%) or a size from 75%
+  to 200% in Settings; Ctrl and + or - changes it during play.
+- **Notices you can click:** important news with a place on the map shows for 25 seconds under the
+  top bar, at most four at a time. Click one to go there; its x puts it away.
+- **Sea and supplies guide:** harbours, ships, expeditions, landings, warships, coastal forts, river
+  boats and the food armies need far from home. It opens by itself the first time you have a harbour
+  or a shipyard, and with Shift+H.
 
 ## A living world
 

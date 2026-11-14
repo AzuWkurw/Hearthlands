@@ -1,5 +1,13 @@
 # Changelog
 
+## Build 56 (v0.51.0, 2026-11-14)
+
+Build 56: autosaves, interface size, clickable notices, the sea guide.
+- Rolling autosaves: the last three are kept (autosave, autosave 2, autosave 3).
+- Interface size: Auto (fits big screens, up to 200%) and sizes up to 200% in Settings; Ctrl and + or - changes it in play.
+- Notices you can click: attacks, ships sunk, starving soldiers and other news with a place show under the top bar for a while; click to go there.
+- Sea and supplies guide: harbours, ships, expeditions, landings, warships, coastal forts, river boats and army supplies. Opens the first time you have a harbour or shipyard, with Shift+H, and from the harbour info and the attack window.
+
 ## Build 55 (v0.50.0, 2026-11-14)
 
 Build 55: isles, weather that matters, river boats, disasters with a choice.

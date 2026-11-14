@@ -44,6 +44,7 @@ TESTS = [
 	("economy",           "econ_test", [], False, True, [r"ECON TEST: PASS"]),
 	("priority sets",     "prio2_test", [], False, True, [r"PRIO2 TEST: PASS"]),
 	("world and weather", "world_test", [], False, True, [r"WORLD TEST: PASS"]),
+	("saves, size, notices", "qol_test", [], False, True, [r"QOL TEST: PASS"]),
 	("priorities",        "priorities_test", [], False, True, [r"PRIORITIES TEST: PASS"]),
 	("age paths",         "age_bonus_test", [], False, False, [r"age bonus test: ok"]),
 	("bridges",           "bridge_test", [], False, True, [r"bridge test: ok"]),

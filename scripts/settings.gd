@@ -22,7 +22,8 @@ const MODES := [["windowed", "Window"], ["fullscreen", "Borderless fullscreen"],
 ## Resolutions offered; only those that fit the screen are listed. "Native" is the screen's own size.
 const SIZES := [Vector2i(3840, 2160), Vector2i(2560, 1440), Vector2i(1920, 1080), Vector2i(1600, 900),
 	Vector2i(1366, 768), Vector2i(1280, 720), Vector2i(1024, 576)]
-const UI_SCALES := [0.75, 0.9, 1.0, 1.15, 1.3, 1.5]
+## Interface sizes; 0 is Auto: by the screen's height (100% up to 1080 lines, 150% at 1440, 200% at 2160).
+const UI_SCALES := [0.0, 0.75, 0.9, 1.0, 1.15, 1.3, 1.5, 1.75, 2.0]
 const FPS_LIMITS := [0, 30, 60, 120, 144, 240]
 
 var renderer := "gl_compatibility"
@@ -48,6 +49,7 @@ var details := true                       # grass tufts, reeds, foam, snow on pe
 var raised := true                        # hills drawn raised (2.5D); off: a flat map
 var guide := true                         # show the first-game guide in a new game
 var keys := {}                            # action -> key code the player chose (Keys in Settings)
+var sea_guide := false                    # the sea and supplies guide has been shown once
 var prio_presets := {}                    # name -> {"carry": {...}, "work": {...}}: priority sets the player saved
 var sound_on := true
 var master_vol := 0.8
@@ -84,6 +86,7 @@ func load_file() -> void:
 	language = String(cf.get_value("display", "language", language))
 	keys = cf.get_value("game", "keys", {})
 	prio_presets = cf.get_value("game", "prio_presets", {})
+	sea_guide = bool(cf.get_value("game", "sea_guide", false))
 	sound_on = bool(cf.get_value("sound", "on", sound_on))
 	master_vol = float(cf.get_value("sound", "master", master_vol))
 	sfx_vol = float(cf.get_value("sound", "effects", sfx_vol))
@@ -117,6 +120,7 @@ func save_file() -> void:
 	cf.set_value("display", "language", language)
 	cf.set_value("game", "keys", keys)
 	cf.set_value("game", "prio_presets", prio_presets)
+	cf.set_value("game", "sea_guide", sea_guide)
 	cf.set_value("sound", "on", sound_on)
 	cf.set_value("sound", "master", master_vol)
 	cf.set_value("sound", "effects", sfx_vol)
@@ -223,13 +227,34 @@ func apply(win: Window) -> void:
 ## so it runs faster on a slow graphics card, but everything is softer and larger.
 func apply_scale(win: Window) -> void:
 	win.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
-	win.content_scale_factor = ui_scale
+	win.content_scale_factor = scale_now()
 	if mode != "windowed" and resolution != Vector2i.ZERO:
 		win.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
 		win.content_scale_size = resolution
 	else:
 		win.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
 		win.content_scale_size = win.size
+
+
+## The interface size in use: the chosen one, or for Auto one that fits the screen.
+func scale_now() -> float:
+	if ui_scale > 0.0:
+		return ui_scale
+	var hgt := DisplayServer.screen_get_size().y
+	if hgt <= 0:
+		return 1.0
+	return clampf(snappedf(hgt / 1080.0, 0.25), 1.0, 2.0) if hgt > 1200 else 1.0
+
+
+## One step bigger (+1) or smaller (-1), for Ctrl and + or - (Auto turns into the size it had).
+func step_scale(d: int) -> void:
+	var cur := scale_now()
+	var steps := UI_SCALES.filter(func(v): return v > 0.0)
+	var i := 0
+	for k in steps.size():
+		if absf(float(steps[k]) - cur) < absf(float(steps[i]) - cur):
+			i = k
+	ui_scale = float(steps[clampi(i + d, 0, steps.size() - 1)])
 
 
 ## The ids of the features switched on for new games.

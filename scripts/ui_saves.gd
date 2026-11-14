@@ -51,6 +51,8 @@ func _save_game(slot: String, quiet := false) -> void:
 		return
 	DirAccess.make_dir_recursive_absolute(Main.SAVE_DIR)
 	var path := Main.SAVE_DIR + "/" + _safe_name(slot) + ".save"
+	if slot == "autosave":
+		_roll_autosaves()
 	var f := FileAccess.open_compressed(path, FileAccess.WRITE, FileAccess.COMPRESSION_ZSTD)
 	if f == null:
 		main._show_hint(tr("Could not save: %s") % error_string(FileAccess.get_open_error()), 4.0)
@@ -62,6 +64,21 @@ func _save_game(slot: String, quiet := false) -> void:
 	f.close()
 	if not quiet:
 		main._show_hint(tr("Saved \"%s\".") % slot, 3.0)
+
+
+## Rolling autosaves (build 56): the last three are kept. Before a new autosave, the one before last
+## becomes "autosave 3" and the last "autosave 2".
+const AUTOSAVES := 3
+
+func _roll_autosaves() -> void:
+	var dir := Main.SAVE_DIR + "/"
+	for k in range(AUTOSAVES - 1, 0, -1):
+		var from := dir + ("autosave" if k == 1 else _safe_name("autosave %d" % k)) + ".save"
+		var to := dir + _safe_name("autosave %d" % (k + 1)) + ".save"
+		if FileAccess.file_exists(from):
+			if FileAccess.file_exists(to):
+				DirAccess.remove_absolute(to)
+			DirAccess.rename_absolute(from, to)
 
 
 func _read_save(path: String):
@@ -119,6 +136,10 @@ func _fill_saves() -> void:
 		var base := fn.get_basename()
 		var d = _read_save(Main.SAVE_DIR + "/" + fn)
 		var meta: Dictionary = d.get("meta", {}) if d is Dictionary else {}
+		# older rolling autosaves keep the name of their file ("autosave 2", "autosave 3")
+		if base.begins_with("autosave "):
+			meta = meta.duplicate()
+			meta["name"] = base
 		var row := HBoxContainer.new()
 		# a small picture of the map as it was (saves from before build 33 have none)
 		var tb: PackedByteArray = meta.get("thumb", PackedByteArray())

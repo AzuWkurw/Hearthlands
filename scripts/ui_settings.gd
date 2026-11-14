@@ -98,7 +98,7 @@ func _fill_settings() -> void:
 	rn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	rn.custom_minimum_size = Vector2(380, 0)
 	_set_row(g, "", rn)
-	_set_row(g, "Interface size", _choice(Settings.UI_SCALES.map(func(v): return "%d%%" % roundi(v * 100)), maxi(0, Settings.UI_SCALES.find(main.settings.ui_scale)), func(i):
+	_set_row(g, "Interface size", _choice(Settings.UI_SCALES.map(func(v): return tr("Auto (%d%%)") % roundi(main.settings.scale_now() * 100) if v == 0.0 and main.settings.ui_scale == 0.0 else (tr("Auto (fits the screen)") if v == 0.0 else "%d%%" % roundi(v * 100))), maxi(0, Settings.UI_SCALES.find(main.settings.ui_scale)), func(i):
 		main.settings.ui_scale = Settings.UI_SCALES[i]
 		_apply_settings()))
 	_set_row(g, "Frame rate limit", _choice(Settings.FPS_LIMITS.map(func(v): return "No limit" if v == 0 else "%d fps" % v), maxi(0, Settings.FPS_LIMITS.find(main.settings.max_fps)), func(i):
