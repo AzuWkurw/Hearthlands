@@ -523,6 +523,10 @@ static func _ai_offer_trade(sim: Sim, p: Sim.Player, q: Sim.Player) -> bool:
 			for k in b.def.get("in", {}):
 				if k != "food":
 					wanted[k] = true
+	# realms with nobles want the luxuries they don't make
+	if p.noble > 0:
+		for k in GameData.luxury.get("noble", {}):
+			wanted[k] = true
 	var need := ""
 	for r in wanted:
 		if float(p.stock.get(r, 0.0)) < 6.0 and float(q.stock.get(r, 0.0)) >= 25.0:

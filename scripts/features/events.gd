@@ -7,7 +7,7 @@ extends Feature
 
 const FIRST := 300.0
 const GAP := [240.0, 420.0]
-const CROPS := ["farm", "orchard", "hop_farm", "vineyard", "flax_farm", "herb_garden"]
+const CROPS := ["farm", "orchard", "hop_farm", "vineyard", "flax_farm", "herb_garden", "mulberry_grove", "pepper_garden", "coffee_plantation"]
 ## id: [name, weight, good?]
 const EVENTS := {
 	"harvest": ["Bumper harvest", 3.0, true],
@@ -177,13 +177,34 @@ func _apply(p: Sim.Player, k: String) -> String:
 		"merchant":
 			var gold := rng.randi_range(4, 10)
 			var goods := ["iron", "salt", "cloth", "leather", "bricks"]
+			# from the High Medieval age on, merchants bring a taste of the luxuries from far away
+			if p.age >= 2:
+				goods.append_array(["spices", "silk", "porcelain", "coffee"])
 			var g: String = goods[rng.randi() % goods.size()]
 			var n := rng.randi_range(3, 6)
 			sim.give(p, "gold", gold)
 			sim.give(p, g, n)
 			sim.made(p, "gold", gold)
 			sim.made(p, g, n)
-			return "a merchant paid %d gold for lodging and left %d %s." % [gold, n, GameData.res_name(g).to_lower()]
+			var txt := "a merchant paid %d gold for lodging and left %d %s" % [gold, n, GameData.res_name(g).to_lower()]
+			# and buys from what you have most of (not food, tools or weapons), at four fifths of its worth
+			var best := ""
+			var most := 60.0
+			for r in GameData.res_by_id:
+				var rd: Dictionary = GameData.res_by_id[r]
+				if rd.has("tool") or GameData.food_ids.has(r) or r in ["gold", "weapons", "armor"]:
+					continue
+				if float(p.stock.get(r, 0.0)) > most:
+					most = float(p.stock.get(r, 0.0)); best = r
+			if best != "":
+				var nbuy := 10
+				var pay := maxi(1, roundi(GameData.res_value(best) * nbuy * 0.8 / maxf(0.5, GameData.res_value("gold"))))
+				var got := sim.take(p, best, float(nbuy))
+				if got >= 1.0:
+					sim.give(p, "gold", pay)
+					sim.made(p, "gold", pay)
+					txt += ", and bought %d %s for %d gold" % [int(got), GameData.res_name(best).to_lower(), pay]
+			return txt + "."
 		"refugees":
 			var n := mini(rng.randi_range(3, 6), sim.housing(p) - sim.pop_total(p))
 			p.peasant += n

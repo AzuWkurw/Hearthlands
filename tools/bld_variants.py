@@ -2243,6 +2243,168 @@ def v_exhibition_palace(g, icon):
         p.polygon([(x + 0.3, y - 8), (x + 5, y - 7), (x + 0.3, y - 5.4)], fill=C(col))
 
 
+# ------------------------------------------------------------------ luxuries (build 46)
+def v_mulberry_grove(g, icon):
+    p, b = g.p, g.b
+    top, ridge = body(g, 36, 58, 15, "timber", 10, roof="thatch")
+    g.door(40, 6, 9)
+    g.sign(48, top + 2, icon)
+    # mulberry trees and trays of cocoons on a rack
+    tree(g, 8, b, 6.5, (70, 40, 90), 7, (66, 116, 52))
+    tree(g, 22, b - 3, 7.0, (70, 40, 90), 8, (60, 110, 48))
+    for k in range(2):
+        y = b - 3 - k * 4
+        wood_fill(g, [(26, y), (36, y), (36, y - 1.2), (26, y - 1.2)], (150, 112, 70), 2, False, 0.3)
+        for j in range(5):
+            p.ellipse([26.6 + j * 1.9, y - 2.6, 28.2 + j * 1.9, y - 1.2], fill=(246, 240, 220, 255), outline=(190, 180, 150, 255), width=0.2)
+    for x in (26.4, 35.4):
+        p.line([(x, b), (x, b - 8)], fill=C(mt.WOOD), width=0.6)
+
+
+def v_silk_weaver(g, icon):
+    p, b = g.p, g.b
+    top, ridge = body(g, 24, 54, 22, "timber", 12)
+    g.door(27, 7, 11)
+    g.window(38, top + 4, 9, 6, lit=True)
+    g.sign(40, b - 12, icon)
+    # lengths of dyed silk drying on a frame, a basket of cocoons
+    for x in (2, 21):
+        p.line([(x, b), (x, b - 25)], fill=C(mt.WOOD), width=0.9)
+    p.line([(1, b - 24), (22, b - 24)], fill=C(mt.WOOD), width=0.9)
+    for k, col in enumerate(((200, 60, 130), (230, 180, 60), (90, 60, 170), (60, 160, 160))):
+        cloth(g, 3.2 + k * 4.5, b - 24, 3.6, 15 + (k % 2) * 3, col)
+        p.line([(3.6 + k * 4.5, b - 23), (4.4 + k * 4.5, b - 10)], fill=(255, 255, 255, 120), width=0.4)
+    p.polygon([(14, b - 4), (21, b - 4), (20.2, b), (14.8, b)], fill=(180, 140, 80, 255), outline=(110, 80, 40, 255), width=0.3)
+    for j in range(4):
+        p.ellipse([14.4 + j * 1.6, b - 5.4, 16 + j * 1.6, b - 3.8], fill=(246, 240, 220, 255))
+
+
+def v_pepper_garden(g, icon):
+    p, b = g.p, g.b
+    top, ridge = body(g, 38, 58, 15, "planks", 10, roof="thatch")
+    g.door(42, 6, 9)
+    g.sign(49, top + 2, icon)
+    # pepper vines on poles with red berries, saffron beds, drying mats
+    rnd = random.Random(9)
+    for r in range(3):
+        y = b - 18 + r * 6.5
+        for k in range(5):
+            x = 3 + k * 6.6 + r * 1.2
+            p.line([(x, y + 3), (x, y - 6)], fill=(130, 100, 60, 255), width=0.5)
+            for j in range(5):
+                p.disc(x + rnd.uniform(-1.6, 1.6), y - 4 + j * 1.6, 1.0, (70 + rnd.randint(0, 30), 120, 50, 255))
+            for j in range(3):
+                p.disc(x + rnd.uniform(-1.2, 1.2), y - 3 + rnd.uniform(0, 5), 0.6, (200, 50, 40, 255))
+    for k in range(6):
+        p.disc(4 + k * 5, b + 0.5, 1.1, (150, 110, 200, 255))
+        p.point((4 + k * 5, b + 0.5), fill=(230, 120, 40, 255))
+    p.polygon([(26, b - 2), (36, b - 2), (37, b), (25, b)], fill=(190, 160, 100, 255))
+    for j in range(8):
+        p.disc(26.6 + j * 1.2, b - 1.2, 0.5, (70, 40, 30, 255))
+
+
+def v_spice_mill(g, icon):
+    p, b = g.p, g.b
+    top, ridge = body(g, 18, 48, 20, "timber", 12)
+    g.door(22, 7, 11)
+    g.window(38, top + 5, lit=True)
+    g.sign(30, top + 3, icon)
+    # a horse-turned millstone and jars and sacks of spices
+    p.ellipse([1, b - 4, 15, b + 1], fill=(140, 136, 126, 255), outline=(80, 76, 70, 255), width=0.4)
+    p.ellipse([4, b - 7, 12, b - 2], fill=(170, 166, 156, 255), outline=(90, 86, 80, 255), width=0.4)
+    p.line([(8, b - 6), (8, b - 12)], fill=C(mt.WOOD), width=1.0)
+    p.line([(8, b - 11), (16, b - 7)], fill=C(mt.WOOD), width=0.8)
+    for k, col in enumerate(((216, 120, 42), (190, 50, 40), (230, 190, 60), (120, 80, 50))):
+        x = 50 + (k % 2) * 6
+        y = b - (k // 2) * 6
+        p.rounded_rectangle([x, y - 5, x + 4.4, y], 1.2, fill=(180, 120, 80, 255), outline=(110, 70, 40, 255), width=0.3)
+        p.ellipse([x + 0.4, y - 5.8, x + 4, y - 4.2], fill=C(col))
+
+
+def v_kaolin_pit(g, icon):
+    p, b = g.p, g.b
+    top, ridge = body(g, 38, 56, 14, "planks", 9)
+    g.door(42, 6, 9)
+    g.sign(48, top + 2, icon)
+    p.ellipse([0, b - 12, 34, b + 1], fill=(214, 208, 196, 255))
+    p.ellipse([3, b - 10.4, 31, b - 0.6], fill=(188, 182, 170, 255))
+    p.ellipse([7, b - 8, 27, b - 2], fill=(236, 232, 224, 255))
+    p.arc([3, b - 10.4, 31, b - 0.6], 190, 350, fill=(246, 244, 238, 255), width=0.5)
+    heap(g, 26, 38, b, 6, (240, 238, 232), mat=None)
+    p.line([(18, b - 6), (22, b - 16)], fill=(150, 112, 70, 255), width=0.7)
+    p.polygon([(16.6, b - 6.6), (19.4, b - 6.2), (18.8, b - 2.6), (16.8, b - 3)], fill=(150, 150, 156, 255))
+
+
+def v_porcelain_kiln(g, icon):
+    p, b = g.p, g.b
+    # a white bottle kiln and a shelf of blue-and-white ware
+    pts = [(4, b), (28, b), (25, b - 14), (19, b - 26), (18.6, b - 40), (13.4, b - 40), (13, b - 26), (7, b - 14)]
+    stone_fill(g, pts, (214, 206, 190), "brick")
+    p.polygon([(16, b), (28, b), (25, b - 14), (19, b - 26), (18.6, b - 40), (16, b - 40)], fill=(0, 0, 0, 45))
+    p.polygon(pts, outline=(130, 120, 104, 255), width=0.5)
+    p.rectangle([12.6, b - 41.4, 19.4, b - 40], fill=(90, 86, 80, 255))
+    glow_hole(g, 13, b - 7, 19, b)
+    _set("glow", 16, b - 3.5)
+    _set("smoke", 16, b - 43)
+    top, ridge = body(g, 32, 58, 16, "stone", 10)
+    g.door(36, 6, 10)
+    g.sign(46, top + 2, icon) if icon is not None else None
+    wood_fill(g, [(30, b - 2), (62, b - 2), (62, b - 1), (30, b - 1)], (140, 100, 60), 2, False, 0.3)
+    for k in range(5):
+        x = 32 + k * 6
+        if k % 2 == 0:
+            p.polygon([(x, b - 2), (x + 3.6, b - 2), (x + 4.2, b - 5.6), (x + 3, b - 7), (x + 3, b - 8.4), (x + 0.6, b - 8.4), (x + 0.6, b - 7), (x - 0.6, b - 5.6)], fill=(246, 246, 244, 255), outline=(150, 150, 160, 255), width=0.3)
+            p.line([(x + 0.4, b - 5), (x + 3.2, b - 5)], fill=(50, 80, 170, 255), width=0.6)
+            p.disc(x + 1.8, b - 3.6, 0.6, (50, 80, 170, 255))
+        else:
+            p.pieslice([x - 0.4, b - 5.4, x + 4.4, b - 0.8], 0, 180, fill=(246, 246, 244, 255), outline=(150, 150, 160, 255), width=0.3)
+            p.line([(x + 0.4, b - 3), (x + 3.6, b - 3)], fill=(50, 80, 170, 255), width=0.5)
+
+
+def v_coffee_plantation(g, icon):
+    p, b = g.p, g.b
+    top, ridge = body(g, 38, 58, 15, "planks", 10)
+    g.door(42, 6, 9)
+    g.sign(49, top + 2, icon)
+    # rows of coffee bushes with red cherries, beans drying on a patio
+    rnd = random.Random(13)
+    for r in range(3):
+        y = b - 17 + r * 6
+        for k in range(5):
+            x = 4 + k * 6.4 + r * 1.4
+            for j in range(7):
+                p.disc(x + rnd.uniform(-2.4, 2.4), y + rnd.uniform(-2.4, 1.6), rnd.uniform(1.0, 1.6), (40 + rnd.randint(0, 30), 96 + rnd.randint(0, 30), 46, 255))
+            for j in range(4):
+                p.disc(x + rnd.uniform(-2, 2), y + rnd.uniform(-1.6, 1.2), 0.6, (200, 40, 40, 255))
+    patio = [(2, b + 1), (34, b + 1), (35, b - 2.4), (3, b - 2.4)]
+    p.polygon(patio, fill=(196, 184, 160, 255), outline=(140, 130, 110, 255), width=0.3)
+    for j in range(30):
+        p.point((4 + rnd.uniform(0, 29), b - 2 + rnd.uniform(0, 2.6)), fill=(110, 60, 40, 255))
+
+
+def v_coffee_roaster(g, icon):
+    p, b = g.p, g.b
+    top, ridge = body(g, 20, 50, 20, "brick", 12)
+    chim(g, 43, ridge - 4, top - 4)
+    g.door(24, 7, 11)
+    g.window(36, top + 5, lit=True)
+    g.sign(36, b - 12, icon) if False else g.sign(30, top + 3, icon)
+    # a roasting drum turning over a fire, and sacks of beans
+    p.rectangle([2, b - 4, 16, b], fill=(110, 106, 98, 255))
+    glow_hole(g, 6, b - 3, 12, b, arch=False)
+    _set("glow", 9, b - 2)
+    drum = [(3, b - 12), (15, b - 12), (15, b - 5), (3, b - 5)]
+    p.polygon(drum, fill=(70, 72, 80, 255), outline=(30, 30, 34, 255), width=0.5)
+    p.shade(drum, b - 12, b - 5, (255, 255, 255, 60), (0, 0, 0, 60))
+    for x in (6, 9, 12):
+        p.line([(x, b - 12), (x, b - 5)], fill=(40, 40, 44, 255), width=0.4)
+    p.line([(15, b - 8.5), (18, b - 8.5)], fill=(40, 40, 44, 255), width=0.8)
+    p.disc(18.6, b - 8.5, 1.2, (120, 90, 50, 255))
+    for x, col in ((52, (190, 160, 110)), (57, (176, 146, 100))):
+        sack(g, x, b, col)
+    sack(g, 54.4, b - 4.8, (200, 170, 120))
+
+
 # ------------------------------------------------------------------ mines
 MINE = {
     "coal_mine": {"rock": (100, 96, 90), "ore": (40, 40, 44), "glint": (90, 90, 100), "frame": True},
@@ -2459,6 +2621,9 @@ VARIANTS = {
     "manor": v_manor, "university": v_university, "fortress": v_fortress, "depot": v_depot,
     "great_hall": v_great_hall, "cathedral": v_cathedral, "grand_academy": v_grand_academy,
     "observatory": v_observatory, "exhibition_palace": v_exhibition_palace,
+    "mulberry_grove": v_mulberry_grove, "silk_weaver": v_silk_weaver, "pepper_garden": v_pepper_garden,
+    "spice_mill": v_spice_mill, "kaolin_pit": v_kaolin_pit, "porcelain_kiln": v_porcelain_kiln,
+    "coffee_plantation": v_coffee_plantation, "coffee_roaster": v_coffee_roaster,
     "keep": v_keep, "watch_tower": v_watch_tower, "paper_mill": v_paper_mill, "guardhouse": v_guardhouse,
     "redoubt": v_redoubt,
 }

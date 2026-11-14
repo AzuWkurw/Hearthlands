@@ -10,14 +10,14 @@ economy you do.
 ## Download
 
 The ready-made Windows game is on the [`downloads` branch](../../tree/downloads): download the zip,
-unzip it and run `Hearthlands.exe`. Current version: **v0.40.0 build 45** (see `CHANGELOG.md`).
+unzip it and run `Hearthlands.exe`. Current version: **v0.41.0 build 46** (see `CHANGELOG.md`).
 
 What is in the game now:
 
 - Six ages from Roman to Industrial, 137 techs and a special study at the end of each age that opens
   the next, a choice of path (wealth, war or learning) for each age and a wonder to build in it; each
   age has its own building looks and kind of soldier.
-- 96 buildings in long production chains, each drawn with the tools and goods of its trade.
+- 104 buildings in long production chains, each drawn with the tools and goods of its trade.
 - Up to 8 rival AIs with personalities, diplomacy, attacks and sieges, sea expeditions and colonies.
 - Four classes of people with needs and contentment, seasons and weather, diseases, fires, wildlife,
   random events, ruins and bandit camps.
@@ -360,13 +360,13 @@ Open **Settings** (top bar or F10). Everything there is remembered in `user://se
 - Command line (also for the exported game): `--rendering-method gl_compatibility` or `forward_plus` or
   `mobile` starts with that renderer once; `--resolution 1280x720` sets the window size.
 
-## Resources (63)
+## Resources (71)
 
-Logs, Stone, Clay, Water, Grain, Hops, Wool, Hides, Salt, Coal, Iron ore, Copper ore, Gold ore, Planks, Bricks, Flour, Bread, Fish, Smoked fish, Meat, Apples, Vegetables, Beer, Cloth, Leather, Paper, Iron, Copper, Gold, Axes, Pickaxes, Farm tools, Bows and rods, Knives, Saws, Smith's tongs, Trowels, Shears, Chisels, Quills, Harnesses, Weapons, Bows, Armor, Clothes, Flax, Linen clothes, Fur coats, Jewelry, Furniture, Sand, Glassware, Milk, Cheese, Sausages, Honey, Beeswax, Candles, Grapes, Wine, Herbs, Medicine, Donkeys.
+Logs, Stone, Clay, Water, Grain, Hops, Wool, Hides, Salt, Coal, Iron ore, Copper ore, Gold ore, Planks, Bricks, Flour, Bread, Fish, Smoked fish, Meat, Apples, Vegetables, Beer, Cloth, Leather, Paper, Iron, Copper, Gold, Axes, Pickaxes, Farm tools, Bows and rods, Knives, Saws, Smith's tongs, Trowels, Shears, Chisels, Quills, Harnesses, Weapons, Bows, Armor, Clothes, Flax, Linen clothes, Fur coats, Jewelry, Furniture, Sand, Glassware, Milk, Cheese, Sausages, Honey, Beeswax, Candles, Grapes, Wine, Herbs, Medicine, Donkeys, Peppercorns, Spices, Silk cocoons, Silk, Kaolin, Porcelain, Coffee beans, Coffee.
 
 Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples, Vegetables, Cheese, Sausages, Honey.
 
-## Buildings (96 you can build)
+## Buildings (104 you can build)
 
 **Raw**
 
@@ -381,6 +381,10 @@ Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples,
 | Saltworks | 3 planks, 1 stone | peasant (mining and quarrying) | – | 1 salt | Salt roads |
 | Flax farm | 3 planks | peasant (farming) | – | 2 flax | Roman (start) |
 | Sand pit | 2 planks | peasant (mining and quarrying) | – | 1 sand | Guilds |
+| Mulberry grove | 3 planks | peasant (farming) | – | 2 silk cocoons | Dyeing |
+| Pepper garden | 3 planks | peasant (farming) | – | 2 peppercorns | Cartography |
+| Kaolin pit | 2 planks | peasant (mining and quarrying) | – | 1 kaolin | Porcelain |
+| Coffee plantation | 3 planks | peasant (farming) | – | 2 coffee beans | Agricultural societies |
 
 **Food**
 
@@ -404,6 +408,8 @@ Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples,
 | Butcher | 3 planks, 2 stone | peasant (food and drink) | 2 meat, 1 salt | 4 sausages | Salt roads |
 | Vineyard | 3 planks, 1 stone | peasant (farming) | – | 2 grapes | Monasteries |
 | Winery | 4 planks, 3 stone | artisan (food and drink) | 2 grapes | 2 wine | Monasteries |
+| Spice mill | 3 planks, 2 stone | artisan (food and drink) | 2 peppercorns, 1 salt | 2 spices | Cartography |
+| Coffee roaster | 3 planks, 2 stone | artisan (food and drink) | 2 coffee beans, 1 coal | 2 coffee | Agricultural societies |
 
 **Industry**
 
@@ -419,6 +425,7 @@ Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples,
 | Mint | 3 planks, 3 stone | artisan (metalwork) | 1 gold ore, 1 coal | 1 gold | Roman (start) |
 | Steelworks | 6 planks, 8 bricks, 4 iron | artisan (metalwork) | 2 iron ore, 1 coal | 3 iron | Steam engine |
 | Glassworks | 3 planks, 3 stone, 2 bricks | artisan (kilns and glass) | 2 sand, 1 coal | 1 glassware | Guilds |
+| Porcelain kiln | 3 planks, 2 stone, 3 bricks | artisan (kilns and glass) | 2 kaolin, 1 coal | 1 porcelain | Porcelain |
 
 **Crafts**
 
@@ -438,6 +445,7 @@ Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples,
 | Machine works | 5 planks, 6 bricks, 3 iron | artisan (metalwork) | 1 iron, 1 coal | 3 tools, the kind most wanted, 1 weapons | Steam engine |
 | Textile mill | 5 planks, 6 bricks, 2 iron | peasant (textiles and leather) | 2 wool, 1 coal | 3 cloth, 1 clothes | Textile mills |
 | Chandler | 3 planks, 1 stone | artisan (fine crafts) | 1 beeswax | 2 candles | Monasteries |
+| Silk weaver | 3 planks, 2 stone | artisan (textiles and leather) | 2 silk cocoons | 1 silk | Dyeing |
 
 **Folk**
 
@@ -802,6 +810,14 @@ A mod in `user://data/techs.json` with the same id changes an existing tech; new
 
 The AI builds the buildings it knows by id. Your new buildings are available to you, and AI rivals keep
 playing with the standard set.
+
+## Luxuries
+
+Nobles pay more tax for every luxury they have had lately: spices, silk, porcelain and coffee (+8%
+each; `"luxury"` in `data/needs.json`). Each comes from its own chain: mulberry grove and silk weaver,
+pepper garden and spice mill (with salt), kaolin pit and porcelain kiln (with coal), coffee plantation
+and coffee roaster (with coal). Travelling merchants sometimes bring a few, and buy what you have most
+of; rivals with nobles trade for the luxuries they lack.
 
 ## Ages: building looks and soldiers
 

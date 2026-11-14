@@ -13,6 +13,7 @@ static var resources: Array = []          # ordered list of resource dictionarie
 static var res_by_id: Dictionary = {}
 static var bld: Dictionary = {}           # building id -> definition
 static var needs: Dictionary = {}         # class -> {resource: rate per person per second}
+static var luxury: Dictionary = {}        # class -> {luxury good: rate}: not needed, but each kept raises the taxes
 static var food_ids: Array = []           # food resources, cheapest first
 static var techs: Dictionary = {}         # tech id -> definition, in tree order
 static var reps: Dictionary = {}          # repeatable study id -> definition (age, cost, max levels, effects)
@@ -66,7 +67,19 @@ static func reload() -> void:
 	if base_n is Dictionary:
 		needs = base_n
 	var mod_n = _read("user://data/needs.json")
+	luxury = {}
+	if mod_n is Dictionary and mod_n.get("luxury") is Dictionary:
+		luxury.merge(mod_n.luxury, true)
+	if needs.get("luxury") is Dictionary:
+		var l: Dictionary = needs.luxury
+		needs = needs.duplicate()
+		needs.erase("luxury")
+		for c in l:
+			if not luxury.has(c):
+				luxury[c] = l[c]
 	if mod_n is Dictionary:
+		mod_n = mod_n.duplicate()
+		mod_n.erase("luxury")
 		for k in mod_n:
 			needs[k] = mod_n[k]
 	techs = {}

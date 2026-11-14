@@ -24,6 +24,11 @@ func _refresh_folk() -> void:
 	t += "Peasants  [b]%d[/b] (%d at work)\n" % [p.peasant, p.used_peasant]
 	t += "Artisans  [b]%d[/b] (%d at work)  content %d%%\n" % [p.artisan, p.used_artisan, roundi(float(p.sat.get("artisan", 0.0)) * 100)]
 	t += "Nobles  [b]%d[/b]  content %d%%\n" % [p.noble, roundi(float(p.sat.get("noble", 0.0)) * 100)]
+	var lux_n := 0
+	for c in GameData.luxury:
+		lux_n += (GameData.luxury[c] as Dictionary).size() if c == "noble" else 0
+	if p.noble > 0 and lux_n > 0 and (p.lux > 0 or p.age >= 2):
+		t += "Luxuries  [b]%d[/b] of %d%s\n" % [p.lux, lux_n, ("  [color=#8fc070](noble tax +%d%%)[/color]" % roundi(p.lux * Sim.LUX_TAX * 100)) if p.lux > 0 else "  [color=#9a9c88](spices, silk, porcelain, coffee)[/color]"]
 	t += "Soldiers  [b]%d[/b] (%d in HQ, %d veterans): %s\n" % [main.sim.soldiers(p), p.reserve, int(p.vets), Sim.mix_text(main.sim.soldier_mix(p))]
 	var worn := p.blunt
 	for wb: Sim.Bld in main.sim.realm_blds(p):
@@ -150,6 +155,9 @@ func _res_info(id: String) -> String:
 	t += "Production target: %s\n" % ("none (makes up to the store room)" if tg < 0 else "keep %d in store, then pause" % tg)
 	if costs.size() > 0:
 		t += "Needed to build: %s\n" % ", ".join(costs)
+	for cls in GameData.luxury:
+		if (GameData.luxury[cls] as Dictionary).has(id):
+			t += "A luxury: each kind the %ss have had lately raises their tax by %d%%\n" % [cls, roundi(Sim.LUX_TAX * 100)]
 	for cls in GameData.needs:
 		for key: String in GameData.needs[cls]:
 			var opts := GameData.need_options(key)

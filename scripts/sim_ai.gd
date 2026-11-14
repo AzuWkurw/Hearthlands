@@ -396,6 +396,11 @@ func ai_think(p: Sim.Player) -> void:
 		["vineyard", 1 if mins > 13 and p.noble > 0 else 0], ["winery", 1 if c.call("vineyard") > 0 else 0],
 		["chandler", 1 if mins > 13 and c.call("apiary") > 0 and p.noble > 0 else 0],
 		["sand_pit", 1 if mins > 16 and p.noble > 1 else 0], ["glassworks", 1 if c.call("sand_pit") > 0 else 0],
+		# luxuries for the nobles' taxes
+		["mulberry_grove", 1 if mins > 16 and p.noble > 0 else 0], ["silk_weaver", 1 if c.call("mulberry_grove") > 0 else 0],
+		["pepper_garden", 1 if mins > 20 and p.noble > 0 else 0], ["spice_mill", 1 if c.call("pepper_garden") > 0 and c.call("saltworks") > 0 else 0],
+		["kaolin_pit", 1 if mins > 26 and p.noble > 1 else 0], ["porcelain_kiln", 1 if c.call("kaolin_pit") > 0 else 0],
+		["coffee_plantation", 1 if mins > 26 and p.noble > 1 else 0], ["coffee_roaster", 1 if c.call("coffee_plantation") > 0 else 0],
 		# a wonder once the goods for it are in store (builders and the learned want them most)
 		["great_hall", 1 if mins > 14 and S.planks > 36 and S.stone > 30 and S.gold >= 8 and not war else 0],
 		["cathedral", 1 if mins > 20 and S.stone > 56 and S.bricks > 20 and S.gold >= 14 else 0],

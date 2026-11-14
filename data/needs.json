@@ -9,5 +9,13 @@
   "jewelry": 0.0015,
   "furniture": 0.002,
   "glass|candles": 0.0015
+ },
+ "luxury": {
+  "noble": {
+   "spices": 0.0012,
+   "silk": 0.0012,
+   "porcelain": 0.0008,
+   "coffee": 0.0015
+  }
  }
 }

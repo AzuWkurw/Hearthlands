@@ -499,5 +499,61 @@
   "icon": "donkey",
   "cap": 20,
   "info": "With road carriers: each donkey in store helps the carrier on one busy stretch of road, so two loads can be on it at once. Bred at a donkey farm."
+ },
+ {
+  "id": "peppercorns",
+  "name": "Peppercorns",
+  "abbr": "Pc",
+  "color": "#5a3a2a",
+  "icon": "blob"
+ },
+ {
+  "id": "spices",
+  "name": "Spices",
+  "abbr": "Sp",
+  "color": "#d8782a",
+  "icon": "jar"
+ },
+ {
+  "id": "cocoons",
+  "name": "Silk cocoons",
+  "abbr": "Co",
+  "color": "#f2ead2",
+  "icon": "fluff"
+ },
+ {
+  "id": "silk",
+  "name": "Silk",
+  "abbr": "Sk",
+  "color": "#c84a8a",
+  "icon": "cloth"
+ },
+ {
+  "id": "kaolin",
+  "name": "Kaolin",
+  "abbr": "Ka",
+  "color": "#e8e4dc",
+  "icon": "heap"
+ },
+ {
+  "id": "porcelain",
+  "name": "Porcelain",
+  "abbr": "Po",
+  "color": "#6a8ad8",
+  "icon": "goblet"
+ },
+ {
+  "id": "coffee_beans",
+  "name": "Coffee beans",
+  "abbr": "Cb",
+  "color": "#a83a2a",
+  "icon": "blob"
+ },
+ {
+  "id": "coffee",
+  "name": "Coffee",
+  "abbr": "Cf",
+  "color": "#6a4028",
+  "icon": "mug"
  }
 ]

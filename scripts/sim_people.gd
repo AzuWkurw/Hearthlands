@@ -538,6 +538,25 @@ func update_needs(p: Sim.Player) -> void:
 			if left > 0.0:
 				ok += 1
 		p.sat[cls] = float(ok) / maxf(1.0, list.size()) if count > 0 else 0.0
+	# luxuries: not needed, but every kind the nobles have had in the last 90 seconds raises their tax
+	p.lux = 0
+	for cls in GameData.luxury:
+		var count2 := p.artisan if cls == "artisan" else (p.noble if cls == "noble" else p.peasant)
+		var ll: Dictionary = GameData.luxury[cls]
+		for res in ll:
+			var key := "lux:" + String(cls) + ":" + String(res)
+			var m := float(p.need_meter.get(key, 0.0)) + count2 * float(ll[res])
+			if m >= 1.0:
+				m -= 1.0
+				if float(p.stock.get(res, 0.0)) >= 1.0:
+					sim.take(p, String(res), 1.0)
+					sim.used(p, String(res), 1.0)
+					p.need_ok[key] = 90.0
+			p.need_meter[key] = m
+			var left := float(p.need_ok.get(key, 0.0)) - 1.0
+			p.need_ok[key] = left
+			if left > 0.0 and cls == "noble":
+				p.lux += 1
 
 
 func food_total(p: Sim.Player) -> float:

@@ -35,6 +35,7 @@ TESTS = [
 	("catapults",         "catapult_test", [], False, True, [r"catapult test: ok"]),
 	("boundary stones",   "claim_test", [], False, True, [r"claim test: ok"]),
 	("trade by cart",     "trade_test", [], False, True, [r"trade test: ok"]),
+	("luxuries",          "luxury_test", [], False, False, [r"luxury test: ok"]),
 	("wonders",           "wonder_test", [], False, False, [r"wonder test: ok"]),
 	("age paths",         "age_bonus_test", [], False, False, [r"age bonus test: ok"]),
 	("bridges",           "bridge_test", [], False, True, [r"bridge test: ok"]),

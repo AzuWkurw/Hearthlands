@@ -2616,5 +2616,233 @@
    "smoke": [],
    "glow": []
   }
+ },
+ "mulberry_grove": {
+  "name": "Mulberry grove",
+  "cat": "raw",
+  "size": "large",
+  "cost": {
+   "planks": 3
+  },
+  "time": 12,
+  "worker": "peasant",
+  "cycle": 30,
+  "out": {
+   "cocoons": 2
+  },
+  "site": "open:4:2",
+  "info": "Silkworms fed on mulberry leaves spin their cocoons. A crop: slow in winter.",
+  "art": {
+   "style": "barn",
+   "wall": "#7aa85a",
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
+  },
+  "tech": "dyeing",
+  "trade": "farming"
+ },
+ "silk_weaver": {
+  "name": "Silk weaver",
+  "cat": "crafts",
+  "size": "medium",
+  "cost": {
+   "planks": 3,
+   "stone": 2
+  },
+  "time": 14,
+  "worker": "artisan",
+  "cycle": 24,
+  "in": {
+   "cocoons": 2
+  },
+  "out": {
+   "silk": 1
+  },
+  "info": "Reels the cocoons and weaves silk: a luxury nobles pay well for.",
+  "art": {
+   "style": "workshop",
+   "wall": "#c86a9a",
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
+  },
+  "tech": "dyeing",
+  "trade": "textiles"
+ },
+ "pepper_garden": {
+  "name": "Pepper garden",
+  "cat": "raw",
+  "size": "large",
+  "cost": {
+   "planks": 3
+  },
+  "time": 12,
+  "worker": "peasant",
+  "cycle": 30,
+  "out": {
+   "peppercorns": 2
+  },
+  "site": "open:4:2",
+  "info": "Pepper vines and saffron beds, from seeds the explorers brought home. A crop.",
+  "art": {
+   "style": "barn",
+   "wall": "#a87a3a",
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
+  },
+  "tech": "cartography",
+  "trade": "farming"
+ },
+ "spice_mill": {
+  "name": "Spice mill",
+  "cat": "food",
+  "size": "medium",
+  "cost": {
+   "planks": 3,
+   "stone": 2
+  },
+  "time": 14,
+  "worker": "artisan",
+  "cycle": 20,
+  "in": {
+   "peppercorns": 2,
+   "salt": 1
+  },
+  "out": {
+   "spices": 2
+  },
+  "info": "Grinds and blends peppercorns with salt into spices: a luxury for nobles.",
+  "art": {
+   "style": "workshop",
+   "wall": "#d8782a",
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
+  },
+  "tech": "cartography",
+  "trade": "victuals"
+ },
+ "kaolin_pit": {
+  "name": "Kaolin pit",
+  "cat": "raw",
+  "size": "small",
+  "cost": {
+   "planks": 2
+  },
+  "time": 10,
+  "worker": "peasant",
+  "cycle": 16,
+  "out": {
+   "kaolin": 1
+  },
+  "site": "open:3:2",
+  "info": "Digs the white china clay.",
+  "art": {
+   "style": "shed",
+   "wall": "#e0dcd0",
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
+  },
+  "tech": "porcelain",
+  "trade": "mining"
+ },
+ "porcelain_kiln": {
+  "name": "Porcelain kiln",
+  "cat": "industry",
+  "size": "medium",
+  "cost": {
+   "planks": 3,
+   "stone": 2,
+   "bricks": 3
+  },
+  "time": 18,
+  "worker": "artisan",
+  "cycle": 26,
+  "in": {
+   "kaolin": 2,
+   "coal": 1
+  },
+  "out": {
+   "porcelain": 1
+  },
+  "info": "Fires kaolin white and hard and paints it blue: porcelain, a luxury for nobles.",
+  "art": {
+   "style": "kiln",
+   "wall": "#e8e4dc",
+   "sw": 2.0,
+   "smoke": [
+    0.25,
+    0.266
+   ],
+   "glow": [
+    0.25,
+    0.883
+   ]
+  },
+  "tech": "porcelain",
+  "trade": "kilns"
+ },
+ "coffee_plantation": {
+  "name": "Coffee plantation",
+  "cat": "raw",
+  "size": "large",
+  "cost": {
+   "planks": 3
+  },
+  "time": 12,
+  "worker": "peasant",
+  "cycle": 32,
+  "out": {
+   "coffee_beans": 2
+  },
+  "site": "open:4:2",
+  "info": "Coffee bushes heavy with red cherries. A crop: slow in winter.",
+  "art": {
+   "style": "barn",
+   "wall": "#6a8a4a",
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
+  },
+  "tech": "agricultural_societies",
+  "trade": "farming"
+ },
+ "coffee_roaster": {
+  "name": "Coffee roaster",
+  "cat": "food",
+  "size": "medium",
+  "cost": {
+   "planks": 3,
+   "stone": 2
+  },
+  "time": 14,
+  "worker": "artisan",
+  "cycle": 20,
+  "in": {
+   "coffee_beans": 2,
+   "coal": 1
+  },
+  "out": {
+   "coffee": 2
+  },
+  "info": "Roasts and grinds the beans: coffee, a luxury nobles and artisans love.",
+  "art": {
+   "style": "workshop",
+   "wall": "#6a4028",
+   "sw": 2.0,
+   "smoke": [
+    0.703,
+    0.305
+   ],
+   "glow": [
+    0.141,
+    0.906
+   ]
+  },
+  "tech": "agricultural_societies",
+  "trade": "victuals"
  }
 }

@@ -41,7 +41,7 @@ const BIOME_WEATHER := [
 	{"fog": 3.0, "rain": 1.5},
 ]
 ## Crops grow in the open; their work follows the seasons most.
-const CROPS := ["farm", "orchard", "hop_farm", "vineyard", "flax_farm", "herb_garden", "apiary"]
+const CROPS := ["farm", "orchard", "hop_farm", "vineyard", "flax_farm", "herb_garden", "mulberry_grove", "pepper_garden", "coffee_plantation", "apiary"]
 const ANIMALS := ["sheep_farm", "pig_farm", "dairy"]
 const WOODS := ["woodcutter", "forester", "charcoal_burner"]
 ## Other work done outdoors (quarries, pits, salt pans).

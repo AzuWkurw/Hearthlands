@@ -78,6 +78,7 @@ const AI_NAMES := ["Aldric", "Brunhild", "Cedric", "Dagny", "Eadric", "Fenwick",
 
 
 const PERSONALITIES := ["builder", "balanced", "warlord"]
+const LUX_TAX := 0.08          # more of the nobles' tax for each luxury they have had lately
 
 
 const BASIC := ["planks", "stone"]
@@ -309,6 +310,7 @@ class Player:
 	var research := ""
 	var reps: Dictionary = {}     # repeatable study id -> levels done
 	var age_bonus: Dictionary = {} # age ("1".."5") -> id of the bonus chosen on entering it
+	var lux := 0                  # luxuries the nobles have had lately (spices, silk, porcelain, coffee)
 	var rqueue: Array = []        # what to study after the current research, in order (a study can repeat)
 	var rp := 0.0
 	var rp_total := 0.0
@@ -2268,7 +2270,7 @@ func _secondly() -> void:
 		update_needs(p)
 		_pf("people", t0)
 		t0 = Time.get_ticks_usec()
-		p.tax += p.noble * (0.4 + 0.8 * float(p.sat.noble)) * (1.0 + mod(p, "tax")) / 60.0
+		p.tax += p.noble * (0.4 + 0.8 * float(p.sat.noble)) * (1.0 + mod(p, "tax") + LUX_TAX * p.lux) / 60.0
 		if p.tax >= 1.0:
 			give(p, "gold", floorf(p.tax)); p.tax -= floorf(p.tax)
 		if mil_fill(p):
