@@ -1,0 +1,45 @@
+# Builds the game and publishes it as a GitHub Release whenever a version tag (v0.45.0-build50, ...)
+# is pushed: the Windows zip and the source zip are attached to the release, so the downloads no
+# longer grow the repository. It can also be started by hand (Actions > Release > Run workflow).
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Godot 4.3 and its export templates
+        run: |
+          wget -q https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_linux.x86_64.zip
+          wget -q https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_export_templates.tpz
+          unzip -q Godot_v4.3-stable_linux.x86_64.zip -d godot
+          unzip -q Godot_v4.3-stable_export_templates.tpz -d tpl
+          mkdir -p ~/.local/share/godot/export_templates/4.3.stable
+          mv tpl/templates/* ~/.local/share/godot/export_templates/4.3.stable/
+          echo "GODOT=$PWD/godot/Godot_v4.3-stable_linux.x86_64" >> "$GITHUB_ENV"
+
+      - name: Tests
+        run: |
+          sudo apt-get install -y -q xvfb > /dev/null
+          python3 tools/run_all.py
+
+      - name: Build the zips
+        run: python3 tools/make_build.py --no-bump --no-check --out "$PWD/out"
+
+      - name: The release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Hearthlands ${{ github.ref_name }}
+          body_path: out/release_notes.md
+          files: |
+            out/Hearthlands-*-Windows.zip
+            out/Hearthlands-*-Source.zip

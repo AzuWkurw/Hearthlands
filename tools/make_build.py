@@ -29,6 +29,8 @@ Options:
     --no-check      skip the 120-frame start check
     --no-commit     don't commit
     --dry-run       only print what it would do
+    --no-bump       package the version as it is (no new build number, no changelog entry, no
+                    commit): what the GitHub Actions release workflow runs for a pushed tag
 
 Exporting needs Godot's export templates for 4.3 installed (in the Godot editor: Editor > Manage
 Export Templates > Download and Install).
@@ -112,12 +114,16 @@ def main():
     ap.add_argument("--no-check", action="store_true")
     ap.add_argument("--no-commit", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--no-bump", action="store_true", help="package the current version as it is")
     a = ap.parse_args()
     dry = a.dry_run
 
     notes = a.notes
     if a.notes_file:
         notes = open(a.notes_file, encoding="utf-8").read().strip()
+    if not notes and a.no_bump:
+        notes = "-"
+        a.no_commit = True
     if not notes:
         fail('give the notes: what changed, e.g.  make_build.py --minor "Farms work real fields."')
     for f in ("READ_ME_FIRST.txt", "Start in OpenGL safe mode.bat"):
@@ -134,7 +140,10 @@ def main():
     # 1. version and changelog
     old_num, old_build = version()
     step(f"1. Version (now v{old_num} build {old_build})")
-    if dry:
+    if a.no_bump:
+        print("   (kept as it is)")
+        num, build = old_num, old_build
+    elif dry:
         print("   (would raise the build number)")
         num, build = old_num, "next"
     else:
@@ -187,6 +196,13 @@ def main():
                 if frames < 120 or errors:
                     print(log[-3000:])
                     fail("the exported game did not run cleanly")
+
+    # the newest changelog entry, for the release page (the GitHub Actions workflow uses it)
+    if not dry:
+        cl = open(os.path.join(ROOT, "CHANGELOG.md"), encoding="utf-8").read()
+        parts = cl.split("\n## ")
+        latest = ("## " + parts[1]).strip() if len(parts) > 1 else ""
+        open(os.path.join(out, "release_notes.md"), "w", encoding="utf-8").write(latest + "\n")
 
     # 5. Windows zip
     step("5. Windows zip")
