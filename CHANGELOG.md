@@ -1,5 +1,16 @@
 # Changelog
 
+## Build 43.1 (v0.38.0, 2026-11-14)
+
+Fixes for graphics glitches and the Vulkan switch.
+
+- Vulkan: choosing Vulkan in Settings now works. The game did start with Vulkan, but then could not tell which renderer it was running and went back to OpenGL with "Vulkan could not start". The first-start Vulkan test had the same fault and never switched.
+- The "Start in OpenGL safe mode" shortcut no longer runs the Vulkan test.
+- An attack on your land no longer turns the whole screen red: a short red glow shows along the screen's edges instead, at most once every 20 seconds.
+- No more white dashes along the shores: the foam is drawn only by the moving waves now.
+- The fisher's hut on stilts no longer has a blue box of water drawn under it, only ripples round its piles.
+- Building shadows are smaller and softer, so they no longer leave dark smudges beside buildings (most visible on water).
+
 ## Build 43 (v0.38.0, 2026-11-14)
 
 A special study at the end of each age opens the next one.
