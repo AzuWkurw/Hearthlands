@@ -262,7 +262,9 @@ func _net_ready(pid: int) -> void:
 		_relax_net(pid)
 
 
-var _reach := {}           # realm id -> [key, PackedByteArray: 1 where a new road can get to]
+var _reach := {}           # realm id -> [net_ver, _store_ver, PackedByteArray: 1 where a new road can get to]
+var _ra_seen := PackedInt32Array()   # reach_avoiding's marks: tile -> the search's stamp
+var _ra_stamp := 0
 
 ## Tiles of realm pid that a new road could reach from its road network: everything connected to the
 ## network over its own land that a road may cross (no water, rocks, clay or building plots). Building
@@ -271,10 +273,10 @@ var _reach := {}           # realm id -> [key, PackedByteArray: 1 where a new ro
 func reach(pid: int) -> PackedByteArray:
 	var k := pid - 1
 	_net_ready(pid)
-	var key := "%d/%d" % [int(net_ver[k]), _store_ver]
+	var nv := int(net_ver[k])
 	var e = _reach.get(pid)
-	if e != null and String(e[0]) == key:
-		return e[1]
+	if e != null and int(e[0]) == nv and int(e[1]) == _store_ver:
+		return e[2]
 	var r := PackedByteArray()
 	r.resize(sim.w * sim.h)
 	var q := PackedInt32Array()
@@ -317,18 +319,28 @@ func reach(pid: int) -> PackedByteArray:
 				continue
 			r[ni] = 1
 			q.append(ni)
-	_reach[pid] = [key, r]
+	_reach[pid] = [nv, _store_ver, r]
 	return r
 
 
 ## Whether a road from tile start can get to realm pid's roads or stores without crossing the tiles in
 ## blocked (a new building's own plot), over tiles reach() marks. Looks at up to 150 tiles; an area that
 ## large is taken as open.
-func reach_avoiding(pid: int, start: int, blocked: Array) -> bool:
+func reach_avoiding(pid: int, start: int, blocked: PackedInt32Array) -> bool:
 	var rr := reach(pid)
-	var seen := {start: true}
-	var q := [start]
+	if _ra_seen.size() != sim.w * sim.h:
+		_ra_seen = PackedInt32Array()
+		_ra_seen.resize(sim.w * sim.h)
+		_ra_stamp = 0
+	_ra_stamp += 1
+	var st := _ra_stamp
+	# the blocked tiles count as seen, so the search never steps on them
+	for bt in blocked:
+		_ra_seen[bt] = st
+	_ra_seen[start] = st
+	var q := PackedInt32Array([start])
 	var head := 0
+	var w := sim.w
 	while head < q.size():
 		if head > 150:
 			return true
@@ -336,26 +348,26 @@ func reach_avoiding(pid: int, start: int, blocked: Array) -> bool:
 		head += 1
 		if sim.road[cur] == pid or (sim.bmap[cur] != 0 and is_store(sim.by_id.get(sim.bmap[cur]))):
 			return true
-		var cx := cur % sim.w
-		var cy := cur / sim.w
+		var cx := cur % w
+		var cy := cur / w
 		for dd in 4:
 			var nx := cx + (1 if dd == 0 else (-1 if dd == 1 else 0))
 			var ny := cy + (1 if dd == 2 else (-1 if dd == 3 else 0))
-			if nx < 0 or ny < 0 or nx >= sim.w or ny >= sim.h:
+			if nx < 0 or ny < 0 or nx >= w or ny >= sim.h:
 				continue
-			var ni := ny * sim.w + nx
-			if seen.has(ni) or blocked.has(ni):
+			var ni := ny * w + nx
+			if _ra_seen[ni] == st:
 				continue
 			if sim.ter[ni] == Sim.WATER and sim.road[ni] != pid:
 				if sim.ter[cur] != Sim.WATER:
 					var land := bridge_landing(cur, ni, pid)
-					if land >= 0 and rr[land] == 1 and not seen.has(land) and not blocked.has(land):
-						seen[land] = true
+					if land >= 0 and rr[land] == 1 and _ra_seen[land] != st:
+						_ra_seen[land] = st
 						q.append(land)
 				continue
 			if rr[ni] != 1 and not (sim.bmap[ni] != 0 and is_store(sim.by_id.get(sim.bmap[ni]))):
 				continue
-			seen[ni] = true
+			_ra_seen[ni] = st
 			q.append(ni)
 	return false
 

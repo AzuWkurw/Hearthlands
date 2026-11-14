@@ -1495,6 +1495,9 @@ func _on_tile(t: Vector2i) -> void:
 		return
 	# a bandit camp: send soldiers to clear it
 	var camp := Places.at(sim, t.x, t.y, 1)
+	var cfog = sim.get_feature("fog")
+	if not camp.is_empty() and cfog != null and not cfog.explored_at(sim.idx(int(camp.x), int(camp.y))):
+		camp = {}   # not found yet
 	if not camp.is_empty() and camp.kind == "bandits" and not bool(camp.done) and sim.bld_at(t.x, t.y) == null:
 		var src := Places.best_source(sim, sim.human(), camp)
 		if src == null or sim.own_def(src) < 2:

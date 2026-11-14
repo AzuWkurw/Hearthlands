@@ -1047,7 +1047,8 @@ func _apply(i: int, what: String, val: int) -> void:
 			sim.amt[i] = 6 if val == Sim.WATER else ([0, 0, 8, 10][sim.deco[i]] if val != Sim.MOUNT else 0)
 		"deco":
 			# trees, rocks and clay grow on grass and beach only
-			if val == 0 or sim.ter[i] == Sim.GRASS or sim.ter[i] == Sim.BEACH:
+			# (clearing water or mountain leaves its fish and ore alone)
+			if (val == 0 and sim.deco[i] != 0) or (val != 0 and (sim.ter[i] == Sim.GRASS or sim.ter[i] == Sim.BEACH)):
 				_rec(i)
 				sim.deco[i] = val
 				sim.amt[i] = [0, 0, 8, 10][val]

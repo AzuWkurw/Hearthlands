@@ -1,17 +1,38 @@
 extends SceneTree
 ## A long game with every rival (and you played by the AI) to catch errors and broken rules:
-## godot --headless --script res://tools/soak_test.gd -- seed=valley mins=60
+## godot --headless --script res://tools/soak_test.gd -- seed=valley mins=60 [size=320] [foes=7] [places]
+## (places: a dozen ruins and bandit camps scattered between the realms)
 ## Every minute it checks: stock equals the sum of the stores, no negative stocks or people, no dead
 ## building still listed, every building on its tile, archers never above the garrison, carts and
 ## fires only for living buildings. It prints what it saw of the new things (trades, fires, bridges...).
 func _init() -> void:
 	GameData.ensure()
-	var seed := "valley"; var mins := 60
+	var seed := "valley"; var mins := 60; var size := 0; var foes := 5; var places := false
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("seed="): seed = a.substr(5)
 		if a.begins_with("mins="): mins = int(a.substr(5))
+		if a.begins_with("size="): size = int(a.substr(5))
+		if a.begins_with("foes="): foes = int(a.substr(5))
+		if a == "places": places = true
 	var sim := Sim.new()
-	sim.new_game(seed, 5, 6, true)
+	sim.new_game(seed, foes, 6, true, size)
+	if places:
+		# ruins and bandit camps on free grass between the realms (as a hand-made map would have)
+		var put := 0
+		for k in 4000:
+			if put >= 12: break
+			var x := sim.rng.randi() % sim.w
+			var y := sim.rng.randi() % sim.h
+			var i := sim.idx(x, y)
+			if sim.ter[i] != Sim.GRASS or sim.deco[i] != 0 or not Places.at(sim, x, y, 8).is_empty():
+				continue
+			var near_hq := false
+			for p in sim.players:
+				if Vector2(p.hq.x - x, p.hq.y - y).length() < 7: near_hq = true
+			if near_hq: continue
+			sim.places.append(Places.make("bandits" if put % 2 == 0 else "ruins", x, y))
+			put += 1
+		print("places: ", put)
 	var me := sim.human()
 	me.ai = true; me.skill = 6; me.pers = "balanced"; me.prod = 1.0; me.think = 3.0; me.max_b = 2
 	var bad := 0
@@ -49,6 +70,17 @@ func _init() -> void:
 			if b.archers > b.garrison and b.ty != "hq":
 				bad += 1; print("BAD archers %d > garrison %d in %s" % [b.archers, b.garrison, b.ty])
 			if b.archers > 0: seen.archers = maxi(seen.archers, b.archers)
+		for pl: Dictionary in sim.places:
+			if int(pl.n) < 0:
+				bad += 1; print("BAD bandits below zero at ", pl.x, ",", pl.y)
+			# (looting is checked once a second, so land taken during the last second may not have been)
+			if pl.kind == "ruins" and not bool(pl.done) and sim.owner[sim.idx(int(pl.x), int(pl.y))] != 0:
+				if bool(pl.get("_owned_before", false)):
+					bad += 1; print("BAD ruins on owned land not looted at ", pl.x, ",", pl.y)
+				pl["_owned_before"] = true
+			var party: Dictionary = pl.party
+			if not party.is_empty() and (int(party.n) <= 0 or (party.mix as Array).is_empty()):
+				bad += 1; print("BAD an empty party on its way: ", party)
 		var f = sim.get_feature("fires")
 		if f != null:
 			for bid in f.burning:
@@ -76,6 +108,13 @@ func _init() -> void:
 		var moods := []
 		for p in sim.players: moods.append(snappedf(co.mood(p), 0.01))
 		print("contentment: ", moods, " served taverns: ", co.served.size())
+	if not sim.places.is_empty():
+		var cl := 0
+		var lo := 0
+		for pl: Dictionary in sim.places:
+			if pl.kind == "bandits" and bool(pl.done): cl += 1
+			if pl.kind == "ruins" and bool(pl.done): lo += 1
+		print("camps cleared: %d, ruins looted: %d of %d places" % [cl, lo, sim.places.size()])
 	print("seen: ", seen)
 	print("soak %s %d min: %d problems, %d s real, over %s" % [seed, mins, bad, (Time.get_ticks_msec() - t_real) / 1000, sim.over])
 	quit()

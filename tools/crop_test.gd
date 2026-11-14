@@ -61,6 +61,7 @@ func _init() -> void:
 	var sown_max := 0
 	var bad := 0
 	var prev := {}
+	var suspect := {}       # field tile -> when it was first seen in a bad place
 	var t_real := Time.get_ticks_msec()
 	var last_s := 0
 	while g.time < 1500.0:
@@ -78,9 +79,16 @@ func _init() -> void:
 		if int(g.time * 10.0) % 600 == 0:
 			sown_max = maxi(sown_max, g.fields.size())
 			for i in g.fields:
-				var fb: Sim.Bld = g.by_id.get(int(g.fields[i][0]))
-				if fb == null or g.bmap[i] != 0 or g.road[i] != 0 or Vector2(i % g.w - fb.x, i / g.w - fb.y).length() > 6.0:
+				if _bad_field(g, i):
+					suspect[i] = g.time
+		# a field under a new road or building ends at the next once-a-second update: bad only if it is
+		# still there two seconds later
+		for i in suspect.keys():
+			if g.time - float(suspect[i]) >= 2.0:
+				if g.fields.has(i) and _bad_field(g, i):
 					bad += 1
+					print("  bad field at %d,%d: %s" % [i % g.w, i / g.w, str(g.fields[i])])
+				suspect.erase(i)
 	var farms := 0
 	for b2: Sim.Bld in g.blds:
 		if b2.ty == "farm" and b2.state == "ready": farms += 1
@@ -89,3 +97,8 @@ func _init() -> void:
 	if bad > 0: print("FAIL: fields under roads or buildings, or far from their farm"); ok = false
 	print("CROP TEST: %s" % ("PASS" if ok else "FAIL"))
 	quit(0 if ok else 1)
+
+
+static func _bad_field(g: Sim, i: int) -> bool:
+	var fb: Sim.Bld = g.by_id.get(int(g.fields[i][0]))
+	return fb == null or g.bmap[i] != 0 or g.road[i] != 0 or Vector2(i % g.w - fb.x, i / g.w - fb.y).length() > 6.0

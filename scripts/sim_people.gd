@@ -106,8 +106,6 @@ func staffing(p: Sim.Player) -> void:
 	for b: Sim.Bld in ordered:
 		if b.state != "ready":
 			continue
-		if b.cyc > 0.0:
-			b.rate_c = rate(p, b)
 		var wk := String(b.def.get("worker", ""))
 		var was := b.staffed
 		# the player's limit on how many of this kind get workers

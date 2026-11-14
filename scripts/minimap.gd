@@ -29,6 +29,7 @@ func _ready() -> void:
 
 func reset() -> void:
 	_ver = -1
+	_own_last = PackedByteArray()
 	_t = 99.0
 	_base = null
 	_base_img = null
@@ -129,20 +130,45 @@ func thumbnail(px: int) -> PackedByteArray:
 	return img.save_png_to_buffer()
 
 
+var _own_data := PackedByteArray()   # the picture below, kept so only rows whose land changed are redone
+var _own_last := PackedByteArray()   # sim.owner when it was last drawn
+var _own_img: Image
+
 func _rebuild_owner() -> void:
 	_ver = sim.territory_version
-	var data := PackedByteArray()
-	data.resize(sim.w * sim.h * 4)
+	var w := sim.w
 	var pc: Array = []
 	for p in sim.players:
 		pc.append(p.color)
-	for i in sim.w * sim.h:
-		var o := sim.owner[i]
-		if o == 0:
+	var full := _own_last.size() != sim.owner.size() or _own_img == null or _own_img.get_width() != w
+	if full:
+		_own_data = PackedByteArray()
+		_own_data.resize(w * sim.h * 4)
+		_own_last = PackedByteArray()
+		_own_last.resize(sim.owner.size())
+		_own_last.fill(255)        # every row counts as changed
+	# rows whose land changed (comparing a row is done by the engine, so this is quick on big maps)
+	var any := false
+	for y in sim.h:
+		var a := y * w
+		if sim.owner.slice(a, a + w) == _own_last.slice(a, a + w):
 			continue
-		var c: Color = pc[o - 1]
-		data[i * 4] = c.r8; data[i * 4 + 1] = c.g8; data[i * 4 + 2] = c.b8; data[i * 4 + 3] = 120
-	_own = ImageTexture.create_from_image(Image.create_from_data(sim.w, sim.h, false, Image.FORMAT_RGBA8, data))
+		any = true
+		for i in range(a, a + w):
+			var o := sim.owner[i]
+			if o == 0:
+				_own_data[i * 4 + 3] = 0
+				continue
+			var c: Color = pc[o - 1]
+			_own_data[i * 4] = c.r8; _own_data[i * 4 + 1] = c.g8; _own_data[i * 4 + 2] = c.b8; _own_data[i * 4 + 3] = 120
+	if not any and _own != null:
+		return
+	_own_last = sim.owner.duplicate()
+	_own_img = Image.create_from_data(w, sim.h, false, Image.FORMAT_RGBA8, _own_data)
+	if _own == null or full:
+		_own = ImageTexture.create_from_image(_own_img)
+	else:
+		_own.update(_own_img)
 
 
 func _draw() -> void:

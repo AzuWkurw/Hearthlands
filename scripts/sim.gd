@@ -184,7 +184,7 @@ class Bld:
 	var dead := false
 	var wxp := 0.0     # experience of the worker here
 	var cyc := 0.0     # seconds per work cycle, copied from the data (0 = this building never works)
-	var rate_c := 1.0  # work speed, worked out once a second by staffing()
+	var rate_c := 1.0  # work speed, worked out when a work cycle starts
 	var retry := 0.0   # game time before which nobody checks again why work cannot start
 	var fails := 0     # failed start checks in a row; each one makes the next wait a little longer
 	var t_start := 0.0 # game time the current work cycle started
@@ -576,6 +576,7 @@ var _acc1 := 0.0
 var _ticks := 0                     # counts ticks, so work can be spread over several of them
 var _coming: Dictionary = {}        # realm id -> good -> on its way to the stores (see coming())
 var _coming_tick := -1
+var _coming_trips: Dictionary = {}  # realm id -> its trips carrying goods to the stores (this tick)
 var _type_bonus: Dictionary = {}    # realm id -> building type -> speed bonus from research (see rate()); emptied when research changes
 
 
@@ -1089,34 +1090,43 @@ func _rebuild_plots() -> void:
 ## Whether a building of size size has room at (x, y) (its own tile is checked by can_place): every
 ## plot tile free and buildable, flat enough, and a free tile all round it. "" when it fits.
 func plot_check(size: String, x: int, y: int, pid: int) -> String:
-	var i0 := idx(x, y)
+	var i0 := y * w + x
 	var tiles := plot_tiles_size(size, x, y)
 	if tiles.is_empty(): return "Too close to the edge of the map"
 	var lo := 255
 	var hi := 0
+	var has_h := not height.is_empty()
 	for t in tiles:
-		lo = mini(lo, int(height[t]) if not height.is_empty() else 0)
-		hi = maxi(hi, int(height[t]) if not height.is_empty() else 0)
+		if has_h:
+			lo = mini(lo, height[t])
+			hi = maxi(hi, height[t])
 		if t == i0:
 			continue
-		if owner[t] != pid: return "The %s building does not fit inside your territory here" % String(SIZE_NAMES[size]).to_lower()
-		if bmap[t] != 0 or plot[t] != 0: return "Not enough room: a %s building needs %d tiles" % [String(SIZE_NAMES[size]).to_lower(), tiles.size()]
-		if road[t] != 0: return "A road crosses the plot (a %s building needs %d tiles)" % [String(SIZE_NAMES[size]).to_lower(), tiles.size()]
+		if owner[t] != pid: return "x" if quiet_checks else "The %s building does not fit inside your territory here" % String(SIZE_NAMES[size]).to_lower()
+		if bmap[t] != 0 or plot[t] != 0: return "x" if quiet_checks else "Not enough room: a %s building needs %d tiles" % [String(SIZE_NAMES[size]).to_lower(), tiles.size()]
+		if road[t] != 0: return "x" if quiet_checks else "A road crosses the plot (a %s building needs %d tiles)" % [String(SIZE_NAMES[size]).to_lower(), tiles.size()]
 		if deco[t] == D_TREE: return "Trees in the way of the plot"
 		if deco[t] == D_ROCK or deco[t] == D_CLAY: return "Rocks in the way of the plot"
-		if ter[t] == WATER or ter[t] == MOUNT: return "Not enough flat land for a %s building" % String(SIZE_NAMES[size]).to_lower()
+		if ter[t] == WATER or ter[t] == MOUNT: return "x" if quiet_checks else "Not enough flat land for a %s building" % String(SIZE_NAMES[size]).to_lower()
 		var eb := door_owner(t % w, t / w, owner[t])
-		if eb != null: return "Keep the entrance of the %s free" % String(eb.def.name).to_lower()
-	if hi - lo > int(SIZE_SLOPE[size]): return "Too steep: a %s building needs flatter ground" % String(SIZE_NAMES[size]).to_lower()
+		if eb != null: return "x" if quiet_checks else "Keep the entrance of the %s free" % String(eb.def.name).to_lower()
+	if hi - lo > int(SIZE_SLOPE[size]): return "x" if quiet_checks else "Too steep: a %s building needs flatter ground" % String(SIZE_NAMES[size]).to_lower()
+	# a free tile between plots
 	for t in tiles:
 		var tx := t % w
 		var ty2 := t / w
 		for dy in range(-1, 2):
+			var ny := ty2 + dy
+			if ny < 0 or ny >= h:
+				continue
 			for dx in range(-1, 2):
-				if not inb(tx + dx, ty2 + dy):
+				var nx := tx + dx
+				if nx < 0 or nx >= w:
 					continue
-				var n := idx(tx + dx, ty2 + dy)
+				var n := ny * w + nx
 				if plot[n] != 0 and not tiles.has(n):
+					if quiet_checks:
+						return "x"
 					var nb: Bld = by_id.get(plot[n])
 					return "Too close to the %s: buildings need a free tile between them" % (String(nb.def.name).to_lower() if nb != null else "next building")
 	return ""
@@ -1223,6 +1233,11 @@ func _soldiers_hold(x: int, y: int, pid: int) -> bool:
 	return false
 
 
+## While set (the rivals' thinking), the checks below give "x" instead of a sentence when a spot
+## fails: the rivals test hundreds of spots a second and never read why.
+var quiet_checks := false
+
+
 func can_place(ty: String, x: int, y: int, pid: int, door := -1) -> String:
 	if not inb(x, y):
 		return "Outside the map"
@@ -1244,31 +1259,12 @@ func can_place(ty: String, x: int, y: int, pid: int, door := -1) -> String:
 	for dd in 4:
 		var nb := bld_at(x + int(DOOR_DX[dd]), y + int(DOOR_DY[dd]))
 		if nb != null and door_tile(nb) == i:
-			return "Keep the entrance of the %s free" % String(nb.def.name).to_lower()
+			return "x" if quiet_checks else "Keep the entrance of the %s free" % String(nb.def.name).to_lower()
 	var size := size_of(ty)
 	var pc := plot_check(size, x, y, pid)
 	if pc != "": return pc
 	if not door_ok(ty, door):
 		return "A %s building's entrance can face only %s" % [String(SIZE_NAMES[size]).to_lower(), " or ".join((SIZE_DOORS[size] as Array).map(func(k): return DOOR_NAMES[k]))]
-	# a new road must be able to get to its entrance (not closed in by plots, water or rocks)
-	var rr := logistics.reach(pid)
-	var any_way := false
-	var own_plot := plot_tiles_size(size, x, y)
-	for d2: int in ([door] if door >= 0 else SIZE_DOORS.get(size, [0])):
-		var t2 := door_at(x, y, d2)
-		if t2 < 0 or rr[t2] != 1:
-			continue
-		if road[t2] == pid:
-			any_way = true
-			break
-		# the way to it must not lead through the new building's own plot
-		var blocked := own_plot.duplicate()
-		blocked.append(idx(x, y))
-		if logistics.reach_avoiding(pid, t2, blocked):
-			any_way = true
-			break
-	if not any_way:
-		return "No road can get to this spot (closed in by buildings, water or rocks)" if door < 0 else "No road can get to this entrance (try turning it with R)"
 	if door >= 0:
 		var dt := door_at(x, y, door)
 		if dt < 0 or owner[dt] != pid: return "The entrance must face your own land"
@@ -1279,18 +1275,34 @@ func can_place(ty: String, x: int, y: int, pid: int, door := -1) -> String:
 		return "Needs research: " + GameData.tech_name(d.tech)
 	if not bld_enabled(ty):
 		return "Belongs to a game feature that is switched off"
+	# the ground and the site's own needs: quick to check, so before the search for a way in below
 	var t := ter[i]
 	if d.has("mine"):
 		if t != MOUNT: return "Mines go on mountains"
 		if not ore_known(pid, i): return "Not surveyed: send a geologist here first"
 		if ore[i] != int(d.mine) or vein_left(i) == 0: return "No %s deposit here" % GameData.ORE_NAMES.get(int(d.mine), "ore")
-		return ""
-	if t == WATER: return "Cannot build on water"
-	if t == MOUNT: return "Too steep, mines only"
-	var sc := site_check(d, x, y, false)
-	if sc != "": return sc
-	if d.get("needs_noble", false) and players[pid - 1].noble < 1: return "Needs a noble in your realm"
-	return ""
+	else:
+		if t == WATER: return "Cannot build on water"
+		if t == MOUNT: return "Too steep, mines only"
+		var sc := site_check(d, x, y, false)
+		if sc != "": return sc
+		if d.get("needs_noble", false) and players[pid - 1].noble < 1: return "Needs a noble in your realm"
+	# a new road must be able to get to its entrance (not closed in by plots, water or rocks)
+	var rr := logistics.reach(pid)
+	var own_plot := PackedInt32Array()
+	for d2: int in ([door] if door >= 0 else SIZE_DOORS.get(size, [0])):
+		var t2 := door_at(x, y, d2)
+		if t2 < 0 or rr[t2] != 1:
+			continue
+		if road[t2] == pid:
+			return ""
+		# the way to it must not lead through the new building's own plot
+		if own_plot.is_empty():
+			own_plot = plot_tiles_size(size, x, y)
+			own_plot.append(i)
+		if logistics.reach_avoiding(pid, t2, own_plot):
+			return ""
+	return "No road can get to this spot (closed in by buildings, water or rocks)" if door < 0 else "No road can get to this entrance (try turning it with R)"
 
 
 func missing(p: Player, cost: Dictionary) -> String:
@@ -2494,7 +2506,9 @@ func _veins_from_old_save() -> void:
 ## Other scripts (and mods) call these on the simulation as before; the work happens in the part.
 
 func ai_think(p: Player) -> void:
+	quiet_checks = true
 	ai.ai_think(p)
+	quiet_checks = false
 
 func ai_attack(p: Player) -> bool:
 	return ai.ai_attack(p)

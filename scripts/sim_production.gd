@@ -136,6 +136,7 @@ func coming(p: Sim.Player, res: String) -> float:
 	if sim._coming_tick != sim._ticks:
 		sim._coming_tick = sim._ticks
 		sim._coming = {}
+		sim._coming_trips = {}
 	if not sim._coming.has(p.id):
 		# worked out for one realm at a time, at most once a tick, and only when one of its stores is
 		# nearly full (see start_check)
@@ -145,10 +146,32 @@ func coming(p: Sim.Player, res: String) -> float:
 				for k in b.out_buf:
 					c[k] = float(c.get(k, 0.0)) + float(b.out_buf[k])
 			if b.working and b.def.has("out"):
-				_count_cycle(b, p, c)
-		for t in sim.trips:
-			if t.p == p.id and not t.delivered and t.site == 0 and t.dest == 0:
-				c[t.res] = float(c.get(t.res, 0.0)) + t.n
+				if Crops.is_farm(b):
+					_count_cycle(b, p, c)
+				else:
+					# what a cycle of this type makes, with research's extra, worked out once per type
+					if not sim._type_bonus.has(p.id):
+						sim._type_bonus[p.id] = {}
+					var tb: Dictionary = sim._type_bonus[p.id]
+					var key := "*" + b.ty
+					if not tb.has(key):
+						var adds := []
+						var extra := _extra_out(p, b.ty)
+						for k in b.def.out:
+							if k != "research" and k != "ship":
+								adds.append([k, float(b.def.out[k]) + extra])
+						tb[key] = adds
+					for a in tb[key]:
+						c[a[0]] = float(c.get(a[0], 0.0)) + float(a[1])
+		# goods carried to the stores: one walk over the trips for every realm at once
+		if sim._coming_trips.is_empty():
+			for q in sim.players:
+				sim._coming_trips[q.id] = []
+			for t in sim.trips:
+				if not t.delivered and t.site == 0 and t.dest == 0:
+					(sim._coming_trips[t.p] as Array).append(t)
+		for t: Sim.Trip in sim._coming_trips[p.id]:
+			c[t.res] = float(c.get(t.res, 0.0)) + t.n
 		sim._coming[p.id] = c
 	return float((sim._coming[p.id] as Dictionary).get(res, 0.0))
 
@@ -487,6 +510,7 @@ func prod_tick(b: Sim.Bld, p: Sim.Player, _dt: float) -> void:
 		_count_cycle(b, p, sim._coming[p.id])     # so the next building this tick sees it
 	b.msg = "Working"
 	b.t_start = sim.time
+	b.rate_c = sim.rate(p, b)
 	b.t_end = sim.time + (cyc + sim.walk_time(b)) / maxf(0.05, b.rate_c)
 	b.retry = b.t_end
 

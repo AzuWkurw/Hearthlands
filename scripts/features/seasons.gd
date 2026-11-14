@@ -477,24 +477,44 @@ func _fill_window() -> void:
 # ---------------------------------------------------------------- drawing
 
 func _make_textures() -> void:
-	_masks.clear()
-	for k in 4:
-		_masks.append(_mask_tex(func(i: int) -> bool: return biome[i] == k and sim.ter[i] != Sim.WATER))
-	_ice = _mask_tex(func(i: int) -> bool: return biome[i] == TAIGA and sim.ter[i] == Sim.WATER)
-
-
-## A white picture, 4 pixels per tile, opaque where keep(tile) is true, with soft edges.
-func _mask_tex(keep: Callable) -> ImageTexture:
+	# one pass over the map fills all five pictures (the land of each climate, and the taiga's ice)
 	var w := sim.w
 	var h := sim.h
-	var data := PackedByteArray()
-	data.resize(w * h * 2)
-	for i in w * h:
-		data[i * 2] = 255
-		data[i * 2 + 1] = 255 if keep.call(i) else 0
-	var img := Image.create_from_data(w, h, false, Image.FORMAT_LA8, data)
+	var n := w * h
+	var datas: Array = []
+	for k in 5:
+		var d := PackedByteArray()
+		d.resize(n * 2)
+		datas.append(d)
+	var d0: PackedByteArray = datas[0]
+	var d1: PackedByteArray = datas[1]
+	var d2: PackedByteArray = datas[2]
+	var d3: PackedByteArray = datas[3]
+	var di: PackedByteArray = datas[4]
+	for i in n:
+		var j := i * 2
+		d0[j] = 255; d1[j] = 255; d2[j] = 255; d3[j] = 255; di[j] = 255
+		var b := biome[i]
+		if sim.ter[i] == Sim.WATER:
+			if b == TAIGA:
+				di[j + 1] = 255
+		else:
+			match b:
+				0: d0[j + 1] = 255
+				1: d1[j + 1] = 255
+				2: d2[j + 1] = 255
+				3: d3[j + 1] = 255
+	_masks.clear()
+	for d in [d0, d1, d2, d3]:
+		_masks.append(_mask_tex(d))
+	_ice = _mask_tex(di)
+
+
+## A white picture, 4 pixels per tile, from data (white and opacity per tile), with soft edges.
+func _mask_tex(data: PackedByteArray) -> ImageTexture:
+	var img := Image.create_from_data(sim.w, sim.h, false, Image.FORMAT_LA8, data)
 	img.convert(Image.FORMAT_RGBA8)
-	img.resize(w * 4, h * 4, Image.INTERPOLATE_BILINEAR)
+	img.resize(sim.w * 4, sim.h * 4, Image.INTERPOLATE_BILINEAR)
 	return ImageTexture.create_from_image(img)
 
 

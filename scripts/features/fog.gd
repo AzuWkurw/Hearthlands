@@ -20,6 +20,19 @@ var walks: Array = []              # scouts out: [realm id, path (tiles), t0, t_
 var tex: ImageTexture              # the fog picture, 4 pixels a tile, for the map and the minimap
 var _img_dirty := true
 var _sig := ""                     # what the sight was last worked out from; unchanged means nothing to do
+# On big maps whole-map loops in script are slow, so the work below is done again only for rows of the
+# map that changed (the engine compares a row at once):
+var _own_last := PackedByteArray()  # sim.owner when _own_vis was last brought up to date
+var _own_vis := PackedByteArray()   # 1 where your realm holds the land
+var _img_data := PackedByteArray()  # the fog picture's pixels (one a tile, before smoothing)
+var _img_exp := PackedByteArray()   # explored and vis as the picture last showed them
+var _img_vis := PackedByteArray()
+
+
+## Whether row y of a and b differ (both w wide).
+static func _row_differs(a: PackedByteArray, b: PackedByteArray, y: int, w: int) -> bool:
+	var s := y * w
+	return a.slice(s, s + w) != b.slice(s, s + w)
 
 
 func _init() -> void:
@@ -36,6 +49,9 @@ func on_start(loaded: bool) -> void:
 		explored.resize(n)
 	vis = PackedByteArray()
 	vis.resize(n)
+	_own_last = PackedByteArray()
+	_img_exp = PackedByteArray()
+	_sig = ""
 	# scouts counted as out with no walk to show for it (the feature was off for a while) are home
 	for p: Sim.Player in sim.players:
 		if not walks.any(func(wk): return int(wk[0]) == p.id):
@@ -102,11 +118,23 @@ func _update_sight() -> void:
 		return
 	_sig = sig
 	var before := vis.duplicate()
-	vis.fill(0)
 	var n := sim.w * sim.h
-	for i in n:
-		if sim.owner[i] == p.id:
-			vis[i] = 1
+	var w := sim.w
+	if _own_last.size() != n or _own_vis.size() != n:
+		_own_vis = PackedByteArray()
+		_own_vis.resize(n)
+		_own_last = PackedByteArray()
+		_own_last.resize(n)
+		_own_last.fill(255)
+	var own_moved := false
+	for y in sim.h:
+		if _row_differs(sim.owner, _own_last, y, w):
+			own_moved = true
+			for i in range(y * w, y * w + w):
+				_own_vis[i] = 1 if sim.owner[i] == p.id else 0
+	if own_moved:
+		_own_last = sim.owner.duplicate()
+	vis = _own_vis.duplicate()
 	for b: Sim.Bld in sim.realm_blds(p):
 		var r := BLD_SIGHT
 		if b.ty == "hq":
@@ -121,9 +149,11 @@ func _update_sight() -> void:
 			var at := walk_pos(wk)
 			_reveal(roundi(at.x), roundi(at.y), SCOUT_SIGHT)
 	if vis != before:
-		for i in n:
-			if vis[i] == 1:
-				explored[i] = 1
+		for y in sim.h:
+			if before.size() != n or _row_differs(vis, before, y, w):
+				for i in range(y * w, y * w + w):
+					if vis[i] == 1:
+						explored[i] = 1
 		_img_dirty = true
 	_remember_rivals(p)
 
@@ -159,15 +189,29 @@ func _make_image() -> void:
 	_img_dirty = false
 	var w := sim.w
 	var h := sim.h
-	var data := PackedByteArray()
-	data.resize(w * h * 4)
-	for i in w * h:
-		var a := 0
-		if explored[i] == 0:
-			a = 255
-		elif vis[i] == 0:
-			a = 120
-		data[i * 4] = 10; data[i * 4 + 1] = 12; data[i * 4 + 2] = 14; data[i * 4 + 3] = a
+	var n := w * h
+	if _img_data.size() != n * 4 or _img_exp.size() != n or _img_vis.size() != n:
+		_img_data = PackedByteArray()
+		_img_data.resize(n * 4)
+		_img_exp = PackedByteArray()
+		_img_exp.resize(n)
+		_img_exp.fill(255)          # every row is drawn
+		_img_vis = PackedByteArray()
+		_img_vis.resize(n)
+	var data := _img_data
+	for y in h:
+		if not _row_differs(explored, _img_exp, y, w) and not _row_differs(vis, _img_vis, y, w):
+			continue
+		for i in range(y * w, y * w + w):
+			var a := 0
+			if explored[i] == 0:
+				a = 255
+			elif vis[i] == 0:
+				a = 120
+			data[i * 4] = 10; data[i * 4 + 1] = 12; data[i * 4 + 2] = 14; data[i * 4 + 3] = a
+	_img_data = data
+	_img_exp = explored.duplicate()
+	_img_vis = vis.duplicate()
 	# four pixels a tile, smoothed, so the edge of sight is soft
 	var img := Image.create_from_data(w, h, false, Image.FORMAT_RGBA8, data)
 	img.resize(w * 4, h * 4, Image.INTERPOLATE_BILINEAR)
@@ -271,6 +315,9 @@ func save_state() -> Dictionary:
 
 func load_state(d: Dictionary) -> void:
 	explored = d.get("explored", PackedByteArray())
+	_own_last = PackedByteArray()
+	_img_exp = PackedByteArray()
+	_sig = ""
 	seen = {}
 	for k in d.get("seen", {}):
 		seen[int(k)] = d.seen[k]
