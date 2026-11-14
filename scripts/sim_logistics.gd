@@ -20,7 +20,7 @@ func _init(p_sim: Sim) -> void:
 ## Bridges. A road may cross water only straight across, from land to land, over at most
 ## BRIDGE_MAX water tiles inside the realm. Each new bridge tile costs BRIDGE_PLANKS planks (paving it
 ## with stone makes it a stone bridge). Ships pass under them.
-const BRIDGE_MAX := 3
+const BRIDGE_MAX := 6
 const BRIDGE_PLANKS := 2
 
 var last_laid := PackedInt32Array()   # the tiles the last road laid made new (for undo)
@@ -44,6 +44,29 @@ func bridge_landing(cur: int, ni: int, pid: int) -> int:
 			return -1
 		c = nxt
 	return -1
+
+
+## Why no bridge can start from land tile cur straight over water tile ni ("" when one can).
+func bridge_why(cur: int, ni: int, pid: int) -> String:
+	if sim.ter[cur] == Sim.WATER or sim.ter[ni] != Sim.WATER:
+		return ""
+	var d := ni - cur
+	var c := cur
+	for k in BRIDGE_MAX + 1:
+		var nx := c % sim.w + (d if absi(d) == 1 else 0)
+		var nxt := c + d
+		if nxt < 0 or nxt >= sim.w * sim.h or nx < 0 or nx >= sim.w:
+			return "The water runs to the edge of the map."
+		if sim.ter[nxt] != Sim.WATER:
+			if sim.owner[nxt] != pid:
+				return "The far shore is not your land."
+			if sim.deco[nxt] == Sim.D_ROCK or sim.deco[nxt] == Sim.D_CLAY or (sim.plot[nxt] != 0 and sim.bmap[nxt] == 0):
+				return "Something on the far shore is in the way (a rock, a clay pit or a field)."
+			return ""
+		if sim.owner[nxt] != pid:
+			return "Bridges can only cross water inside your land."
+		c = nxt
+	return "Too wide: a bridge crosses at most %d tiles of water, in a straight line." % BRIDGE_MAX
 
 
 ## In a road search: may the road step from cur onto water tile ni? Along a bridge already there, or
@@ -1613,15 +1636,39 @@ func build_road(sx: int, sy: int, gx: int, gy: int, pid: int) -> String:
 	var gb := sim.bld_at(gx, gy)
 	if gb != null and gb.p != pid:
 		return "That building is not yours."
-	if gb == null and (sim.ter[g] == Sim.WATER or sim.deco[g] == Sim.D_ROCK or sim.deco[g] == Sim.D_CLAY):
+	if gb == null and sim.ter[g] == Sim.WATER:
+		return "A road cannot end on the water: click the far shore and the road builds a bridge (straight across, up to %d tiles, %d planks a tile)." % [BRIDGE_MAX, BRIDGE_PLANKS]
+	if gb == null and (sim.deco[g] == Sim.D_ROCK or sim.deco[g] == Sim.D_CLAY):
 		return "A road cannot end there."
 	var path := find_path(sx, sy, gx, gy, pid)
 	if path.is_empty():
-		return "There is no way through for a road."
+		var bw := _bridge_hint(s, g, pid)
+		return "There is no way through for a road." + (" " + bw if bw != "" else "")
 	var why := bridge_cost_ok(path, pid)
 	if why != "":
 		return why
 	lay_road(path, pid)
+	return ""
+
+
+## When water lies on the straight way from s towards g: why no bridge crosses it there ("" if none).
+func _bridge_hint(s: int, g: int, pid: int) -> String:
+	var sx := s % sim.w
+	var sy := s / sim.w
+	var dx := g % sim.w - sx
+	var dy := g / sim.w - sy
+	var n := maxi(absi(dx), absi(dy))
+	var prev := s
+	for k in range(1, n + 1):
+		var x := sx + roundi(dx * float(k) / n)
+		var y := sy + roundi(dy * float(k) / n)
+		var i := sim.idx(x, y)
+		if sim.ter[i] == Sim.WATER and sim.ter[prev] != Sim.WATER:
+			var d := i - prev
+			if absi(d) == 1 or absi(d) == sim.w:
+				return bridge_why(prev, i, pid)
+			return "Bridges run straight across the water, along a row or a column of tiles."
+		prev = i
 	return ""
 
 

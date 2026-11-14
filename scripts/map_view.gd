@@ -255,6 +255,19 @@ func draw_map_texture(ci: CanvasItem, tex: Texture2D, mod := Color.WHITE) -> voi
 	ci.draw_mesh(_map_mesh, tex, Transform2D(), mod)
 
 
+## The seasons' tints are laid on by the ground shader (see ground.gdshader); the seasons feature
+## hands them over each frame it draws. params: tint0..3, autumn_col, green_col, snow_amt, ice_col.
+var _season_on := false
+
+func set_season(mask: Texture2D, ice: Texture2D, params: Dictionary) -> void:
+	_season_on = true
+	_ground_mat.set_shader_parameter("season_mask", mask)
+	_ground_mat.set_shader_parameter("ice_mask", ice)
+	_ground_mat.set_shader_parameter("map_size", Vector2(sim.w, sim.h))
+	for k in params:
+		_ground_mat.set_shader_parameter(k, params[k])
+
+
 ## Four raised corners of tile (x, y), for drawing something lying on the ground there.
 func tile_quad(x: int, y: int) -> PackedVector2Array:
 	var W := sim.w + 1
@@ -755,13 +768,27 @@ func _draw_ground() -> void:
 	if z < FAR_ZOOM and chunks.far == null:
 		chunks.far = MapChunks.new()
 		chunks.far.TS = 8
-		chunks.far.max_chunks = 900    # 64 KB each: far out the whole map may be on screen
 		chunks.far.bake_trees = true
 		chunks.far.sim = sim
 		chunks.far.smooth = chunks.smooth
 		chunks.far.details = false
 		chunks.far.load_images()
 	var ch: MapChunks = chunks.hi if z >= HIRES_ZOOM else (chunks if z >= LORES_ZOOM else (chunks.twin if z >= FAR_ZOOM else chunks.far))
+	# how many chunks are on screen: on a big screen, or with a small interface size, far more than
+	# at 1600 x 900. The chunks kept must hold them all, or each frame forgets chunks it still shows
+	# and those parts stay the minimap's flat colours; very many → the quarter-size chunks.
+	var on_screen := (x1 / MapChunks.CH - x0 / MapChunks.CH + 1) * (y1 / MapChunks.CH - y0 / MapChunks.CH + 1)
+	if on_screen > 160 and ch != chunks.far:
+		if chunks.far == null:
+			chunks.far = MapChunks.new()
+			chunks.far.TS = 8
+			chunks.far.bake_trees = true
+			chunks.far.sim = sim
+			chunks.far.smooth = chunks.smooth
+			chunks.far.details = false
+			chunks.far.load_images()
+		ch = chunks.far
+	ch.max_chunks = maxi(ch.max_chunks, on_screen + 40)
 	chunks.sim = sim
 	ch.sim = sim
 	ch.begin_frame()
@@ -840,11 +867,13 @@ func _draw() -> void:
 	if traffic_ui != null and traffic_ui.on:
 		traffic_ui.draw(self, x0, x1, y0, y1)
 	# features draw on the ground (season colours, snow) under the buildings
+	_season_on = false
 	if not sim.features.is_empty():
 		var vr := Rect2i(x0, y0, x1 - x0 + 1, y1 - y0 + 1)
 		for f: Feature in sim.features:
 			f.draw_map(self, vr)
 			if prof_on: _pm("ground:" + f.id)
+	_ground_mat.set_shader_parameter("use_season", _season_on)
 	if prof_on: _pm("features_ground")
 	# building-site markers (while placing, or with a building group open), under the buildings
 	_tool_labels = []

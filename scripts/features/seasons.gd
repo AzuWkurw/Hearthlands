@@ -52,7 +52,7 @@ var weather: Array = ["clear", "clear", "clear", "clear"]   # current weather of
 var weather_until: Array = [0.0, 0.0, 0.0, 0.0]
 var rng := RandomNumberGenerator.new()
 var last_season := -1
-var _masks: Array = []               # per biome: a soft-edged picture of where it is (for drawing)
+var _masks: Array = []               # [where each climate lies, one per colour channel] (for the ground shader)
 var _ice: ImageTexture
 var _snow: Array = [0.0, 0.0, 0.0, 0.0]   # how much snow lies in each biome now (0 to 1), eased
 var _parts: Array = []               # rain drops and snow flakes on screen
@@ -504,10 +504,16 @@ func _make_textures() -> void:
 				1: d1[j + 1] = 255
 				2: d2[j + 1] = 255
 				3: d3[j + 1] = 255
-	_masks.clear()
-	for d in [d0, d1, d2, d3]:
-		_masks.append(_mask_tex(d))
-	_ice = _mask_tex(di)
+	# for the ground shader: the four climates in the four channels of one picture, the ice in another
+	var md := PackedByteArray()
+	md.resize(n * 4)
+	var idd := PackedByteArray()
+	idd.resize(n)
+	for i in n:
+		md[i * 4] = d0[i * 2 + 1]; md[i * 4 + 1] = d1[i * 2 + 1]; md[i * 4 + 2] = d2[i * 2 + 1]; md[i * 4 + 3] = d3[i * 2 + 1]
+		idd[i] = di[i * 2 + 1]
+	_masks = [ImageTexture.create_from_image(Image.create_from_data(w, h, false, Image.FORMAT_RGBA8, md))]
+	_ice = ImageTexture.create_from_image(Image.create_from_data(w, h, false, Image.FORMAT_R8, idd))
 
 
 ## A white picture, 4 pixels per tile, from data (white and opacity per tile), with soft edges.
@@ -528,31 +534,27 @@ func _snow_target(k: int) -> float:
 
 
 func draw_map(view: CanvasItem, _rect: Rect2i) -> void:
-	if _masks.size() < 4:
+	if _masks.is_empty() or not view.has_method("set_season"):
 		return
-	var mv = view   # the map view: draws whole-map pictures raised with the ground
 	var s := season()
 	var ph := fmod(phase() * 4.0, 1.0)
 	# a warm, golden-brown cast through autumn, strongest in its middle
 	var autumn := sin(ph * PI) if s == 2 else 0.0
 	# the fresh green of early summer
 	var green := sin(ph * PI) * 0.5 if s == 1 else 0.0
+	var snow := Vector4.ZERO
 	for k in 4:
 		# snow settles and melts over about half a game minute, however fast the game runs
 		_snow[k] = lerpf(float(_snow[k]), _snow_target(k), clampf((sim.time - _snow_t) / 30.0, 0.0, 1.0))
-		var tex: Texture2D = _masks[k]
-		var tint: Color = BIOME_TINT[k]
-		if tint.a > 0.0:
-			mv.draw_map_texture(view, tex, tint)
-		if autumn > 0.01:
-			mv.draw_map_texture(view, tex, Color(0.85, 0.48, 0.12, 0.16 * autumn))
-		if green > 0.01:
-			mv.draw_map_texture(view, tex, Color(0.35, 0.75, 0.25, 0.08 * green))
-		if float(_snow[k]) > 0.01:
-			mv.draw_map_texture(view, tex, Color(0.95, 0.97, 1.0, 0.6 * float(_snow[k])))
+		snow[k] = 0.6 * float(_snow[k])
 	_snow_t = sim.time
-	if float(_snow[TAIGA]) > 0.4:
-		mv.draw_map_texture(view, _ice, Color(0.85, 0.93, 1.0, (float(_snow[TAIGA]) - 0.4) * 0.9))
+	var ice := Color(0.85, 0.93, 1.0, (float(_snow[TAIGA]) - 0.4) * 0.9 if float(_snow[TAIGA]) > 0.4 else 0.0)
+	# laid on by the ground shader (so it lines up with raised ground and looks the same in OpenGL
+	# and Vulkan, which drew the old see-through overlays solid)
+	view.set_season(_masks[0], _ice, {
+		"tint0": BIOME_TINT[0], "tint1": BIOME_TINT[1], "tint2": BIOME_TINT[2], "tint3": BIOME_TINT[3],
+		"autumn_col": Color(0.85, 0.48, 0.12, 0.16 * autumn), "green_col": Color(0.35, 0.75, 0.25, 0.08 * green),
+		"snow_amt": snow, "ice_col": ice})
 
 
 func draw_overlay(view: CanvasItem, to_tile: Callable) -> void:

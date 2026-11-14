@@ -98,6 +98,8 @@ func _rebuild_base() -> void:
 		var c := _tile_color(i)
 		data[i * 3] = c.r8; data[i * 3 + 1] = c.g8; data[i * 3 + 2] = c.b8
 	_base_img = Image.create_from_data(sim.w, sim.h, false, Image.FORMAT_RGB8, data)
+	# as RGBA: three-byte pictures came out black with Vulkan
+	_base_img.convert(Image.FORMAT_RGBA8)
 	_base = ImageTexture.create_from_image(_base_img)
 
 

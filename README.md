@@ -7,6 +7,24 @@ economy you do.
 
 ![Hearthlands](docs/screenshot.png)
 
+## Download
+
+The ready-made Windows game is on the [`downloads` branch](../../tree/downloads): download the zip,
+unzip it and run `Hearthlands.exe`. Current version: **v0.38.0 build 43.2** (see `CHANGELOG.md`).
+
+What is in the game now:
+
+- Six ages from Roman to Industrial, 137 techs and a special study at the end of each age that opens
+  the next; each age has its own building looks and kind of soldier.
+- 91 buildings in long production chains, each drawn with the tools and goods of its trade.
+- Up to 8 rival AIs with personalities, diplomacy, attacks and sieges, sea expeditions and colonies.
+- Four classes of people with needs and contentment, seasons and weather, diseases, fires, wildlife,
+  random events, ruins and bandit camps.
+- A map editor (painting, mirrored maps, rivers, starts, missions), missions and a campaign.
+- Music and positional sound; OpenGL or Vulkan; German and English.
+
+The plans for the next builds are in the [roadmap](https://claude.ai/artifact/YVAWwJGUN4FRBYtpz3zgQh).
+
 ## Run it
 
 1. Install Godot 4.3+ (the standard build, not .NET) from godotengine.org.
@@ -34,6 +52,7 @@ One command makes a whole release:
 ```
 python3 tools/make_build.py --minor "Farms work real fields."     # new features
 python3 tools/make_build.py "Fixed the bridge bug."               # fixes only
+python3 tools/make_build.py --fix "Fixed the bridge bug."         # a fix release of the last build (43 -> 43.1)
 ```
 
 It raises the build number, writes the notes into `CHANGELOG.md`, checks the game data, exports
@@ -340,13 +359,13 @@ Open **Settings** (top bar or F10). Everything there is remembered in `user://se
 - Command line (also for the exported game): `--rendering-method gl_compatibility` or `forward_plus` or
   `mobile` starts with that renderer once; `--resolution 1280x720` sets the window size.
 
-## Resources (60)
+## Resources (63)
 
-Logs, Stone, Clay, Water, Grain, Hops, Wool, Hides, Salt, Coal, Iron ore, Copper ore, Gold ore, Planks, Bricks, Flour, Bread, Fish, Smoked fish, Meat, Apples, Beer, Cloth, Leather, Paper, Iron, Copper, Gold, Axes, Pickaxes, Farm tools, Bows and rods, Knives, Saws, Smith's tongs, Trowels, Shears, Chisels, Quills, Harnesses, Weapons, Armor, Clothes, Flax, Linen clothes, Fur coats, Jewelry, Furniture, Sand, Glassware, Milk, Cheese, Sausages, Honey, Beeswax, Candles, Grapes, Wine, Herbs, Medicine.
+Logs, Stone, Clay, Water, Grain, Hops, Wool, Hides, Salt, Coal, Iron ore, Copper ore, Gold ore, Planks, Bricks, Flour, Bread, Fish, Smoked fish, Meat, Apples, Vegetables, Beer, Cloth, Leather, Paper, Iron, Copper, Gold, Axes, Pickaxes, Farm tools, Bows and rods, Knives, Saws, Smith's tongs, Trowels, Shears, Chisels, Quills, Harnesses, Weapons, Bows, Armor, Clothes, Flax, Linen clothes, Fur coats, Jewelry, Furniture, Sand, Glassware, Milk, Cheese, Sausages, Honey, Beeswax, Candles, Grapes, Wine, Herbs, Medicine, Donkeys.
 
-Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples, Cheese, Sausages, Honey.
+Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples, Vegetables, Cheese, Sausages, Honey.
 
-## Buildings (81 you can build)
+## Buildings (91 you can build)
 
 **Raw**
 
@@ -406,6 +425,7 @@ Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples,
 |---|---|---|---|---|---|
 | Toolsmith | 3 planks, 3 stone | artisan (metalwork) | 1 iron, 1 planks | 2 tools, the kind most wanted | Roman (start) |
 | Weaponsmith | 3 planks, 3 stone | artisan (metalwork) | 1 iron, 1 coal | 1 weapons | Roman (start) |
+| Bowyer | 3 planks, 1 stone | artisan (woodwork) | 2 logs | 1 bows | Roman (start) |
 | Armorer | 3 planks, 3 stone | artisan (metalwork) | 1 iron, 1 leather, 1 coal | 1 armor | Chainmail |
 | Tannery | 3 planks, 2 stone | artisan (textiles and leather) | 1 hides, 1 water | 1 leather | Roman (start) |
 | Weaver | 3 planks, 2 stone | peasant (textiles and leather) | 2 wool | 1 cloth | Wool trade |
@@ -432,6 +452,9 @@ Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples,
 | Apothecary | 3 planks, 2 stone | artisan (healing) | 2 herbs | 2 medicine | Roman (start) |
 | Infirmary | 4 planks, 3 stone | artisan (healing) | 1 medicine | – | Roman (start) |
 | Bathhouse | 4 planks, 3 stone | peasant (healing) | 1 water, 1 logs | – | Roman (start) |
+| Tavern | 4 planks, 2 stone | peasant (food and drink) | 1 beer, 1 bread | – | Roman (start) |
+| Chapel | 3 planks, 4 stone | peasant (healing) | 1 candles | – | Roman (start) |
+| Fire station | 2 planks, 3 stone | peasant (healing) | – | – | Roman (start) |
 
 **Science**
 
@@ -447,27 +470,33 @@ Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples,
 | Building | Cost | Worker (trade) | Uses | Makes | Research |
 |---|---|---|---|---|---|
 | Storehouse | 4 planks, 2 stone | – | – | room for 40 of each good, 8 porters | Roman (start) |
+| Market | 5 planks, 3 stone | – | – | room for 20 of each good, 3 porters | Roman (start) |
 | Warehouse | 6 planks, 6 stone, 4 bricks | – | – | room for 120 of each good, 12 porters | Trade fairs |
 | Great depot | 8 planks, 10 bricks, 4 iron | – | – | room for 300 of each good, 20 porters | Railways |
 | Mule station | 3 planks, 1 stone | peasant (transport) | 1 grain | 6 mules carrying 3 within 10 tiles | Roman (start) |
 | Ox cart yard | 5 planks, 2 stone | artisan (transport) | 1 planks | 4 carts carrying 6 within 12 tiles | Ox carts |
+| Donkey farm | 4 planks, 2 stone | peasant (farming) | 1 grain, 1 water | 1 donkeys | Roman (start) |
+| Harbour | 6 planks, 4 stone | – | – | claims 5 tiles, holds 1 | Roman (start) |
+| Shipyard | 5 planks, 2 stone | artisan (woodwork) | 4 planks | 1 ship | Roman (start) |
 
 **Military**
 
 | Building | Cost | Worker (trade) | Uses | Makes | Research |
 |---|---|---|---|---|---|
+| Boundary stone | 3 stone, 1 planks | – | – | – | Roman (start) |
 | Palisade | 3 planks | – | – | claims 5 tiles, holds 1 | Roman (start) |
 | Guard hut | 2 planks, 1 stone | – | – | claims 6 tiles, holds 2 | Roman (start) |
 | Guardhouse | 2 planks, 3 stone | – | – | claims 7 tiles, holds 3, walls +3% | Shield walls |
 | Tower | 3 planks, 4 stone | – | – | claims 9 tiles, holds 4 | Roman (start) |
 | Keep | 4 planks, 6 stone | – | – | claims 11 tiles, holds 6, walls +5% | Town walls |
 | Castle | 5 planks, 6 stone, 4 bricks, 2 gold | – | – | claims 13 tiles, holds 8 | Stone castles |
-| Scout lodge | 3 planks, 1 stone | peasant (fishing and hunting) | 1 bread, 1 bows and rods | trains a scout | Roman (start) |
+| Scout lodge | 3 planks, 1 stone | peasant (fishing and hunting) | 1 bread, 1 bows | trains a scout | Roman (start) |
 | Watch tower | 3 planks, 2 stone | scout (mil) | – | – | Roman (start) |
 | Fortress | 6 planks, 10 stone, 8 bricks, 2 iron | – | – | claims 15 tiles, holds 12 | Gunpowder |
 | Star fort | 4 planks, 10 stone, 6 bricks | – | – | claims 14 tiles, holds 10, walls +8%, 2 cannon (range 7) | Star forts |
 | Gun battery | 3 planks, 4 stone, 3 iron | – | – | claims 8 tiles, holds 5, 3 cannon (range 8) | Drill manuals |
 | Armoured redoubt | 3 planks, 8 stone, 10 bricks, 6 iron | – | – | claims 16 tiles, holds 16, walls +8%, 4 cannon (range 9) | Rifling |
+| Catapult | 5 planks, 3 stone | peasant (mil) | 1 stone | – | Stone masonry |
 
 ## Research tree
 
@@ -475,63 +504,68 @@ Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples,
 
 | Age | Tech | Cost | Requires | Unlocks | Effect |
 |---|---|---|---|---|---|
-| Early Medieval | Iron axes | 110 | – | – | Woodcutter +20% speed |
-| Early Medieval | Coppicing | 110 | – | – | Forester +30% speed |
-| Early Medieval | Fish traps | 110 | – | – | Fisher +20% speed |
-| Early Medieval | Wells and cisterns | 110 | – | – | Well +30% speed |
-| Early Medieval | Heavy plough | 120 | – | Pig farm, Dairy farm | Farm +25% speed |
-| Early Medieval | Watermills | 120 | – | – | Mill +50% speed, Sawmill +50% speed |
-| Early Medieval | Stone masonry | 120 | – | – | Quarry +20% speed |
-| Early Medieval | Beekeeping | 120 | – | – | Apiary +30% speed |
-| Early Medieval | Tool care | 120 | – | – | 15% of new workers need no new tool |
-| Early Medieval | Longbows | 130 | – | – | Hunter +20% speed, attack odds +2% |
-| Early Medieval | Granaries | 130 | – | – | store room +10% |
-| Early Medieval | Timber framing | 130 | – | – | build speed +10%, housing +10% |
+| Early Medieval | The new kingdoms | 90 | – | – | gold tax +5% |
+| High Medieval | Rise of the towns | 360 | – | – | all production +3% |
+| Renaissance | Rebirth of learning | 640 | – | – | research +8% |
+| Enlightenment | Age of reason | 900 | – | – | research +5%, gold tax +5% |
+| Industrial | Dawn of industry | 1250 | – | – | all production +4% |
+| Early Medieval | Iron axes | 110 | The new kingdoms | – | Woodcutter +20% speed |
+| Early Medieval | Coppicing | 110 | The new kingdoms | – | Forester +30% speed |
+| Early Medieval | Fish traps | 110 | The new kingdoms | – | Fisher +20% speed |
+| Early Medieval | Wells and cisterns | 110 | The new kingdoms | – | Well +30% speed |
+| Early Medieval | Heavy plough | 120 | The new kingdoms | Pig farm, Dairy farm | Farm +25% speed |
+| Early Medieval | Watermills | 120 | The new kingdoms | – | Mill +50% speed, Sawmill +50% speed |
+| Early Medieval | Stone masonry | 120 | The new kingdoms | – | Quarry +20% speed |
+| Early Medieval | Beekeeping | 120 | The new kingdoms | – | Apiary +30% speed |
+| Early Medieval | Tool care | 120 | The new kingdoms | – | 15% of new workers need no new tool |
+| Early Medieval | Longbows | 130 | The new kingdoms | – | Hunter +20% speed, attack odds +2% |
+| Early Medieval | Granaries | 130 | The new kingdoms | – | store room +10% |
+| Early Medieval | Timber framing | 130 | The new kingdoms | – | build speed +10%, housing +10% |
 | Early Medieval | Herbal lore | 130 | Monasteries | – | people eat -5% |
-| Early Medieval | Village markets | 130 | – | – | carrier speed +5%, gold tax +5% |
-| Early Medieval | Monasteries | 140 | – | Hop farm, Brewery, Library, Vineyard, Winery, Chandler | – |
-| Early Medieval | Chainmail | 140 | – | Armorer | defence odds +3% |
-| Early Medieval | Ox carts | 140 | – | Ox cart yard | – |
+| Early Medieval | Village markets | 130 | The new kingdoms | – | carrier speed +5%, gold tax +5% |
+| Early Medieval | Monasteries | 140 | The new kingdoms | Hop farm, Brewery, Library, Vineyard, Winery, Chandler | – |
+| Early Medieval | Chainmail | 140 | The new kingdoms | Armorer | defence odds +3% |
+| Early Medieval | Ox carts | 140 | The new kingdoms | Ox cart yard | – |
 | Early Medieval | Horse collar | 140 | Heavy plough | – | carrier speed +10% |
-| Early Medieval | Apprenticeship | 140 | – | – | workers learn +15% faster |
-| Early Medieval | Bellows | 140 | – | – | metalwork workers +10% speed |
+| Early Medieval | Apprenticeship | 140 | The new kingdoms | – | workers learn +15% faster |
+| Early Medieval | Bellows | 140 | The new kingdoms | – | metalwork workers +10% speed |
 | Early Medieval | Shield walls | 140 | Chainmail | – | defence odds +3% |
 | Early Medieval | Open-field farming | 150 | Heavy plough | – | Farm +15% speed |
 | Early Medieval | Tithes | 150 | Monasteries | – | gold tax +10%, research +5% |
-| Early Medieval | Feudalism | 160 | – | Manor | gold tax +25% |
-| Early Medieval | Prospecting | 120 | – | – | – |
-| Early Medieval | Charcoal clamps | 120 | – | – | Charcoal burner +25% speed |
-| Early Medieval | Clay working | 120 | – | – | Clay pit +25% speed, Brickworks +10% speed |
-| Early Medieval | Hunting dogs | 120 | – | – | Hunter +25% speed |
+| Early Medieval | Feudalism | 160 | The new kingdoms | Manor | gold tax +25% |
+| Early Medieval | Prospecting | 120 | The new kingdoms | – | – |
+| Early Medieval | Charcoal clamps | 120 | The new kingdoms | – | Charcoal burner +25% speed |
+| Early Medieval | Clay working | 120 | The new kingdoms | – | Clay pit +25% speed, Brickworks +10% speed |
+| Early Medieval | Hunting dogs | 120 | The new kingdoms | – | Hunter +25% speed |
 | Early Medieval | Village smithy | 140 | Bellows | – | Toolsmith +20% speed, Weaponsmith +10% speed |
 | Early Medieval | Militia levy | 130 | Longbows | – | defence odds +3% |
 | Early Medieval | Pack mules | 130 | Ox carts | – | carrier speed +10% |
-| High Medieval | Wool trade | 240 | Heavy plough | Sheep farm, Weaver | – |
-| High Medieval | Salt roads | 240 | – | Saltworks, Smokehouse, Cheesery, Butcher | carrier speed +10% |
-| High Medieval | Post windmills | 240 | Watermills | – | Mill +30% speed |
-| High Medieval | Cheesemaking | 240 | Heavy plough | – | Cheesery +30% speed, Dairy farm +20% speed |
-| High Medieval | Bark tanning | 240 | Coppicing | – | Tannery +30% speed |
-| High Medieval | Trade fairs | 260 | Ox carts | Warehouse | carrier speed +10% |
-| High Medieval | Three-field system | 260 | Open-field farming | – | farming workers +15% speed |
-| High Medieval | Heavy horses | 260 | Horse collar | – | carrier speed +15% |
-| High Medieval | Wool combing | 260 | Heavy plough | – | textiles and leather workers +15% speed |
-| High Medieval | Dyeing | 260 | Monasteries | – | Tailor +25% speed |
-| High Medieval | Brewers' guild | 260 | Monasteries | – | Brewery +30% speed |
-| High Medieval | Vintners | 260 | Monasteries | – | Vineyard +25% speed, Winery +25% speed |
-| High Medieval | Hospices | 260 | Herbal lore | – | newcomers arrive +25% faster |
-| High Medieval | Cellars | 260 | Granaries | – | store room +15% |
-| High Medieval | Stone castles | 280 | Feudalism | Castle | defence odds +3% |
-| High Medieval | Guilds | 280 | Monasteries | Tailor, Carpenter, Jeweller, Sand pit, Glassworks | artisan workshops +10% |
-| High Medieval | Cathedral schools | 280 | Monasteries | – | School +30% speed, research +5% |
-| High Medieval | Town charters | 280 | Feudalism | – | gold tax +15% |
-| High Medieval | Stone roads | 280 | Stone masonry | – | carrier speed +10% |
-| High Medieval | Journeymen | 280 | Apprenticeship | – | workers learn +20% faster |
-| High Medieval | Papermaking | 300 | Monasteries | Paper mill | research +15% |
-| High Medieval | Crossbows | 300 | Longbows | – | attack odds +4% |
-| High Medieval | Masons' guild | 300 | Stone masonry | – | build speed +15%, mining and quarrying workers +10% speed |
-| High Medieval | Town walls | 300 | Shield walls | – | defence odds +4% |
+| High Medieval | Wool trade | 240 | Rise of the towns, Heavy plough | Sheep farm, Weaver | – |
+| High Medieval | Salt roads | 240 | Rise of the towns | Saltworks, Smokehouse, Cheesery, Butcher | carrier speed +10% |
+| High Medieval | Post windmills | 240 | Rise of the towns, Watermills | – | Mill +30% speed |
+| High Medieval | Cheesemaking | 240 | Rise of the towns, Heavy plough | – | Cheesery +30% speed, Dairy farm +20% speed |
+| High Medieval | Bark tanning | 240 | Rise of the towns, Coppicing | – | Tannery +30% speed |
+| High Medieval | Trade fairs | 260 | Rise of the towns, Ox carts | Warehouse | carrier speed +10% |
+| High Medieval | Three-field system | 260 | Rise of the towns, Open-field farming | – | farming workers +15% speed |
+| High Medieval | Heavy horses | 260 | Rise of the towns, Horse collar | – | carrier speed +15% |
+| High Medieval | Wool combing | 260 | Rise of the towns, Heavy plough | – | textiles and leather workers +15% speed |
+| High Medieval | Dyeing | 260 | Rise of the towns, Monasteries | – | Tailor +25% speed |
+| High Medieval | Brewers' guild | 260 | Rise of the towns, Monasteries | – | Brewery +30% speed |
+| High Medieval | Vintners | 260 | Rise of the towns, Monasteries | – | Vineyard +25% speed, Winery +25% speed |
+| High Medieval | Hospices | 260 | Rise of the towns, Herbal lore | – | newcomers arrive +25% faster |
+| High Medieval | Cellars | 260 | Rise of the towns, Granaries | – | store room +15% |
+| High Medieval | Stone castles | 280 | Rise of the towns, Feudalism | Castle | defence odds +3% |
+| High Medieval | Guilds | 280 | Rise of the towns, Monasteries | Tailor, Carpenter, Jeweller, Sand pit, Glassworks | artisan workshops +10% |
+| High Medieval | Cathedral schools | 280 | Rise of the towns, Monasteries | – | School +30% speed, research +5% |
+| High Medieval | Town charters | 280 | Rise of the towns, Feudalism | – | gold tax +15% |
+| High Medieval | Stone roads | 280 | Rise of the towns, Stone masonry | – | carrier speed +10% |
+| High Medieval | Journeymen | 280 | Rise of the towns, Apprenticeship | – | workers learn +20% faster |
+| High Medieval | Papermaking | 300 | Rise of the towns, Monasteries | Paper mill | research +15% |
+| High Medieval | Crossbows | 300 | Rise of the towns, Longbows | – | attack odds +4% |
+| High Medieval | Masons' guild | 300 | Rise of the towns, Stone masonry | – | build speed +15%, mining and quarrying workers +10% speed |
+| High Medieval | Town walls | 300 | Rise of the towns, Shield walls | – | defence odds +4% |
 | High Medieval | Smoke curing | 250 | Salt roads | – | Smokehouse +30% speed, Butcher +20% speed |
-| High Medieval | Candle making | 250 | Monasteries | – | Chandler +30% speed |
+| High Medieval | Candle making | 250 | Rise of the towns, Monasteries | – | Chandler +30% speed |
 | High Medieval | Tanners' guild | 270 | Bark tanning | – | Tannery +25% speed, Furrier +20% speed |
 | High Medieval | Herbals | 270 | Hospices, Papermaking | – | Apothecary +30% speed, Herb garden +20% speed |
 | High Medieval | Glassblowing | 280 | Guilds | – | Glassworks +30% speed, Sand pit +20% speed |
@@ -539,46 +573,46 @@ Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples,
 | High Medieval | Tournaments | 280 | Stone castles | – | workers learn +10% faster, attack odds +3% |
 | High Medieval | Treadwheel cranes | 290 | Masons' guild | – | build speed +15% |
 | High Medieval | Stone bridges | 290 | Stone roads | – | carrier speed +15% |
-| Renaissance | Cartography | 440 | Salt roads | – | carrier speed +25%, build speed +15% |
-| Renaissance | Printing press | 480 | Papermaking | University | research +25% |
-| Renaissance | Banking | 480 | Guilds | – | gold tax +50%, Mint +50% speed |
-| Renaissance | Lens grinding | 480 | Guilds | – | Glassworks +40% speed, research +5% |
-| Renaissance | Engraving | 480 | Guilds | – | Jeweller +30% speed, Mint +20% speed |
-| Renaissance | Standard tool patterns | 480 | Tool care | – | Toolsmith +50% speed, 10% of new workers need no new tool |
-| Renaissance | Double-entry bookkeeping | 500 | Town charters | – | gold tax +20% |
-| Renaissance | Humanism | 500 | Cathedral schools | – | research +10%, artisans and nobles use -10% goods |
-| Renaissance | New World crops | 500 | Three-field system | – | people eat -10% |
-| Renaissance | Mine pumps | 520 | Masons' guild | – | mining and quarrying workers +20% speed |
-| Renaissance | Guild halls | 520 | Journeymen | – | artisan workshops +10%, workers learn +15% faster |
-| Renaissance | Vein surveying | 540 | Masons' guild | – | 25% of mining leaves the vein untouched |
-| Renaissance | Joint-stock companies | 540 | Village markets | – | carrier speed +15%, store room +15% |
-| Renaissance | Gunpowder | 560 | Stone castles, Chainmail | Fortress | attack odds +5% |
-| Renaissance | Musketry | 560 | Crossbows | – | attack odds +5% |
-| Renaissance | Star forts | 560 | Town walls | – | defence odds +6% |
-| Renaissance | Geological survey | 480 | Prospecting | – | – |
-| Renaissance | Distilling | 480 | Brewers' guild | – | Brewery +20% speed, Winery +20% speed |
-| Renaissance | Trip hammers | 500 | Village smithy, Guilds | – | metalwork workers +20% speed |
+| Renaissance | Cartography | 440 | Rebirth of learning, Salt roads | – | carrier speed +25%, build speed +15% |
+| Renaissance | Printing press | 480 | Rebirth of learning, Papermaking | University | research +25% |
+| Renaissance | Banking | 480 | Rebirth of learning, Guilds | – | gold tax +50%, Mint +50% speed |
+| Renaissance | Lens grinding | 480 | Rebirth of learning, Guilds | – | Glassworks +40% speed, research +5% |
+| Renaissance | Engraving | 480 | Rebirth of learning, Guilds | – | Jeweller +30% speed, Mint +20% speed |
+| Renaissance | Standard tool patterns | 480 | Rebirth of learning, Tool care | – | Toolsmith +50% speed, 10% of new workers need no new tool |
+| Renaissance | Double-entry bookkeeping | 500 | Rebirth of learning, Town charters | – | gold tax +20% |
+| Renaissance | Humanism | 500 | Rebirth of learning, Cathedral schools | – | research +10%, artisans and nobles use -10% goods |
+| Renaissance | New World crops | 500 | Rebirth of learning, Three-field system | – | people eat -10% |
+| Renaissance | Mine pumps | 520 | Rebirth of learning, Masons' guild | – | mining and quarrying workers +20% speed |
+| Renaissance | Guild halls | 520 | Rebirth of learning, Journeymen | – | artisan workshops +10%, workers learn +15% faster |
+| Renaissance | Vein surveying | 540 | Rebirth of learning, Masons' guild | – | 25% of mining leaves the vein untouched |
+| Renaissance | Joint-stock companies | 540 | Rebirth of learning, Village markets | – | carrier speed +15%, store room +15% |
+| Renaissance | Gunpowder | 560 | Rebirth of learning, Stone castles, Chainmail | Fortress | attack odds +5% |
+| Renaissance | Musketry | 560 | Rebirth of learning, Crossbows | – | attack odds +5% |
+| Renaissance | Star forts | 560 | Rebirth of learning, Town walls | – | defence odds +6% |
+| Renaissance | Geological survey | 480 | Rebirth of learning, Prospecting | – | – |
+| Renaissance | Distilling | 480 | Rebirth of learning, Brewers' guild | – | Brewery +20% speed, Winery +20% speed |
+| Renaissance | Trip hammers | 500 | Rebirth of learning, Village smithy, Guilds | – | metalwork workers +20% speed |
 | Renaissance | Milled coinage | 500 | Banking | – | Mint +30% speed, gold tax +5% |
 | Renaissance | Navigators' school | 520 | Cartography | – | Fisher +20% speed, research +3% |
-| Renaissance | Hospitals | 520 | Hospices | – | Infirmary +30% speed |
+| Renaissance | Hospitals | 520 | Rebirth of learning, Hospices | – | Infirmary +30% speed |
 | Renaissance | Clockmaking | 540 | Lens grinding | – | all production +3% |
 | Renaissance | Field artillery | 580 | Gunpowder | – | attack odds +5% |
-| Enlightenment | Crop rotation | 720 | Wool trade | – | Farm +50% speed, Orchard +50% speed, Hop farm +30% speed |
-| Enlightenment | Selective breeding | 740 | Cheesemaking | – | Sheep farm +40% speed, Pig farm +40% speed, Dairy farm +40% speed |
-| Enlightenment | Lubricants | 740 | Standard tool patterns | – | 15% of new workers need no new tool, transport workers +30% speed |
-| Enlightenment | Blast furnace | 760 | Guilds | – | Iron smelter +1 output, Copper smelter +1 output |
-| Enlightenment | Seed drill | 760 | Three-field system | – | farming workers +25% speed |
-| Enlightenment | Inoculation | 760 | Hospices | – | newcomers arrive +30% faster, people eat -5% |
-| Enlightenment | Flying shuttle | 760 | Wool combing | – | Weaver +50% speed |
-| Enlightenment | Porcelain | 760 | Lens grinding | – | kilns and glass workers +30% speed |
-| Enlightenment | Town planning | 780 | Timber framing | – | housing +20%, build speed +15% |
-| Enlightenment | Scientific method | 800 | Printing press | – | research +50% |
-| Enlightenment | Standing army | 800 | Gunpowder | – | Barracks +50% speed, attack odds +5%, defence odds +5% |
-| Enlightenment | Canals | 800 | Joint-stock companies | – | carrier speed +25% |
-| Enlightenment | Coke smelting | 800 | Mine pumps | – | metalwork workers +20% speed |
-| Enlightenment | Drill manuals | 800 | Musketry | – | Barracks +30% speed, defence odds +4% |
-| Enlightenment | The Encyclopedia | 820 | Humanism | – | research +20% |
-| Enlightenment | Bank notes | 820 | Double-entry bookkeeping | – | gold tax +25% |
+| Enlightenment | Crop rotation | 720 | Age of reason, Wool trade | – | Farm +50% speed, Orchard +50% speed, Hop farm +30% speed |
+| Enlightenment | Selective breeding | 740 | Age of reason, Cheesemaking | – | Sheep farm +40% speed, Pig farm +40% speed, Dairy farm +40% speed |
+| Enlightenment | Lubricants | 740 | Age of reason, Standard tool patterns | – | 15% of new workers need no new tool, transport workers +30% speed |
+| Enlightenment | Blast furnace | 760 | Age of reason, Guilds | – | Iron smelter +1 output, Copper smelter +1 output |
+| Enlightenment | Seed drill | 760 | Age of reason, Three-field system | – | farming workers +25% speed |
+| Enlightenment | Inoculation | 760 | Age of reason, Hospices | – | newcomers arrive +30% faster, people eat -5% |
+| Enlightenment | Flying shuttle | 760 | Age of reason, Wool combing | – | Weaver +50% speed |
+| Enlightenment | Porcelain | 760 | Age of reason, Lens grinding | – | kilns and glass workers +30% speed |
+| Enlightenment | Town planning | 780 | Age of reason, Timber framing | – | housing +20%, build speed +15% |
+| Enlightenment | Scientific method | 800 | Age of reason, Printing press | – | research +50% |
+| Enlightenment | Standing army | 800 | Age of reason, Gunpowder | – | Barracks +50% speed, attack odds +5%, defence odds +5% |
+| Enlightenment | Canals | 800 | Age of reason, Joint-stock companies | – | carrier speed +25% |
+| Enlightenment | Coke smelting | 800 | Age of reason, Mine pumps | – | metalwork workers +20% speed |
+| Enlightenment | Drill manuals | 800 | Age of reason, Musketry | – | Barracks +30% speed, defence odds +4% |
+| Enlightenment | The Encyclopedia | 820 | Age of reason, Humanism | – | research +20% |
+| Enlightenment | Bank notes | 820 | Age of reason, Double-entry bookkeeping | – | gold tax +25% |
 | Enlightenment | Agricultural societies | 760 | Crop rotation | – | farming workers +15% speed |
 | Enlightenment | Sewers | 780 | Town planning | – | housing +10%, Bathhouse +30% speed |
 | Enlightenment | Turnpike roads | 780 | Canals | – | carrier speed +15% |
@@ -587,19 +621,19 @@ Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples,
 | Enlightenment | Insurance | 800 | Bank notes | – | gold tax +10%, newcomers arrive +10% faster |
 | Enlightenment | Royal academies | 820 | The Encyclopedia | – | research +15% |
 | Industrial | Textile mills | 1040 | Steam engine, Crop rotation | Textile mill | – |
-| Industrial | Canning | 1060 | New World crops | – | people eat -10% |
-| Industrial | Gas lighting | 1080 | Scientific method | – | all production +5%, artisans and nobles use -10% goods |
+| Industrial | Canning | 1060 | Dawn of industry, New World crops | – | people eat -10% |
+| Industrial | Gas lighting | 1080 | Dawn of industry, Scientific method | – | all production +5%, artisans and nobles use -10% goods |
 | Industrial | Power loom | 1100 | Steam engine | – | textiles and leather workers +40% speed |
-| Industrial | Iron ships | 1100 | Coke smelting | – | Fisher +40% speed, carrier speed +10% |
-| Industrial | Steel ploughs | 1100 | Seed drill | – | farming workers +30% speed |
-| Industrial | Steam engine | 1120 | Scientific method, Blast furnace | Steelworks, Machine works | industry buildings +20% speed, crafts buildings +20% speed |
-| Industrial | Mass schooling | 1120 | The Encyclopedia | – | School +50% speed, workers learn +20% faster |
-| Industrial | Public health | 1120 | Inoculation | – | newcomers arrive +40% faster, housing +15% |
+| Industrial | Iron ships | 1100 | Dawn of industry, Coke smelting | – | Fisher +40% speed, carrier speed +10% |
+| Industrial | Steel ploughs | 1100 | Dawn of industry, Seed drill | – | farming workers +30% speed |
+| Industrial | Steam engine | 1120 | Dawn of industry, Scientific method, Blast furnace | Steelworks, Machine works | industry buildings +20% speed, crafts buildings +20% speed |
+| Industrial | Mass schooling | 1120 | Dawn of industry, The Encyclopedia | – | School +50% speed, workers learn +20% faster |
+| Industrial | Public health | 1120 | Dawn of industry, Inoculation | – | newcomers arrive +40% faster, housing +15% |
 | Industrial | Steam pumps | 1140 | Steam engine | – | mining and quarrying workers +30% speed, 25% of mining leaves the vein untouched |
-| Industrial | Portland cement | 1140 | Town planning | – | build speed +30%, store room +20% |
+| Industrial | Portland cement | 1140 | Dawn of industry, Town planning | – | build speed +30%, store room +20% |
 | Industrial | Machine tools | 1160 | Steam engine | – | Toolsmith +1 output, Machine works +30% speed |
-| Industrial | Rifling | 1160 | Drill manuals | – | attack odds +6% |
-| Industrial | Telegraph | 1180 | The Encyclopedia | – | research +15%, carrier speed +10% |
+| Industrial | Rifling | 1160 | Dawn of industry, Drill manuals | – | attack odds +6% |
+| Industrial | Telegraph | 1180 | Dawn of industry, The Encyclopedia | – | research +15%, carrier speed +10% |
 | Industrial | Railways | 1200 | Steam engine | Great depot | carrier speed +60%, build speed +40% |
 | Industrial | Industrial Revolution | 2400 | Railways, Textile mills, Standing army | – | all production +25% |
 | Industrial | Tenements | 1080 | Portland cement | – | housing +15% |
@@ -764,6 +798,10 @@ The AI builds the buildings it knows by id. Your new buildings are available to 
 playing with the standard set.
 
 ## Ages: building looks and soldiers
+
+A realm enters a new age by finishing that age's opening study (The new kingdoms, Rise of the towns,
+Rebirth of learning, Age of reason, Dawn of industry). Every tech of an age needs it, and the study
+itself needs a number of techs of the age before (`"gate": true` and `"need"` in `data/techs.json`).
 
 Each building is drawn in the style of the age its realm was in when it was placed (Roman, Early
 Medieval, High Medieval, Renaissance, Enlightenment, Industrial); Renovate brings it up to date. The

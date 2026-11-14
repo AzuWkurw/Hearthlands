@@ -1962,6 +1962,11 @@ func _process(delta: float) -> void:
 				var nb := sim.logistics.bridge_tiles(view.road_preview(), 1) if view.road_start.x >= 0 else 0
 				if nb > 0:
 					hint.text += tr(". A bridge over %d tiles of water: %d planks") % [nb, nb * SimLogistics.BRIDGE_PLANKS]
+				elif view.road_start.x >= 0 and sim.inb(view.ghost.x, view.ghost.y) and view.road_preview().is_empty():
+					# no road to the pointer: say why when water is in the way
+					var why := sim.logistics._bridge_hint(sim.idx(view.road_start.x, view.road_start.y), sim.idx(view.ghost.x, view.ghost.y), 1)
+					if why != "":
+						hint.text += ". " + why
 			"@pave": hint.text = "Pave road: click a road (1 stone per tile, up to 12 tiles)"
 			"@flag": hint.text = "Flag: click one of your roads to set or take away a flag (Esc to stop)"
 			"@expedition": hint.text = "Expedition: click a free coast across the water (Esc to stop)"

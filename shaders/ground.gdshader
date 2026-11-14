@@ -21,6 +21,21 @@ uniform vec2 map_size = vec2(1.0, 1.0);
 // so the flat map position under a pixel can be found again.
 uniform sampler2D lift_map : filter_linear, repeat_disable;
 uniform bool raised = false;
+// Seasons and climates (the "Seasons, biomes and weather" feature): season_mask holds where each of the
+// four climates lies, one per channel, one pixel a tile; ice_mask the frozen taiga water. Each climate
+// gets its tint, the autumn and early-summer colours and its snow. Laid on here, not drawn over the map,
+// so it lines up with raised ground and blends the same with every renderer.
+uniform bool use_season = false;
+uniform sampler2D season_mask : filter_linear, repeat_disable;
+uniform sampler2D ice_mask : filter_linear, repeat_disable;
+uniform vec4 tint0 = vec4(0.0);
+uniform vec4 tint1 = vec4(0.0);
+uniform vec4 tint2 = vec4(0.0);
+uniform vec4 tint3 = vec4(0.0);
+uniform vec4 autumn_col = vec4(0.0);
+uniform vec4 green_col = vec4(0.0);
+uniform vec4 snow_amt = vec4(0.0);
+uniform vec4 ice_col = vec4(0.0);
 
 // Position of the pixel on the map, in tiles, handed from the vertex step to the pixel step.
 varying vec2 world;
@@ -69,20 +84,39 @@ void fragment() {
 		// A slow swell that brightens and darkens wide patches of water.
 		c.rgb *= 1.0 + 0.05 * sin(t * 0.9 + world.x * 0.7 + world.y * 0.5) * water;
 	}
+	// where on the flat map this pixel lies (raised ground is drawn lifted)
+	vec2 p = world;
+	if (raised && (use_relief || use_season)) {
+		for (int k = 0; k < 3; k++) {
+			p.y = world.y + texture(lift_map, (p + 0.5) / (map_size + 1.0)).r * 4.0;
+		}
+	}
 	// hills, on land only
 	if (use_relief) {
-		vec2 p = world;
-		if (raised) {
-			for (int k = 0; k < 3; k++) {
-				p.y = world.y + texture(lift_map, (p + 0.5) / (map_size + 1.0)).r * 4.0;
-			}
-		}
 		float rv = texture(relief_map, p / map_size).r * 2.0 - 1.0;
 		float land = 1.0 - water;
 		if (rv > 0.0) {
 			c.rgb = mix(c.rgb, vec3(1.0, 1.0, 0.92), rv * 0.49 * land);
 		} else {
 			c.rgb = mix(c.rgb, vec3(0.0), -rv * 0.647 * land);
+		}
+	}
+	// climates and seasons, on land (the ice on the taiga's water)
+	if (use_season) {
+		vec4 m = texture(season_mask, p / map_size);
+		float land = 1.0 - water;
+		vec4 tints[4] = vec4[4](tint0, tint1, tint2, tint3);
+		for (int k = 0; k < 4; k++) {
+			float mk = m[k] * land;
+			if (mk > 0.0) {
+				c.rgb = mix(c.rgb, tints[k].rgb, tints[k].a * mk);
+				c.rgb = mix(c.rgb, autumn_col.rgb, autumn_col.a * mk);
+				c.rgb = mix(c.rgb, green_col.rgb, green_col.a * mk);
+				c.rgb = mix(c.rgb, vec3(0.95, 0.97, 1.0), snow_amt[k] * mk);
+			}
+		}
+		if (ice_col.a > 0.0) {
+			c.rgb = mix(c.rgb, ice_col.rgb, ice_col.a * texture(ice_mask, p / map_size).r);
 		}
 	}
 	// cloud shadows: big soft patches drifting with the wind (more of them on a cloudy day)

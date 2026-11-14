@@ -10,14 +10,14 @@ func _init() -> void:
 	var ok := true
 	var hx := me.hq.x
 	var hy := me.hq.y
-	# a channel of water 2 tiles wide across our land, 4 tiles east of the headquarters, and one 5 wide
+	# a channel of water 2 tiles wide across our land, 4 tiles east of the headquarters, and one 8 wide
 	# further south
 	for y in range(hy - 6, hy + 7):
 		for x in [hx + 4, hx + 5]:
 			if sim.bmap[sim.idx(x, y)] == 0 and sim.road[sim.idx(x, y)] == 0:
 				sim.ter[sim.idx(x, y)] = Sim.WATER; sim.deco[sim.idx(x, y)] = 0
 	for x in range(hx - 6, hx + 3):
-		for y in range(hy + 3, hy + 8):
+		for y in range(hy + 3, hy + 11):
 			if sim.bmap[sim.idx(x, y)] == 0 and sim.road[sim.idx(x, y)] == 0:
 				sim.ter[sim.idx(x, y)] = Sim.WATER; sim.deco[sim.idx(x, y)] = 0
 	for x in range(hx + 6, hx + 9):
@@ -43,12 +43,16 @@ func _init() -> void:
 	# the far shore counts as reachable for building
 	var r := sim.logistics.reach(1)
 	print("reach beyond the bridge: ", r[sim.idx(goal.x + 1, goal.y)] == 1)
-	# five tiles of water: no bridge
+	# eight tiles of water: no bridge
 	var land := sim.logistics.bridge_landing(sim.idx(hx - 3, hy + 2), sim.idx(hx - 3, hy + 3), 1)
 	var land1 := sim.logistics.bridge_landing(sim.idx(hx + 3, hy), sim.idx(hx + 4, hy), 1)
-	print("bridge over 5 tiles lands at ", land, "; over 2 tiles at ", land1)
-	if land != -1 or land1 != sim.idx(hx + 6, hy): ok = false; print("FAIL: bridges span at most 3 tiles")
+	print("bridge over 8 tiles lands at ", land, "; over 2 tiles at ", land1)
+	if land != -1 or land1 != sim.idx(hx + 6, hy): ok = false; print("FAIL: bridges span at most 6 tiles")
 	# paving makes it a stone bridge
+	var why8 := sim.logistics.bridge_why(sim.idx(hx - 3, hy + 2), sim.idx(hx - 3, hy + 3), 1)
+	print("why not over 8 tiles: '", why8, "'")
+	if why8 == "": ok = false; print("FAIL: water no bridge can cross should say why")
+	print("road ending on water: '", sim.build_road(hx + 3, hy + 2, hx + 4, hy + 2, 1), "'")
 	print("pave the bridge: '", sim.pave_road(hx + 4, start.y, me), "'")
 	print("bridge test: ", "ok" if ok else "FAILED")
 	quit()

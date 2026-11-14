@@ -2,7 +2,7 @@ extends SceneTree
 ## Screenshots for judging the textures: a town grown by the computer for a few minutes (no weather or
 ## fog, so the ground shows as it is), at four zooms round the headquarters, then a coast and mountains
 ## up close. The game is kept in user://saves/shot_tex.save and reused (fresh makes a new one):
-##   xvfb-run -a -s "-screen 0 1920x1080x24" godot --rendering-driver opengl3 --script res://tools/shot_tex.gd -- out=/dir [tag=now] [fresh] [zooms=5,8,12]
+##   xvfb-run -a -s "-screen 0 1920x1080x24" godot --rendering-driver opengl3 --script res://tools/shot_tex.gd -- out=/dir [tag=now] [fresh] [zooms=5,8,12] [features] [size=2560x1440] [scale=0.75]
 
 func _snap(main, path: String) -> void:
 	for i in 30: await process_frame
@@ -15,18 +15,30 @@ func _init() -> void:
 	var tag := "now"
 	var fresh := false
 	var zooms := [24.0, 40.0, 64.0, 96.0]
+	var feats := false
+	var win := Vector2i(1600, 900)
+	var ui := 1.0
+	var at_time := -1.0
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("out="): out = a.substr(4) + "/"
 		if a.begins_with("tag="): tag = a.substr(4)
 		if a == "fresh": fresh = true
+		if a == "features": feats = true
+		if a.begins_with("size="): win = Vector2i(int(a.substr(5).get_slice("x", 0)), int(a.substr(5).get_slice("x", 1)))
+		if a.begins_with("scale="): ui = float(a.substr(6))
+		if a.begins_with("time="): at_time = float(a.substr(5))
 		if a.begins_with("zooms="): zooms = Array(a.substr(6).split(",")).map(func(v): return float(v))
-	DisplayServer.window_set_size(Vector2i(1600, 900)); root.size = Vector2i(1600, 900)
+	DisplayServer.window_set_size(win); root.size = win
 	var main = load("res://main.tscn").instantiate(); root.add_child(main)
 	for i in 3: await process_frame
+	# (the game's own settings set the window size at start: a bigger screen or interface size after)
+	DisplayServer.window_set_size(win); root.size = win
+	main.settings.ui_scale = ui
+	main.settings.apply_scale(root)
 	var sim: Sim = main.sim
-	var path := Main.SAVE_DIR + "/shot_tex.save"
+	var path := Main.SAVE_DIR + ("/shot_tex_f.save" if feats else "/shot_tex.save")
 	if fresh or not FileAccess.file_exists(path):
-		main._start("texshot", 2, 6, true, 128, false, {"features": []})
+		main._start("texshot", 2, 6, true, 128, false, {"features": Features.default_ids() if feats else []})
 		var me := sim.human()
 		me.ai = true; me.skill = 8; me.pers = "builder"; me.prod = 1.6; me.think = 3.0; me.max_b = 3
 		while sim.time < 9 * 60.0:
@@ -40,6 +52,8 @@ func _init() -> void:
 		var err: String = sim.from_save(g.get_var())
 		g.close()
 		if err != "": print("load: ", err)
+	if at_time >= 0.0:
+		sim.time = at_time
 	main._after_world_change()
 	main.setup.visible = false
 	main.side_box.visible = false
