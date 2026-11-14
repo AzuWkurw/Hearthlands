@@ -197,7 +197,7 @@ static func _validate() -> void:
 		for sec in ["cost", "in", "out"]:
 			var m: Dictionary = d.get(sec, {})
 			for k in m:
-				if k != "food" and k != "research" and k != "ship" and not res_by_id.has(k):
+				if k != "food" and k != "research" and k != "ship" and k != "warship" and not res_by_id.has(k):
 					errors.append("Building '%s' uses unknown resource '%s' in %s" % [id, k, sec])
 		if d.has("tech") and not techs.has(d.tech):
 			errors.append("Building '%s' needs unknown tech '%s'" % [id, d.tech])

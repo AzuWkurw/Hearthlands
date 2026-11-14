@@ -155,6 +155,7 @@ func open(t: Sim.Bld) -> String:
 		kr.add_child(cb)
 	odds_lbl = main._label("", 15)
 	body.add_child(odds_lbl)
+	body.add_child(main._label(general_words(), 13, Color("e8c860")))
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	body.add_child(row)
@@ -179,6 +180,10 @@ func _open_sea(t: Sim.Bld, sea: Array) -> void:
 	body.add_child(main._label(tr("Land on %s's coast: attack the %s") % [sim.players[t.p - 1].name, String(t.def.name)], 22, Main.BRASS))
 	var dm: Array = sim.military.mix_of(sim.military._defending(t))
 	body.add_child(main._label(tr("Defenders: %d (%s)") % [sim.defenders(t), Sim.mix_text(dm)], 14, Main.DIM))
+	body.add_child(main._label(general_words(), 13, Color("e8c860")))
+	var me_w := sim.human()
+	if me_w.warships > 0:
+		body.add_child(main._label(tr("Warships: %d afloat; escorts %s (up to %d sail with the fleet).") % [me_w.warships, tr("on") if me_w.escort else tr("off"), SimNavy.ESCORTS], 13, Color("9fd0e8")))
 	var h: Sim.Bld = sea[0]
 	var info := main._rich()
 	info.custom_minimum_size = Vector2(460, 0)
@@ -276,3 +281,15 @@ func _go() -> void:
 	close()
 	main._show_hint(tr("%d soldiers march.") % sent if sent > 0 else why, 3.0)
 	main._refresh_all()
+
+
+## Where your general is, for the attack windows.
+func general_words() -> String:
+	var sim: Sim = main.sim
+	var me := sim.human()
+	var lvl := SimNavy.general_level(me.general_xp)
+	if me.general_uid != 0:
+		return tr("Your general (level %d) is away leading another column.") % lvl
+	if sim.time < me.general_back:
+		return tr("A new general will be ready in %d s.") % ceili(me.general_back - sim.time)
+	return tr("Your general (level %d, +%d%% a duel) leads this column if it has %d soldiers or more.") % [lvl, roundi(lvl * SimNavy.GEN_DUEL * 100.0), SimNavy.GENERAL_MIN]

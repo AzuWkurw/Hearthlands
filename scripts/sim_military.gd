@@ -503,6 +503,8 @@ func pack_supplies(a: Sim.Attack, p: Sim.Player, src: Sim.Bld) -> void:
 	var dist := path_len(sim.w, a.path) if a.path.size() >= 2 else a.from.distance_to(a.to)
 	a.far = dist - float(a.sea) > SUPPLY_FREE or a.sea > 0
 	a.t_eat = a.t1 + SUPPLY_EVERY
+	var dep := sim.naval.depot_near(p, a.to)
+	a.depot = dep.id if dep != null else 0
 	if not a.far:
 		return
 	var way := ceili(a.n * SUPPLY_PER)
@@ -525,6 +527,12 @@ func _eat(a: Sim.Attack) -> void:
 		return
 	a.t_eat = sim.time + SUPPLY_EVERY
 	var r := float(ration(a.n))
+	# a field depot near the gate feeds them first
+	var dep: Sim.Bld = sim.by_id.get(a.depot) if a.depot != 0 else null
+	if dep != null and not dep.dead and dep.p == a.p and dep.state == "ready" and sim.logistics.food_at(dep, false) >= int(r):
+		sim.naval.take_rations(dep, int(r))
+		a.hunger = maxf(0.0, a.hunger - 0.5)
+		return
 	if a.food >= r:
 		a.food -= r
 		a.hunger = maxf(0.0, a.hunger - 0.5)
@@ -539,6 +547,8 @@ func _eat(a: Sim.Attack) -> void:
 func supply_words(a: Sim.Attack) -> String:
 	if not a.far:
 		return "near home: no supplies needed"
+	if a.depot != 0:
+		return "%d rations, and a field depot near the gate" % int(a.food)
 	if a.hunger >= 0.99:
 		return "out of food, starving"
 	return "%d rations left%s" % [int(a.food), ", hungry" if a.hunger > 0.01 else ""]
@@ -608,6 +618,7 @@ func launch_attack(src: Sim.Bld, tgt: Sim.Bld, want := -1, kinds: Array = [], sa
 	a.blunt = mini(go_blunt, n)
 	sim._bid += 1
 	a.uid = sim._bid
+	sim.naval.take_general(a, p)
 	pack_supplies(a, p, src)
 	sim.attacks.append(a)
 	p.attacks_made += 1
@@ -672,14 +683,16 @@ func launch_landing(h: Sim.Bld, tgt: Sim.Bld, want := -1) -> String:
 	a.blunt = mini(go_blunt, n)
 	sim._bid += 1
 	a.uid = sim._bid
+	sim.naval.take_general(a, p)
 	pack_supplies(a, p, h)
 	sim.attacks.append(a)
+	var escn := sim.naval.escort(a, p)
 	p.attacks_made += 1
 	Diplomacy.on_attacked(sim, tgt.p, h.p)
 	if tgt.p == 1:
 		sim.emit_log("A fleet of %s is sailing for your %s with %d soldiers!" % [p.name, String(tgt.def.name), n], Color("e0603a"), Vector2i(tgt.x, tgt.y))
 	elif h.p == 1:
-		sim.emit_log("%d ships sail with %d of your soldiers for %s's coast (%s)." % [need_ships, n, sim.players[tgt.p - 1].name, supply_words(a)], Color("d8aa4a"), Vector2i(tgt.x, tgt.y))
+		sim.emit_log("%d ships sail with %d of your soldiers for %s's coast (%s%s)." % [need_ships, n, sim.players[tgt.p - 1].name, supply_words(a), (", %d warship%s escorting" % [escn, "s" if escn > 1 else ""]) if escn > 0 else ""], Color("d8aa4a"), Vector2i(tgt.x, tgt.y))
 	return ""
 
 
@@ -704,11 +717,18 @@ func _fleets_tick(at_start: Array) -> void:
 
 
 func attack_tick(dt: float) -> void:
+	sim.naval.tick(dt)
 	var fleets := []
+	var gens := []
 	for a0 in sim.attacks:
 		if a0.ships > 0:
 			fleets.append(a0)
+		if a0.general:
+			gens.append(a0)
 	_attack_tick(dt)
+	for a1: Sim.Attack in gens:
+		if not sim.attacks.has(a1):
+			sim.naval.general_column_gone(a1)
 	if not fleets.is_empty():
 		_fleets_tick(fleets)
 		if int(sim.time * 2.0) != int((sim.time - dt) * 2.0):
@@ -779,6 +799,8 @@ func _attack_tick(dt: float) -> void:
 			dw += 0.03 * (Sim.level(defender_xp(t), Sim.SOLDIER_XP) - Sim.level(a.sxp, Sim.SOLDIER_XP))
 			# hungry soldiers far from home
 			dw += SUPPLY_PEN * a.hunger
+			# the general's experience
+			dw -= sim.naval.duel_edge(a)
 			# one soldier of each side: the attacker comes as he is, the defenders send their best
 			# answer to him. Later ages are stronger (+3.5% a duel per age, about 15% in strength);
 			# some kinds beat others; and each kind has its own edge.
@@ -817,6 +839,7 @@ func _attack_tick(dt: float) -> void:
 					continue
 				kill_defender(t, dk)
 				a.sxp += 3.0 / maxf(1.0, a.n)
+				sim.naval.general_learns(a, 1.0)
 		if a.n > 0 and p.ai and a.n0 >= 3 and a.n * 2 < a.n0 and defenders(t) > a.n:
 			# a rival sees the attack going badly and calls the rest back
 			_retreat(a, p)
@@ -1123,6 +1146,7 @@ func _retreat(a: Sim.Attack, p: Sim.Player) -> void:
 
 func _capture(a: Sim.Attack, t: Sim.Bld, p: Sim.Player, op: Sim.Player) -> void:
 	Sim.mix_fix(a.amix, a.n, roundi(a.era))
+	sim.naval.general_learns(a, 5.0)
 	if t.ty == "hq":
 		p.res_xp = Sim.mix_xp(p.res_xp, p.reserve, a.sxp, a.n)
 		Sim.mix_add(sim.rmix_of(p), a.amix)

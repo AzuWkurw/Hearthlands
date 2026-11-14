@@ -10,7 +10,7 @@ economy you do.
 ## Download
 
 The ready-made Windows game is on the [Releases page](../../releases/latest): download the
-`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.46.0 build 51** (see
+`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.47.0 build 52** (see
 `CHANGELOG.md`). Every build is a release of its own, made by GitHub Actions
 (`.github/workflows/release.yml`) when a new version reaches `main`; older builds up to 50 are also
 on the [`downloads` branch](../../tree/downloads).
@@ -31,7 +31,7 @@ What is in the game now:
 
 The full plan is in the [roadmap](https://claude.ai/artifact/YVAWwJGUN4FRBYtpz3zgQh).
 
-Done (builds 43 to 49):
+Done (builds 43 to 52):
 
 | Build | What came in |
 |---|---|
@@ -44,10 +44,10 @@ Done (builds 43 to 49):
 | 48 | A living world: working buildings move (saws, water wheels, sparks, steam), and snow settles on roofs in winter |
 | 48.1 to 48.6 | Bug fixes and speed-ups: square clouds and the orange map at dusk fixed, no starving with full stores, ox carts as an upgrade for the mule station (and in 49.1 the scriptorium to a library), map baking on all processor cores, about twice as fast drawing on big maps |
 | 49 | War at sea: landings on a rival's coast from your harbours, fleets that fight and sink enemy ships; armies that need supplies far from home; a new-game option to land from the sea with a harbour headquarters |
-
 | 49.1 | The scriptorium can be upgraded to a library |
 | 50 | Transport priorities and worker priorities in numbers (1 to 9), each in its own window |
 | 51 | Smoother big maps (buildings drawn once into a layer and kept), downloads on GitHub Releases |
+| 52 | Warships from a naval yard (guard your harbours, escort landings), coastal forts with guns, field depots that feed armies far from home, generals who gain levels, rivals that take to the sea from islands |
 
 Later: a story campaign through the ages, multiplayer, scripted scenarios, a chronicle at the end of a
 game, more animations, music for each age, and quality-of-life features (a production chain overlay,
@@ -395,7 +395,7 @@ Logs, Stone, Clay, Water, Grain, Hops, Wool, Hides, Salt, Coal, Iron ore, Copper
 
 Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples, Vegetables, Cheese, Sausages, Honey.
 
-## Buildings (104 you can build)
+## Buildings (107 you can build)
 
 **Raw**
 
@@ -521,6 +521,7 @@ Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples,
 | Donkey farm | 4 planks, 2 stone | peasant (farming) | 1 grain, 1 water | 1 donkeys | Roman (start) |
 | Harbour | 6 planks, 4 stone | – | – | claims 5 tiles, holds 1 | Roman (start) |
 | Shipyard | 5 planks, 2 stone | artisan (woodwork) | 4 planks | 1 ship | Roman (start) |
+| Naval yard | 6 planks, 3 stone, 2 iron | artisan (woodwork) | 4 planks, 1 iron, 1 weapons | 1 warship | Navigators' school |
 
 **Military**
 
@@ -540,6 +541,8 @@ Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples,
 | Gun battery | 3 planks, 4 stone, 3 iron | – | – | claims 8 tiles, holds 5, 3 cannon (range 8) | Drill manuals |
 | Armoured redoubt | 3 planks, 8 stone, 10 bricks, 6 iron | – | – | claims 16 tiles, holds 16, walls +8%, 4 cannon (range 9) | Rifling |
 | Catapult | 5 planks, 3 stone | peasant (mil) | 1 stone | – | Stone masonry |
+| Coastal fort | 3 planks, 6 stone | – | – | claims 6 tiles, holds 4, walls +5% | Star forts |
+| Field depot | 3 planks, 1 stone | – | 30 food | – | Pack mules |
 
 ## Research tree
 
@@ -871,6 +874,23 @@ order the buildings within it. The numbers are saved with the game.
   cannot last for ever.
 - **Land from the sea** (new-game option): your headquarters is a harbour on the coast with one ship.
   Expeditions and landings leave from it.
+- **Warships** (naval yard, after the navigators' school): a naval yard on the coast builds them from
+  planks, iron and weapons, up to 8. Each guards the water near your nearest harbour: it chases enemy
+  warships, fires on landing fleets coming at your coast and sinks enemy cargo ships. A warship takes
+  three hits. With **Escort landings** on (in the harbour's info), up to 3 free warships sail with each
+  landing you send and fight off what they meet.
+- **Coastal forts** (star forts): a fort on the shore whose guns fire every 4 seconds on enemy
+  warships, landing fleets and cargo ships within 7 tiles, as long as soldiers hold it.
+- **Field depots** (pack mules): a small store of rations. Carriers fill it with food; an army that
+  attacks a building within 14 tiles of one eats from it at the gate, so a siege far from home can last.
+- **Generals:** your realm has one. He leads the first column of 5 or more that sets out while he is
+  home (a gold star over it), and each level makes its duels 2% better. He gains experience for every
+  enemy his column kills and every building it takes (levels at 5, 15, 35 and 70). If his column is
+  wiped out he falls, and a new general, who starts again at level 1, is ready 3 minutes later. The
+  attack window says where he is.
+- **Rivals at sea:** a rival with no way to reach anyone by land builds a harbour and ships early, sends
+  expeditions and lands on its enemies' coasts; rivals at war by the sea build naval yards and coastal
+  forts, and warlords keep field depots near the front.
 
 ## A living world
 

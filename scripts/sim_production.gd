@@ -110,6 +110,9 @@ func start_check(b: Sim.Bld, p: Sim.Player) -> String:
 			if o == "ship":
 				full = p.ships >= SimSea.MAX_SHIPS
 				continue
+			if o == "warship":
+				full = p.warships >= SimNavy.MAX_WARSHIPS
+				continue
 			var cap := sim.capacity(p, o)
 			var have := float(p.stock.get(o, 0.0))
 			# goods on their way only matter near the top: far below it, skip counting them
@@ -170,7 +173,7 @@ func _count_coming() -> void:
 					var adds := []
 					var extra := _extra_out(p, b.ty)
 					for k in b.def.out:
-						if k != "research" and k != "ship":
+						if k != "research" and k != "ship" and k != "warship":
 							adds.append([k, float(b.def.out[k]) + extra])
 					tb[key] = adds
 				for a2 in tb[key]:
@@ -186,7 +189,7 @@ func _count_cycle(b: Sim.Bld, p: Sim.Player, c: Dictionary) -> void:
 	var out: Dictionary = Crops.out_of(sim, b)
 	var extra := _extra_out(p, b.ty)
 	for k in out:
-		if k != "research" and k != "ship":
+		if k != "research" and k != "ship" and k != "warship":
 			c[k] = float(c.get(k, 0.0)) + float(out[k]) + extra
 
 
@@ -219,6 +222,9 @@ func deliver(b: Sim.Bld, p: Sim.Player, res: String, n: int) -> void:
 	sim.made(p, res, n)
 	for f: Feature in sim.features:
 		f.on_made_at(b, p, res, n)
+	if res == "warship":
+		sim.naval.launch(p, b)
+		return
 	if res == "ship":
 		p.ships = mini(SimSea.MAX_SHIPS, p.ships + n)
 		if not p.ai:

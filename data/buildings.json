@@ -3342,5 +3342,86 @@
   },
   "tech": "agricultural_societies",
   "trade": "victuals"
+ },
+ "naval_yard": {
+  "name": "Naval yard",
+  "cat": "logistics",
+  "size": "medium",
+  "cost": {
+   "planks": 6,
+   "stone": 3,
+   "iron": 2
+  },
+  "time": 40,
+  "worker": "artisan",
+  "cycle": 120,
+  "in": {
+   "planks": 4,
+   "iron": 1,
+   "weapons": 1
+  },
+  "out": {
+   "warship": 1
+  },
+  "site": "shore:2",
+  "tech": "navigators_school",
+  "art": {
+   "style": "workshop",
+   "wall": "#5a6f80",
+   "sw": 2.2,
+   "smoke": [],
+   "glow": []
+  },
+  "trade": "woodwork",
+  "info": "Builds warships. They guard the coast near your harbours, chase enemy warships, fire on landing fleets that come near and sink enemy cargo ships, and sail with your landings to shield them."
+ },
+ "coastal_fort": {
+  "name": "Coastal fort",
+  "cat": "mil",
+  "size": "medium",
+  "cost": {
+   "planks": 3,
+   "stone": 6
+  },
+  "time": 30,
+  "radius": 6,
+  "garrison": 4,
+  "wall": 0.05,
+  "site": "shore:2",
+  "tech": "star_forts",
+  "guns": {
+   "range": 7,
+   "every": 4.0,
+   "hit": 0.45
+  },
+  "art": {
+   "style": "tower",
+   "wall": "#7f8a90",
+   "sw": 1.9
+  },
+  "info": "A fort on the shore with guns: while it holds soldiers, it fires on enemy warships, landing fleets and cargo ships within 7 tiles."
+ },
+ "field_depot": {
+  "name": "Field depot",
+  "cat": "mil",
+  "size": "small",
+  "cost": {
+   "planks": 3,
+   "stone": 1
+  },
+  "time": 14,
+  "in": {
+   "food": 30
+  },
+  "tech": "pack_mules",
+  "art": {
+   "style": "shed",
+   "wall": "#8a7a58",
+   "sw": 1.4,
+   "smoke": [],
+   "glow": []
+  },
+  "info": "Keeps rations for your armies: carriers fill it with food, and an army that attacks a building within 14 tiles of it eats from it at the gate, as if it fought near home.",
+  "rations": 30
  }
 }

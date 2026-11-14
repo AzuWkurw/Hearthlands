@@ -26,6 +26,7 @@ var military := SimMilitary.new(self)
 var logistics := SimLogistics.new(self)
 var research := SimResearch.new(self)
 var sea := SimSea.new(self)
+var naval := SimNavy.new(self)
 var people := SimPeople.new(self)
 var production := SimProduction.new(self)
 
@@ -303,6 +304,13 @@ class Player:
 	var ships_out := 0                     # ships at sea (expeditions, cargoes and landings)
 	var landed := false                    # started by landing from the sea: its headquarters is a harbour (opts.sea_start)
 	var sea_try := 0.0                     # rivals: when they last looked for a landing to make
+	var warships := 0                      # warships afloat (Sim.navy holds where each is)
+	var escort := true                     # warships sail with the realm's landings to shield them
+	var island := false                    # rivals: no enemy can be reached by land (they take to the sea)
+	var island_t := -1000.0                # when that was last worked out
+	var general_xp := 0.0                  # the realm's general: his experience (SimMilitary.GENERAL_XP)
+	var general_uid := 0                   # the column he leads now (0: at home)
+	var general_back := 0.0                # after he falls, a new general is ready at this time
 	var donkeys_used := 0                  # road carriers mode: donkeys out helping on busy stretches
 	var store_total := 0                   # room for each good across all stores (before per-good factors)
 	var store_porters := 0                 # porters employed by the stores
@@ -428,6 +436,8 @@ class Attack:
 	var sea := 0                 # a landing: the first `sea` tiles of path are the crossing by ship
 	var t_land := 0.0            # when a landing's ships reach the beach
 	var ships := 0               # ships carrying a landing (they sail home once it has landed)
+	var general := false         # the realm's general leads this column
+	var depot := 0               # the field depot near its target it eats from (0: none)
 
 
 class MinHeap:
@@ -532,6 +542,7 @@ var trips: Array[Trip] = []
 
 
 var attacks: Array[Attack] = []
+var navy: Array = []          # warships afloat: SimSea.WS_* dictionaries
 
 
 var time := 0.0
@@ -682,7 +693,7 @@ func new_game(p_seed: String, p_foes: int, p_strength: int, p_mix: bool, p_size 
 	bmap = PackedInt32Array(); bmap.resize(w * h)
 	plot = PackedInt32Array(); plot.resize(w * h)
 	_avail = {}; _avail_at = {}
-	players.clear(); blds.clear(); by_id.clear(); trips.clear(); attacks.clear(); logs.clear()
+	players.clear(); blds.clear(); by_id.clear(); trips.clear(); attacks.clear(); navy.clear(); naval.fx.clear(); logs.clear()
 	rel = {}; rel_since = {}; proposals = []; standing = []; _prop_id = 0
 	time = 0.0; over = false; _bid = 0; _acc1 = 0.0; _owned_dirty = true
 	_alloc_path_buffers()
@@ -2424,7 +2435,7 @@ func to_save() -> Dictionary:
 		"vein": vein, "vein_amt": vein_amt, "vein_tiles": vein_tiles, "pave": pave, "fields": fields, "places": places, "map_biome": map_biome,
 		"rel": rel, "rel_since": rel_since, "proposals": proposals, "standing": standing, "prop_id": _prop_id,
 		"mission": mission, "mission_done": mission_done, "ticks": _ticks,
-		"coming": _coming, "coming_tick": _coming_tick,
+		"coming": _coming, "coming_tick": _coming_tick, "navy": navy,
 	}
 
 
@@ -2460,6 +2471,8 @@ func from_save(d: Dictionary) -> String:
 	else:
 		_veins_from_old_save()
 	players.clear(); blds.clear(); by_id.clear(); trips.clear(); attacks.clear()
+	navy = (d.get("navy", []) as Array).duplicate(true)
+	naval.fx.clear()
 	for bd in d.blds:
 		if not GameData.bld.has(bd.ty):
 			bmap[int(bd.y) * w + int(bd.x)] = 0

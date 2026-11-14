@@ -1,5 +1,15 @@
 # Changelog
 
+## Build 52 (v0.47.0, 2026-11-14)
+
+Build 52: warships, coastal forts, field depots, generals.
+- Warships: a naval yard on the coast (after the navigators' school) builds them from planks, iron and weapons, up to 8. They guard the water near your harbours, chase enemy warships, fire on landing fleets coming at your coast and sink enemy cargo ships. Each takes three hits.
+- Escorts: with "Escort landings" on (harbour info), up to 3 free warships sail with each landing you send.
+- Coastal fort (star forts): guns on the shore fire every 4 seconds on enemy warships, landing fleets and cargo ships within 7 tiles while soldiers hold it.
+- Field depot (pack mules): carriers fill it with rations; an army attacking within 14 tiles of one eats from it at the gate.
+- Generals: one per realm. He leads the first column of 5 or more (gold star), gains levels from kills and captures (+2% a duel per level), and falls if his column is wiped out (a new one in 3 minutes).
+- Rivals: a rival that cannot reach anyone by land builds a harbour and ships early and lands on enemy coasts; rivals at war by the sea build naval yards and coastal forts; warlords build field depots.
+
 ## Build 51 (v0.46.0, 2026-11-14)
 
 Smoother big maps, and downloads on GitHub Releases.

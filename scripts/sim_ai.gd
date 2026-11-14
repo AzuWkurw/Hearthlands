@@ -344,7 +344,8 @@ func _ai_build(p: Sim.Player, ty: String) -> String:
 func ai_think(p: Sim.Player) -> void:
 	_free_pid = -1
 	_plan_town(p)
-	if p.crowded:
+	var isl := sim.naval.island(p)
+	if p.crowded or isl:
 		sim.sea.ai_expedition(p)
 	var cnt := {}
 	var building := 0
@@ -434,7 +435,8 @@ func ai_think(p: Sim.Player) -> void:
 		["market", 1 if mins > 12 and _at_peace(p) else 0],
 		["donkey_farm", 1 if mins > 10 and bool(sim.opts.get("road_carriers", false)) else 0],
 		# crowded realms by the sea look for land across the water
-		["harbour", 1 if mins > 18 and p.crowded else 0], ["shipyard", 1 if c.call("harbour") > 0 else 0],
+		# rivals on an island of their own take to the sea early: harbour, ships, landings
+		["harbour", 1 if (mins > 18 and p.crowded) or (mins > 8 and p.island) else 0], ["shipyard", (2 if p.island and mins > 20 else 1) if c.call("harbour") > 0 else 0],
 		["catapult", mini(3, _siege_targets(p)) if mins > 14 and S.stone > 12 and p.techs.has("stone_masonry") else 0],
 		["bastion", c.call("bastion") + 1 if mins > 28 and unocc == 0 and p.reserve > 8 and c.call("bastion") < 3 else 0],
 		["redoubt", c.call("redoubt") + 1 if mins > 35 and unocc == 0 and p.reserve > 12 and c.call("redoubt") < 3 else 0],
@@ -464,6 +466,16 @@ func ai_think(p: Sim.Player) -> void:
 	var extra := []
 	for f: Feature in sim.features:
 		extra.append_array(f.ai_steps(p, c))
+	# at war by the sea: warships and guns on the shore; warlords keep rations near the front; a rival
+	# alone on its island makes for the sea. These few come early, once the basic economy stands.
+	var war_by_sea: bool = c.call("harbour") > 0 and _at_war_any(p)
+	extra.append_array([
+		["harbour", 1 if mins > 8 and p.island else 0],
+		["shipyard", 1 if p.island and c.call("harbour") > 0 else 0],
+		["naval_yard", 1 if mins > 40 and war_by_sea else 0],
+		["coastal_fort", 1 if mins > 45 and war_by_sea else 0],
+		["field_depot", 1 if mins > 30 and war else 0],
+	])
 	if not extra.is_empty():
 		var at := 13
 		for e in extra:
@@ -751,6 +763,13 @@ func _ai_landing(p: Sim.Player) -> bool:
 		for h: Sim.Bld in hs.slice(0, 2):
 			if sim.military.launch_landing(h, c[1], n) == "":
 				return true
+	return false
+
+
+func _at_war_any(p: Sim.Player) -> bool:
+	for q in sim.players:
+		if q.alive and q.id != p.id and Diplomacy.at_war(sim, p.id, q.id):
+			return true
 	return false
 
 

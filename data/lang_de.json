@@ -315,5 +315,14 @@
 	"for inns, mines and others that take any food": "für Gasthäuser, Minen und andere, die jede Nahrung nehmen",
 	"%d of %d have workers": "%d von %d haben Arbeiter",
 	"Transport priorities: which goods the carriers take first, in numbers (K)": "Transportprioritäten: welche Waren die Träger zuerst nehmen, in Zahlen (K)",
-	"Worker priorities: which kinds of building get workers first, in numbers (L)": "Arbeiterprioritäten: welche Gebäudearten zuerst Arbeiter bekommen, in Zahlen (L)"
+	"Worker priorities: which kinds of building get workers first, in numbers (L)": "Arbeiterprioritäten: welche Gebäudearten zuerst Arbeiter bekommen, in Zahlen (L)",
+	"A new general will be ready in %d s.": "Ein neuer General ist in %d s bereit.",
+	"Escort landings: %s": "Landungen begleiten: %s",
+	"Warships: %d afloat; escorts %s (up to %d sail with the fleet).": "Kriegsschiffe: %d auf See; Begleitschutz %s (bis zu %d segeln mit der Flotte).",
+	"Warships: %d of %d": "Kriegsschiffe: %d von %d",
+	"When on, up to 3 free warships sail with each landing you send, to fight off enemy warships and coastal guns on the way. When off, they all stay to guard your harbours.": "Wenn an, segeln bis zu 3 freie Kriegsschiffe mit jeder Landung, die du schickst, und wehren feindliche Kriegsschiffe unterwegs ab. Wenn aus, bleiben alle zum Schutz deiner Häfen.",
+	"Your general (level %d) is away leading another column.": "Dein General (Stufe %d) führt gerade eine andere Kolonne.",
+	"Your general (level %d, +%d%% a duel) leads this column if it has %d soldiers or more.": "Dein General (Stufe %d, +%d%% je Zweikampf) führt diese Kolonne, wenn sie %d oder mehr Soldaten hat.",
+	"off": "aus",
+	"on": "an"
 }

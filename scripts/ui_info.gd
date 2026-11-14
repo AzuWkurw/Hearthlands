@@ -222,6 +222,15 @@ func _refresh_sel() -> void:
 		eb.tooltip_text = "A ship, 4 planks and 2 stone from this harbour and a soldier from the headquarters sail to another coast and found a harbour there, with land around it."
 		eb.disabled = main.sim.sea.free_ships(me) < 1
 		main.sel_actions.add_child(eb)
+	# warships: how many, and whether they sail with your landings
+	if b.p == 1 and b.state == "ready" and (main.sim.sea.is_harbour(b) or b.ty == "naval_yard") and (me_warships() > 0 or b.ty == "naval_yard"):
+		var me2 := main.sim.human()
+		main.prio_row.add_child(main._label(tr("Warships: %d of %d") % [me2.warships, SimNavy.MAX_WARSHIPS], 14, Main.DIM))
+		var xb := main._button(tr("Escort landings: %s") % (tr("on") if me2.escort else tr("off")), func():
+			main.sim.human().escort = not main.sim.human().escort
+			_refresh_sel())
+		xb.tooltip_text = tr("When on, up to 3 free warships sail with each landing you send, to fight off enemy warships and coastal guns on the way. When off, they all stay to guard your harbours.")
+		main.sel_actions.add_child(xb)
 	# a building site: ring a bell when it is finished
 	if b.p == 1 and (b.state == "build" or b.reno_to >= 0):
 		var wb := main._button(tr("Bell when done: %s") % ("on" if main.watch.has(b.id) else "off"), func():
@@ -584,3 +593,7 @@ func _garrison_ui(b: Sim.Bld) -> void:
 		p.border_first = on
 		main._gar_sig = "-")
 	main.garrison_box.add_child(bf)
+
+
+func me_warships() -> int:
+	return main.sim.human().warships

@@ -1315,9 +1315,44 @@ func _draw() -> void:
 				_cv.draw_line(p0 - d, p0, Color(0.28, 0.2, 0.1), 0.035)
 				_cv.draw_line(p0 - d, p0 - d * 0.72, Color(0.95, 0.95, 0.92), 0.06)
 				_cv.draw_line(p0, p0 - d.rotated(0.5) * 0.25, Color(0.5, 0.5, 0.52), 0.03)
+		# the general rides with this column: a gold star over it
+		if a.general:
+			var gp: Vector2 = (a.to + Vector2(0.5, 0.75)) if a.fighting else (sim.military.column_pos(a) + Vector2(0.5, 0.75))
+			_star(gp + Vector2(0.0, -2.1 if sim.military.at_sea(a) else -1.4), 0.2, Color("f2c84a"))
 		for li in range(nl2, labels.size()):
 			labels[li][0] = (labels[li][0] as Vector2) + Vector2(0, -_cur_lift)
 		_unlift()
+	# warships, and the shots of warships and coastal forts
+	for ws in sim.navy:
+		var wp: Vector2 = sim.naval.pos_of(ws)
+		if wp.x < x0 - 2 or wp.x > x1 + 2 or wp.y < y0 - 2 or wp.y > y1 + 2:
+			continue
+		if fog_on and int(ws.p) != 1 and fv[clampi(int(wp.y), 0, sim.h - 1) * w + clampi(int(wp.x), 0, w - 1)] == 0:
+			continue
+		var wpc: Color = sim.players[int(ws.p) - 1].color
+		_draw_ship(wp + Vector2(0.5, 0.75), float(ws.dx) < 0.0, wpc, float(ws.id), "", true)
+		# its pennant: a long streamer at the masthead, and its hull's strength
+		var mt := wp + Vector2(0.5, 0.75 - 0.2 - 1.6 * 0.82)
+		_cv.draw_colored_polygon(PackedVector2Array([mt, mt + Vector2(0.55, 0.06), mt + Vector2(0.0, 0.12)]), wpc)
+		if int(ws.hp) < SimNavy.HP:
+			for k in SimNavy.HP:
+				_cv.draw_rect(Rect2(wp + Vector2(0.18 + k * 0.22, 1.1), Vector2(0.18, 0.07)), Color("7ac060") if k < int(ws.hp) else Color(0.2, 0.15, 0.1, 0.8))
+	for e in sim.naval.fx:
+		var u := (sim.time - float(e[2])) / 0.6
+		if u < 0.0 or u > 1.0:
+			continue
+		var fa: Vector2 = (e[0] as Vector2) + Vector2(0.5, 0.5)
+		var fb: Vector2 = (e[1] as Vector2) + Vector2(0.5, 0.6)
+		if fa.x < x0 - 4 or fa.x > x1 + 4 or fa.y < y0 - 4 or fa.y > y1 + 4:
+			continue
+		_cv.draw_circle(fa + Vector2(0, -u * 0.3), 0.14 + u * 0.25, Color(0.92, 0.92, 0.88, 0.7 * (1.0 - u)))
+		if u < 0.2:
+			_cv.draw_circle(fa, 0.09, Color(1.0, 0.85, 0.4, 0.95))
+		var ub := clampf(u * 1.6, 0.0, 1.0)
+		if ub < 1.0:
+			_cv.draw_circle(fa.lerp(fb, ub) + Vector2(0, -sin(ub * PI) * 0.6), 0.06, Color(0.15, 0.13, 0.12))
+		else:
+			_cv.draw_circle(fb, 0.12 + (u - 0.62) * 0.5, Color(0.85, 0.92, 1.0, 0.7 * (1.0 - u)))
 	if not sim.features.is_empty():
 		var vr2 := Rect2i(x0, y0, x1 - x0 + 1, y1 - y0 + 1)
 		for f: Feature in sim.features:
@@ -2013,6 +2048,17 @@ func _smoke_at(p: Vector2, seed: float, strength: float) -> void:
 
 ## A little ship at pos: brown hull, a white sail with the realm's colour; its cargo on deck (res), or,
 ## for a fleet carrying soldiers to a landing (war), a red war pennant and shields along the side.
+## A five-pointed star of radius r at c.
+func _star(c: Vector2, r: float, col: Color) -> void:
+	var pts := PackedVector2Array()
+	for k in 10:
+		var ang := -PI / 2.0 + k * PI / 5.0
+		pts.append(c + Vector2(cos(ang), sin(ang)) * (r if k % 2 == 0 else r * 0.45))
+	_cv.draw_colored_polygon(pts, col)
+	pts.append(pts[0])
+	_cv.draw_polyline(pts, Color(0.25, 0.15, 0.05, 0.8), 0.02)
+
+
 func _draw_ship(pos: Vector2, left: bool, pc: Color, seed: float, res: String, war: bool) -> void:
 	var fl := -1.0 if left else 1.0
 	var bob := 0.03 * sin(sim.time * 3.0 + seed)
