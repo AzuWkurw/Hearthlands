@@ -223,7 +223,13 @@ def main():
     zip_src = os.path.join(out, f"Hearthlands-v{num}-build{build}-Source.zip")
     if not dry:
         with zipfile.ZipFile(zip_src, "w", zipfile.ZIP_DEFLATED) as z:
+            # (never the builds themselves: with --out inside the project, the zip would take in
+            # its own growing self until the disk is full)
+            out_rel = os.path.relpath(out, ROOT)
+            inside = not out_rel.startswith("..")
             for rel in project_files():
+                if inside and (rel == out_rel or rel.startswith(out_rel + os.sep)):
+                    continue
                 z.write(os.path.join(ROOT, rel), os.path.join("Hearthlands-source", rel))
             z.write(os.path.join(ROOT, "docs", "FILES.md"), "Hearthlands-source/FILES.md")
     print(f"   {zip_src}")

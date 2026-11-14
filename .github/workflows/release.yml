@@ -40,7 +40,7 @@ jobs:
 
       # (the tests run before every build is made: python3 tools/run_all.py)
       - name: Build the zips
-        run: python3 tools/make_build.py --no-bump --no-check --out "$PWD/out"
+        run: python3 tools/make_build.py --no-bump --no-check --out "$RUNNER_TEMP/out"
 
       - name: The release
         uses: softprops/action-gh-release@v2
@@ -49,7 +49,7 @@ jobs:
           target_commitish: ${{ github.sha }}
           name: ${{ env.TITLE }}
           make_latest: true
-          body_path: out/release_notes.md
+          body_path: ${{ runner.temp }}/out/release_notes.md
           files: |
-            out/Hearthlands-*-Windows.zip
-            out/Hearthlands-*-Source.zip
+            ${{ runner.temp }}/out/Hearthlands-*-Windows.zip
+            ${{ runner.temp }}/out/Hearthlands-*-Source.zip
