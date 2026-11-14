@@ -1,5 +1,14 @@
 # Changelog
 
+## Build 46 (v0.41.0, 2026-11-14)
+
+Luxuries and more production buildings.
+
+- Four luxuries for the nobles: spices, silk, porcelain and coffee. They aren't needed, but for every kind the nobles have had lately they pay 8% more tax. The People panel shows how many they have.
+- Eight new production buildings, each drawn with its trade: Mulberry grove and Silk weaver (High Medieval, Dyeing), Pepper garden and Spice mill (Renaissance, Cartography; the mill also takes salt), Kaolin pit and Porcelain kiln (Enlightenment, Porcelain; the kiln takes coal), Coffee plantation and Coffee roaster (Enlightenment, Agricultural societies; the roaster takes coal). The groves, gardens and plantations are crops that slow down in winter.
+- Travelling merchants now sometimes bring luxuries, and buy 10 of whatever you have most of for gold.
+- Rivals with nobles build the luxury chains and trade for the luxuries they lack.
+
 ## Build 45 (v0.40.0, 2026-11-14)
 
 A wonder for every age, and a second way to win.

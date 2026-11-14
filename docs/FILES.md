@@ -2,7 +2,7 @@
 
 Every source file with what it is for, grouped by part. Written by `tools/file_list.py` from the comment at the
 top of each file; run it again after adding files. For how the parts work together, read
-`docs/SOURCE_GUIDE.md`. Besides these 225 files there are 1009 pictures in `textures/` (made by
+`docs/SOURCE_GUIDE.md`. Besides these 226 files there are 1073 pictures in `textures/` (made by
 `tools/make_textures.py` and `tools/make_scenery.py`, or your own) and 76 sounds in `sounds/` (made by
 `tools/make_sounds.py`) and 8 pieces of music in `music/` (made by `tools/make_music.py`). Godot's
 `.import` files next to them are made by the editor.
@@ -12,13 +12,13 @@ top of each file; run it again after adding files. For how the parts work togeth
 | File | Lines | What it is |
 |---|---:|---|
 | `scripts/crops.gd` | 278 | What a farm grows. A farm sows one crop at a time, chosen on its panel. Wheat is known from the start; other seeds are unlocked by research. Each crop has its seasons: how much faster or slower it grows in spring, summer, autumn and winter, and OFF where it does not grow at all (the farm stands idle then). With the Three-field system studied, a farm can be set to sow winter rye when its own crop is out of season. Without the seasons feature every crop grows all year. |
-| `scripts/diplomacy.gd` | 546 | Relations between realms (war, peace or alliance), each rival's opinion of every other realm, proposals (peace, alliance, trade and gifts) and how rival AIs decide on them. The state itself lives in Sim (rel, rel_since, proposals, and Player.opinion) so it is saved with the game. |
-| `scripts/game_data.gd` | 361 | Loads the game's content from data/*.json. Files with the same name in user://data/ are merged on top, so players can add or change resources, buildings and population needs without editing the project. |
-| `scripts/sim.gd` | 2711 | The whole game state and rules: map, players, economy, territory, combat and rival AI. Runs without any rendering, so it can be tested headless (see tools/sim_test.gd). |
-| `scripts/sim_ai.gd` | 673 | How rival realms think: what to build and where, when to attack, what to research. Part of the simulation: sim.gd holds the shared state and calls in here; the functions reach the rest of the game through `sim`. |
+| `scripts/diplomacy.gd` | 550 | Relations between realms (war, peace or alliance), each rival's opinion of every other realm, proposals (peace, alliance, trade and gifts) and how rival AIs decide on them. The state itself lives in Sim (rel, rel_since, proposals, and Player.opinion) so it is saved with the game. |
+| `scripts/game_data.gd` | 374 | Loads the game's content from data/*.json. Files with the same name in user://data/ are merged on top, so players can add or change resources, buildings and population needs without editing the project. |
+| `scripts/sim.gd` | 2713 | The whole game state and rules: map, players, economy, territory, combat and rival AI. Runs without any rendering, so it can be tested headless (see tools/sim_test.gd). |
+| `scripts/sim_ai.gd` | 678 | How rival realms think: what to build and where, when to attack, what to research. Part of the simulation: sim.gd holds the shared state and calls in here; the functions reach the rest of the game through `sim`. |
 | `scripts/sim_logistics.gd` | 1859 | Roads, the road network, stores, carriers and work areas. Part of the simulation: sim.gd holds the shared state and calls in here; the functions reach the rest of the game through `sim`. |
 | `scripts/sim_military.gd` | 1110 | Territory, soldiers, attacks, duels and conquest. Part of the simulation: sim.gd holds the shared state and calls in here; the functions reach the rest of the game through `sim`. |
-| `scripts/sim_people.gd` | 558 | People: housing, jobs and specialists, homes where people wait, people walking to work and soldiers to their posts, needs and food. Part of the simulation: sim.gd holds the shared state and calls in here; the functions reach the rest of the game through `sim` (sim.gd keeps a one-line wrapper for each, so callers did not change). |
+| `scripts/sim_people.gd` | 577 | People: housing, jobs and specialists, homes where people wait, people walking to work and soldiers to their posts, needs and food. Part of the simulation: sim.gd holds the shared state and calls in here; the functions reach the rest of the game through `sim` (sim.gd keeps a one-line wrapper for each, so callers did not change). |
 | `scripts/sim_production.gd` | 544 | Production: buildings working in cycles (inputs, outputs, tools, experience) and construction sites. Part of the simulation: sim.gd holds the shared state and calls in here; the functions reach the rest of the game through `sim` (sim.gd keeps a one-line wrapper for each, so callers did not change). |
 | `scripts/sim_research.gd` | 381 | Research points, techs and the ages. Part of the simulation: sim.gd holds the shared state and calls in here; the functions reach the rest of the game through `sim`. |
 | `scripts/sim_sea.gd` | 258 | Ships and harbours. A shipyard on the coast builds ships (Player.ships). A harbour is a store on the coast that also holds a little land and a soldier, and people can wait there. From a harbour an expedition (a ship, 4 planks, 2 stone and a soldier) sails to another free coast and founds a new harbour there: a colony. Ships then carry goods between harbours that no road joins, from where there is plenty to where there is little. Ships are Trips of kind "ship" along a path over water; `aim` is the tile an expedition lands on. |
@@ -31,7 +31,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `scripts/features/clothing.gd` | 164 | Summer and winter clothes. Needs "Seasons, biomes and weather" for the temperature. Every realm keeps a wardrobe: how many of its people own a fur coat and how many own linen clothes. Whenever coats or linen are in store and not everyone has them, people take them (one piece dresses 3 people). Clothes wear out only while worn: coats in the cold, linen in the heat. Below 8 C people without a coat work slower and eat more, the more so the colder it is; above 24 C people without linen clothes work slower. Diseases (if switched on) read cold_need(). |
 | `scripts/features/contentment.gd` | 191 | Contentment: how happy a realm's people are, from 0 to 1. Half (0.5) is where every realm starts and changes nothing. Taverns serving beer and bread to the homes near them, and chapels burning candles near them, raise it; hunger and sickness lower it. Content people work faster (up to 10%), unhappy ones slower (down to about 7%). A tavern with beer and bread to spare holds a festival now and then: everyone works 10% faster for 3 minutes. When the realm stays unhappy for 3 minutes, idle peasants start to leave, one a minute. |
 | `scripts/features/diseases.gd` | 333 | Diseases, their prevention and their cure. Every ten seconds each disease may break out in a realm; how likely depends on its causes (cold without coats, crowding, too few wells, hunger, heat, wetlands) and on prevention (bathhouses keep people clean, wells give clean water, coats keep the cold out). Once in, it spreads among the healthy and the sick slowly get better by themselves, faster with medicine: medicine in store cures a few at home, and an infirmary cures 8 people with each medicine. Some of the sick die. Sick people don't work, so every building of the realm works slower by the share of its people who are sick. Uses the seasons (temperature, wetlands) and clothes features when they are switched on. |
-| `scripts/features/events.gd` | 368 | Random events: every four to seven minutes something happens to each realm, good or bad: a bumper harvest, rats in the granary, a fire, a mine collapse, a travelling merchant, refugees, a festival, a lucky find, wolves, a skilled newcomer, storm damage, bandits, a wandering scholar, an epidemic. Rivals get them too. Switch them off in Settings > Game features ("Random events"); each event can also be switched off on its own in the Events list window (F6). |
+| `scripts/features/events.gd` | 389 | Random events: every four to seven minutes something happens to each realm, good or bad: a bumper harvest, rats in the granary, a fire, a mine collapse, a travelling merchant, refugees, a festival, a lucky find, wolves, a skilled newcomer, storm damage, bandits, a wandering scholar, an epidemic. Rivals get them too. Switch them off in Settings > Game features ("Random events"); each event can also be switched off on its own in the Events list window (F6). |
 | `scripts/features/feature.gd` | 149 | Base class for optional game systems ("features"): production statistics, seasons, diseases and so on. A feature is a script that extends Feature and overrides only the hooks it needs. The simulation calls the hooks of every switched-on feature, and a feature changes the game only through them, so each one can be switched on or off in Settings without touching the rest of the game. To write your own, put a .gd file that extends Feature in the mods folder (Settings shows where). See mods_examples/ in the project for a small example. |
 | `scripts/features/features.gd` | 62 | Finds the features the game can use: the built-in ones and any mod scripts in the mods folder. |
 | `scripts/features/fires.gd` | 204 | Fires that spread. A fire starts in a building (a random event's fire, or a catapult's stone) and grows. A building on fire stops working, and when the fire has burned it down it is gone. Fire jumps to wooden neighbours within 3 tiles; buildings mostly of stone or brick do not catch, and nor do the headquarters, stores and stone forts. People from working wells within 10 tiles, and the crew of a fire station within 14, run with buckets: the more of them, the faster the fire dies. A fire left alone burns a building down in a minute or two. |
@@ -80,7 +80,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `scripts/ui_research.gd` | 448 | The research window: the tech tree from Rome to the Industrial Revolution. Part of the interface: main.gd holds the shared state and calls in here; the functions reach the rest of the game through `main`. |
 | `scripts/ui_saves.gd` | 148 | Saving and loading games, and the Save / Load window. Part of the interface: main.gd holds the shared state and calls in here; the functions reach the rest of the game through `main`. |
 | `scripts/ui_settings.gd` | 284 | The Settings window: renderer, display, resolution and options. Part of the interface: main.gd holds the shared state and calls in here; the functions reach the rest of the game through `main`. |
-| `scripts/ui_side.gd` | 166 | The side panel: stores, people, the build list, research and rivals, refreshed once a second. Part of the interface: main.gd holds the shared state and calls in here; the functions reach the rest of the game through `main` (main.gd keeps a one-line wrapper for each, so callers did not change). |
+| `scripts/ui_side.gd` | 174 | The side panel: stores, people, the build list, research and rivals, refreshed once a second. Part of the interface: main.gd holds the shared state and calls in here; the functions reach the rest of the game through `main` (main.gd keeps a one-line wrapper for each, so callers did not change). |
 | `scripts/ui_targets.gd` | 82 | Production targets: how many of each good to keep in stock. Part of the interface: main.gd holds the shared state and calls in here; the functions reach the rest of the game through `main`. |
 | `scripts/ui_textures.gd` | 69 | The texture browser: every picture the game uses, and your replacements. Part of the interface: main.gd holds the shared state and calls in here; the functions reach the rest of the game through `main`. |
 | `scripts/ui_toolbar.gd` | 404 | The toolbar along the bottom of the map, as in the Settlers games: a button per building group (each opens a panel of its buildings just above the bar), the road tools and Auto roads, Demolish, and the tools of the game features (send a scout, send a geologist). Esc closes the panel. |
@@ -93,13 +93,13 @@ top of each file; run it again after adding files. For how the parts work togeth
 
 | File | Lines | What it is |
 |---|---:|---|
-| `data/buildings.json` | 2620 | Every building: name, group, size, cost, build time, worker, inputs and outputs, work cycle, garrison, store room, art style and info text. |
+| `data/buildings.json` | 2848 | Every building: name, group, size, cost, build time, worker, inputs and outputs, work cycle, garrison, store room, art style and info text. |
 | `data/campaign.json` | 397 | The campaign: its chapters, their place on the campaign map, story before and after, what carries over, and the mission of each. |
 | `data/lang_de.json` | 290 | German translation of the interface. |
 | `data/map_iron_coast.json` | 1 | The hand-made map of the Iron Coast mission (made by tools/make_mission_map.gd). |
 | `data/missions.json` | 63 | The missions: story, map or seed, rivals, options, time limit and goals. |
-| `data/needs.json` | 13 | What each class of people (peasants, artisans, nobles, soldiers) uses up to stay content. |
-| `data/resources.json` | 503 | Every good: name, icon shape, colour, store room and info. |
+| `data/needs.json` | 21 | What each class of people (peasants, artisans, nobles, soldiers) uses up to stay content. |
+| `data/resources.json` | 559 | Every good: name, icon shape, colour, store room and info. |
 | `data/techs.json` | 187 | The research tree: techs, ages, costs, what each unlocks or improves. |
 | `data/trades.json` | 67 | The trades (woodland, mining, farming...): their names, tools and levels. |
 
@@ -140,6 +140,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `tools/geo_test.gd` | 44 | Tests geologists: ore hidden until surveyed, mines only on surveyed ore, a survey trip, rivals surveying. Run: godot --headless --script res://tools/geo_test.gd |
 | `tools/load_saves_test.gd` | 34 | Loads every save in the saves folder (user://saves) and plays each on for a minute: old saves must still load. godot --headless --script res://tools/load_saves_test.gd |
 | `tools/log_go_test.gd` | 34 | Checks the Go buttons of the event log: xvfb-run godot --rendering-driver opengl3 --script res://tools/log_go_test.gd -- out=/dir |
+| `tools/luxury_test.gd` | 33 | Luxuries: spices, silk, porcelain and coffee. Nobles who have had one lately pay more tax, each kind counting once; the chains make them: godot --headless --script res://tools/luxury_test.gd |
 | `tools/march_test.gd` | 91 | Columns march round water, buildings react to columns passing by, and survivors go home: godot --headless --script res://tools/march_test.gd |
 | `tools/menu_test.gd` | 44 | Lists what each tab of the Build panel shows, for a new game and for a loaded older save, and names every building that appears in no tab. Run: godot --headless --script res://tools/menu_test.gd -- [save=path] |
 | `tools/mil2_test.gd` | 71 | Military upgrades, border priority, separate archers and rivals breaking the peace: godot --headless --script res://tools/mil2_test.gd |
@@ -155,7 +156,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `tools/research_test.gd` | 30 | The research queue and repeatable studies: godot --headless --script res://tools/research_test.gd |
 | `tools/research_ui_test.gd` | 113 | Drives the research window with real mouse and key events and prints what happened. |
 | `tools/rules_test.gd` | 55 | Tests the build 11 rules: difficulty options, tools for new workers, the toolsmith's choice and production targets. |
-| `tools/run_all.py` | 114 | Run every automatic test and say which passed. |
+| `tools/run_all.py` | 115 | Run every automatic test and say which passed. |
 | `tools/save_test.gd` | 33 | Save/load round trip: play, save, load into a fresh Sim, then check both continue identically. |
 | `tools/sea_test.gd` | 95 | Ships and harbours: a harbour on your coast, an expedition founds a colony across the water, ships then carry goods there, and a game with ships at sea saves and loads the same. godot --headless --script res://tools/sea_test.gd [-- seed=valley] |
 | `tools/settings_test.gd` | 41 | Tests the Settings window: display mode, resolution, interface size, a renderer trial that fails, and continuing the autosaved game after a restart. Run it twice: first with "-- step1", then "-- resume". |
@@ -258,7 +259,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 | File | Lines | What it is |
 |---|---:|---|
 | `tools/bld_tex.py` | 243 | Surface textures for the building pictures (used by make_textures.py). |
-| `tools/bld_variants.py` | 2508 | Own pictures for buildings that share a drawing style in make_textures.py. |
+| `tools/bld_variants.py` | 2673 | Own pictures for buildings that share a drawing style in make_textures.py. |
 | `tools/bump_build.py` | 63 | Raise the build number before a release. |
 | `tools/check_data.py` | 104 | Check the data files (and optionally a mod's JSON files) for mistakes. |
 | `tools/extract_strings.py` | 76 | Collect the interface text from the scripts into the translation files. |
@@ -277,9 +278,9 @@ top of each file; run it again after adding files. For how the parts work togeth
 
 | File | Lines | What it is |
 |---|---:|---|
-| `CHANGELOG.md` | 641 | What changed in each build. |
-| `README.md` | 964 | How to play, the rules, controls, settings, modding and the project layout. |
-| `docs/FILES.md` | 287 | This list (written by tools/file_list.py). |
+| `CHANGELOG.md` | 650 | What changed in each build. |
+| `README.md` | 980 | How to play, the rules, controls, settings, modding and the project layout. |
+| `docs/FILES.md` | 288 | This list (written by tools/file_list.py). |
 | `docs/SOURCE_GUIDE.md` | 439 | A tour of the code for programmers: the parts, how a game tick runs, where things live. |
 | `docs/SUGGESTIONS.md` | 203 | Ideas and their status after each round of work. |
 | `export_presets.cfg` | 61 | Godot export settings for the Windows and Linux builds. |
