@@ -1631,7 +1631,7 @@ func renovate(b: Bld) -> String:
 
 ## The buildings b can be upgraded to where it stands: a military building to a bigger one of the same
 ## size, holding more soldiers; any other to those its "upgrade_to" lists (the mule station to the ox
-## cart yard). Only those whose study is known.
+## cart yard, the scriptorium to the library). Only those whose study is known.
 func upgrades_of(b: Bld) -> Array:
 	var out := []
 	var p := players[b.p - 1]
@@ -1784,7 +1784,7 @@ func _reno_tick(p: Player) -> void:
 					if not ups.is_empty():
 						upgrade(b, ups[0])
 						break
-			# and a mule station to an ox cart yard once they know ox carts
+			# and a mule station to an ox cart yard, a scriptorium to a library, once they know how
 			for b: Bld in realm_blds(p):
 				if b.def.has("upgrade_to") and b.state == "ready" and b.reno_to < 0 and _renos_running(p) == 0:
 					var ups2 := upgrades_of(b)

@@ -1,5 +1,12 @@
 # Changelog
 
+## Build 49.1 (v0.44.0, 2026-11-14)
+
+The scriptorium can be upgraded to a library.
+
+- New: once you know Monasteries, a scriptorium can be upgraded to a library where it stands ("Upgrade to Library" in its info; carriers bring the difference: 1 plank and 2 stone). A library makes 8 research points a cycle instead of 4. Before Monasteries, its info says which study opens it. Rivals upgrade theirs too.
+- The upgrade test now covers the scriptorium as well.
+
 ## Build 49 (v0.44.0, 2026-11-14)
 
 War at sea, armies that need supplies, and a new start: landing from the sea.

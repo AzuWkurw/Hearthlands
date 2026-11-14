@@ -29,5 +29,19 @@ func _init() -> void:
 		sim.tick(Sim.TICK)
 	print("after %d s: %s (same building %s), carriers %s" % [int(sim.time - t0), b.ty, sim.by_id.get(id) == b, b.def.get("carriers", {})])
 	if b.ty != "cart_yard" or sim.by_id.get(id) != b: ok = false; print("FAIL: it became an ox cart yard where it stands")
+	# a scriptorium becomes a library once Monasteries is studied
+	var sc := sim.add_bld("scriptorium", me.hq.x - 4, me.hq.y + 4, me, false, 0)
+	sim.production._finish_site(sc, me)
+	print("road: '%s'" % sim.build_road(sc.x, sc.y, me.hq.x, me.hq.y, 1))
+	for i in 30: sim.tick(Sim.TICK)
+	if not sim.upgrades_of(sc).is_empty(): ok = false; print("FAIL: no library before Monasteries")
+	sim.complete_tech(me, "monasteries")
+	print("scriptorium upgrades: ", sim.upgrades_of(sc), " costs ", sim.upgrade_cost(sc, "library"))
+	if sim.upgrade(sc, "library") != "": ok = false; print("FAIL: library upgrade did not start")
+	var t1 := sim.time
+	while sc.upg != "" and sim.time - t1 < 600.0:
+		sim.tick(Sim.TICK)
+	print("after %d s: %s, research per cycle %s" % [int(sim.time - t1), sc.ty, sc.def.out])
+	if sc.ty != "library": ok = false; print("FAIL: it became a library where it stands")
 	print("STATION UPGRADE TEST: %s" % ("PASS" if ok else "FAIL"))
 	quit()

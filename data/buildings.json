@@ -1961,6 +1961,9 @@
   "name": "Scriptorium",
   "cat": "science",
   "size": "medium",
+  "upgrade_to": [
+   "library"
+  ],
   "cost": {
    "planks": 3,
    "stone": 2

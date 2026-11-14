@@ -6,7 +6,7 @@ extends RefCounted
 
 const NUMBER := "0.44.0"
 const BUILD := 49
-const FIX := 0          # a fix release of the same build: 43.1, 43.2... (0: none)
+const FIX := 1          # a fix release of the same build: 43.1, 43.2... (0: none)
 const DATE := "2026-11-14"
 
 

@@ -10,7 +10,7 @@ economy you do.
 ## Download
 
 The ready-made Windows game is on the [`downloads` branch](../../tree/downloads): download the zip,
-unzip it and run `Hearthlands.exe`. Current version: **v0.44.0 build 49** (see `CHANGELOG.md`).
+unzip it and run `Hearthlands.exe`. Current version: **v0.44.0 build 49.1** (see `CHANGELOG.md`).
 
 What is in the game now:
 
@@ -39,7 +39,7 @@ Done (builds 43 to 49):
 | 46 | Luxuries and 8 new production buildings: spices, silk, porcelain, coffee and more, wanted by nobles for contentment and taxes |
 | 47 | Events with a choice (pilgrims, a comet, grumbling, a strange ship), merchants who buy your surplus, allies who ask for help and leave when trust falls |
 | 48 | A living world: working buildings move (saws, water wheels, sparks, steam), and snow settles on roofs in winter |
-| 48.1 to 48.6 | Bug fixes and speed-ups: square clouds and the orange map at dusk fixed, no starving with full stores, ox carts as an upgrade for the mule station, map baking on all processor cores, about twice as fast drawing on big maps |
+| 48.1 to 48.6 | Bug fixes and speed-ups: square clouds and the orange map at dusk fixed, no starving with full stores, ox carts as an upgrade for the mule station (and in 49.1 the scriptorium to a library), map baking on all processor cores, about twice as fast drawing on big maps |
 | 49 | War at sea: landings on a rival's coast from your harbours, fleets that fight and sink enemy ships; armies that need supplies far from home; a new-game option to land from the sea with a harbour headquarters |
 
 Next: a window for logistics priorities and one for worker priorities, with numbers.

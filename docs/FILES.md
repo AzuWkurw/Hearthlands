@@ -94,7 +94,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 
 | File | Lines | What it is |
 |---|---:|---|
-| `data/buildings.json` | 3343 | Every building: name, group, size, cost, build time, worker, inputs and outputs, work cycle, garrison, store room, art style and info text. |
+| `data/buildings.json` | 3346 | Every building: name, group, size, cost, build time, worker, inputs and outputs, work cycle, garrison, store room, art style and info text. |
 | `data/campaign.json` | 397 | The campaign: its chapters, their place on the campaign map, story before and after, what carries over, and the mission of each. |
 | `data/lang_de.json` | 305 | German translation of the interface. |
 | `data/map_iron_coast.json` | 1 | The hand-made map of the Iron Coast mission (made by tools/make_mission_map.gd). |
@@ -167,7 +167,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `tools/site_test.gd` | 25 | Do carriers bring materials to a new construction site? godot --headless --script res://tools/site_test.gd |
 | `tools/soak_test.gd` | 124 | A long game with every rival (and you played by the AI) to catch errors and broken rules: godot --headless --script res://tools/soak_test.gd -- seed=valley mins=60 [size=320] [foes=7] [places] (places: a dozen ruins and bandit camps scattered between the realms) Every minute it checks: stock equals the sum of the stores, no negative stocks or people, no dead building still listed, every building on its tile, archers never above the garrison, carts and fires only for living buildings. It prints what it saw of the new things (trades, fires, bridges...). |
 | `tools/sound_test.gd` | 128 | Sound: every effect, loop and piece of music loads; the mixer has its buses; the music follows the game (the new-game screen, peace, war while your land is attacked, the end); sounds of the world play where they are on screen and not when far off it; the ambience follows what is on screen; news in the log picks its sound; muting works; the settings have the four volumes. xvfb-run -a godot --rendering-driver opengl3 --script res://tools/sound_test.gd |
-| `tools/station_upgrade_test.gd` | 33 | A mule station can be upgraded to an ox cart yard where it stands, once ox carts are studied: godot --headless --script res://tools/station_upgrade_test.gd |
+| `tools/station_upgrade_test.gd` | 47 | A mule station can be upgraded to an ox cart yard where it stands, once ox carts are studied: godot --headless --script res://tools/station_upgrade_test.gd |
 | `tools/stores_test.gd` | 29 | Goods kept in each store: godot --headless --script res://tools/stores_test.gd [-- mins=15] |
 | `tools/stretch_test.gd` | 54 | Road carriers mode (one carrier per stretch of road): goods still get through, loads wait at flags on busy roads, stock matches the stores, and a saved game goes on exactly the same. godot --headless --script res://tools/stretch_test.gd |
 | `tools/toolbar_tool_test.gd` | 35 | The toolbar's feature tools work whatever building group was open last: xvfb-run -a -s "-screen 0 1920x1080x24" godot --rendering-driver opengl3 --script res://tools/toolbar_tool_test.gd |
@@ -283,9 +283,9 @@ top of each file; run it again after adding files. For how the parts work togeth
 
 | File | Lines | What it is |
 |---|---:|---|
-| `CHANGELOG.md` | 742 | What changed in each build. |
+| `CHANGELOG.md` | 749 | What changed in each build. |
 | `README.md` | 1037 | How to play, the rules, controls, settings, modding and the project layout. |
-| `docs/FILES.md` | 293 | This list (written by tools/file_list.py). |
+| `docs/FILES.md` | 294 | This list (written by tools/file_list.py). |
 | `docs/SOURCE_GUIDE.md` | 439 | A tour of the code for programmers: the parts, how a game tick runs, where things live. |
 | `docs/SUGGESTIONS.md` | 203 | Ideas and their status after each round of work. |
 | `export_presets.cfg` | 61 | Godot export settings for the Windows and Linux builds. |
