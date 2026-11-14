@@ -10,7 +10,7 @@ economy you do.
 ## Download
 
 The ready-made Windows game is on the [`downloads` branch](../../tree/downloads): download the zip,
-unzip it and run `Hearthlands.exe`. Current version: **v0.43.0 build 48.5** (see `CHANGELOG.md`).
+unzip it and run `Hearthlands.exe`. Current version: **v0.43.0 build 48.6** (see `CHANGELOG.md`).
 
 What is in the game now:
 

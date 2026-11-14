@@ -524,6 +524,14 @@ func _mask_tex(data: PackedByteArray) -> ImageTexture:
 	return ImageTexture.create_from_image(img)
 
 
+## Whether snow lies in any climate now (the map view skips the roofs otherwise).
+func any_snow() -> bool:
+	for v in _snow:
+		if float(v) > 0.03:
+			return true
+	return false
+
+
 ## How much snow lies on tile i now (0 none .. 1 a full cover), for the snow on roofs.
 func snow_at(i: int) -> float:
 	if biome.is_empty() or i < 0 or i >= biome.size():

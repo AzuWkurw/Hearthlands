@@ -31,16 +31,20 @@ func _init() -> void:
 	var fresh := false
 	var size := 2
 	var foes := 4
+	var use_save := ""    # save=<name>: measure a saved game (in the saves folder) instead
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("blds="): want = int(a.substr(5))
 		if a == "fresh": fresh = true
 		if a.begins_with("size="): size = int(a.substr(5))
 		if a.begins_with("foes="): foes = int(a.substr(5))
+		if a.begins_with("save="): use_save = a.substr(5)
 	DisplayServer.window_set_size(Vector2i(1600, 900)); root.size = Vector2i(1600, 900)
 	main = load("res://main.tscn").instantiate(); root.add_child(main)
 	for i in 3: await process_frame
 	sim = main.sim
 	var save_name := "late_bench" if size == 2 else "late_bench_%d" % size
+	if use_save != "":
+		save_name = use_save
 	var path := Main.SAVE_DIR + "/" + save_name + ".save"
 	if fresh or not FileAccess.file_exists(path):
 		main._start("latebench", foes, 6, true, size)
@@ -66,7 +70,7 @@ func _init() -> void:
 	c /= maxf(1.0, sim.realm_blds(me2).size())
 	main.view.center_on(c)
 	main.paused = true
-	for z in [[8.0, "far"], [20.0, "mid"], [34.0, "near"]]:
+	for z in ([] if OS.get_cmdline_user_args().has("sim_only") else [[8.0, "far"], [20.0, "mid"], [34.0, "near"]]):
 		main.view.zoom = z[0]
 		await _frames(10)
 		main.view.prof = {}
@@ -113,4 +117,15 @@ func _init() -> void:
 			mx.append("%s %.1f" % [k2, int(main.view.prof_max[k2]) / 1000.0])
 	print("placing a tower, turning its entrance: %.1f ms/frame on average, worst frame %.1f ms | worst parts: %s" % [tot / 6.0, worst, ", ".join(mx)])
 	main.view.place_type = ""
+	# the simulation of this game: ms per game second, and its biggest parts
+	sim.perf = {}
+	var ts := Time.get_ticks_usec()
+	for i in int(60.0 / Sim.TICK):
+		sim.tick(Sim.TICK)
+	var parts2 := []
+	var ks: Array = sim.perf.keys()
+	ks.sort_custom(func(a, b): return int(sim.perf[a]) > int(sim.perf[b]))
+	for k3 in ks.slice(0, 10):
+		parts2.append("%s %.1f" % [k3, int(sim.perf[k3]) / 1000.0 / 60.0])
+	print("simulation: %.1f ms per game second | %s" % [(Time.get_ticks_usec() - ts) / 1000.0 / 60.0, ", ".join(parts2)])
 	quit()

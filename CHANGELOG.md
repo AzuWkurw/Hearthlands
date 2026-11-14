@@ -1,5 +1,14 @@
 # Changelog
 
+## Build 48.6 (v0.43.0, 2026-11-14)
+
+Faster big games, measured on a player's own save (448 map, 9 realms, 2,129 buildings, 1,362 carriers on the road).
+
+- Buildings draw faster: what each building's picture needs is worked out once and kept, the red "!" badge is one small picture instead of three circles and a line, roofs are only checked for snow when snow lies somewhere, and sprites no longer compare names to know whether they cast a shadow. In that save, drawing the buildings on screen went from 13 to 9 ms at middle zoom and from 10 to 6 ms zoomed out.
+- Carriers draw faster: whether a carrier's way could be on screen is worked out from its two ends, without looking anything up.
+- Carriers fetching goods: the stores are tried nearest first, and those that could not be nearer than the best found are not searched (same choice, less work): about a tenth less time for the carriers in that save.
+- The drawing benchmark can measure a saved game (save=<name>) and also times its simulation.
+
 ## Build 48.5 (v0.43.0, 2026-11-14)
 
 Bug fixes and speed-ups round 5: smoother frames on the biggest maps.

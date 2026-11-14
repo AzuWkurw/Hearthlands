@@ -1277,9 +1277,18 @@ func source_for(p: Sim.Player, b: Sim.Bld, res: String) -> Array:
 	var best: Sim.Bld = null
 	var bd := INF
 	var bf: Array = []
+	# nearest first by the least the walk could take (every step at least a flat paved one), and
+	# none whose least is already longer than the best found: on a big map with many stores this
+	# spares searching the roads from the far ones (the answer is the same)
+	var cand := []
 	for s: Sim.Bld in stores_of(p):
-		if float(s.inv.get(res, 0.0)) < 1.0:
-			continue
+		if float(s.inv.get(res, 0.0)) >= 1.0:
+			cand.append([float(absi(s.x - b.x) + absi(s.y - b.y)) * Sim.PAVED_COST, s])
+	cand.sort_custom(func(u, v): return u[0] < v[0] or (u[0] == v[0] and (u[1] as Sim.Bld).id < (v[1] as Sim.Bld).id))
+	for cs in cand:
+		if float(cs[0]) > bd:
+			break
+		var s: Sim.Bld = cs[1]
 		var f := store_field(s, bt)
 		var d: float = (f[1] as PackedFloat32Array)[bt]
 		if d < bd or (d == bd and best != null and s.id < best.id):

@@ -248,6 +248,7 @@ func _index_blds() -> void:
 	if key == _bld_key and _bld_rows.size() == (sim.h + BROW - 1) / BROW:
 		return
 	_bld_key = key
+	_bd = {}
 	_bld_rows = []
 	_bld_rows.resize((sim.h + BROW - 1) / BROW)
 	for r in _bld_rows.size():
@@ -917,6 +918,7 @@ func _draw() -> void:
 	# features draw on the ground (season colours, snow) under the buildings
 	_season_on = false
 	_seasons = sim.get_feature("seasons")
+	_snow_any = _seasons != null and _seasons.any_snow()
 	if not sim.features.is_empty():
 		var vr := Rect2i(x0, y0, x1 - x0 + 1, y1 - y0 + 1)
 		for f: Feature in sim.features:
@@ -1020,17 +1022,17 @@ func _draw() -> void:
 		var n := t.path.size() - 1
 		if n < 1:
 			continue
-		# a carrier whose whole way lies off screen is skipped before working out where he is
-		var bb: Rect2 = _trip_bb.get(t, Rect2(-1, -1, -1, -1))
-		if bb.size.x < 0.0 or int(_trip_bb_n.get(t, -1)) != t.path.size():
-			var mnx := 1e9; var mny := 1e9; var mxx := -1e9; var mxy := -1e9
-			for pi in t.path:
-				var px := float(pi % w); var py := float(pi / w)
-				mnx = minf(mnx, px); mxx = maxf(mxx, px); mny = minf(mny, py); mxy = maxf(mxy, py)
-			bb = Rect2(mnx, mny, mxx - mnx, mxy - mny)
-			_trip_bb[t] = bb
-			_trip_bb_n[t] = t.path.size()
-		if bb.end.x < vx0 or bb.position.x > vx1 or bb.end.y < vy0 or bb.position.y > vy1:
+		# a carrier whose whole way lies off screen is skipped before working out where he is. A way
+		# moves at most a tile a step, so it strays from the box round its two ends by at most half of
+		# its steps beyond the straight distance: no need to look at every tile of it
+		var e0 := t.path[0]
+		var e1 := t.path[n]
+		var ax0 := e0 % w
+		var ay0 := e0 / w
+		var ax1 := e1 % w
+		var ay1 := e1 / w
+		var slack := (n - maxi(absi(ax1 - ax0), absi(ay1 - ay0))) / 2 + 1
+		if mini(ax0, ax1) - slack > vx1 or maxi(ax0, ax1) + slack < vx0 or mini(ay0, ay1) - slack > vy1 or maxi(ay0, ay1) + slack < vy0:
 			continue
 		var prog := 0.0
 		if not t.delivered:
@@ -1905,8 +1907,7 @@ func _sprite(id: String, foot: Vector2, wid: float, f: int, flip: bool, col := C
 		# a rectangle with a negative width is drawn mirrored left to right
 		dst = Rect2(foot.x + wid / 2.0, foot.y - hgt, -wid, hgt)
 	# a little shadow under the feet of people, animals and carts (not under flags, loads or tints)
-	if wid <= 1.3 and _batch_layer == 0 and id.begins_with("unit_") and not id.begins_with("unit_flag") \
-			and not id.begins_with("unit_load") and not id.ends_with("_tint"):
+	if wid <= 1.3 and _batch_layer == 0 and _casts_shadow(id):
 		var sr := Rect2(foot.x - wid * 0.42 + SUN.x * 0.3, foot.y - wid * 0.13, wid * 0.84, wid * 0.26)
 		if _batching:
 			_shadows.append(sr)
@@ -1917,6 +1918,18 @@ func _sprite(id: String, foot: Vector2, wid: float, f: int, flip: bool, col := C
 	else:
 		draw_texture_rect_region(tex, dst, src, col)
 	return hgt
+
+
+var _shadow_of: Dictionary = {}
+
+## Whether a sprite has a little shadow under its feet: people, animals and carts, not flags, loads
+## or colour tints (worked out once for each picture).
+func _casts_shadow(id: String) -> bool:
+	var v = _shadow_of.get(id)
+	if v == null:
+		v = id.begins_with("unit_") and not id.begins_with("unit_flag") and not id.begins_with("unit_load") and not id.ends_with("_tint")
+		_shadow_of[id] = v
+	return v
 
 
 # Batching: while _batching is on, sprites are collected by layer and picture and drawn together at
@@ -1976,9 +1989,37 @@ func _smoke_at(p: Vector2, seed: float, strength: float) -> void:
 		draw_texture_rect(_smoke, Rect2(c.x - r, c.y - r, r * 2.0, r * 2.0), false, Color(1, 1, 1, (1.0 - ph) * 0.9 * strength))
 
 
+## The red "!" badge as one small picture (made once): a dark ring, a red disc and a white "!".
+var _badge_tex: Texture2D = null
+
+func _badge() -> Texture2D:
+	if _badge_tex == null:
+		var n := 32
+		var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+		var c := Vector2(n / 2.0, n / 2.0)
+		for y in n:
+			for x in n:
+				var d := Vector2(x + 0.5, y + 0.5).distance_to(c)
+				var u := d / (n / 2.0)       # 0 at the centre, 1 at the edge (0.15 tiles)
+				var col := Color(0, 0, 0, 0)
+				if u <= 0.8:
+					col = Color("e0603a")
+				elif u <= 1.0:
+					col = Color(0.12, 0.08, 0.05, 0.85)
+				# the "!": a bar from -0.5 to +0.17 of the radius, and a dot at +0.43
+				var rx := (x + 0.5 - c.x) / (n / 2.0)
+				var ry := (y + 0.5 - c.y) / (n / 2.0)
+				if (absf(rx) <= 0.12 and ry >= -0.5 and ry <= 0.17) or Vector2(rx, ry - 0.43).length() <= 0.14:
+					col = Color.WHITE
+				img.set_pixel(x, y, col)
+		_badge_tex = ImageTexture.create_from_image(img)
+	return _badge_tex
+
+
 ## The snow lying on a building's roofs (bld_<id>_e<era>_snow.png, made with the building), or null.
 var _snow_tex := {}
 var _seasons = null       # the seasons feature while it is on (set each frame)
+var _snow_any := false    # whether snow lies anywhere this frame (else roofs are not looked at)
 
 func bld_snow_texture(ty: String, era: int) -> Texture2D:
 	var key := "%s:%d" % [ty, era]
@@ -2028,14 +2069,28 @@ func _art_of(ty: String) -> Array:
 	return e
 
 
+## What drawing a building needs that changes only with its type and age, kept for each building
+## (a big map has hundreds on screen): [type, age, picture, art, rectangle, top of the picture, snow].
+var _bd: Dictionary = {}
+
+
 func _draw_building(b: Sim.Bld, labels: Array, detail: bool) -> void:
-	# a site is drawn in the look it will have: its realm's age when it was placed
-	var tex: Texture2D = bld_texture(b.ty, b.era)
-	var ai := _art_of(b.ty)
+	var bc = _bd.get(b)
+	if bc == null or bc[0] != b.ty or bc[1] != b.era:
+		# a site is drawn in the look it will have: its realm's age when it was placed
+		var tex0: Texture2D = bld_texture(b.ty, b.era)
+		var ai0 := _art_of(b.ty)
+		var sw0: float = ai0[1]
+		var hgt0 := sw0 * tex0.get_height() / maxf(1.0, tex0.get_width())
+		bc = [b.ty, b.era, tex0, ai0, Rect2(b.x + 0.5 - sw0 / 2.0, b.y + 1.0 - hgt0, sw0, hgt0), _tex_top(tex0),
+			bld_snow_texture(b.ty, b.era)]
+		_bd[b] = bc
+	var tex: Texture2D = bc[2]
+	var ai: Array = bc[3]
 	var style: String = ai[0]
 	var sw: float = ai[1]
-	var hgt := sw * tex.get_height() / maxf(1.0, tex.get_width())
-	var rect := Rect2(b.x + 0.5 - sw / 2.0, b.y + 1.0 - hgt, sw, hgt)
+	var rect: Rect2 = bc[4]
+	var top: float = bc[5]
 	var pc: Color = sim.players[b.p - 1].color
 	if b.state == "build":
 		# the building rises from the ground as work progresses, inside a scaffold
@@ -2082,10 +2137,10 @@ func _draw_building(b: Sim.Bld, labels: Array, detail: bool) -> void:
 		_draw_animals(b, String(ANIMALS[b.ty]), true)
 	draw_texture_rect(tex, rect, false)
 	# snow on the roofs in winter (the seasons feature says how much lies here)
-	if _seasons != null:
+	if _snow_any:
 		var sn: float = _seasons.snow_at(sim.idx(b.x, b.y))
 		if sn > 0.03:
-			var st := bld_snow_texture(b.ty, b.era)
+			var st: Texture2D = bc[6]
 			if st != null:
 				draw_texture_rect(st, rect, false, Color(1, 1, 1, minf(1.0, sn * 1.5)))
 	if detail and ANIMALS.has(b.ty):
@@ -2142,17 +2197,14 @@ func _draw_building(b: Sim.Bld, labels: Array, detail: bool) -> void:
 				var ang := k * 1.3 + b.id
 				draw_circle(tp + Vector2(cos(ang), sin(ang) * 0.5) * (0.2 + since * 0.6), 0.14 + since * 0.15, Color(0.75, 0.7, 0.6, 0.7 * (1.0 - since / 0.8)))
 	var ff := int(sim.time * 5.0 + b.id) if animate else 0
-	_sprite("unit_flag", Vector2(rect.position.x + rect.size.x * 0.85, rect.position.y + rect.size.y * _tex_top(tex) + 0.17), 0.3, ff, false, pc)
+	_sprite("unit_flag", Vector2(rect.position.x + rect.size.x * 0.85, rect.position.y + rect.size.y * top + 0.17), 0.3, ff, false, pc)
 	if b.working and b.cyc > 0.0:
 		draw_rect(Rect2(b.x + 0.1, b.y + 1.02, 0.8, 0.08), Color(0, 0, 0, 0.6))
 		draw_rect(Rect2(b.x + 0.1, b.y + 1.02, 0.8 * sim.work_progress(b), 0.08), Color("86ad5c"))
 	elif b.p == 1 and b.cyc > 0.0 and b.msg != "" and b.msg != "Working":
 		# a "!" badge on the building's roof: it can't work (the reason shows when you click it)
-		var bc := Vector2(rect.position.x + rect.size.x * 0.28, rect.position.y + rect.size.y * _tex_top(tex) + 0.12)
-		draw_circle(bc, 0.15, Color(0.12, 0.08, 0.05, 0.85))
-		draw_circle(bc, 0.12, Color("e0603a"))
-		draw_line(bc + Vector2(0, -0.075), bc + Vector2(0, 0.025), Color.WHITE, 0.035)
-		draw_circle(bc + Vector2(0, 0.065), 0.02, Color.WHITE)
+		var bcp := Vector2(rect.position.x + rect.size.x * 0.28, rect.position.y + rect.size.y * top + 0.12)
+		draw_texture_rect(_badge(), Rect2(bcp.x - 0.15, bcp.y - 0.15, 0.3, 0.3), false)
 	var waiting := 0
 	for r in b.out_buf:
 		waiting += int(b.out_buf[r])
