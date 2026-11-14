@@ -308,6 +308,7 @@ class Player:
 	var techs: Dictionary = {}
 	var research := ""
 	var reps: Dictionary = {}     # repeatable study id -> levels done
+	var age_bonus: Dictionary = {} # age ("1".."5") -> id of the bonus chosen on entering it
 	var rqueue: Array = []        # what to study after the current research, in order (a study can repeat)
 	var rp := 0.0
 	var rp_total := 0.0
@@ -2659,6 +2660,16 @@ func queue_research(p: Player, id: String) -> int:
 
 func unqueue_research(p: Player, i: int) -> void:
 	research.queue_remove(p, i)
+
+## The bonus picked for each age: what can be picked, which age still waits for a pick, picking one.
+func age_bonus_options(age: int) -> Array:
+	return research.age_bonus_options(age)
+
+func missing_age_bonus(p: Player) -> int:
+	return research.missing_age_bonus(p)
+
+func choose_age_bonus(p: Player, age: int, id: String) -> void:
+	research.choose_age_bonus(p, age, id)
 
 ## For the study that opens an age: how many techs of the age before the realm has.
 func gate_have(p: Player, id: String) -> int:

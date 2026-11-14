@@ -10,7 +10,7 @@ economy you do.
 ## Download
 
 The ready-made Windows game is on the [`downloads` branch](../../tree/downloads): download the zip,
-unzip it and run `Hearthlands.exe`. Current version: **v0.38.0 build 43.3** (see `CHANGELOG.md`).
+unzip it and run `Hearthlands.exe`. Current version: **v0.39.0 build 44** (see `CHANGELOG.md`).
 
 What is in the game now:
 
@@ -802,6 +802,9 @@ playing with the standard set.
 A realm enters a new age by finishing that age's opening study (The new kingdoms, Rise of the towns,
 Rebirth of learning, Age of reason, Dawn of industry). Every tech of an age needs it, and the study
 itself needs a number of techs of the age before (`"gate": true` and `"need"` in `data/techs.json`).
+On entering an age a window shows what it brings and asks you to choose the realm's path for it:
+wealth, war or learning, each with its own lasting bonus (`"age_bonuses"` in `data/techs.json`).
+Rivals choose by their manner: warlords war, builders wealth, the others learning or wealth.
 
 Each building is drawn in the style of the age its realm was in when it was placed (Roman, Early
 Medieval, High Medieval, Renaissance, Enlightenment, Industrial); Renovate brings it up to date. The

@@ -50,6 +50,15 @@ func _refresh_research() -> void:
 		main.research_bar.max_value = 1
 		main.research_bar.value = 0
 	t += "\n[color=#9a9c88]%.1f research points per minute[/color]" % rate
+	# the way to the next age
+	var gate := GameData.gate_of(p.age + 1)
+	if gate != "" and not p.techs.has(gate) and main.sim.tech_enabled(gate):
+		var need := int(GameData.techs[gate].get("need", 0))
+		var have := mini(main.sim.gate_have(p, gate), need)
+		if have < need:
+			t += "\n" + tr("Next age: [color=#d8aa4a]%s[/color] after %d of %d %s techs") % [GameData.tech_name(gate), have, need, GameData.age_name(p.age)]
+		else:
+			t += "\n" + tr("Next age: [color=#d8aa4a]%s[/color] can be studied now") % GameData.tech_name(gate)
 	if not p.rqueue.is_empty():
 		var names := []
 		for k in mini(3, p.rqueue.size()):

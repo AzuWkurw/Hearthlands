@@ -16,6 +16,7 @@ static var needs: Dictionary = {}         # class -> {resource: rate per person 
 static var food_ids: Array = []           # food resources, cheapest first
 static var techs: Dictionary = {}         # tech id -> definition, in tree order
 static var reps: Dictionary = {}          # repeatable study id -> definition (age, cost, max levels, effects)
+static var age_bonuses: Dictionary = {}   # age ("1".."5") -> the three bonuses a realm picks one of on entering it
 static var lanes: Array = []              # branches of the tech tree, top to bottom: [id, name]
 static var ages: Array = []
 static var values: Dictionary = {}       # rough worth of one unit of each resource, for trading
@@ -70,6 +71,7 @@ static func reload() -> void:
 			needs[k] = mod_n[k]
 	techs = {}
 	reps = {}
+	age_bonuses = {}
 	lanes = []
 	ages = ["Roman", "Early Medieval", "High Medieval", "Renaissance", "Enlightenment", "Industrial"]
 	var base_t = _read("res://data/techs.json")
@@ -80,6 +82,9 @@ static func reload() -> void:
 				ages = src.ages
 			if src.has("lanes"):
 				lanes = src.lanes
+			if src.get("age_bonuses") is Dictionary:
+				for a in src.age_bonuses:
+					age_bonuses[str(a)] = src.age_bonuses[a]
 			for r in src.get("repeatables", []):
 				if r is Dictionary and r.has("id"):
 					if reps.has(r.id):

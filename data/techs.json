@@ -1,6 +1,33 @@
 {
  "ages": ["Roman", "Early Medieval", "High Medieval", "Renaissance", "Enlightenment", "Industrial"],
  "lanes": [["roads", "Roads and stores"], ["land", "Land and food"], ["industry", "Workshops and mines"], ["people", "People and coin"], ["learning", "Learning"], ["war", "War"]],
+ "age_bonuses": {
+  "1": [
+   {"id": "royal_estates", "name": "Royal estates", "kind": "wealth", "effects": {"tax": 0.1, "speed:cat:food": 0.05}, "info": "The king's farms and tolls fill the treasury."},
+   {"id": "war_bands", "name": "War bands", "kind": "war", "effects": {"attack": 0.08, "xp": 0.1}, "info": "Every lord keeps armed men ready to ride."},
+   {"id": "monastic_schools", "name": "Monastic schools", "kind": "learning", "effects": {"research": 0.08}, "info": "Monks copy books and teach the sons of the realm."}
+  ],
+  "2": [
+   {"id": "merchant_guilds", "name": "Merchant guilds", "kind": "wealth", "effects": {"tax": 0.08, "carry": 0.08}, "info": "Guilds run the markets and keep the roads busy."},
+   {"id": "knightly_orders", "name": "Knightly orders", "kind": "war", "effects": {"defense": 0.1, "attack": 0.04}, "info": "Sworn knights hold the castles and lead the charge."},
+   {"id": "cathedral_schools", "name": "Cathedral schools", "kind": "learning", "effects": {"research": 0.08, "build": 0.08}, "info": "Master builders and scholars gather round the new cathedrals."}
+  ],
+  "3": [
+   {"id": "banking_houses", "name": "Banking houses", "kind": "wealth", "effects": {"tax": 0.12}, "info": "Bankers lend to princes and take their share of every trade."},
+   {"id": "military_revolution", "name": "Military revolution", "kind": "war", "effects": {"attack": 0.1, "xp": 0.15}, "info": "Drill, gunpowder and paid soldiers change how wars are fought."},
+   {"id": "patronage", "name": "Patronage of the arts", "kind": "learning", "effects": {"research": 0.1, "immigration": 0.1}, "info": "Artists and thinkers come to the court that pays them."}
+  ],
+  "4": [
+   {"id": "agricultural_revolution", "name": "Agricultural revolution", "kind": "wealth", "effects": {"speed:cat:food": 0.12, "food": -0.05}, "info": "New crops and rotations feed more people from the same fields."},
+   {"id": "standing_army", "name": "Standing army", "kind": "war", "effects": {"attack": 0.07, "defense": 0.07}, "info": "Soldiers in uniform all year, ready to march."},
+   {"id": "encyclopedists", "name": "Encyclopedists", "kind": "learning", "effects": {"research": 0.12}, "info": "All that is known, written down in one great work."}
+  ],
+  "5": [
+   {"id": "free_trade", "name": "Free trade", "kind": "wealth", "effects": {"tax": 0.1, "carry": 0.1}, "info": "Tolls fall and goods move faster than ever."},
+   {"id": "conscription", "name": "Conscription", "kind": "war", "effects": {"attack": 0.08, "defense": 0.06, "immigration": 0.1}, "info": "Every young man serves; the barracks never stand empty."},
+   {"id": "engineering_schools", "name": "Engineering schools", "kind": "learning", "effects": {"speed:all": 0.05, "research": 0.05}, "info": "Trained engineers make every workshop run better."}
+  ]
+ },
  "techs": [
   {"id": "new_kingdoms", "name": "The new kingdoms", "age": 1, "cost": 90, "requires": [], "need": 0, "gate": true, "effects": {"tax": 0.05}, "info": "Rome's order is gone; kings, lords and bishops rule the land now and collect its dues. Opens the Early Medieval age.", "col": 0},
   {"id": "rise_of_towns", "name": "Rise of the towns", "age": 2, "cost": 360, "requires": [], "need": 8, "gate": true, "effects": {"speed:all": 0.03}, "info": "Markets grow into chartered towns with walls, guilds and councils. Opens the High Medieval age. Needs 8 Early Medieval techs first.", "col": 3},

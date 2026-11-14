@@ -203,12 +203,63 @@ func _recompute_mods(p: Sim.Player) -> void:
 		var eff: Dictionary = t.get("effects", {})
 		for k in eff:
 			p.mods[k] = float(p.mods.get(k, 0.0)) + float(eff[k])
+	# the bonus picked on entering each age (rivals pick theirs at once)
+	if p.ai:
+		var a := missing_age_bonus(p)
+		while a > 0:
+			p.age_bonus[str(a)] = _ai_age_bonus(p, a)
+			a = missing_age_bonus(p)
+	for a in p.age_bonus:
+		var o := _age_bonus_def(int(a), String(p.age_bonus[a]))
+		for k in o.get("effects", {}):
+			p.mods[k] = float(p.mods.get(k, 0.0)) + float(o.effects[k])
 	# repeatable studies: their effects once per level
 	for id in p.reps:
 		var r: Dictionary = GameData.reps.get(id, {})
 		var lv := float(p.reps[id])
 		for k in r.get("effects", {}):
 			p.mods[k] = float(p.mods.get(k, 0.0)) + float(r.effects[k]) * lv
+
+
+func age_bonus_options(age: int) -> Array:
+	return GameData.age_bonuses.get(str(age), [])
+
+
+func _age_bonus_def(age: int, id: String) -> Dictionary:
+	for o in age_bonus_options(age):
+		if String(o.get("id", "")) == id:
+			return o
+	return {}
+
+
+## The lowest age the realm has reached but not yet picked its bonus for, or -1.
+func missing_age_bonus(p: Sim.Player) -> int:
+	for a in range(1, p.age + 1):
+		if not age_bonus_options(a).is_empty() and not p.age_bonus.has(str(a)):
+			return a
+	return -1
+
+
+func choose_age_bonus(p: Sim.Player, age: int, id: String) -> void:
+	if _age_bonus_def(age, id).is_empty() or age > p.age:
+		return
+	p.age_bonus[str(age)] = id
+	_recompute_mods(p)
+	if not p.ai:
+		var o := _age_bonus_def(age, id)
+		sim.emit_log("%s: %s (%s)." % [GameData.age_name(age), String(o.name), GameData.effect_text(o.get("effects", {}))], Color("d8aa4a"))
+
+
+## A rival's pick: a warlord takes war, a builder wealth, the others learning or wealth by turns.
+func _ai_age_bonus(p: Sim.Player, age: int) -> String:
+	var want := "learning" if age % 2 == 1 else "wealth"
+	if p.pers == "warlord": want = "war"
+	elif p.pers == "builder": want = "wealth"
+	var opts := age_bonus_options(age)
+	for o in opts:
+		if String(o.get("kind", "")) == want:
+			return String(o.id)
+	return String(opts[0].id)
 
 
 ## A level of repeatable study id is done.

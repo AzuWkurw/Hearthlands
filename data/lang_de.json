@@ -271,5 +271,19 @@
 	"_language": "Deutsch",
 	"and ask for": "und verlange",
 	"no limit": "keine Grenze",
-	"press a key... (Esc: keep)": "Taste drücken ... (Esc: behalten)"
+	"press a key... (Esc: keep)": "Taste drücken ... (Esc: behalten)",
+	"The %s age begins": "Das Zeitalter %s beginnt",
+	"Choose your realm's path for this age:": "Wähle den Weg deines Reiches für dieses Zeitalter:",
+	"Wealth": "Wohlstand",
+	"War": "Krieg",
+	"Learning": "Wissen",
+	"Choose": "Wählen",
+	"Your barracks now train [b]%s[/b], and new buildings go up in the %s style (Renovate brings old ones up to date).": "Deine Kasernen bilden jetzt [b]%s[/b] aus, und neue Gebäude entstehen im Stil des Zeitalters %s (Renovieren bringt alte auf den neuen Stand).",
+	"[b]%d studies[/b] are open to you now.": "[b]%d Forschungen[/b] stehen dir jetzt offen.",
+	"They lead to new buildings: %s%s.": "Sie führen zu neuen Gebäuden: %s%s.",
+	" and %d more": " und %d weitere",
+	"Mastery studies (repeatable): %s.": "Meisterstudien (wiederholbar): %s.",
+	"To reach the %s age, study [b]%s[/b] once you know %d %s techs.": "Um das Zeitalter %s zu erreichen, erforsche [b]%s[/b], sobald du %d Techniken des Zeitalters %s kennst.",
+	"Next age: [color=#d8aa4a]%s[/color] after %d of %d %s techs": "Nächstes Zeitalter: [color=#d8aa4a]%s[/color] nach %d von %d Techniken (%s)",
+	"Next age: [color=#d8aa4a]%s[/color] can be studied now": "Nächstes Zeitalter: [color=#d8aa4a]%s[/color] kann jetzt erforscht werden"
 }
