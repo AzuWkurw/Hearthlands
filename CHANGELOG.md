@@ -1,5 +1,12 @@
 # Changelog
 
+## Build 43.2 (v0.38.0, 2026-11-14)
+
+Fix for the plain green map when zoomed out.
+
+- Zoomed out (below about 10 pixels a tile) the map was drawn from the minimap's flat colours: one bright green, no trees, roads or texture, in OpenGL and Vulkan alike. It now uses ground baked at a quarter of the size, with grass, roads, borders and forests, at every zoom; trees are drawn one by one down to a closer zoom than before.
+- A bridge picture at the smallest size no longer logs errors.
+
 ## Build 43.1 (v0.38.0, 2026-11-14)
 
 Fixes for graphics glitches and the Vulkan switch.
