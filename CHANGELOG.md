@@ -1,5 +1,14 @@
 # Changelog
 
+## Build 48.3 (v0.43.0, 2026-11-14)
+
+Ox carts as an upgrade for the mule station, the map baked on all processor cores, and faster big maps.
+
+- New: once you know Ox carts, a mule station can be upgraded to an ox cart yard where it stands (Upgrade button in its info; carriers bring the difference in planks and stone). Before that the button says which study opens it. Rivals upgrade theirs too.
+- Uses all processor cores: the map's ground pictures are now baked on the other cores while the map is drawn, so zooming out and scrolling across a big map fills in much faster, without slowing the frame.
+- Faster on the biggest maps: the wild animals (about 8,600 of them on a 448 map) cost half as much (wolves no longer search every building for farms, and animals look for a new spot more cheaply). In a 448 map with 8 rivals at minute 25 the simulation went from 77 to 64 ms per game second.
+- New test: the mule station upgrade (40 tests).
+
 ## Build 48.2 (v0.43.0, 2026-11-14)
 
 Fixes for the map turning one colour at dusk and for square cloud shadows, and bug fixes and speed-ups round 2.

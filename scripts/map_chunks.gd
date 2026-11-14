@@ -36,6 +36,14 @@ var _clay: Image
 var _ore: Dictionary = {}
 var _tint: Array = []
 var ver := 0               # goes up whenever every chunk is to be baked again (the map view's scenery follows)
+## Baking on the other processor cores: while the map is drawn, chunks are baked by worker threads
+## (WorkerThreadPool), and finish_jobs() waits for them right after the frame is rendered (the map
+## view calls it from RenderingServer.frame_post_draw). The game itself only changes before drawing
+## (input, then the simulation in Main._process), so the workers read a world that holds still.
+var use_threads := OS.get_processor_count() > 1 and DisplayServer.get_name() != "headless"
+var _jobs: Dictionary = {}        # chunk key -> worker task id
+var _done: Dictionary = {}        # chunk key -> image baked by a worker, not yet a texture
+var _lock := Mutex.new()          # guards _done and the picture caches the workers fill
 var _edge: Dictionary = {}  # ground kind * 256 + neighbour mask -> soft edge overlay, made when first needed
 
 
@@ -127,6 +135,7 @@ func _img(id: String, w: int, h: int) -> Image:
 
 ## Forgets every baked chunk (new game, loaded game, new textures).
 func clear() -> void:
+	finish_jobs()
 	ver += 1
 	for c: MapChunks in _subs():
 		c.clear()
@@ -156,8 +165,10 @@ func mark_tile(i: int) -> void:
 		for xx in [x - 1, x, x + 1]:
 			if xx >= 0 and yy >= 0 and xx < sim.w and yy < sim.h:
 				var k: int = (yy / CH) * 1000 + xx / CH
-				if _tex.has(k):
+				if _tex.has(k) or _jobs.has(k):
 					_dirty[k] = true
+					if _jobs.has(k):
+						_dirty_after[k] = true
 
 
 ## Call once per frame before drawing.
@@ -165,6 +176,7 @@ func begin_frame() -> void:
 	_frame += 1
 	if sim.territory_version != _territory:
 		_territory = sim.territory_version
+		finish_jobs()     # (the workers read the tints)
 		if _tint.size() != sim.players.size():
 			_tint.clear()
 			for p in sim.players:
@@ -209,13 +221,61 @@ func _mark_owner_changes() -> void:
 func get_chunk(cx: int, cy: int, budget: Array) -> Texture2D:
 	var k := cy * 1000 + cx
 	_used[k] = _frame
-	if (not _tex.has(k) or _dirty.has(k)) and (int(budget[1]) == 0 or Time.get_ticks_usec() < int(budget[0])):
-		budget[1] = int(budget[1]) + 1
-		_bake(cx, cy, k)
+	if (not _tex.has(k) or _dirty.has(k)) and not _jobs.has(k):
+		if int(budget[1]) == 0 or (not use_threads and Time.get_ticks_usec() < int(budget[0])):
+			# the first each frame here (so something always shows), the rest on other cores
+			budget[1] = int(budget[1]) + 1
+			_bake(cx, cy, k)
+		elif use_threads and _jobs.size() < max_jobs():
+			_dirty.erase(k)       # marked again meanwhile: baked again after this one
+			_jobs[k] = WorkerThreadPool.add_task(_bake_job.bind(cx, cy, k), false, "bake chunk")
 	return _tex.get(k)
 
 
+## How many chunks are baked on other cores at once: one for each core but the main one's.
+static func max_jobs() -> int:
+	return maxi(1, OS.get_processor_count() - 1)
+
+
+func _bake_job(cx: int, cy: int, k: int) -> void:
+	var img := _bake_image(cx, cy)
+	_lock.lock()
+	_done[k] = img
+	_lock.unlock()
+
+
+## Waits for the chunks being baked on other cores and makes them textures (after the frame is drawn).
+func finish_jobs() -> void:
+	for k in _jobs:
+		WorkerThreadPool.wait_for_task_completion(_jobs[k])
+	_jobs.clear()
+	_lock.lock()
+	var done := _done
+	_done = {}
+	_lock.unlock()
+	for k in done:
+		_set_tex(k, done[k])
+
+
 func _bake(cx: int, cy: int, k: int) -> void:
+	_set_tex(k, _bake_image(cx, cy))
+
+
+func _set_tex(k: int, img: Image) -> void:
+	var old: ImageTexture = _tex.get(k)
+	if old != null and old.get_width() == img.get_width():
+		old.update(img)
+	else:
+		_tex[k] = ImageTexture.create_from_image(img)
+	if not _dirty_after.has(k):
+		_dirty.erase(k)
+	_dirty_after.erase(k)
+
+
+var _dirty_after: Dictionary = {}   # chunks marked while a worker was baking them: bake again
+
+
+func _bake_image(cx: int, cy: int) -> Image:
 	var img := Image.create(CH * TS, CH * TS, false, Image.FORMAT_RGBA8)
 	var w := sim.w
 	var h := sim.h
@@ -309,12 +369,7 @@ func _bake(cx: int, cy: int, k: int) -> void:
 			if x == w - 1 or sim.owner[i + 1] != o: img.fill_rect(Rect2i(px + TS - bw, py, bw, TS), col)
 	if smooth:
 		img.generate_mipmaps()
-	var old: ImageTexture = _tex.get(k)
-	if old != null:
-		old.update(img)
-	else:
-		_tex[k] = ImageTexture.create_from_image(img)
-	_dirty.erase(k)
+	return img
 
 
 ## Small things on the ground, baked in with it so they cost nothing to draw: reeds where land meets
@@ -366,6 +421,7 @@ func _details(img: Image, pos: Vector2i, x: int, y: int, i: int, t: int) -> void
 var _crowns: Array = []
 
 func _tree_crown(v: int) -> Image:
+	_lock.lock()
 	if _crowns.is_empty():
 		for k in 3:
 			var img := Image.create(TS, TS, false, Image.FORMAT_RGBA8)
@@ -382,7 +438,9 @@ func _tree_crown(v: int) -> Image:
 					elif sh.length() <= r:
 						img.set_pixel(x, y, Color(0, 0.04, 0, 0.35))
 			_crowns.append(img)
-	return _crowns[v]
+	var out: Image = _crowns[v]
+	_lock.unlock()
+	return out
 
 
 static func _hash(x: int, y: int) -> int:
@@ -394,8 +452,11 @@ var _snow := {}
 ## A whitish cover for a mountain tile, denser at the top, as a blendable image (cached by strength).
 func _snow_img(cover: float) -> Image:
 	var k := snappedf(cover, 0.1)
+	_lock.lock()
 	if _snow.has(k):
-		return _snow[k]
+		var got: Image = _snow[k]
+		_lock.unlock()
+		return got
 	var img := Image.create(TS, TS, false, Image.FORMAT_RGBA8)
 	for py in TS:
 		for px in TS:
@@ -403,6 +464,7 @@ func _snow_img(cover: float) -> Image:
 			var a := clampf(k - float(py) / TS * 0.6 + n, 0.0, 0.9)
 			img.set_pixel(px, py, Color(0.96, 0.97, 1.0, a))
 	_snow[k] = img
+	_lock.unlock()
 	return img
 
 
@@ -426,8 +488,11 @@ func _edge_mask(x: int, y: int, u: int) -> int:
 ## The fade line wobbles a little; the wobble repeats every tile so neighbouring overlays line up.
 func _edge_img(u: int, m: int) -> Image:
 	var key := u * 256 + m
+	_lock.lock()
 	if _edge.has(key):
-		return _edge[key]
+		var got: Image = _edge[key]
+		_lock.unlock()
+		return got
 	var data: PackedByteArray = (_ter[u * 4] as Image).get_data()
 	var sc := TS / 32.0
 	var r: float = EDGE_WIDTH[u] * sc
@@ -456,6 +521,7 @@ func _edge_img(u: int, m: int) -> Image:
 			data[k] = int(data[k] * a)
 	var img := Image.create_from_data(TS, TS, false, Image.FORMAT_RGBA8, data)
 	_edge[key] = img
+	_lock.unlock()
 	return img
 
 

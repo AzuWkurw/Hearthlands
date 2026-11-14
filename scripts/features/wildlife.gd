@@ -73,10 +73,11 @@ func _habitat_spot(k: String, cx: int, cy: int, r: int) -> Vector2:
 			continue
 		if _near_building(x, y, 1):
 			continue
-		var trees := sim.count_near(x, y, 2, "tree")
-		if k in ["deer", "boar", "wolf"] and trees < 2 and r <= 0:
+		# the trees round it, counted only when they matter: woods for deer, boars and wolves placed
+		# anywhere, not too thick for hares
+		if r <= 0 and k != "hare" and _trees_near(x, y, 2) < 2:
 			continue
-		if k == "hare" and trees > 6:
+		if k == "hare" and _trees_near(x, y, 7) > 6:
 			continue
 		if k == "wolf" and r <= 0:
 			var cl = sim.get_feature("seasons")
@@ -84,6 +85,21 @@ func _habitat_spot(k: String, cx: int, cy: int, r: int) -> Vector2:
 				continue
 		return Vector2(x, y)
 	return Vector2(-1, -1)
+
+
+## Trees within 2 tiles of (x, y) (as Sim.count_near), counting no further than stop.
+func _trees_near(x: int, y: int, stop: int) -> int:
+	var c := 0
+	var w := sim.w
+	for yy in range(maxi(0, y - 2), mini(sim.h - 1, y + 2) + 1):
+		for xx in range(maxi(0, x - 2), mini(w - 1, x + 2) + 1):
+			var dx := xx - x
+			var dy := yy - y
+			if dx * dx + dy * dy <= 5 and sim.deco[yy * w + xx] == Sim.D_TREE:
+				c += 1
+				if c >= stop:
+					return c
+	return c
 
 
 func _near_building(x: int, y: int, r: int) -> bool:
@@ -102,6 +118,10 @@ func pos(a: Array) -> Vector2:
 func on_second() -> void:
 	_t += 1
 	for a in animals:
+		# still on its way, or resting its first second: no need to roll the dice (a big map has
+		# thousands of animals)
+		if sim.time < float(a[6]) + 1.0:
+			continue
 		if sim.time < float(a[6]) + rng.randf_range(1.0, 6.0):
 			continue
 		var here := Vector2(float(a[3]), float(a[4]))
@@ -176,10 +196,15 @@ func _wander_in() -> void:
 
 
 func _wolves() -> void:
+	# the herds' farms, found once (not once for every wolf)
+	var farms := []
+	for b: Sim.Bld in sim.blds:
+		if b.ty in FARMS and b.state == "ready" and not b.dead:
+			farms.append(b)
 	for wv in animals.filter(func(a): return a[0] == "wolf"):
 		var wp := pos(wv)
 		# a farm's herd nearby
-		for f: Sim.Bld in _farms_near(wp, 3):
+		for f: Sim.Bld in _farms_near(wp, 3, farms):
 			if not scared.has(f.id) and rng.randf() < 0.1 and not _hunter_near(f):
 				scared[f.id] = sim.time + 45.0
 				if f.p == sim.human().id and sim.time - _warned > 60.0:
@@ -203,10 +228,10 @@ func _hunter_near(f: Sim.Bld) -> bool:
 	return false
 
 
-func _farms_near(at: Vector2, r: float) -> Array:
+func _farms_near(at: Vector2, r: float, farms: Array) -> Array:
 	var out := []
-	for b: Sim.Bld in sim.blds:
-		if b.ty in FARMS and b.state == "ready" and Vector2(b.x, b.y).distance_to(at) <= r:
+	for b: Sim.Bld in farms:
+		if Vector2(b.x, b.y).distance_to(at) <= r:
 			out.append(b)
 	return out
 

@@ -2528,6 +2528,9 @@
   "in": {
    "grain": 1
   },
+  "upgrade_to": [
+   "cart_yard"
+  ],
   "carriers": {
    "kind": "mule",
    "count": 6,

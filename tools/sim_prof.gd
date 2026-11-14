@@ -9,14 +9,16 @@ func _init() -> void:
 	var at := 20
 	var mins := 2.0
 	var fresh := false
+	var size := 200
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("at="): at = int(a.substr(3))
 		if a.begins_with("mins="): mins = float(a.substr(5))
 		if a == "fresh": fresh = true
-	var path := "user://saves/prof_%d.save" % at
+		if a.begins_with("size="): size = int(a.substr(5))
+	var path := ("user://saves/prof_%d.save" % at) if size == 200 else ("user://saves/prof_%d_%d.save" % [at, size])
 	var sim := Sim.new()
 	if fresh or not FileAccess.file_exists(path):
-		sim.new_game("bench", 8, 8, false, 200, false)
+		sim.new_game("bench", 8, 8, false, size, false)
 		var me: Sim.Player = sim.players[0]
 		me.ai = true; me.skill = 8; me.pers = "builder"; me.prod = 1.4; me.think = 3.0; me.max_b = 3; me.odds = 99.0; me.grace = 1e9; me.attack_t = 1e9
 		while sim.time < at * 60.0:

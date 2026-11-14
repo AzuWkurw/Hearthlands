@@ -234,6 +234,16 @@ func _grid_mesh(x0: int, y0: int, nx: int, ny: int, step: int, uv0: Vector2, uv1
 	return m
 
 
+func _finish_chunk_jobs() -> void:
+	for c in [chunks, chunks.twin, chunks.hi, chunks.far]:
+		if c != null:
+			(c as MapChunks).finish_jobs()
+
+
+func _exit_tree() -> void:
+	_finish_chunk_jobs()
+
+
 ## Drawing colour that tells the ground shader a picture is part of the minimap picture (see its vertex()).
 const MINI_TAG := Color(1.0, 1.0, 0.5, 1.0)
 var _shader_map_size := Vector2.ZERO
@@ -294,6 +304,8 @@ func _ready() -> void:
 	_ground.material = _ground_mat
 	_ground.draw.connect(_draw_ground)
 	add_child(_ground)
+	# chunks baked on other cores during drawing become textures once the frame is drawn (MapChunks)
+	RenderingServer.frame_post_draw.connect(_finish_chunk_jobs)
 	# the map's own shader: trees and crops sway in the wind (see shaders/map_sway.gdshader)
 	_sway_mat = ShaderMaterial.new()
 	_sway_mat.shader = load("res://shaders/map_sway.gdshader")

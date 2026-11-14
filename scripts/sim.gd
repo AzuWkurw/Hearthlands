@@ -1577,12 +1577,21 @@ func renovate(b: Bld) -> String:
 	return ""
 
 
-## The military buildings b can be upgraded to: of the same size, holding more soldiers, and known.
+## The buildings b can be upgraded to where it stands: a military building to a bigger one of the same
+## size, holding more soldiers; any other to those its "upgrade_to" lists (the mule station to the ox
+## cart yard). Only those whose study is known.
 func upgrades_of(b: Bld) -> Array:
 	var out := []
+	var p := players[b.p - 1]
+	if b.def.has("upgrade_to"):
+		for ty in b.def.upgrade_to:
+			var du: Dictionary = GameData.bld.get(ty, {})
+			if du.is_empty() or not bld_enabled(ty) or (du.has("tech") and not p.techs.has(du.tech)):
+				continue
+			out.append(ty)
+		return out
 	if not b.def.has("garrison") or b.ty == "hq" or b.def.has("store"):
 		return out
-	var p := players[b.p - 1]
 	for ty in GameData.bld:
 		var d: Dictionary = GameData.bld[ty]
 		if ty == b.ty or not d.has("garrison") or d.has("store") or ty == "hq" or size_of(ty) != size_of(b.ty):
@@ -1701,8 +1710,10 @@ func _reno_tick(p: Player) -> void:
 				_tick_dirty = true
 				_rebuild_realm_lists()
 				recompute_territory()
-				if not p.ai:
+				if not p.ai and b.def.has("garrison"):
 					emit_log("Your %s is now a %s: room for %d soldiers." % [was, String(b.def.name).to_lower(), int(b.def.garrison)], Color("d8aa4a"), Vector2i(b.x, b.y))
+				elif not p.ai:
+					emit_log("Your %s is now a %s." % [was, String(b.def.name).to_lower()], Color("d8aa4a"), Vector2i(b.x, b.y))
 			elif not p.ai:
 				emit_log("The %s now stands in the %s style." % [String(b.def.name).to_lower(), GameData.age_name(b.era)], Color("d8aa4a"), Vector2i(b.x, b.y))
 			# the next one waiting gets its turn
@@ -1720,6 +1731,13 @@ func _reno_tick(p: Player) -> void:
 					var ups := upgrades_of(b)
 					if not ups.is_empty():
 						upgrade(b, ups[0])
+						break
+			# and a mule station to an ox cart yard once they know ox carts
+			for b: Bld in realm_blds(p):
+				if b.def.has("upgrade_to") and b.state == "ready" and b.reno_to < 0 and _renos_running(p) == 0:
+					var ups2 := upgrades_of(b)
+					if not ups2.is_empty():
+						upgrade(b, ups2[0])
 						break
 	# rivals renovate now and then when they have materials to spare
 	if p.ai and p.age > 0 and _renos_running(p) == 0 and rng.randf() < 1.0 / 90.0:
@@ -2228,7 +2246,9 @@ func _secondly() -> void:
 	if not standing.is_empty() and int(time) % 5 == 0:
 		Diplomacy.standing_tick(self)
 	for f: Feature in features:
+		var _tf := Time.get_ticks_usec()
 		f.on_second()
+		_pf("f " + f.id, _tf)
 	if not over:
 		_check_alliance_end()
 	for p in players:

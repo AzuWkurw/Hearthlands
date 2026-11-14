@@ -288,5 +288,10 @@
 	"Next age: [color=#d8aa4a]%s[/color] can be studied now": "Nächstes Zeitalter: [color=#d8aa4a]%s[/color] kann jetzt erforscht werden",
 	"Peaceful victory: the first to the Industrial Revolution, or to build all five wonders, wins": "Friedlicher Sieg: wer zuerst die Industrielle Revolution erreicht oder alle fünf Weltwunder baut, gewinnt",
 	"Unanswered, the last answer is taken in %d s of game time.": "Ohne Antwort gilt nach %d Sekunden Spielzeit die letzte Antwort.",
-	"Later": "Später"
+	"Later": "Später",
+	"Upgrading to a %s: %d%%": "Ausbau zu: %s: %d%%",
+	"Upgrade to %s": "Ausbauen zu %s",
+	"Upgrade started: carriers bring %s.": "Ausbau begonnen: Träger bringen %s.",
+	"Rebuild it as a %s where it stands. Costs %s.\n%s": "An Ort und Stelle umbauen zu: %s. Kostet %s.\n%s",
+	"Upgrade to %s after studying %s": "Ausbau zu %s nach der Forschung %s"
 }

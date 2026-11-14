@@ -253,6 +253,25 @@ func _refresh_sel() -> void:
 				if bb:
 					main.sim.set_work_area(bb, bb.x, bb.y)
 					_refresh_sel()))
+	# upgrading where it stands (the mule station to an ox cart yard; military ones have their own row)
+	if b.p == 1 and b.state == "ready" and b.def.has("upgrade_to"):
+		if b.upg != "":
+			main.sel_actions.add_child(main._label(tr("Upgrading to a %s: %d%%") % [String(GameData.bld[b.upg].name).to_lower(), roundi(b.reno_prog * 100.0)], 13, Color("9fd0e8")))
+		elif b.reno_to < 0:
+			var ups := main.sim.upgrades_of(b)
+			for ty in ups:
+				var cost := main.sim.upgrade_cost(b, ty)
+				var ub := main._button(tr("Upgrade to %s") % String(GameData.bld[ty].name), func():
+					var bb: Sim.Bld = main.sim.by_id.get(main.view.sel_id)
+					if bb:
+						var r := main.sim.upgrade(bb, ty)
+						main._show_hint(r if r != "" else tr("Upgrade started: carriers bring %s.") % Diplomacy.goods_text(main.sim.upgrade_cost(bb, ty)), 3.5)
+						_refresh_sel())
+				ub.tooltip_text = tr("Rebuild it as a %s where it stands. Costs %s.\n%s") % [String(GameData.bld[ty].name).to_lower(), Diplomacy.goods_text(cost), String(GameData.bld[ty].get("info", ""))]
+				main.sel_actions.add_child(ub)
+			for ty in b.def.upgrade_to:
+				if not ups.has(ty) and GameData.bld.has(ty) and GameData.bld[ty].has("tech"):
+					main.sel_actions.add_child(main._label(tr("Upgrade to %s after studying %s") % [String(GameData.bld[ty].name), GameData.tech_name(GameData.bld[ty].tech)], 12, Main.DIM))
 	if b.p == 1 and b.state == "ready":
 		var why := main.sim.can_renovate(b)
 		if why == "":
