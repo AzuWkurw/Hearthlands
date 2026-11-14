@@ -2,7 +2,7 @@
 
 Every source file with what it is for, grouped by part. Written by `tools/file_list.py` from the comment at the
 top of each file; run it again after adding files. For how the parts work together, read
-`docs/SOURCE_GUIDE.md`. Besides these 224 files there are 974 pictures in `textures/` (made by
+`docs/SOURCE_GUIDE.md`. Besides these 225 files there are 1009 pictures in `textures/` (made by
 `tools/make_textures.py` and `tools/make_scenery.py`, or your own) and 76 sounds in `sounds/` (made by
 `tools/make_sounds.py`) and 8 pieces of music in `music/` (made by `tools/make_music.py`). Godot's
 `.import` files next to them are made by the editor.
@@ -14,13 +14,13 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `scripts/crops.gd` | 278 | What a farm grows. A farm sows one crop at a time, chosen on its panel. Wheat is known from the start; other seeds are unlocked by research. Each crop has its seasons: how much faster or slower it grows in spring, summer, autumn and winter, and OFF where it does not grow at all (the farm stands idle then). With the Three-field system studied, a farm can be set to sow winter rye when its own crop is out of season. Without the seasons feature every crop grows all year. |
 | `scripts/diplomacy.gd` | 546 | Relations between realms (war, peace or alliance), each rival's opinion of every other realm, proposals (peace, alliance, trade and gifts) and how rival AIs decide on them. The state itself lives in Sim (rel, rel_since, proposals, and Player.opinion) so it is saved with the game. |
 | `scripts/game_data.gd` | 361 | Loads the game's content from data/*.json. Files with the same name in user://data/ are merged on top, so players can add or change resources, buildings and population needs without editing the project. |
-| `scripts/sim.gd` | 2688 | The whole game state and rules: map, players, economy, territory, combat and rival AI. Runs without any rendering, so it can be tested headless (see tools/sim_test.gd). |
-| `scripts/sim_ai.gd` | 667 | How rival realms think: what to build and where, when to attack, what to research. Part of the simulation: sim.gd holds the shared state and calls in here; the functions reach the rest of the game through `sim`. |
+| `scripts/sim.gd` | 2711 | The whole game state and rules: map, players, economy, territory, combat and rival AI. Runs without any rendering, so it can be tested headless (see tools/sim_test.gd). |
+| `scripts/sim_ai.gd` | 673 | How rival realms think: what to build and where, when to attack, what to research. Part of the simulation: sim.gd holds the shared state and calls in here; the functions reach the rest of the game through `sim`. |
 | `scripts/sim_logistics.gd` | 1859 | Roads, the road network, stores, carriers and work areas. Part of the simulation: sim.gd holds the shared state and calls in here; the functions reach the rest of the game through `sim`. |
 | `scripts/sim_military.gd` | 1110 | Territory, soldiers, attacks, duels and conquest. Part of the simulation: sim.gd holds the shared state and calls in here; the functions reach the rest of the game through `sim`. |
 | `scripts/sim_people.gd` | 558 | People: housing, jobs and specialists, homes where people wait, people walking to work and soldiers to their posts, needs and food. Part of the simulation: sim.gd holds the shared state and calls in here; the functions reach the rest of the game through `sim` (sim.gd keeps a one-line wrapper for each, so callers did not change). |
-| `scripts/sim_production.gd` | 522 | Production: buildings working in cycles (inputs, outputs, tools, experience) and construction sites. Part of the simulation: sim.gd holds the shared state and calls in here; the functions reach the rest of the game through `sim` (sim.gd keeps a one-line wrapper for each, so callers did not change). |
-| `scripts/sim_research.gd` | 376 | Research points, techs and the ages. Part of the simulation: sim.gd holds the shared state and calls in here; the functions reach the rest of the game through `sim`. |
+| `scripts/sim_production.gd` | 544 | Production: buildings working in cycles (inputs, outputs, tools, experience) and construction sites. Part of the simulation: sim.gd holds the shared state and calls in here; the functions reach the rest of the game through `sim` (sim.gd keeps a one-line wrapper for each, so callers did not change). |
+| `scripts/sim_research.gd` | 381 | Research points, techs and the ages. Part of the simulation: sim.gd holds the shared state and calls in here; the functions reach the rest of the game through `sim`. |
 | `scripts/sim_sea.gd` | 258 | Ships and harbours. A shipyard on the coast builds ships (Player.ships). A harbour is a store on the coast that also holds a little land and a soldier, and people can wait there. From a harbour an expedition (a ship, 4 planks, 2 stone and a soldier) sails to another free coast and founds a new harbour there: a colony. Ships then carry goods between harbours that no road joins, from where there is plenty to where there is little. Ships are Trips of kind "ship" along a path over water; `aim` is the tile an expedition lands on. |
 | `scripts/world_gen.gd` | 522 | Random map generation. Terrain: 0 water, 1 beach, 2 grass, 3 mountain. Decorations: 1 tree, 2 rock, 3 clay patch. Ore (on mountains): see GameData.ORE_NAMES. |
 
@@ -93,9 +93,9 @@ top of each file; run it again after adding files. For how the parts work togeth
 
 | File | Lines | What it is |
 |---|---:|---|
-| `data/buildings.json` | 2486 | Every building: name, group, size, cost, build time, worker, inputs and outputs, work cycle, garrison, store room, art style and info text. |
+| `data/buildings.json` | 2620 | Every building: name, group, size, cost, build time, worker, inputs and outputs, work cycle, garrison, store room, art style and info text. |
 | `data/campaign.json` | 397 | The campaign: its chapters, their place on the campaign map, story before and after, what carries over, and the mission of each. |
-| `data/lang_de.json` | 289 | German translation of the interface. |
+| `data/lang_de.json` | 290 | German translation of the interface. |
 | `data/map_iron_coast.json` | 1 | The hand-made map of the Iron Coast mission (made by tools/make_mission_map.gd). |
 | `data/missions.json` | 63 | The missions: story, map or seed, rivals, options, time limit and goals. |
 | `data/needs.json` | 13 | What each class of people (peasants, artisans, nobles, soldiers) uses up to stay content. |
@@ -155,7 +155,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `tools/research_test.gd` | 30 | The research queue and repeatable studies: godot --headless --script res://tools/research_test.gd |
 | `tools/research_ui_test.gd` | 113 | Drives the research window with real mouse and key events and prints what happened. |
 | `tools/rules_test.gd` | 55 | Tests the build 11 rules: difficulty options, tools for new workers, the toolsmith's choice and production targets. |
-| `tools/run_all.py` | 113 | Run every automatic test and say which passed. |
+| `tools/run_all.py` | 114 | Run every automatic test and say which passed. |
 | `tools/save_test.gd` | 33 | Save/load round trip: play, save, load into a fresh Sim, then check both continue identically. |
 | `tools/sea_test.gd` | 95 | Ships and harbours: a harbour on your coast, an expedition founds a colony across the water, ships then carry goods there, and a game with ships at sea saves and loads the same. godot --headless --script res://tools/sea_test.gd [-- seed=valley] |
 | `tools/settings_test.gd` | 41 | Tests the Settings window: display mode, resolution, interface size, a renderer trial that fails, and continuing the autosaved game after a restart. Run it twice: first with "-- step1", then "-- resume". |
@@ -172,6 +172,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `tools/ui_test.gd` | 169 | Headless UI smoke test: new game with a chosen map size, build through the click handler, research, save, load, and the tech/save/texture panels. |
 | `tools/walk_test.gd` | 38 | Builders and soldiers walk to their buildings: godot --headless --script res://tools/walk_test.gd |
 | `tools/weapon_test.gd` | 60 | Weapons wear out in fights and are replaced from the stores; worn weapons fight worse: godot --headless --script res://tools/weapon_test.gd |
+| `tools/wonder_test.gd` | 44 | Wonders: one per age, built once by each realm, their bonus counts while they stand, and the first realm with all five wins (with the peaceful victory on): godot --headless --script res://tools/wonder_test.gd |
 
 ## Tools: screenshots
 
@@ -257,7 +258,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 | File | Lines | What it is |
 |---|---:|---|
 | `tools/bld_tex.py` | 243 | Surface textures for the building pictures (used by make_textures.py). |
-| `tools/bld_variants.py` | 2327 | Own pictures for buildings that share a drawing style in make_textures.py. |
+| `tools/bld_variants.py` | 2508 | Own pictures for buildings that share a drawing style in make_textures.py. |
 | `tools/bump_build.py` | 63 | Raise the build number before a release. |
 | `tools/check_data.py` | 104 | Check the data files (and optionally a mod's JSON files) for mistakes. |
 | `tools/extract_strings.py` | 76 | Collect the interface text from the scripts into the translation files. |
@@ -276,9 +277,9 @@ top of each file; run it again after adding files. For how the parts work togeth
 
 | File | Lines | What it is |
 |---|---:|---|
-| `CHANGELOG.md` | 631 | What changed in each build. |
-| `README.md` | 953 | How to play, the rules, controls, settings, modding and the project layout. |
-| `docs/FILES.md` | 284 | This list (written by tools/file_list.py). |
+| `CHANGELOG.md` | 641 | What changed in each build. |
+| `README.md` | 964 | How to play, the rules, controls, settings, modding and the project layout. |
+| `docs/FILES.md` | 287 | This list (written by tools/file_list.py). |
 | `docs/SOURCE_GUIDE.md` | 439 | A tour of the code for programmers: the parts, how a game tick runs, where things live. |
 | `docs/SUGGESTIONS.md` | 203 | Ideas and their status after each round of work. |
 | `export_presets.cfg` | 61 | Godot export settings for the Windows and Linux builds. |

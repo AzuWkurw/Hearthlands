@@ -1,5 +1,15 @@
 # Changelog
 
+## Build 45 (v0.40.0, 2026-11-14)
+
+A wonder for every age, and a second way to win.
+
+- Five wonders, one per age, in the Folk tab once the age's opening study is done: the Great hall (Early Medieval), the Cathedral (High Medieval), the Grand academy (Renaissance), the Observatory (Enlightenment) and the Exhibition palace (Industrial).
+- Each costs a great deal (stone, planks, bricks, paper, glass, iron and gold), takes long to build, and is built once by each realm. While it stands it gives a lasting bonus: more tax and newcomers, goods that last longer, much faster research, or faster production.
+- Everyone hears when a wonder is finished, yours or a rival's.
+- Peaceful victory (the old research victory): the first realm with all five wonders wins, as does the first to reach the Industrial Revolution.
+- Rivals build wonders once they have the goods for them.
+
 ## Build 44 (v0.39.0, 2026-11-14)
 
 Ages as events: a new age now opens with a window and a choice of path.
