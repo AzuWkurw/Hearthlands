@@ -50,6 +50,11 @@ const OUTDOOR := ["quarry", "clay_pit", "saltworks", "sand_pit", "well"]
 var biome := PackedByteArray()       # biome of each tile
 var weather: Array = ["clear", "clear", "clear", "clear"]   # current weather of each biome
 var weather_until: Array = [0.0, 0.0, 0.0, 0.0]
+## What kind of year each biome has (build 55): "" an ordinary one, "dry" (a drought: more heat, little
+## rain, crops and wells do worse) or "wet" (more rain: crops do better, clay pits too). Chosen each
+## spring.
+var year_kind: Array = ["", "", "", ""]
+const YEAR_KINDS := {"dry": ["A dry year", "crops grow 25% slower and wells give less; heat waves come often"], "wet": ["A wet year", "crops grow 10% faster and clay pits do well; rain falls often"]}
 var rng := RandomNumberGenerator.new()
 var last_season := -1
 var _masks: Array = []               # [where each climate lies, one per colour channel] (for the ground shader)
@@ -187,6 +192,16 @@ func on_second() -> void:
 			"Winter has come: wheat, vegetables and orchards stand idle; only winter rye grows. Fishing and building slow down, people eat more, and snow slows carriers on unpaved roads.",
 		]
 		var line: String = lines[s]
+		if s == 0:
+			# a new year: dry, wet or ordinary, each biome on its own (the steppe dries out more often)
+			for k in 4:
+				var r := rng.randf()
+				var dry := 0.35 if k == STEPPE else (0.1 if k == WETLAND else 0.2)
+				year_kind[k] = "dry" if r < dry else ("wet" if r < dry + 0.2 else "")
+			if not sim.players.is_empty():
+				var yk: String = year_kind[biome_of(sim.human())]
+				if yk != "":
+					line += " %s where you live: %s." % [String(YEAR_KINDS[yk][0]), String(YEAR_KINDS[yk][1])]
 		if s == 3 and not sim.players.is_empty() and not Crops.known(sim, sim.human(), "rye"):
 			line += " (Study Heavy plough for winter rye seed.)"
 		sim.emit_log(line, Color("9fd0e8"))
@@ -244,6 +259,16 @@ func _pick_weather(k: int) -> String:
 	var bw: Dictionary = BIOME_WEATHER[k]
 	for key in wts:
 		wts[key] = float(wts[key]) * float(bw.get(key, 1.0))
+	match String(year_kind[k]):
+		"dry":
+			for key in ["rain", "storm", "snow"]:
+				if wts.has(key): wts[key] = float(wts[key]) * 0.3
+			if wts.has("heat"): wts["heat"] = float(wts["heat"]) * 2.5
+			wts["clear"] = float(wts.get("clear", 0.0)) * 1.5
+		"wet":
+			for key in ["rain", "storm"]:
+				if wts.has(key): wts[key] = float(wts[key]) * 2.0
+			if wts.has("heat"): wts["heat"] = float(wts["heat"]) * 0.4
 	var total := 0.0
 	for key in wts:
 		total += float(wts[key])
@@ -332,6 +357,14 @@ func _bonus(key: String, k: int) -> float:
 			elif crop: bonus -= 0.10
 		TEMPERATE:
 			if crop: bonus += 0.10
+	# the kind of year
+	match String(year_kind[k]):
+		"dry":
+			if crop: bonus -= 0.25
+			if ty == "well": bonus -= 0.20
+		"wet":
+			if crop: bonus += 0.10
+			if ty == "clay_pit": bonus += 0.15
 	# the weather
 	match wx:
 		"rain":
@@ -393,6 +426,8 @@ func panel_lines(p: Sim.Player) -> PackedStringArray:
 	var k := biome_of(p)
 	var left := int((1.0 - fmod(phase() * 4.0, 1.0)) * YEAR / 4.0)
 	var out := PackedStringArray(["Climate  [b]%s[/b], %s for %d:%02d more, %s" % [String(BIOME_NAMES[k]), SEASONS[season()].to_lower(), left / 60, left % 60, String(WEATHER[weather[k]].name).to_lower()]])
+	if year_text(p) != "":
+		out.append("[color=#e0c070]%s[/color]" % year_text(p))
 	if snowy(p):
 		out.append("[color=#9fd0e8]Snow on the roads: carriers %d%% slower (paved roads stay clear)[/color]" % roundi((1.0 - carry_factor(p)) * 100.0))
 	return out
@@ -648,12 +683,13 @@ func draw_overlay(view: CanvasItem, to_tile: Callable) -> void:
 # ---------------------------------------------------------------- saving
 
 func save_state() -> Dictionary:
-	return {"weather": weather, "until": weather_until, "rng": rng.state, "seed": rng.seed, "season": last_season, "paved": _paved}
+	return {"weather": weather, "until": weather_until, "rng": rng.state, "seed": rng.seed, "season": last_season, "paved": _paved, "year": year_kind}
 
 
 func load_state(d: Dictionary) -> void:
 	weather = d.get("weather", weather)
 	weather_until = d.get("until", weather_until)
+	year_kind = d.get("year", ["", "", "", ""])
 	rng.seed = int(d.get("seed", 0))
 	rng.state = int(d.get("rng", 0))
 	last_season = int(d.get("season", -1))
@@ -661,3 +697,16 @@ func load_state(d: Dictionary) -> void:
 	var pv: Dictionary = d.get("paved", {})
 	for k in pv:
 		_paved[int(k)] = float(pv[k])
+
+
+## Whether a storm (or a blizzard) blows at tile (x, y): ships and boats stay in harbour (build 55).
+func storm_at(x: int, y: int) -> bool:
+	if biome.is_empty():
+		return false
+	return String(weather[biome_at(x, y)]) in ["storm", "blizzard"]
+
+
+## The year where realm p lives, for the side panel: "" when ordinary.
+func year_text(p: Sim.Player) -> String:
+	var yk: String = year_kind[biome_of(p)]
+	return "" if yk == "" else "%s: %s" % [String(YEAR_KINDS[yk][0]), String(YEAR_KINDS[yk][1])]

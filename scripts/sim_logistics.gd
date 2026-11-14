@@ -1706,6 +1706,11 @@ func _dispatch() -> void:
 
 
 func _free_carrier(t: Sim.Trip) -> void:
+	if t.kind == "boat":
+		var lb: Sim.Bld = sim.by_id.get(t.site)
+		if lb != null:
+			lb.busy = 0                # the boat is back at its landing
+		return
 	if t.kind == "ship":
 		var sp := sim.players[t.p - 1]
 		sp.ships_out = maxi(0, sp.ships_out - 1)   # the ship is home again

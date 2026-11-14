@@ -6,7 +6,7 @@ func _init() -> void:
 	var seed := "islands"
 	var mins := 70
 	var foes := 4
-	var opts := {"all_research": true}
+	var opts := {"all_research": true, "gen": {"shape": "isles"}}
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("seed="): seed = a.substr(5)
 		if a.begins_with("mins="): mins = int(a.substr(5))

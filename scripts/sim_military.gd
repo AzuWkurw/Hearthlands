@@ -646,6 +646,8 @@ func launch_landing(h: Sim.Bld, tgt: Sim.Bld, want := -1) -> String:
 	var ships := sim.sea.free_ships(p)
 	if ships < 1:
 		return "No free ship: build a shipyard and let it build one"
+	if sim.sea.stormy(h.x, h.y):
+		return "A storm keeps the ships in harbour: wait for it to pass"
 	if p.reserve < 1:
 		return "A landing takes soldiers waiting at the headquarters"
 	var route := sim.sea.landing_route(h, tgt)

@@ -1118,6 +1118,9 @@ func _draw() -> void:
 		if t.kind == "ship":
 			_draw_ship(pos, dx < 0, pc, t.t0, t.res if t.res != "@expedition" else "", false)
 			continue
+		if t.kind == "boat":
+			_draw_boat(pos, dx < 0, pc, t.t0, t.res if not t.delivered else "")
+			continue
 		if t.kind == "soldier":
 			_sprite(_soldier_id(t.n if t.n >= 0 else float(sim.players[t.p - 1].age)), pos, 0.5, step % 4, dx < 0, pc.lightened(0.2))
 			continue
@@ -2102,6 +2105,23 @@ func _draw_chain(labels: Array) -> void:
 	var cam := get_viewport_rect().size
 	var tl := screen_to_world(Vector2(cam.x * 0.45, 160))
 	labels.append([tl, tr("Chain of %s: %d makers, %d users (Esc hides it)") % [GameData.res_name(chain_res), makers.size(), users.size()], Color("f2d58a")])
+
+
+## A river boat (build 55): a small hull, a boatman with a pole, and its load.
+func _draw_boat(pos: Vector2, left: bool, pc: Color, seed: float, res: String) -> void:
+	var fl := -1.0 if left else 1.0
+	var bob := 0.02 * sin(sim.time * 3.0 + seed)
+	var hp := pos + Vector2(0, -0.12 + bob)
+	_cv.draw_colored_polygon(PackedVector2Array([hp + Vector2(-0.42 * fl, -0.05), hp + Vector2(0.45 * fl, -0.08), hp + Vector2(0.3 * fl, 0.08), hp + Vector2(-0.3 * fl, 0.08)]), Color("6b4a2a"))
+	_cv.draw_line(hp + Vector2(-0.42 * fl, -0.05), hp + Vector2(0.45 * fl, -0.08), Color("3a2a18"), 0.03)
+	# the boatman and his pole
+	var man := hp + Vector2(-0.22 * fl, -0.2)
+	_cv.draw_circle(man + Vector2(0, -0.14), 0.06, Color("e0b890"))
+	_cv.draw_line(man + Vector2(0, -0.08), man + Vector2(0, 0.1), pc.lightened(0.2), 0.08)
+	var sw := sin(sim.time * 1.5 + seed) * 0.08
+	_cv.draw_line(man + Vector2(0.05 * fl, -0.2), man + Vector2((-0.25 + sw) * fl, 0.35), Color("4a3520"), 0.025)
+	if res != "" and _res_tex.has(res):
+		_cv.draw_texture_rect(_res_tex[res], Rect2(hp + Vector2(0.02 * fl - 0.13, -0.3), Vector2(0.26, 0.26)), false)
 
 
 ## A five-pointed star of radius r at c.

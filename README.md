@@ -10,7 +10,7 @@ economy you do.
 ## Download
 
 The ready-made Windows game is on the [Releases page](../../releases/latest): download the
-`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.49.0 build 54** (see
+`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.50.0 build 55** (see
 `CHANGELOG.md`). Every build is a release of its own, made by GitHub Actions
 (`.github/workflows/release.yml`) when a new version reaches `main`; older builds up to 50 are also
 on the [`downloads` branch](../../tree/downloads).
@@ -31,7 +31,7 @@ What is in the game now:
 
 The full plan is in the [roadmap](https://claude.ai/artifact/YVAWwJGUN4FRBYtpz3zgQh).
 
-Done (builds 43 to 54):
+Done (builds 43 to 55):
 
 | Build | What came in |
 |---|---|
@@ -50,6 +50,7 @@ Done (builds 43 to 54):
 | 52 | Warships from a naval yard (guard your harbours, escort landings), coastal forts with guns, field depots that feed armies far from home, generals who gain levels, rivals that take to the sea from islands |
 | 53 | Market prices that move (sell and buy at your market, M), children who grow up and go to school, a bottleneck finder (N), the production chain drawn on the map, rivals that brew beer and hold festivals |
 | 54 | Priority sets (Build up, War, Feed everyone, Research, and your own), drag rows to reorder, rivals that set priorities, the numbers in each building's info |
+| 55 | An isles map (each realm on its own island), dry and wet years, storms that keep ships in harbour, river boats between landings, disasters that ask you to choose (a great fire, plague, a peasant revolt) |
 
 Later: a story campaign through the ages, multiplayer, scripted scenarios, a chronicle at the end of a
 game, more animations, music for each age, and quality-of-life features (a production chain overlay,
@@ -400,7 +401,7 @@ Logs, Stone, Clay, Water, Grain, Hops, Wool, Hides, Salt, Coal, Iron ore, Copper
 
 Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples, Vegetables, Cheese, Sausages, Honey.
 
-## Buildings (107 you can build)
+## Buildings (108 you can build)
 
 **Raw**
 
@@ -527,6 +528,7 @@ Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples,
 | Harbour | 6 planks, 4 stone | – | – | claims 5 tiles, holds 1 | Roman (start) |
 | Shipyard | 5 planks, 2 stone | artisan (woodwork) | 4 planks | 1 ship | Roman (start) |
 | Naval yard | 6 planks, 3 stone, 2 iron | artisan (woodwork) | 4 planks, 1 iron, 1 weapons | 1 warship | Navigators' school |
+| River landing | 3 planks, 1 stone | – | – | room for 12 of each good, 2 porters | Timber framing |
 
 **Military**
 
@@ -927,6 +929,26 @@ order the buildings within it. The numbers are saved with the game.
 - **Festivals:** a realm holds one when its working taverns reach 15% of its homes and it has 10 beer
   and 10 bread to spare. Rivals now build hop farms and breweries early and put taverns among their
   homes, so they hold festivals too.
+
+## Isles, weather, boats and disasters
+
+- **Isles** (new-game Landscape, shape): each realm starts on an island of its own with a channel of sea
+  between, and small islets out in the sea. War and trade go by ship; rivals build harbours, ships,
+  warships and coastal forts and land on their enemies' coasts.
+- **Dry and wet years:** each spring every climate gets an ordinary, dry or wet year (the steppe dries
+  out most often). A dry year brings heat and little rain: crops grow 25% slower and wells give less.
+  A wet year brings rain: crops grow 10% faster and clay pits do well. The side panel says which year
+  you have.
+- **Storms at sea:** while a storm or blizzard blows, no expedition, landing, cargo ship or boat sets
+  out from that coast, and warships ride it out where they are.
+- **River landings:** a small store with a boat on a river or lake. When two of your landings lie on the
+  same water and the road between them is long (or there is none), the boat carries up to 6 goods at
+  a time from where there is plenty to where there is little.
+- **Disasters that ask you to choose:** a *great fire* (everyone to the buckets and all work stops for
+  40 seconds, pull down the burning building, or leave it to the wells and fire stations), *plague in
+  the land* (shut the gates for 5 minutes, send for healers with 10 medicine, or carry on), and a
+  *peasant revolt* when people are unhappy (a feast of 20 bread and 10 beer, send the soldiers, or wait
+  until they tire). Rivals face them too.
 
 ## A living world
 

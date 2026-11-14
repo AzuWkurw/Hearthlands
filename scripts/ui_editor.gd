@@ -531,7 +531,7 @@ static func landscape_controls(m: Main, g: GridContainer, params: Dictionary) ->
 	var sh := OptionButton.new()
 	sh.focus_mode = Control.FOCUS_NONE
 	for k in WorldGen.SHAPES:
-		sh.add_item({"island": "Island (sea all round)", "continent": "Continent (land to the edges)", "lakes": "Lakes (mostly land)", "archipelago": "Archipelago (many islands)"}[k])
+		sh.add_item({"island": "Island (sea all round)", "continent": "Continent (land to the edges)", "lakes": "Lakes (mostly land)", "archipelago": "Archipelago (many islands)", "isles": "Isles (a realm on each island)"}[k])
 		if String(params.shape) == k:
 			sh.select(sh.item_count - 1)
 	sh.item_selected.connect(func(i): params["shape"] = WorldGen.SHAPES[i])

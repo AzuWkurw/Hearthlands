@@ -37,9 +37,10 @@ static func auto_size(n: int) -> int:
 ##   ore       how much of the mountain holds ore
 ##   scale     how big the lakes, hills and woods are (higher: fewer, larger features)
 ##   shape     "island" (sea all round, the usual), "continent" (land to the edges), "lakes"
-##             (mostly land with lakes), "archipelago" (many small islands)
+##             (mostly land with lakes), "archipelago" (many small islands), "isles" (each realm
+##             on an island of its own, with small islets between: war and trade go by sea)
 const GEN_DEFAULTS := {"water": 0.5, "mountains": 0.5, "forests": 0.5, "ore": 0.5, "scale": 0.5, "shape": "island"}
-const SHAPES := ["island", "continent", "lakes", "archipelago"]
+const SHAPES := ["island", "continent", "lakes", "archipelago", "isles"]
 
 
 static func generate(seed_str: String, n_enemies: int, size_override := 0, params := {}) -> Dictionary:
@@ -85,6 +86,16 @@ static func _try(s: int, size: int, n: int, att: int, gp: Dictionary = GEN_DEFAU
 	elif shape == "archipelago":
 		water_t += 0.12
 	var forest_t := 0.12 - (float(gp.forests) - 0.5) * 0.7
+	# isles: a ring of island centres, one for each realm (and one in the middle on bigger maps)
+	var centres: Array = []
+	var isle_r := 0.0
+	if shape == "isles":
+		var ring := 0.31 * w
+		var a0 := rng.randf() * TAU
+		for k in n:
+			centres.append(Vector2(w * 0.5, h * 0.5) + Vector2.from_angle(a0 + TAU * k / n) * ring)
+		var gap := (centres[0] as Vector2).distance_to(centres[1 % n]) if n > 1 else w * 0.5
+		isle_r = minf(gap * 0.4, w * 0.2)
 	var ore_t := 0.18 - (float(gp.ore) - 0.5) * 0.36
 	for y in h:
 		for x in w:
@@ -94,6 +105,24 @@ static func _try(s: int, size: int, n: int, att: int, gp: Dictionary = GEN_DEFAU
 			var edge := 0.8 if shape == "island" or shape == "archipelago" else 0.94
 			var fall := (e - edge) / (1.0 - edge) if e > edge else 0.0
 			var hv := hn.get_noise_2d(x, y) - fall * fall * 0.9
+			if shape == "isles":
+				var dmin := 1e9
+				var d2 := 1e9
+				for c: Vector2 in centres:
+					var dc := c.distance_to(Vector2(x, y))
+					if dc < dmin:
+						d2 = dmin; dmin = dc
+					elif dc < d2:
+						d2 = dc
+				var d := dmin / isle_r
+				# land round each centre fading out to sea, the noise roughing the coast; a few islets
+				# out in the sea between
+				hv = 0.55 * (1.0 - d) - 0.26 + hn.get_noise_2d(x, y) * 0.22
+				if d > 1.25:
+					hv = maxf(hv, hn.get_noise_2d(x, y) * 0.8 - 0.42 - fall * fall)
+				# and always a channel of sea between two realms' islands
+				if d2 - dmin < 8.0:
+					hv = -1.0
 			ter[i] = WATER if hv < water_t else (MOUNT if hv > mount_t else GRASS)
 			shade[i] = rng.randi() % 4
 	# beaches next to water
@@ -161,6 +190,19 @@ static func _try(s: int, size: int, n: int, att: int, gp: Dictionary = GEN_DEFAU
 	if cands.size() < n:
 		return {}
 	var picks: Array = [cands[rng.randi() % cands.size()]]
+	if shape == "isles":
+		# one start on each island: the buildable spot nearest its centre
+		picks = []
+		for c: Vector2 in centres:
+			var bc := Vector2i(-1, -1)
+			var bd := 1e9
+			for cd: Vector2i in cands:
+				var dd := Vector2(cd).distance_to(c)
+				if dd < bd:
+					bd = dd; bc = cd
+			if bd > isle_r * 0.6:
+				return {}
+			picks.append(bc)
 	while picks.size() < n:
 		var bd := -1.0
 		var bc := Vector2i.ZERO

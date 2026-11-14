@@ -32,6 +32,12 @@ func free_ships(p: Sim.Player) -> int:
 	return p.ships - p.ships_out
 
 
+## Whether a storm keeps ships and boats at (x, y) in harbour (the seasons feature's weather).
+func stormy(x: int, y: int) -> bool:
+	var se = sim.get_feature("seasons")
+	return se != null and se.storm_at(x, y)
+
+
 ## Water tiles within two tiles of building b (where its ships moor).
 func _moorings(x: int, y: int) -> PackedInt32Array:
 	var out := PackedInt32Array()
@@ -122,6 +128,8 @@ func expedition(p: Sim.Player, h: Sim.Bld, x: int, y: int) -> String:
 		return "Expeditions leave from a harbour"
 	if free_ships(p) < 1:
 		return "No free ship: build a shipyard and let it build one"
+	if stormy(h.x, h.y):
+		return "A storm keeps the ships in harbour: wait for it to pass"
 	var why := landing_ok(x, y, p.id)
 	if why != "":
 		return why
@@ -220,6 +228,8 @@ func sea_transfers() -> void:
 		var a: Sim.Bld = best[0]
 		var b: Sim.Bld = best[1]
 		var r: String = best[2]
+		if stormy(a.x, a.y):
+			continue                  # ships stay in harbour in a storm
 		var path := water_path(a.x, a.y, b.x, b.y)
 		if path.is_empty():
 			continue
@@ -376,3 +386,69 @@ func ai_expedition(p: Sim.Player) -> void:
 			bd = d; best = i
 	if best >= 0:
 		expedition(p, h, best % sim.w, best / sim.w)
+
+
+# ---------------------------------------------------------------- river boats (build 55)
+## Each river landing has a boat (Bld.busy is 1 while it is out). Every few seconds, for each realm,
+## one boat load goes from a landing with plenty of a good to another of its landings on the same
+## water with little of it, when the way by road is a good deal longer than by boat (or there is none).
+const BOAT_LOAD := 6
+const BOAT_SPEED := 1.4          # tiles a second
+
+func landings(p: Sim.Player) -> Array:
+	return sim.realm_blds(p).filter(func(b): return b.ty == "river_landing" and b.state == "ready" and not b.dead)
+
+
+func river_transfers() -> void:
+	for p in sim.players:
+		if not p.alive:
+			continue
+		var ls := landings(p)
+		if ls.size() < 2:
+			continue
+		var best := []
+		var best_gap := 0.0
+		for a: Sim.Bld in ls:
+			if a.busy > 0 or stormy(a.x, a.y):
+				continue
+			for b: Sim.Bld in ls:
+				if a == b:
+					continue
+				for r in a.inv:
+					var have := float(a.inv.get(r, 0.0))
+					var there := float(b.inv.get(r, 0.0))
+					if have >= 8.0 and there < 4.0 and have - there > best_gap:
+						best_gap = have - there
+						best = [a, b, String(r)]
+		if best.is_empty():
+			continue
+		var a: Sim.Bld = best[0]
+		var b: Sim.Bld = best[1]
+		var r: String = best[2]
+		var path := water_path(a.x, a.y, b.x, b.y)
+		if path.size() < 2:
+			continue
+		var sail := _sail_time(path) * SHIP_SPEED / BOAT_SPEED
+		# only when the boat is clearly quicker than the porters on the road
+		var f := sim.logistics.store_field(b, sim.idx(a.x, a.y))
+		var road := (f[1] as PackedFloat32Array)[sim.idx(a.x, a.y)]
+		if road < INF and road < sail * 1.5 + 6.0:
+			continue
+		var n := mini(BOAT_LOAD, int(float(a.inv.get(r, 0.0)) / 2.0))
+		if n <= 0:
+			continue
+		sim.logistics.store_add(a, p, r, -float(n))
+		a.busy = 1
+		var t := Sim.Trip.new()
+		t.p = p.id; t.kind = "boat"; t.res = r; t.n = n; t.dest = b.id; t.site = a.id
+		t.path = path
+		t.t0 = sim.time; t.t1 = sim.time + sail + 2.0; t.t2 = t.t1 + sail
+		sim.trips.append(t)
+
+
+func boat_arrival(t: Sim.Trip, p: Sim.Player) -> void:
+	var dest: Sim.Bld = sim.by_id.get(t.dest)
+	if dest != null and not dest.dead and dest.p == p.id:
+		sim.logistics.store_add(dest, p, t.res, float(t.n))
+	else:
+		sim.give(p, t.res, float(t.n))

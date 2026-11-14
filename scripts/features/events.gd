@@ -29,6 +29,10 @@ const EVENTS := {
 	"comet": ["A comet", 1.0, true],
 	"grumbling": ["Grumbling over taxes", 1.2, false],
 	"strange_ship": ["A strange ship", 1.0, true],
+	# disasters that ask you to choose (build 55)
+	"great_fire": ["A great fire", 0.8, false],
+	"plague": ["Plague in the land", 0.6, false],
+	"revolt": ["Peasant revolt", 1.0, false],
 }
 
 ## The events that ask for a choice: what happened, and the answers [label, what it does].
@@ -41,6 +45,12 @@ const CHOICES := {
 		[["Ease the taxes for a while (15 gold)", "Content people work faster for 2 minutes."], ["Send soldiers to keep order (needs a soldier in reserve)", "Calm returns."], ["Do nothing", "Work goes slower for 2 minutes."]]],
 	"strange_ship": ["A ship from far away anchors off your coast. Its sailors look pale and some are coughing, but its hold is full of goods.",
 		[["Let them land and trade", "Rare goods, but maybe sickness."], ["Turn them away", "Nothing happens."]]],
+	"great_fire": ["A fire has broken out among your workshops, and the wind is fanning it toward the next roofs.",
+		[["Everyone to the buckets", "The fire is put out at once, but all work stops for 40 seconds."], ["Pull down the burning building", "It is lost, but the fire spreads no further."], ["Leave it to the wells and fire stations", "Work goes on; the fire may spread."]]],
+	"plague": ["Travellers bring word of plague in the towns beyond your borders. It will be at your gates soon.",
+		[["Close the gates for 5 minutes", "No newcomers and no merchants for a while, but the plague stays out."], ["Send for healers (10 medicine)", "It comes, but the healers keep it small."], ["Carry on as usual", "Trade goes on; the plague comes in full."]]],
+	"revolt": ["Hungry, tired and unhappy, the peasants have downed tools and gather outside the headquarters.",
+		[["Give them a feast (20 bread, 10 beer)", "They go back content: all work faster for 2 minutes."], ["Send the soldiers (3 waiting at the headquarters)", "Order returns at once, but blood is spilled: a soldier and 2 peasants die."], ["Wait until they tire", "Work goes 30% slower for 2 minutes and 3 peasants leave."]]],
 }
 const CHOICE_WAIT := 120.0     # an unanswered question takes its last answer after this long (game seconds)
 
@@ -127,16 +137,24 @@ func _possible(p: Sim.Player) -> Array:
 			"harvest": ok = _crops(p) > 0
 			"rats": ok = food >= 15.0
 			"collapse": ok = sim.realm_blds(p).any(func(b): return b.def.has("mine") and b.state == "ready")
-			"refugees": ok = sim.housing(p) - sim.pop_total(p) >= 3
+			"refugees": ok = sim.housing(p) - sim.pop_total(p) >= 3 and sim.time >= p.gates_until
+			"merchant": ok = sim.time >= p.gates_until
 			"wolves": ok = sim.realm_blds(p).any(func(b): return b.ty in ["sheep_farm", "pig_farm", "dairy", "hunter"])
 			"master": ok = sim.realm_blds(p).any(func(b): return b.staffed and b.cyc > 0.0)
 			"storm": ok = cl != null and String(cl.weather[cl.biome_of(p)]) in ["storm", "blizzard"] and sim.realm_blds(p).any(func(b): return b.state == "build")
 			"bandits": ok = float(p.stock.get("gold", 0.0)) >= 5.0
 			"epidemic": ok = sim.feature_on("diseases") and sim.pop_total(p) >= 30
-			"pilgrims": ok = food >= 20.0 and not pending.has(p.id)
+			"pilgrims": ok = food >= 20.0 and not pending.has(p.id) and sim.time >= p.gates_until
 			"comet": ok = not pending.has(p.id)
 			"grumbling": ok = p.noble > 0 and p.peasant >= 20 and not pending.has(p.id)
 			"strange_ship": ok = p.age >= 2 and not pending.has(p.id) and sim.realm_blds(p).any(func(b): return b.ty in ["harbour", "fisher", "saltworks"])
+			"great_fire":
+				var fires = sim.get_feature("fires")
+				ok = not pending.has(p.id) and fires != null and sim.realm_blds(p).filter(func(b): return b.state == "ready" and b.cyc > 0.0 and fires.flammable(b)).size() >= 8
+			"plague": ok = not pending.has(p.id) and sim.feature_on("diseases") and sim.pop_total(p) >= 60 and sim.time > 20 * 60.0
+			"revolt":
+				var con = sim.get_feature("contentment")
+				ok = not pending.has(p.id) and con != null and con.mood(p) < 0.4 and p.peasant >= 30 and sim.time > 15 * 60.0
 		if ok:
 			out.append(k)
 	return out
@@ -320,6 +338,9 @@ func _ai_answer(p: Sim.Player, k: String) -> int:
 		"comet": return 1
 		"grumbling": return 0 if float(p.stock.get("gold", 0.0)) >= 20.0 else (1 if p.reserve > 0 else 2)
 		"strange_ship": return 1
+		"great_fire": return 1
+		"plague": return 1 if float(p.stock.get("medicine", 0.0)) >= 10.0 else 0
+		"revolt": return 0 if float(p.stock.get("bread", 0.0)) >= 20.0 and float(p.stock.get("beer", 0.0)) >= 10.0 else (1 if p.reserve >= 3 else 2)
 	return 0
 
 
@@ -380,6 +401,81 @@ func _answer(p: Sim.Player, k: String, i: int) -> void:
 				_:
 					boosts.append([p.id, "all", -0.10, sim.time + 120.0])
 					text = "the grumbling spread: work goes 10% slower for 2 minutes."
+		"great_fire":
+			var fires = sim.get_feature("fires")
+			var b := _pick_bld(p, func(bb): return bb.ty != "hq" and not sim.is_mil(bb) and not sim.is_store(bb) and bb.cyc > 0.0 and fires != null and fires.flammable(bb))
+			if b == null:
+				text = "the fire burned out on its own."
+			else:
+				var nm := String(b.def.name).to_lower()
+				match i:
+					0:
+						boosts.append([p.id, "all", -0.9, sim.time + 40.0])
+						text = "everyone ran with buckets and the fire at the %s was put out; all work stopped for 40 seconds." % nm
+					1:
+						sim.destroy(b, "pulled down to stop a fire")
+						text = "the burning %s was pulled down; the fire went no further." % nm
+					_:
+						fires.ignite(b)
+						# the wind carries sparks to the nearest wooden roof
+						var near: Sim.Bld = null
+						var nd := 1e9
+						for o: Sim.Bld in sim.realm_blds(p):
+							if o != b and o.state == "ready" and fires.flammable(o):
+								var d := Vector2(o.x - b.x, o.y - b.y).length()
+								if d < nd:
+									nd = d; near = o
+						if near != null and nd <= 6.0:
+							fires.ignite(near)
+						text = "the %s is burning%s; the wells and fire stations fight it." % [nm, (" and sparks set the %s alight" % String(near.def.name).to_lower()) if near != null and nd <= 6.0 else ""]
+		"plague":
+			var dz = sim.get_feature("diseases")
+			match i:
+				0:
+					p.gates_until = sim.time + 300.0
+					text = "the gates are shut for 5 minutes: no newcomers, no merchants, and the plague stays out."
+				1:
+					if float(p.stock.get("medicine", 0.0)) >= 10.0 and dz != null:
+						var got := sim.take(p, "medicine", 10.0)
+						sim.used(p, "medicine", got)
+						dz.outbreak(p, "plague")
+						dz.cure(p, 6.0)
+						text = "the healers came with 10 medicine: the plague came, but they kept it small."
+					else:
+						if dz != null:
+							dz.outbreak(p, "plague"); dz.outbreak(p, "plague")
+						text = "there was no medicine for the healers, and the plague came in full."
+				_:
+					if dz != null:
+						dz.outbreak(p, "plague"); dz.outbreak(p, "plague")
+					text = "trade went on, and the plague came in with it."
+		"revolt":
+			match i:
+				0:
+					if float(p.stock.get("bread", 0.0)) >= 20.0 and float(p.stock.get("beer", 0.0)) >= 10.0:
+						sim.used(p, "bread", sim.take(p, "bread", 20.0))
+						sim.used(p, "beer", sim.take(p, "beer", 10.0))
+						boosts.append([p.id, "all", 0.08, sim.time + 120.0])
+						text = "a feast of 20 bread and 10 beer: the peasants went back content, and all work 8% faster for 2 minutes."
+					else:
+						boosts.append([p.id, "all", -0.30, sim.time + 120.0])
+						p.peasant = maxi(4, p.peasant - 3)
+						text = "there was not enough bread and beer for a feast: work goes 30% slower for 2 minutes and 3 peasants left."
+				1:
+					if p.reserve >= 3:
+						p.reserve -= 1
+						Sim.mix_remove(sim.rmix_of(p), Sim.mix_pick(sim.rmix_of(p), rng))
+						p.peasant = maxi(4, p.peasant - 2)
+						boosts.append([p.id, "all", -0.05, sim.time + 120.0])
+						text = "the soldiers broke up the crowd; a soldier and 2 peasants died, and the people work 5% slower for 2 minutes."
+					else:
+						boosts.append([p.id, "all", -0.30, sim.time + 120.0])
+						p.peasant = maxi(4, p.peasant - 3)
+						text = "there were not enough soldiers at the headquarters: work goes 30% slower for 2 minutes and 3 peasants left."
+				_:
+					boosts.append([p.id, "all", -0.30, sim.time + 120.0])
+					p.peasant = maxi(4, p.peasant - 3)
+					text = "the peasants tired at last: work went 30% slower for 2 minutes and 3 of them left."
 		"strange_ship":
 			if i == 0:
 				var goods := ["spices", "silk", "porcelain", "coffee", "glass", "jewelry"]

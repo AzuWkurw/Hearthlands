@@ -1,5 +1,14 @@
 # Changelog
 
+## Build 55 (v0.50.0, 2026-11-14)
+
+Build 55: isles, weather that matters, river boats, disasters with a choice.
+- Isles map shape (new-game Landscape): each realm on an island of its own, with islets between. Rivals take to the sea there: harbours, ships, warships, coastal forts and landings.
+- Dry and wet years: each spring every climate gets an ordinary, dry or wet year. Dry: crops 25% slower, wells less, more heat. Wet: crops 10% faster, clay pits better, more rain. Shown in the side panel.
+- Storms keep ships in harbour: no expedition, landing, cargo ship or boat sets out in a storm; warships ride it out.
+- River landing (timber framing): a small store with a boat that carries goods between your landings on the same river or lake when the road is long or missing.
+- Disasters that ask you to choose: a great fire, plague in the land (shut the gates, send for healers, or carry on) and a peasant revolt when people are unhappy (a feast, the soldiers, or wait).
+
 ## Build 54 (v0.49.0, 2026-11-14)
 
 Build 54: priority sets and rivals that use priorities.

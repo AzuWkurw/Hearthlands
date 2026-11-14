@@ -3423,5 +3423,27 @@
   },
   "info": "Keeps rations for your armies: carriers fill it with food, and an army that attacks a building within 14 tiles of it eats from it at the gate, as if it fought near home.",
   "rations": 30
+ },
+ "river_landing": {
+  "name": "River landing",
+  "cat": "logistics",
+  "size": "small",
+  "cost": {
+   "planks": 3,
+   "stone": 1
+  },
+  "time": 16,
+  "store": 12,
+  "porters": 2,
+  "site": "shore:2",
+  "tech": "timber_framing",
+  "art": {
+   "style": "shed",
+   "wall": "#7a8f9a",
+   "sw": 1.4,
+   "smoke": [],
+   "glow": []
+  },
+  "info": "A small store on a river or lake, with a boat. When two of your landings lie on the same water and the way between them by road is long (or there is none), the boat carries goods across: from where there is plenty to where there is little, up to 6 at a time. Boats stay in in a storm."
  }
 }

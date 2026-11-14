@@ -250,6 +250,8 @@ func _ships_tick(dt: float, second: bool) -> void:
 				_go(w, tp.x + off.x, tp.y + off.y, dt)
 			if second and pos_of(w).distance_to(tp) <= GUN_R:
 				_fire(w, p, tgt)
+		elif sim.sea.stormy(floori(float(w.x) + 0.5), floori(float(w.y) + 0.5)):
+			pass                      # a storm: it rides it out where it is
 		elif esc != null:
 			var fp := sim.military.column_pos(esc)
 			_go(w, fp.x - 0.8, fp.y + 0.6, dt)

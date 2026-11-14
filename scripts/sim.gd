@@ -314,6 +314,7 @@ class Player:
 	var schooled := 0                      # children who came out of school as artisans
 	var prio_t := -1000.0                  # rivals: when they last chose a set of priorities
 	var prio_set := ""                     # rivals: the set of priorities they use now (PrioPresets)
+	var gates_until := 0.0                 # the gates are shut against a plague until then (no newcomers)
 	var general_xp := 0.0                  # the realm's general: his experience (SimMilitary.GENERAL_XP)
 	var general_uid := 0                   # the column he leads now (0: at home)
 	var general_back := 0.0                # after he falls, a new general is ready at this time
@@ -2186,6 +2187,8 @@ func tick(dt: float) -> void:
 			var p := players[t.p - 1]
 			if t.kind == "ship":
 				sea.ship_arrival(t, p)
+			elif t.kind == "boat":
+				sea.boat_arrival(t, p)
 			elif t.kind == "trade":
 				Diplomacy.cart_arrival(self, t)
 			elif t.kind == "builder" or t.kind == "soldier" or t.kind == "worker":
@@ -2310,6 +2313,7 @@ func _secondly() -> void:
 	if int(time) % 5 == 0:
 		logistics.transfers()
 		sea.sea_transfers()
+		sea.river_transfers()
 	Diplomacy.expire(self)
 	if not places.is_empty():
 		Places.tick(self)
@@ -2361,7 +2365,7 @@ func _secondly() -> void:
 		else:
 			p.die_t = 0
 		p.imm_t += 1
-		if p.imm_t >= 8.0 / (1.0 + mod(p, "immigration")) and p.starve == 0 and pop_total(p) + p.kids.size() / 2 < housing(p) and food_total(p) >= 8.0 + pop_total(p) * 0.2:
+		if p.imm_t >= 8.0 / (1.0 + mod(p, "immigration")) and p.starve == 0 and time >= p.gates_until and pop_total(p) + p.kids.size() / 2 < housing(p) and food_total(p) >= 8.0 + pop_total(p) * 0.2:
 			p.peasant += 1; p.imm_t = 0
 		people.families(p)
 		update_needs(p)
