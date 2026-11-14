@@ -121,6 +121,11 @@ func rebuild() -> void:
 		var hgt := (hi - lo) * rh + card.y + PAD * 2.0
 		lanes.append([String(ln[1]), y, hgt, false])
 		y += hgt + 6.0
+	# the studies that open an age stand on their own in the first column of the age, half way down
+	for id in shown:
+		if GameData.techs[id].get("gate", false) and not placed.has(id):
+			pos[id] = Vector2(LEFT + cols[id] * cw, roundf((TOP + y) / 2.0 - card.y / 2.0))
+			placed[id] = true
 	# techs with no place in the data (a mod's): their own band, stacked by column
 	var other := {}
 	for id in shown:
@@ -407,6 +412,9 @@ func _draw() -> void:
 			var col := Color("3d4348")
 			var w := 1.6
 			var in_chain: bool = focusing and _chain.has(id) and _chain.has(r)
+			# the many lines out of an age's opening study show only when they matter
+			if GameData.techs[r].get("gate", false) and not in_chain and not (plan.has(id) and plan.has(r)):
+				continue
 			if in_chain:
 				col = C_INK; w = 2.4
 			elif plan.has(id) and (plan.has(r) or p.techs.has(r)):
@@ -418,6 +426,13 @@ func _draw() -> void:
 			if focusing and not in_chain:
 				col.a = 0.3
 			_bezier(a, b, col, w * maxf(0.6, z))
+	# the opening study of each age: a band down its column
+	for id in pos:
+		if GameData.techs.has(id) and GameData.techs[id].get("gate", false):
+			var gx := _sp(pos[id]).x
+			var band := Rect2(gx - 8.0 * z, 30, card.x * z + 16.0 * z, size.y)
+			draw_rect(band, Color(0.85, 0.67, 0.29, 0.05))
+			draw_line(Vector2(band.position.x + band.size.x / 2.0, 30), Vector2(band.position.x + band.size.x / 2.0, size.y), Color(0.85, 0.67, 0.29, 0.25), 2.0 * z)
 	# cards
 	for id in pos:
 		var r := Rect2(_sp(pos[id]), card * z)
@@ -486,8 +501,16 @@ func _draw_card(p: Sim.Player, id: String, r: Rect2, plan: Dictionary) -> void:
 		"study": border = C_STUDY; bw = 2.0
 	fill.a *= fade
 	border.a *= fade
+	var gate: bool = not is_rep and d.get("gate", false)
+	if gate:
+		fill = Color("2a2516") if st != "done" else Color("1d241c")
+		fill.a *= fade
 	draw_rect(r, fill)
 	draw_rect(r, border, false, bw)
+	if gate:
+		var gb := C_BRASS
+		gb.a = 0.8 * fade
+		draw_rect(r.grow(-3.0 * z), gb, false, 1.0)
 	if id == sel:
 		draw_rect(r.grow(2), C_INK, false, 2.0)
 	var pad := 6.0 * z
@@ -511,7 +534,13 @@ func _draw_card(p: Sim.Player, id: String, r: Rect2, plan: Dictionary) -> void:
 		"done": line2 = "All levels" if is_rep else "Done"; col2 = C_DONE
 		"study": line2 = ("Level %d · " % (lv + 1) if is_rep else "") + "%d / %d" % [int(minf(p.rp, c)), int(c)]; col2 = C_STUDY
 		"avail": line2 = ("Level %d · " % (lv + 1) if is_rep else "") + "%d points" % int(c); col2 = C_BRASS
-		_: line2 = ("Opens in the %s age" % GameData.age_name(int(d.get("age", 0)))) if is_rep else "%d points" % int(c)
+		_:
+			if is_rep:
+				line2 = "Opens in the %s age" % GameData.age_name(int(d.get("age", 0)))
+			elif gate and sim.gate_have(p, id) < int(d.get("need", 0)):
+				line2 = "%d of %d techs · %d pts" % [sim.gate_have(p, id), int(d.get("need", 0)), int(c)]
+			else:
+				line2 = "%d points" % int(c)
 	col2.a = fade
 	var y2 := r.position.y + pad + fs + 3.0 * z + fs2
 	draw_string(_font, Vector2(tx, y2), _fit_text(line2, tw, fs2), HORIZONTAL_ALIGNMENT_LEFT, -1, fs2, col2)

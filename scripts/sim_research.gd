@@ -30,7 +30,24 @@ func tech_available(p: Sim.Player, id: String) -> bool:
 	for r in GameData.techs[id].get("requires", []):
 		if not p.techs.has(r):
 			return false
+	# the study that opens an age needs a number of the age before's techs first
+	if gate_have(p, id) < int(GameData.techs[id].get("need", 0)):
+		return false
 	return true
+
+
+## For the study that opens an age (a "gate"): how many techs of the age before the realm has.
+func gate_have(p: Sim.Player, id: String) -> int:
+	var t: Dictionary = GameData.techs.get(id, {})
+	if not t.get("gate", false):
+		return 0
+	var a := int(t.get("age", 0)) - 1
+	var n := 0
+	for k in p.techs:
+		var d: Dictionary = GameData.techs.get(k, {})
+		if int(d.get("age", -1)) == a and not d.get("gate", false):
+			n += 1
+	return n
 
 
 func set_research(p: Sim.Player, id: String) -> void:
@@ -118,6 +135,31 @@ func path_to(p: Sim.Player, id: String) -> Array:
 		seen[x] = true
 		for r in GameData.techs[x].get("requires", []):
 			f.call(String(r), f)
+		var t: Dictionary = GameData.techs[x]
+		if t.get("gate", false):
+			# the study that opens an age: first enough techs of the age before, the cheapest ones
+			var a := int(t.get("age", 0)) - 1
+			var need := int(t.get("need", 0))
+			var have := gate_have(p, x)
+			for y in out:
+				var dy: Dictionary = GameData.techs[y]
+				if int(dy.get("age", -1)) == a and not dy.get("gate", false):
+					have += 1
+			var cands := []
+			for y in GameData.techs:
+				var dy: Dictionary = GameData.techs[y]
+				if int(dy.get("age", -1)) == a and not dy.get("gate", false) and not p.techs.has(y) and not seen.has(y) and sim.tech_enabled(y):
+					cands.append(y)
+			cands.sort_custom(func(u, v): return float(GameData.techs[u].cost) < float(GameData.techs[v].cost))
+			for y in cands:
+				if have >= need:
+					break
+				var before := out.size()
+				f.call(String(y), f)
+				for k in range(before, out.size()):
+					var dk: Dictionary = GameData.techs[out[k]]
+					if int(dk.get("age", -1)) == a and not dk.get("gate", false):
+						have += 1
 		out.append(x)
 	walk.call(id, walk)
 	return out
@@ -150,8 +192,14 @@ func _recompute_mods(p: Sim.Player) -> void:
 	p.mods = {}
 	p.age = 0
 	for id in p.techs:
+		p.age = maxi(p.age, int(GameData.techs.get(id, {}).get("age", 0)))
+	# a realm already in an age has its gate (games saved before the ages had gates)
+	for id in GameData.techs:
+		var g: Dictionary = GameData.techs[id]
+		if g.get("gate", false) and int(g.get("age", 0)) <= p.age and not p.techs.has(id):
+			p.techs[id] = true
+	for id in p.techs:
 		var t: Dictionary = GameData.techs.get(id, {})
-		p.age = maxi(p.age, int(t.get("age", 0)))
 		var eff: Dictionary = t.get("effects", {})
 		for k in eff:
 			p.mods[k] = float(p.mods.get(k, 0.0)) + float(eff[k])

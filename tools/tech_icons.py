@@ -774,6 +774,9 @@ BY_ID = {
     "town_planning": "mapc", "bank_notes": "note", "sewers": "pipe", "insurance": "shield", "canning": "can",
     "gas_lighting": "lamp", "mass_schooling": "book", "public_health": "cross", "portland_cement": "trowel",
     "industrial_revolution": "factory", "tenements": "houses",
+    # the studies that open each age
+    "new_kingdoms": "crown", "rise_of_towns": "houses", "rebirth_of_learning": "columns", "age_of_reason": "lens",
+    "dawn_of_industry": "gear",
     # learning
     "apprenticeship": "hammer", "prospecting": "pickaxe", "journeymen": "road", "papermaking": "paper",
     "tournaments": "pennant", "printing_press": "press", "humanism": "quill", "geological_survey": "pickaxe",

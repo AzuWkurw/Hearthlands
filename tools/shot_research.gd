@@ -34,4 +34,12 @@ func _init() -> void:
 	await _shot(out + "res_3.png")
 	main.research_ui.tree.fit()
 	await _shot(out + "res_4.png")
+	# the study that opens the next age, and one whose way there runs through it
+	main.research_ui.tree.set_zoom(0.8)
+	main.research_ui._select("rise_of_towns", true)
+	main.research_ui.tree.center_on("rise_of_towns")
+	await _shot(out + "res_5.png")
+	main.research_ui._select("rebirth_of_learning", true)
+	main.research_ui.tree.center_on("rebirth_of_learning")
+	await _shot(out + "res_6.png")
 	quit()

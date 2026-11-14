@@ -270,7 +270,7 @@ func _fill_tech() -> void:
 			b.text = "◆ " + b.text
 		elif a < p.age:
 			b.add_theme_color_override("font_color", TechTreeView.C_DONE)
-		b.tooltip_text = "Your age now" if a == p.age else ("Finish any %s tech to enter this age" % GameData.age_name(a) if a == p.age + 1 else "")
+		b.tooltip_text = "Your age now" if a == p.age else (("Study \"%s\" to enter this age" % GameData.tech_name(GameData.gate_of(a))) if a == p.age + 1 and GameData.gate_of(a) != "" else ("Finish any %s tech to enter this age" % GameData.age_name(a) if a == p.age + 1 else ""))
 		var aa := a
 		b.pressed.connect(func(): tree.show_age(aa))
 		age_row.add_child(b)
@@ -353,7 +353,15 @@ func _fill_detail(p: Sim.Player) -> void:
 			names.append(("%s seed" % sd) if not sd.contains("rotation") else sd)
 		s += "\n\n[color=#9a9c88]UNLOCKS[/color]\n" + ", ".join(names)
 	var req: Array = t.get("requires", [])
-	s += "\n\n[color=#9a9c88]NEEDS[/color]\n" + ("  ".join(req.map(func(r): return _chip(p, r))) if not req.is_empty() else "nothing: open from the start")
+	var needs_txt := "  ".join(req.map(func(r): return _chip(p, r)))
+	var need_n := int(t.get("need", 0))
+	if t.get("gate", false) and need_n > 0:
+		var have := main.sim.gate_have(p, id)
+		var prev := GameData.age_name(int(t.get("age", 0)) - 1)
+		needs_txt += ("  " if needs_txt != "" else "") + "[color=%s]%d of %d %s techs[/color]" % ["#8fc070" if have >= need_n else "#e0a060", mini(have, need_n), need_n, prev]
+	s += "\n\n[color=#9a9c88]NEEDS[/color]\n" + (needs_txt if needs_txt != "" else "nothing: open from the start")
+	if t.get("gate", false):
+		s += "\n\n[color=#d8aa4a]This study ends the %s age and opens the %s age: every %s tech needs it.[/color]" % [GameData.age_name(int(t.get("age", 0)) - 1), GameData.age_name(int(t.get("age", 0))), GameData.age_name(int(t.get("age", 0)))]
 	var ks: Array = tree.kids.get(id, [])
 	if not ks.is_empty():
 		s += "\n\n[color=#9a9c88]LEADS TO[/color]\n" + "  ".join(ks.map(func(k): return _chip(p, k)))
@@ -411,7 +419,7 @@ func _fill_rep(p: Sim.Player, id: String, st: String, label: String) -> void:
 	s += "\n\n[color=#9a9c88]LEVELS (points)[/color]\n" + "   ".join(lvls)
 	s += "\n[color=#9a9c88]Each level costs half the first again. The %s age allows %d levels; later ages bring their own studies.[/color]" % [GameData.age_name(int(r.get("age", 0))), mx]
 	if st == "locked":
-		s += "\n\nOpens when your realm enters the %s age (finish any %s tech)." % [GameData.age_name(int(r.get("age", 0))), GameData.age_name(int(r.get("age", 0)))]
+		s += "\n\nOpens when your realm enters the %s age." % GameData.age_name(int(r.get("age", 0)))
 	elif lv + planned < mx:
 		_action(("Queue level %d" if p.research != "" else "Study level %d") % (lv + planned + 1), func(): main.sim.queue_research(p, id), true)
 		if st != "study" and p.research != "":

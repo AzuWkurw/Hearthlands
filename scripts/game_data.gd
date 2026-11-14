@@ -193,6 +193,14 @@ static func _validate() -> void:
 		push_warning(e)
 
 
+## The study that opens age a (techs.json "gate"), or "" if that age has none.
+static func gate_of(a: int) -> String:
+	for id in techs:
+		if techs[id].get("gate", false) and int(techs[id].get("age", 0)) == a:
+			return String(id)
+	return ""
+
+
 static func _read(path: String):
 	if not FileAccess.file_exists(path):
 		return null

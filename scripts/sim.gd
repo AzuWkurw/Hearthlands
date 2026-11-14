@@ -2660,6 +2660,10 @@ func queue_research(p: Player, id: String) -> int:
 func unqueue_research(p: Player, i: int) -> void:
 	research.queue_remove(p, i)
 
+## For the study that opens an age: how many techs of the age before the realm has.
+func gate_have(p: Player, id: String) -> int:
+	return research.gate_have(p, id)
+
 func research_path(p: Player, id: String) -> Array:
 	return research.path_to(p, id)
 
