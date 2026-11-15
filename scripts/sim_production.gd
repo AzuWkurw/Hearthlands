@@ -535,8 +535,17 @@ func prod_tick(b: Sim.Bld, p: Sim.Player, _dt: float) -> void:
 	b.msg = "Working"
 	b.t_start = sim.time
 	b.rate_c = sim.rate(p, b)
+	# blasting (build 57): with Blasting powder, mines and quarries charge the rock with gunpowder from
+	# the stores when there is some, and break it 30% faster
+	if String(d.get("trade", "")) == "mining" and p.techs.has("blasting_powder") and float(p.stock.get("gunpowder", 0.0)) >= BLAST_MIN:
+		sim.used(p, "gunpowder", sim.take(p, "gunpowder", 1.0))
+		b.rate_c *= 1.0 + BLAST
 	b.t_end = sim.time + (cyc + sim.walk_time(b)) / maxf(0.05, b.rate_c)
 	b.retry = b.t_end
+
+
+const BLAST := 0.3
+const BLAST_MIN := 4.0      # (gunpowder kept back for the guns: blasting only uses it above this)
 
 
 ## How far the current work cycle has got, from 0 to 1.

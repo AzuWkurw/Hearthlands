@@ -123,6 +123,7 @@ func _init() -> void:
 			if fort == null and sim.inb(x, y) and sim.ter[sim.idx(x, y)] != Sim.WATER and sim.bmap[sim.idx(x, y)] == 0:
 				fort = sim.add_bld("coastal_fort", x, y, me, true)
 	fort.garrison = 3
+	fort.inbuf = {"gunpowder": 10}     # its guns need powder (build 57)
 	q.ships = 1; q.ships_out = 1
 	var t := Sim.Trip.new()
 	t.p = q.id; t.kind = "ship"; t.res = "planks"; t.n = 5

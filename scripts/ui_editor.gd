@@ -838,7 +838,7 @@ func _check_tab() -> void:
 			_fill()))
 	var fair := EditorTools.fairness(sim, starts, _fair_r)
 	var cols := [["land", "Open land"], ["trees", "Trees"], ["stone", "Rocks"], ["clay", "Clay"], ["fish", "Fish"], ["mountain", "Mountain"],
-		["coal", "Coal"], ["iron", "Iron"], ["gold", "Gold"], ["granite", "Granite"], ["copper", "Copper"]]
+		["coal", "Coal"], ["iron", "Iron"], ["gold", "Gold"], ["granite", "Granite"], ["copper", "Copper"], ["sulfur", "Sulfur"], ["lead", "Lead"]]
 	var g := GridContainer.new()
 	g.columns = starts.size() + 1
 	body.add_child(g)

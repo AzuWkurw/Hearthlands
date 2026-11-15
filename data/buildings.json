@@ -193,26 +193,27 @@
  },
  "charcoal_burner": {
   "name": "Charcoal burner",
-  "cat": "raw",
-  "size": "medium",
+  "cat": "industry",
+  "size": "small",
   "cost": {
-   "planks": 3,
+   "planks": 2,
    "stone": 1
   },
   "time": 12,
   "worker": "peasant",
-  "cycle": 22,
+  "cycle": 24,
   "in": {
    "wood": 2
   },
   "out": {
-   "coal": 1
+   "charcoal": 1
   },
-  "info": "Burns logs into coal when no coal mine is available.",
+  "tech": "gunpowder",
+  "info": "Burns logs slowly under turf into charcoal, the fine fuel gunpowder needs.",
   "art": {
-   "style": "kiln",
-   "wall": "#6a5a4a",
-   "sw": 2.0,
+   "style": "shed",
+   "wall": "#5a4a3a",
+   "sw": 1.4,
    "smoke": [
     0.312,
     0.703
@@ -2156,11 +2157,14 @@
    0.35
   ],
   "tech": "star_forts",
-  "info": "A low, angled star fort built to shrug off cannon. Claims 14 tiles, holds 10. Walls +8% a duel, and its cannon fire on attackers 6 tiles out.",
+  "info": "A low, angled star fort built to shrug off cannon. Claims 14 tiles, holds 10. Walls +8% a duel, and its cannon fire on attackers 6 tiles out. Its guns fire only with gunpowder in store (one charge a volley).",
   "art": {
    "style": "bastion",
    "wall": "#a29a86",
    "sw": 3.2
+  },
+  "in": {
+   "gunpowder": 3
   }
  },
  "battery": {
@@ -2182,11 +2186,14 @@
    0.4
   ],
   "tech": "drill_manuals",
-  "info": "An earthwork with cannon. Claims 8 tiles, holds 5. Its guns fire on attackers from 8 tiles out, every 4 seconds, while it has a crew.",
+  "info": "An earthwork with cannon. Claims 8 tiles, holds 5. Its guns fire on attackers from 8 tiles out, every 4 seconds, while it has a crew. Its guns fire only with gunpowder in store (one charge a volley).",
   "art": {
    "style": "battery",
    "wall": "#7a7048",
    "sw": 2.6
+  },
+  "in": {
+   "gunpowder": 3
   }
  },
  "redoubt": {
@@ -2210,13 +2217,16 @@
    0.4
   ],
   "tech": "rifling",
-  "info": "Brick and iron casemates with breech-loading guns. Claims 16 tiles, holds 16. Walls +8% a duel; its guns fire on attackers 9 tiles out every 3 seconds.",
+  "info": "Brick and iron casemates with breech-loading guns. Claims 16 tiles, holds 16. Walls +8% a duel; its guns fire on attackers 9 tiles out every 3 seconds. Its guns fire only with gunpowder in store (one charge a volley).",
   "art": {
    "style": "bastion",
    "wall": "#8a5a48",
    "sw": 3.4,
    "smoke": [],
    "glow": []
+  },
+  "in": {
+   "gunpowder": 3
   }
  },
  "steelworks": {
@@ -3358,7 +3368,8 @@
   "in": {
    "planks": 4,
    "iron": 1,
-   "weapons": 1
+   "weapons": 1,
+   "gunpowder": 2
   },
   "out": {
    "warship": 1
@@ -3399,7 +3410,10 @@
    "wall": "#7f8a90",
    "sw": 1.9
   },
-  "info": "A fort on the shore with guns: while it holds soldiers, it fires on enemy warships, landing fleets and cargo ships within 7 tiles."
+  "info": "A fort on the shore with guns: while it holds soldiers, it fires on enemy warships, landing fleets and cargo ships within 7 tiles. Its guns fire only with gunpowder in store (one charge a volley).",
+  "in": {
+   "gunpowder": 3
+  }
  },
  "field_depot": {
   "name": "Field depot",
@@ -3445,5 +3459,263 @@
    "glow": []
   },
   "info": "A small store on a river or lake, with a boat. When two of your landings lie on the same water and the way between them by road is long (or there is none), the boat carries goods across: from where there is plenty to where there is little, up to 6 at a time. Boats stay in in a storm."
+ },
+ "sulfur_mine": {
+  "name": "Sulfur mine",
+  "cat": "industry",
+  "size": "mine",
+  "cost": {
+   "planks": 4,
+   "stone": 2
+  },
+  "time": 16,
+  "worker": "artisan",
+  "cycle": 22,
+  "in": {
+   "food": 1
+  },
+  "out": {
+   "sulfur": 1
+  },
+  "mine": 6,
+  "tech": "gunpowder",
+  "info": "On a sulfur deposit (yellow on the mountains, found by a geologist). Miners eat. Sulfur goes into gunpowder.",
+  "art": {
+   "style": "mine",
+   "wall": "#a89a3a",
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
+  },
+  "trade": "mining"
+ },
+ "saltpeter_works": {
+  "name": "Saltpeter works",
+  "cat": "industry",
+  "size": "medium",
+  "cost": {
+   "planks": 3,
+   "stone": 2
+  },
+  "time": 16,
+  "worker": "peasant",
+  "cycle": 30,
+  "in": {
+   "wood": 1
+  },
+  "out": {
+   "saltpeter": 1
+  },
+  "tech": "gunpowder",
+  "info": "Leaches saltpeter out of the earth of stables and middens and boils it down over a wood fire.",
+  "art": {
+   "style": "workshop",
+   "wall": "#a8a08a",
+   "sw": 1.8,
+   "smoke": [
+    0.3,
+    0.2
+   ],
+   "glow": []
+  },
+  "trade": "kilns"
+ },
+ "powder_mill": {
+  "name": "Powder mill",
+  "cat": "crafts",
+  "size": "medium",
+  "cost": {
+   "planks": 4,
+   "stone": 3,
+   "iron": 1
+  },
+  "time": 20,
+  "worker": "artisan",
+  "cycle": 30,
+  "in": {
+   "sulfur": 1,
+   "saltpeter": 2,
+   "charcoal": 1
+  },
+  "out": {
+   "gunpowder": 2
+  },
+  "tech": "gunpowder",
+  "info": "Grinds saltpeter, sulfur and charcoal together into gunpowder, wet, so nothing goes up. Cannon forts, coastal forts, gunsmiths and naval yards need it.",
+  "art": {
+   "style": "workshop",
+   "wall": "#6a6a70",
+   "sw": 2.0,
+   "smoke": [
+    0.2,
+    0.2
+   ],
+   "glow": []
+  },
+  "trade": "fine"
+ },
+ "gunsmith": {
+  "name": "Gunsmith",
+  "cat": "crafts",
+  "size": "medium",
+  "cost": {
+   "planks": 3,
+   "stone": 3,
+   "iron": 1
+  },
+  "time": 18,
+  "worker": "artisan",
+  "cycle": 26,
+  "in": {
+   "iron": 1,
+   "planks": 1,
+   "gunpowder": 1
+  },
+  "out": {
+   "weapons": 2
+  },
+  "tech": "musketry",
+  "info": "Muskets and their powder: iron, wood and gunpowder into weapons, twice what a weaponsmith makes.",
+  "art": {
+   "style": "workshop",
+   "wall": "#7a4a3a",
+   "sw": 2.0,
+   "smoke": [
+    0.188,
+    0.18
+   ],
+   "glow": [
+    0.336,
+    0.844
+   ]
+  },
+  "trade": "metal"
+ },
+ "lead_mine": {
+  "name": "Lead mine",
+  "cat": "industry",
+  "size": "mine",
+  "cost": {
+   "planks": 4,
+   "stone": 2
+  },
+  "time": 16,
+  "worker": "artisan",
+  "cycle": 20,
+  "in": {
+   "food": 1
+  },
+  "out": {
+   "ore_lead": 1
+  },
+  "mine": 7,
+  "tech": "gunpowder",
+  "info": "On a lead deposit (grey-blue on the mountains, found by a geologist). Miners eat.",
+  "art": {
+   "style": "mine",
+   "wall": "#6a7484",
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
+  },
+  "trade": "mining"
+ },
+ "lead_smelter": {
+  "name": "Lead smelter",
+  "cat": "industry",
+  "size": "medium",
+  "cost": {
+   "planks": 3,
+   "stone": 4
+  },
+  "time": 18,
+  "worker": "artisan",
+  "cycle": 24,
+  "in": {
+   "ore_lead": 1,
+   "coal": 1
+  },
+  "out": {
+   "lead": 2
+  },
+  "tech": "gunpowder",
+  "info": "Lead melts easily: a coal fire turns lead ore into bars of lead.",
+  "art": {
+   "style": "smelter",
+   "wall": "#6e7480",
+   "sw": 2.0,
+   "smoke": [
+    0.2,
+    0.15
+   ],
+   "glow": [
+    0.4,
+    0.8
+   ]
+  },
+  "trade": "metal"
+ },
+ "cartridge_works": {
+  "name": "Cartridge works",
+  "cat": "crafts",
+  "size": "medium",
+  "cost": {
+   "planks": 3,
+   "stone": 2,
+   "iron": 1
+  },
+  "time": 18,
+  "worker": "artisan",
+  "cycle": 28,
+  "in": {
+   "lead": 1,
+   "gunpowder": 1
+  },
+  "out": {
+   "ammunition": 3
+  },
+  "tech": "musketry",
+  "info": "Casts lead balls and wraps them with a charge of gunpowder: cartridges for musketeers and riflemen, who cannot fire without them.",
+  "art": {
+   "style": "workshop",
+   "wall": "#8a7a5a",
+   "sw": 2.0,
+   "smoke": [
+    0.2,
+    0.2
+   ],
+   "glow": []
+  },
+  "trade": "metal"
+ },
+ "pyrotechnist": {
+  "name": "Pyrotechnist",
+  "cat": "crafts",
+  "size": "small",
+  "cost": {
+   "planks": 2,
+   "stone": 2
+  },
+  "time": 14,
+  "worker": "artisan",
+  "cycle": 36,
+  "in": {
+   "sulfur": 1,
+   "saltpeter": 1,
+   "charcoal": 1
+  },
+  "out": {
+   "fireworks": 2
+  },
+  "tech": "gunpowder",
+  "info": "Sulfur, saltpeter and charcoal, with metal salts for colours: fireworks. A festival with fireworks lasts half as long again and raises spirits more.",
+  "art": {
+   "style": "shed",
+   "wall": "#9a5a6a",
+   "sw": 1.4,
+   "smoke": [],
+   "glow": []
+  },
+  "trade": "fine"
  }
 }

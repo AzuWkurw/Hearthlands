@@ -1,5 +1,19 @@
 # Changelog
 
+## Build 57 (v0.52.0, 2026-11-15)
+
+Build 57: gunpowder and lead.
+- New resources: sulfur (from sulfur mines on new yellow deposits), saltpeter (saltpeter works), charcoal (charcoal burner), and gunpowder from the powder mill (1 sulfur, 2 saltpeter, 1 charcoal make 2 gunpowder).
+- Lead: lead mines on new grey-blue deposits, a lead smelter turns lead ore and coal into lead, and the cartridge works makes cartridges from lead and gunpowder.
+- Guns need powder: cannon forts (bastion, battery, redoubt) and coastal forts fire only while they have gunpowder, and use it per volley. The naval yard needs gunpowder for its warships. A gunsmith makes firearms from iron, planks and powder.
+- Musketeers and riflemen need cartridges: a column packs them when it marches, and each volley uses them; without cartridges they fight hand to hand. Defenders take theirs from your stores.
+- Blasting powder (research): mines work 30% faster while you keep 4 or more gunpowder in store; each work cycle uses one.
+- Fireworks from the pyrotechnist: a festival with fireworks lasts half as long again and speeds work more.
+- Rivals build the whole powder and lead chain when they need guns.
+- Fixed: a saved game could go a little differently after loading when the season turned right at the moment it was saved.
+- Fixed: a building spot next to water could look reachable for a road through a bridge ending on another building's wall; no road could join it.
+- Fixed: the map editor's fairness check stopped on maps with the new deposits.
+
 ## Build 56.3 (v0.51.0, 2026-11-15)
 
 Build 56.3: optimization and bug round 3.

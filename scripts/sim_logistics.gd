@@ -39,6 +39,12 @@ func bridge_landing(cur: int, ni: int, pid: int) -> int:
 		if sim.ter[nxt] != Sim.WATER:
 			if sim.owner[nxt] != pid or sim.deco[nxt] == Sim.D_ROCK or sim.deco[nxt] == Sim.D_CLAY or (sim.plot[nxt] != 0 and sim.bmap[nxt] == 0):
 				return -1
+			# a bridge can end at a building only at a store's own entrance (build 57: it landed on any
+			# building's wall, so a spot looked reachable that no road could join)
+			if sim.bmap[nxt] != 0:
+				var b: Sim.Bld = sim.by_id.get(sim.bmap[nxt])
+				if b == null or b.p != pid or not is_store(b) or not sim.links(nxt, c):
+					return -1
 			return nxt
 		if sim.owner[nxt] != pid:
 			return -1

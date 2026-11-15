@@ -138,8 +138,8 @@ func staffing(p: Sim.Player) -> void:
 		elif wk == "scout":
 			b.staffed = b.prio != Sim.PRIO_PAUSED and isc > 0
 			if b.staffed: isc -= 1
-		elif wk == "" and b.def.has("rations"):
-			# a field depot needs nobody inside: carriers fill it unless it is paused
+		elif wk == "" and b.def.has("in"):
+			# a field depot, or a fort's gunpowder, needs nobody inside: carriers fill it unless it is paused
 			b.staffed = b.prio != Sim.PRIO_PAUSED
 			continue
 		if b.staffed:

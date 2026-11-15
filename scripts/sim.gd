@@ -446,6 +446,7 @@ class Attack:
 	var ships := 0               # ships carrying a landing (they sail home once it has landed)
 	var general := false         # the realm's general leads this column
 	var depot := 0               # the field depot near its target it eats from (0: none)
+	var ammo := 0                # cartridges its musketeers and riflemen carry (SimMilitary.AMMO_SHOTS shots each)
 
 
 class MinHeap:

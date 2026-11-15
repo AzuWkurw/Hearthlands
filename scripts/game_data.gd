@@ -5,7 +5,7 @@ extends RefCounted
 ## change resources, buildings and population needs without editing the project.
 
 const CATEGORIES := [["raw", "Raw"], ["food", "Food"], ["industry", "Industry"], ["crafts", "Crafts"], ["folk", "Folk"], ["science", "Science"], ["logistics", "Roads & stores"], ["mil", "Military"]]
-const ORE_NAMES := {1: "coal", 2: "iron", 3: "gold", 4: "granite", 5: "copper"}
+const ORE_NAMES := {1: "coal", 2: "iron", 3: "gold", 4: "granite", 5: "copper", 6: "sulfur", 7: "lead"}
 const CLASSES := ["peasant", "artisan", "noble", "soldier"]
 
 static var loaded := false

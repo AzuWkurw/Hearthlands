@@ -382,6 +382,8 @@ func _forts_fire() -> void:
 		var every := maxi(1, int(g.get("every", 4.0)))
 		if (int(sim.time) + b.id) % every != 0 or sim.defenders(b) <= 0:
 			continue
+		if b.def.has("in") and int(b.inbuf.get("gunpowder", 0)) <= 0:
+			continue                  # no gunpowder, no shot
 		var r := float(g.get("range", 7.0))
 		var hit := float(g.get("hit", 0.45))
 		var c := Vector2(b.x, b.y)
@@ -412,6 +414,8 @@ func _forts_fire() -> void:
 		if best == null:
 			continue
 		fx.append([c + Vector2(0, -1.0), best[1], sim.time])
+		if b.def.has("in"):
+			sim.military._use_powder(b)
 		if sim.rng.randf() >= hit:
 			continue
 		match String(best[0]):

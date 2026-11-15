@@ -555,5 +555,61 @@
   "abbr": "Cf",
   "color": "#6a4028",
   "icon": "mug"
+ },
+ {
+  "id": "sulfur",
+  "name": "Sulfur",
+  "abbr": "Su",
+  "color": "#d6d84a",
+  "icon": "crystal"
+ },
+ {
+  "id": "saltpeter",
+  "name": "Saltpeter",
+  "abbr": "Sp",
+  "color": "#e6e2d6",
+  "icon": "crystal"
+ },
+ {
+  "id": "charcoal",
+  "name": "Charcoal",
+  "abbr": "Ch",
+  "color": "#2e2a26",
+  "icon": "lump"
+ },
+ {
+  "id": "gunpowder",
+  "name": "Gunpowder",
+  "abbr": "Gp",
+  "color": "#55565c",
+  "icon": "sack"
+ },
+ {
+  "id": "ore_lead",
+  "name": "Lead ore",
+  "abbr": "Lo",
+  "color": "#7a8494",
+  "icon": "orechunk"
+ },
+ {
+  "id": "lead",
+  "name": "Lead",
+  "abbr": "Pb",
+  "color": "#8e96a6",
+  "icon": "ingot"
+ },
+ {
+  "id": "ammunition",
+  "name": "Cartridges",
+  "abbr": "Am",
+  "color": "#b89a5a",
+  "icon": "sack"
+ },
+ {
+  "id": "fireworks",
+  "name": "Fireworks",
+  "abbr": "Fw",
+  "color": "#d84a6a",
+  "icon": "cone"
  }
 ]

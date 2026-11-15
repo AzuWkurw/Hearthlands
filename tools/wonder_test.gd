@@ -14,6 +14,7 @@ func _init() -> void:
 	if Sim.wonder_count() != 5: ok = false; print("FAIL: five wonders")
 	# before its age: locked
 	var spot := Vector2i(me.hq.x + 6, me.hq.y + 6)
+	sim.deco[sim.idx(spot.x, spot.y)] = 0     # (the map may grow a tree there: that is another refusal)
 	print("great hall before its age: '%s'" % sim.can_place("great_hall", spot.x, spot.y, 1))
 	sim.complete_tech(me, "new_kingdoms")
 	var tax0 := sim.mod(me, "tax")

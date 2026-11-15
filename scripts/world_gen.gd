@@ -77,7 +77,7 @@ static func _try(s: int, size: int, n: int, att: int, gp: Dictionary = GEN_DEFAU
 	var hn := _noise(s, 1.0 / feat)
 	var fn := _noise(s + 500, 1.0 / 16.0)
 	var orn: Array = []
-	for k in 5:
+	for k in 7:
 		orn.append(_noise(s + 1000 + k * 31, 1.0 / 9.0, 3))
 	var water_t := -0.24 - att * 0.008 + (float(gp.water) - 0.5) * 0.7
 	var mount_t := 0.30 + att * 0.004 - (float(gp.mountains) - 0.5) * 0.5
@@ -156,8 +156,9 @@ static func _try(s: int, size: int, n: int, att: int, gp: Dictionary = GEN_DEFAU
 			elif t == MOUNT:
 				var bi := 0
 				var bv := -9.0
-				for k in 5:
-					var v: float = (orn[k] as FastNoiseLite).get_noise_2d(x, y) - (0.08 if k == 2 else 0.0)
+				for k in 7:
+					# gold, sulfur and lead are rarer than the others
+					var v: float = (orn[k] as FastNoiseLite).get_noise_2d(x, y) - (0.08 if k == 2 else (0.10 if k >= 5 else 0.0))
 					if v > bv:
 						bv = v; bi = k + 1
 				if bv > ore_t:

@@ -50,6 +50,9 @@ func _init() -> void:
 	print("rival planks after war broke out: ", float(q.stock.get("planks", 0.0)), " (were ", qp0, ")")
 	# save and load with carts on the way
 	Diplomacy.set_relation(sim, 1, 2, Diplomacy.PEACE)
+	# (a standing offer stops when war breaks out; set one up again for the save)
+	if sim.standing.is_empty():
+		Diplomacy.add_standing(sim, 2, {"planks": 5}, {}, 60.0)
 	Diplomacy.propose(sim, 1, 2, "gift", {"planks": 5}, {})
 	var d := sim.to_save()
 	var s2 := Sim.new()

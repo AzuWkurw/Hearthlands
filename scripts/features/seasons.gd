@@ -67,6 +67,7 @@ const GX := 16
 const GY := 9
 var _snow_t := 0.0                   # game time the snow was last brought up to date
 var _realm_t: Dictionary = {}        # realm id -> temperature at its headquarters, this second
+var _cache_season := -1
 var _cache: Array = [{}, {}, {}, {}]  # per biome: building type -> work bonus, worked out once a second
 
 
@@ -308,6 +309,13 @@ func speed_bonus(_p: Sim.Player, b: Sim.Bld) -> float:
 	if biome.is_empty():
 		return 0.0
 	var k: int = biome[b.y * sim.w + b.x]
+	# the season turns on the clock, between two seconds: a loaded game starts with an empty cache, so
+	# the cache must never outlive its season (build 57)
+	var sn := season()
+	if sn != _cache_season:
+		_cache_season = sn
+		for j in 4:
+			(_cache[j] as Dictionary).clear()
 	var c: Dictionary = _cache[k]
 	var key := b.ty if b.ty != "farm" else "farm:" + Crops.now(sim, b)
 	if not c.has(key):

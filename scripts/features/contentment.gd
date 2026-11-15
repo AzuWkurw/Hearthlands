@@ -11,6 +11,8 @@ const CHAPEL_R := 10       # tiles a chapel calms
 const SERVED_FOR := 75.0   # seconds a tavern or chapel counts as working after its last cycle
 const FESTIVAL := 180.0
 const FEST_COST := 5       # beer and bread a festival takes
+const FIREWORKS := 3.0     # fireworks a festival sets off, when there are that many in store
+var fireworks := {}        # realm id -> until when its festival has fireworks
 const LOW := 0.3           # below this the realm is unhappy
 const FEST_COVER := 0.15   # share of homes its taverns must reach for a festival (0.3 before build 53)
 
@@ -103,11 +105,16 @@ func on_second() -> void:
 			sim.take(p, "bread", FEST_COST)
 			sim.used(p, "beer", FEST_COST)
 			sim.used(p, "bread", FEST_COST)
-			festival[p.id] = sim.time + FESTIVAL
+			# fireworks (build 57): the festival lasts half as long again, and work goes 15% faster
+			var fw := float(p.stock.get("fireworks", 0.0)) >= FIREWORKS
+			if fw:
+				sim.used(p, "fireworks", sim.take(p, "fireworks", FIREWORKS))
+				fireworks[p.id] = sim.time + FESTIVAL * 1.5
+			festival[p.id] = sim.time + FESTIVAL * (1.5 if fw else 1.0)
 			feasts[p.id] = int(feasts.get(p.id, 0)) + 1
 			next_fest[p.id] = sim.time + FESTIVAL + 300.0 + float((p.id * 97 + _t) % 180)
 			if not p.ai:
-				sim.emit_log("A festival at the tavern! Everyone works 10% faster for 3 minutes.", Color("e8c870"))
+				sim.emit_log("A festival at the tavern%s Everyone works %d%% faster for %s." % [" with fireworks!" if fw else "!", 15 if fw else 10, "4½ minutes" if fw else "3 minutes"], Color("e8c870"))
 			elif Diplomacy.relation(sim, 1, p.id) != Diplomacy.WAR and sim.players[0].alive:
 				sim.emit_log("%s holds a festival: its people work faster for a while." % p.name, p.color.lightened(0.35))
 		# unhappy for long: idle peasants leave, one a minute
@@ -124,7 +131,7 @@ func on_second() -> void:
 
 
 func speed_bonus(p: Sim.Player, _b: Sim.Bld) -> float:
-	return (mood(p) - 0.5) * 0.2 + (0.1 if in_festival(p) else 0.0)
+	return (mood(p) - 0.5) * 0.2 + ((0.15 if sim.time < float(fireworks.get(p.id, -1.0)) else 0.1) if in_festival(p) else 0.0)
 
 
 func top_text(p: Sim.Player) -> String:
@@ -179,14 +186,14 @@ func ai_steps(p: Sim.Player, have: Callable) -> Array:
 
 
 func save_state() -> Dictionary:
-	return {"served": served, "festival": festival, "next_fest": next_fest, "low_since": low_since, "left": left, "feasts": feasts, "t": _t, "mood": mood_of, "cover": cover}
+	return {"served": served, "festival": festival, "next_fest": next_fest, "low_since": low_since, "left": left, "feasts": feasts, "t": _t, "mood": mood_of, "cover": cover, "fireworks": fireworks}
 
 
 func load_state(d: Dictionary) -> void:
 	served = {}
 	for k in d.get("served", {}):
 		served[int(k)] = float(d.served[k])
-	for key in ["festival", "next_fest", "low_since", "left", "feasts", "mood_of", "cover"]:
+	for key in ["festival", "next_fest", "low_since", "left", "feasts", "mood_of", "cover", "fireworks"]:
 		var dst: Dictionary = get(key)
 		dst.clear()
 		var src: Dictionary = d.get({"mood_of": "mood", "cover": "cover"}.get(key, key), {})

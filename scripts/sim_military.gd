@@ -500,6 +500,13 @@ static func ration(n: int) -> int:
 
 ## Packs supplies for column a setting out from src: what the march needs, and three rounds at the gate.
 func pack_supplies(a: Sim.Attack, p: Sim.Player, src: Sim.Bld) -> void:
+	# cartridges for the musketeers and riflemen: enough for AMMO_VOLLEYS volleys, as far as there are
+	var shooters := shooters_of(a.amix)
+	if shooters > 0:
+		var want := ceili(float(shooters * AMMO_VOLLEYS) / AMMO_SHOTS)
+		a.ammo = int(sim.take(p, "ammunition", float(want)))
+		if a.ammo > 0:
+			sim.used(p, "ammunition", float(a.ammo))
 	var dist := path_len(sim.w, a.path) if a.path.size() >= 2 else a.from.distance_to(a.to)
 	a.far = dist - float(a.sea) > SUPPLY_FREE or a.sea > 0
 	a.t_eat = a.t1 + SUPPLY_EVERY
@@ -960,6 +967,12 @@ func _intercept(b: Sim.Bld, a: Sim.Attack) -> void:
 	c.vt = [c.t0, c.t0]; c.dvt = [c.t0, c.t0]
 	c.blunt = mini(go_blunt, n)
 	c.chase = a.uid
+	# a sally takes cartridges from the stores, as a garrison's guns do
+	var sh := shooters_of(sent)
+	if sh > 0:
+		c.ammo = int(sim.take(p, "ammunition", float(ceili(float(sh * AMMO_VOLLEYS) / AMMO_SHOTS))))
+		if c.ammo > 0:
+			sim.used(p, "ammunition", float(c.ammo))
 	sim._bid += 1
 	c.uid = sim._bid
 	sim.attacks.append(c)
@@ -1114,12 +1127,45 @@ func _column_words(a: Sim.Attack) -> String:
 	return "%d soldier%s" % [a.n, "" if a.n == 1 else "s"]
 
 
+## Cartridges (build 57): musketeers and riflemen fire only with them. One cartridge is AMMO_SHOTS
+## shots; a column carries enough for AMMO_VOLLEYS volleys when it sets out (as far as the stores have
+## them), and a garrison's guns take theirs from the realm's stores as they fire.
+const AMMO_SHOTS := 10
+const AMMO_VOLLEYS := 4
+
+
+static func shooters_of(mix: Array) -> int:
+	var n := 0
+	for g in GUNS:
+		if mix.size() > g:
+			n += int(mix[g])
+	return n
+
+
+## How many of `shooters` can fire a volley with the cartridges column a carries (they are used).
+func _ammo_for(a: Sim.Attack, shooters: int) -> int:
+	var can := mini(shooters, a.ammo * AMMO_SHOTS)
+	a.ammo -= ceili(float(can) / AMMO_SHOTS)
+	return can
+
+
+## ... and for a garrison of realm p, from its stores.
+func _ammo_from_stores(p: Sim.Player, shooters: int) -> int:
+	var need := ceili(float(shooters) / AMMO_SHOTS)
+	var got := int(sim.take(p, "ammunition", float(need)))
+	if got > 0:
+		sim.used(p, "ammunition", float(got))
+	return mini(shooters, got * AMMO_SHOTS)
+
+
 ## Column a's musketeers and riflemen fire on column b, d tiles away.
 func _column_volleys(a: Sim.Attack, b: Sim.Attack, d: float) -> void:
 	var pb := sim.players[b.p - 1]
 	for g: int in GUNS:
 		var gun: Array = GUNS[g]
 		var shooters := int(a.amix[g]) if a.amix.size() > g else 0
+		if shooters > 0 and d <= float(gun[0]) and sim.time >= float(a.vt[g - 4]):
+			shooters = _ammo_for(a, shooters)
 		if shooters <= 0 or d > float(gun[0]) or sim.time < float(a.vt[g - 4]):
 			continue
 		a.vt[g - 4] = sim.time + float(gun[1])
@@ -1266,6 +1312,8 @@ func _volleys(a: Sim.Attack, p: Sim.Player, t: Sim.Bld) -> void:
 		var gun: Array = GUNS[g]
 		var shooters := int(a.amix[g]) if a.amix.size() > g else 0
 		if shooters > 0 and left <= float(gun[0]) and sim.time >= float(a.vt[g - 4]):
+			shooters = _ammo_for(a, shooters)
+		if shooters > 0 and left <= float(gun[0]) and sim.time >= float(a.vt[g - 4]):
 			a.vt[g - 4] = sim.time + float(gun[1])
 			a.shot_t = sim.time
 			var hits := 0
@@ -1285,6 +1333,8 @@ func _volleys(a: Sim.Attack, p: Sim.Player, t: Sim.Bld) -> void:
 		var dm := mix_of(db)
 		var dshooters := int(dm[g])
 		if dshooters > 0 and left <= float(gun[0]) and sim.time >= float(a.dvt[g - 4]):
+			dshooters = _ammo_from_stores(sim.players[db.p - 1], dshooters)
+		if dshooters > 0 and left <= float(gun[0]) and sim.time >= float(a.dvt[g - 4]):
 			a.dvt[g - 4] = sim.time + float(gun[1])
 			a.dshot_t = sim.time
 			for s in dshooters:
@@ -1303,15 +1353,30 @@ func _cannon(a: Sim.Attack, p: Sim.Player, t: Sim.Bld, left: float) -> void:
 	var gun: Array = t.def.get("cannon", [])
 	if gun.is_empty() or t.state != "ready" or own_def(t) <= 0 or left > float(gun[0]):
 		return
+	# the guns fire only with gunpowder in store: a charge for each volley
+	if t.def.has("in") and int(t.inbuf.get("gunpowder", 0)) <= 0:
+		return
 	while a.dvt.size() < 3:
 		a.dvt.append(0.0)
 	if sim.time < float(a.dvt[2]):
 		return
 	a.dvt[2] = sim.time + float(gun[1])
 	a.dshot_t = sim.time
+	if t.def.has("in"):
+		_use_powder(t)
 	for s in int(gun[2]):
 		if a.n > 0 and sim.rng.randf() < float(gun[3]):
 			Sim.mix_remove(a.amix, Sim.mix_pick(a.amix, sim.rng))
 			a.n -= 1
 			p.vets = maxf(0.0, p.vets - a.vet)
 	a.era = Sim.mix_avg(a.amix)
+
+
+## A fort's guns fire a volley: one charge of gunpowder from its store.
+func _use_powder(t: Sim.Bld) -> void:
+	var n := int(t.inbuf.get("gunpowder", 0))
+	if n <= 1:
+		t.inbuf.erase("gunpowder")
+	else:
+		t.inbuf["gunpowder"] = n - 1
+	sim.used(sim.players[t.p - 1], "gunpowder", 1.0)

@@ -481,6 +481,19 @@ func ai_think(p: Sim.Player) -> void:
 	# at war by the sea: warships and guns on the shore; warlords keep rations near the front; a rival
 	# alone on its island makes for the sea. These few come early, once the basic economy stands.
 	var war_by_sea: bool = c.call("harbour") > 0 and _at_war_any(p)
+	# guns need powder: a rival with cannon forts, a coastal fort or a naval yard (or soon one) makes it
+	var powder: bool = p.techs.has("gunpowder") and mins > 25 and (c.call("bastion") + c.call("battery") + c.call("redoubt") + c.call("coastal_fort") + c.call("naval_yard") > 0 or p.techs.has("drill_manuals"))
+	# musketeers and riflemen need cartridges: lead and gunpowder
+	var guns: bool = p.age >= 4 and p.techs.has("musketry") and p.techs.has("gunpowder")
+	powder = powder or guns
+	var have_sulfur := false
+	var have_lead := false
+	if powder:
+		for i in (sim.owned(p.id)[1] as PackedInt32Array):
+			if sim.ore[i] == 6 and sim.vein_left(i) > 0:
+				have_sulfur = true
+			elif sim.ore[i] == 7 and sim.vein_left(i) > 0:
+				have_lead = true
 	extra.append_array([
 		# beer for the taverns, so the people are content and the realm holds festivals (build 53)
 		["hop_farm", (2 if mins > 20 and c.call("tavern") > 0 else 1) if mins > 10 else 0],
@@ -490,6 +503,18 @@ func ai_think(p: Sim.Player) -> void:
 		["naval_yard", 1 if mins > 40 and war_by_sea else 0],
 		["coastal_fort", 1 if mins > 45 and war_by_sea else 0],
 		["field_depot", 1 if mins > 30 and war else 0],
+		# gunpowder for the cannon forts, coastal forts, naval yards and gunsmiths (build 57)
+		["charcoal_burner", 1 if powder else 0],
+		["saltpeter_works", (2 if c.call("powder_mill") > 0 else 1) if powder else 0],
+		["sulfur_mine", 1 if powder and have_sulfur else 0],
+		["powder_mill", 1 if powder and c.call("charcoal_burner") > 0 and c.call("saltpeter_works") > 0 and c.call("sulfur_mine") > 0 else 0],
+		["gunsmith", 1 if c.call("powder_mill") > 0 and war and mins > 35 else 0],
+		# cartridges once its soldiers carry guns (musketeers from the age of reason), lead for them
+		["lead_mine", 1 if guns and have_lead else 0],
+		["lead_smelter", 1 if guns and c.call("lead_mine") > 0 else 0],
+		["cartridge_works", (2 if p.age >= 5 else 1) if guns and c.call("lead_smelter") > 0 and c.call("powder_mill") > 0 else 0],
+		# fireworks for its festivals, once the powder chain stands and it has taverns
+		["pyrotechnist", 1 if c.call("powder_mill") > 0 and c.call("tavern") > 0 and mins > 40 else 0],
 	])
 	if not extra.is_empty():
 		var at := 13

@@ -68,14 +68,18 @@ func _init() -> void:
 	var me2 := sim2.human(); var foe2 := sim2.players[1]
 	Diplomacy.declare_war(sim2, 1, 2)
 	var hx := me2.hq.x; var hy := me2.hq.y
-	for y in range(hy + 2, hy + 26):
+	# the way runs south of the headquarters, or north when the map ends too soon (s: which way)
+	var sg := 1 if hy + 26 < sim2.h else -1
+	if hx + 12 >= sim2.w: hx = sim2.w - 13
+	for k in range(2, 26):
+		var y := hy + sg * k
 		for x in range(hx - 4, hx + 12):
 			if sim2.inb(x, y) and sim2.ter[y * sim2.w + x] == Sim.WATER: sim2.ter[y * sim2.w + x] = Sim.GRASS
-	var src := sim2.add_bld("tower", hx + 2, hy + 22, foe2, true, 0)
+	var src := sim2.add_bld("tower", hx + 2, hy + sg * 22, foe2, true, 0)
 	src.garrison = 4; src.gmix = [4, 0, 0, 0, 0, 0]
-	var tgt := sim2.add_bld("tower", hx + 2, hy + 4, me2, true, 0)
+	var tgt := sim2.add_bld("tower", hx + 2, hy + sg * 4, me2, true, 0)
 	tgt.garrison = 2; tgt.gmix = [2, 0, 0, 0, 0, 0]
-	var side := sim2.add_bld("tower", hx + 5, hy + 13, me2, true, 0)
+	var side := sim2.add_bld("tower", hx + 5, hy + sg * 13, me2, true, 0)
 	side.garrison = 4; side.gmix = [4, 0, 0, 0, 0, 0]; side.sally = true; side.archers = 2; side.archer_want = 2
 	var r3 := sim2.military.launch_attack(src, tgt, 3)
 	var chased := false

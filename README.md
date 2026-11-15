@@ -10,7 +10,7 @@ economy you do.
 ## Download
 
 The ready-made Windows game is on the [Releases page](../../releases/latest): download the
-`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.51.0 build 56.3** (see
+`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.52.0 build 57** (see
 `CHANGELOG.md`). Every build is a release of its own, made by GitHub Actions
 (`.github/workflows/release.yml`) when a new version reaches `main`; older builds up to 50 are also
 on the [`downloads` branch](../../tree/downloads).
@@ -31,7 +31,7 @@ What is in the game now:
 
 The full plan is in the [roadmap](https://claude.ai/artifact/YVAWwJGUN4FRBYtpz3zgQh).
 
-Done (builds 43 to 56):
+Done (builds 43 to 57):
 
 | Build | What came in |
 |---|---|
@@ -53,6 +53,7 @@ Done (builds 43 to 56):
 | 55 | An isles map (each realm on its own island), dry and wet years, storms that keep ships in harbour, river boats between landings, disasters that ask you to choose (a great fire, plague, a peasant revolt) |
 | 56 | Rolling autosaves (the last 3), a guide to the sea and army supplies, interface size Auto and up to 200% (Ctrl and + or -), notices you can click to go to the place |
 | 56.1 to 56.3 | Bug fixes and speed-ups (a loaded game now goes on exactly as saved; faster carriers, workers and farms on big games) |
+| 57 | Gunpowder and lead: sulfur and lead deposits and mines, saltpeter works, charcoal burners, the powder mill, lead smelter, cartridge works, gunsmith and pyrotechnist; guns need gunpowder, musketeers and riflemen need cartridges; blasting in mines; fireworks at festivals |
 
 Later: a story campaign through the ages, multiplayer, scripted scenarios, a chronicle at the end of a
 game, more animations, music for each age, and quality-of-life features (a production chain overlay,
@@ -400,13 +401,13 @@ Open **Settings** (top bar or F10). Everything there is remembered in `user://se
 - Command line (also for the exported game): `--rendering-method gl_compatibility` or `forward_plus` or
   `mobile` starts with that renderer once; `--resolution 1280x720` sets the window size.
 
-## Resources (71)
+## Resources (79)
 
-Logs, Stone, Clay, Water, Grain, Hops, Wool, Hides, Salt, Coal, Iron ore, Copper ore, Gold ore, Planks, Bricks, Flour, Bread, Fish, Smoked fish, Meat, Apples, Vegetables, Beer, Cloth, Leather, Paper, Iron, Copper, Gold, Axes, Pickaxes, Farm tools, Bows and rods, Knives, Saws, Smith's tongs, Trowels, Shears, Chisels, Quills, Harnesses, Weapons, Bows, Armor, Clothes, Flax, Linen clothes, Fur coats, Jewelry, Furniture, Sand, Glassware, Milk, Cheese, Sausages, Honey, Beeswax, Candles, Grapes, Wine, Herbs, Medicine, Donkeys, Peppercorns, Spices, Silk cocoons, Silk, Kaolin, Porcelain, Coffee beans, Coffee.
+Logs, Stone, Clay, Water, Grain, Hops, Wool, Hides, Salt, Coal, Iron ore, Copper ore, Gold ore, Planks, Bricks, Flour, Bread, Fish, Smoked fish, Meat, Apples, Vegetables, Beer, Cloth, Leather, Paper, Iron, Copper, Gold, Axes, Pickaxes, Farm tools, Bows and rods, Knives, Saws, Smith's tongs, Trowels, Shears, Chisels, Quills, Harnesses, Weapons, Bows, Armor, Clothes, Flax, Linen clothes, Fur coats, Jewelry, Furniture, Sand, Glassware, Milk, Cheese, Sausages, Honey, Beeswax, Candles, Grapes, Wine, Herbs, Medicine, Donkeys, Peppercorns, Spices, Silk cocoons, Silk, Kaolin, Porcelain, Coffee beans, Coffee, Sulfur, Saltpeter, Charcoal, Gunpowder, Lead ore, Lead, Cartridges, Fireworks.
 
 Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples, Vegetables, Cheese, Sausages, Honey.
 
-## Buildings (108 you can build)
+## Buildings (116 you can build)
 
 **Raw**
 
@@ -417,7 +418,6 @@ Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples,
 | Quarry | 2 planks | peasant (mining and quarrying) | – | 1 stone | Roman (start) |
 | Sawmill | 2 planks, 1 stone | peasant (woodwork) | 1 logs | 1 planks | Roman (start) |
 | Clay pit | 2 planks | peasant (mining and quarrying) | – | 1 clay | Roman (start) |
-| Charcoal burner | 3 planks, 1 stone | peasant (woodland) | 2 logs | 1 coal | Roman (start) |
 | Saltworks | 3 planks, 1 stone | peasant (mining and quarrying) | – | 1 salt | Salt roads |
 | Flax farm | 3 planks | peasant (farming) | – | 2 flax | Roman (start) |
 | Sand pit | 2 planks | peasant (mining and quarrying) | – | 1 sand | Guilds |
@@ -455,6 +455,7 @@ Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples,
 
 | Building | Cost | Worker (trade) | Uses | Makes | Research |
 |---|---|---|---|---|---|
+| Charcoal burner | 2 planks, 1 stone | peasant (woodland) | 2 logs | 1 charcoal | Gunpowder |
 | Coal mine | 4 planks, 2 stone | artisan (mining and quarrying) | 1 food | 1 coal | Roman (start) |
 | Iron mine | 4 planks, 2 stone | artisan (mining and quarrying) | 1 food | 1 iron ore | Roman (start) |
 | Gold mine | 4 planks, 2 stone | artisan (mining and quarrying) | 1 food | 1 gold ore | Roman (start) |
@@ -466,6 +467,10 @@ Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples,
 | Steelworks | 6 planks, 8 bricks, 4 iron | artisan (metalwork) | 2 iron ore, 1 coal | 3 iron | Steam engine |
 | Glassworks | 3 planks, 3 stone, 2 bricks | artisan (kilns and glass) | 2 sand, 1 coal | 1 glassware | Guilds |
 | Porcelain kiln | 3 planks, 2 stone, 3 bricks | artisan (kilns and glass) | 2 kaolin, 1 coal | 1 porcelain | Porcelain |
+| Sulfur mine | 4 planks, 2 stone | artisan (mining and quarrying) | 1 food | 1 sulfur | Gunpowder |
+| Saltpeter works | 3 planks, 2 stone | peasant (kilns and glass) | 1 logs | 1 saltpeter | Gunpowder |
+| Lead mine | 4 planks, 2 stone | artisan (mining and quarrying) | 1 food | 1 lead ore | Gunpowder |
+| Lead smelter | 3 planks, 4 stone | artisan (metalwork) | 1 lead ore, 1 coal | 2 lead | Gunpowder |
 
 **Crafts**
 
@@ -486,6 +491,10 @@ Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples,
 | Textile mill | 5 planks, 6 bricks, 2 iron | peasant (textiles and leather) | 2 wool, 1 coal | 3 cloth, 1 clothes | Textile mills |
 | Chandler | 3 planks, 1 stone | artisan (fine crafts) | 1 beeswax | 2 candles | Monasteries |
 | Silk weaver | 3 planks, 2 stone | artisan (textiles and leather) | 2 silk cocoons | 1 silk | Dyeing |
+| Powder mill | 4 planks, 3 stone, 1 iron | artisan (fine crafts) | 1 sulfur, 2 saltpeter, 1 charcoal | 2 gunpowder | Gunpowder |
+| Gunsmith | 3 planks, 3 stone, 1 iron | artisan (metalwork) | 1 iron, 1 planks, 1 gunpowder | 2 weapons | Musketry |
+| Cartridge works | 3 planks, 2 stone, 1 iron | artisan (metalwork) | 1 lead, 1 gunpowder | 3 cartridges | Musketry |
+| Pyrotechnist | 2 planks, 2 stone | artisan (fine crafts) | 1 sulfur, 1 saltpeter, 1 charcoal | 2 fireworks | Gunpowder |
 
 **Folk**
 
@@ -532,7 +541,7 @@ Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples,
 | Donkey farm | 4 planks, 2 stone | peasant (farming) | 1 grain, 1 water | 1 donkeys | Roman (start) |
 | Harbour | 6 planks, 4 stone | – | – | claims 5 tiles, holds 1 | Roman (start) |
 | Shipyard | 5 planks, 2 stone | artisan (woodwork) | 4 planks | 1 ship | Roman (start) |
-| Naval yard | 6 planks, 3 stone, 2 iron | artisan (woodwork) | 4 planks, 1 iron, 1 weapons | 1 warship | Navigators' school |
+| Naval yard | 6 planks, 3 stone, 2 iron | artisan (woodwork) | 4 planks, 1 iron, 1 weapons, 2 gunpowder | 1 warship | Navigators' school |
 | River landing | 3 planks, 1 stone | – | – | room for 12 of each good, 2 porters | Timber framing |
 
 **Military**
@@ -549,11 +558,11 @@ Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples,
 | Scout lodge | 3 planks, 1 stone | peasant (fishing and hunting) | 1 bread, 1 bows | trains a scout | Roman (start) |
 | Watch tower | 3 planks, 2 stone | scout (mil) | – | – | Roman (start) |
 | Fortress | 6 planks, 10 stone, 8 bricks, 2 iron | – | – | claims 15 tiles, holds 12 | Gunpowder |
-| Star fort | 4 planks, 10 stone, 6 bricks | – | – | claims 14 tiles, holds 10, walls +8%, 2 cannon (range 7) | Star forts |
-| Gun battery | 3 planks, 4 stone, 3 iron | – | – | claims 8 tiles, holds 5, 3 cannon (range 8) | Drill manuals |
-| Armoured redoubt | 3 planks, 8 stone, 10 bricks, 6 iron | – | – | claims 16 tiles, holds 16, walls +8%, 4 cannon (range 9) | Rifling |
+| Star fort | 4 planks, 10 stone, 6 bricks | – | 3 gunpowder | claims 14 tiles, holds 10, walls +8%, 2 cannon (range 7) | Star forts |
+| Gun battery | 3 planks, 4 stone, 3 iron | – | 3 gunpowder | claims 8 tiles, holds 5, 3 cannon (range 8) | Drill manuals |
+| Armoured redoubt | 3 planks, 8 stone, 10 bricks, 6 iron | – | 3 gunpowder | claims 16 tiles, holds 16, walls +8%, 4 cannon (range 9) | Rifling |
 | Catapult | 5 planks, 3 stone | peasant (mil) | 1 stone | – | Stone masonry |
-| Coastal fort | 3 planks, 6 stone | – | – | claims 6 tiles, holds 4, walls +5% | Star forts |
+| Coastal fort | 3 planks, 6 stone | – | 3 gunpowder | claims 6 tiles, holds 4, walls +5% | Star forts |
 | Field depot | 3 planks, 1 stone | – | 30 food | – | Pack mules |
 
 ## Research tree
@@ -913,6 +922,36 @@ order the buildings within it. The numbers are saved with the game.
 - **Rivals at sea:** a rival with no way to reach anyone by land builds a harbour and ships early, sends
   expeditions and lands on its enemies' coasts; rivals at war by the sea build naval yards and coastal
   forts, and warlords keep field depots near the front.
+
+## Gunpowder
+
+Gunpowder (after the *Gunpowder* study) is made from three goods:
+
+| Good | Made by | From |
+| --- | --- | --- |
+| Sulfur | **Sulfur mine**, on a sulfur deposit (greenish-yellow on the mountains; a geologist finds it) | food for the miners |
+| Saltpeter | **Saltpeter works**: leached from stable earth and boiled down | 1 log |
+| Charcoal | **Charcoal burner**: logs burned slowly under turf | 2 logs |
+| Gunpowder | **Powder mill** | 1 sulfur, 2 saltpeter, 1 charcoal make 2 gunpowder |
+| Lead | **Lead mine** on a lead deposit (grey-blue on the mountains), then the **lead smelter** | lead ore and coal make 2 lead |
+| Cartridges | **Cartridge works** (Musketry) | 1 lead and 1 gunpowder make 3 cartridges |
+| Fireworks | **Pyrotechnist** | 1 sulfur, 1 saltpeter, 1 charcoal make 2 fireworks |
+
+What needs it:
+- **Cannon forts** (bastion, gun battery, redoubt) and **coastal forts** fire their guns only with gunpowder
+  in store: one charge a volley. Carriers bring it (they keep 6 at each fort).
+- **Naval yards** use 2 gunpowder for each warship's guns.
+- The **gunsmith** (Musketry) makes 2 weapons from iron, planks and 1 gunpowder: twice a weaponsmith's.
+- **Musketeers and riflemen** fire only with **cartridges**: one cartridge is 10 shots. A column takes
+  enough for 4 volleys from the stores when it sets out (as far as there are); a garrison's guns and a
+  sally take theirs from the stores as they fire. Without cartridges they fight hand to hand only.
+- **Blasting** (Blasting powder): mines and quarries charge the rock with a gunpowder from the stores
+  each work cycle while more than 4 are in store, and work 30% faster.
+- **Fireworks:** a festival with 3 fireworks in store sets them off: it lasts 4½ minutes instead of 3
+  and work goes 15% faster instead of 10%.
+
+Rivals build the chain once they have cannon forts, a coastal fort or a naval yard, cartridges once
+their soldiers carry guns, and fireworks for their festivals.
 
 ## Prices, families and bottlenecks
 
