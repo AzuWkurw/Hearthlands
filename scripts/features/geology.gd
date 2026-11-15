@@ -12,7 +12,7 @@ extends Feature
 const SURVEY_TIME := 3.5           # seconds a geologist spends on each tile
 const WALK_SPEED := 1.1
 const FADE := 300.0                # seconds the markers stay on the map
-const ORE_COL := {1: Color("3a3a3a"), 2: Color("b07850"), 3: Color("f0c840"), 4: Color("c8c8c0"), 5: Color("d0783a"), 6: Color("c8d63c"), 7: Color("6e7c96")}
+const ORE_COL := {1: Color("3a3a3a"), 2: Color("b07850"), 3: Color("f0c840"), 4: Color("c8c8c0"), 5: Color("d0783a"), 6: Color("c8d63c"), 7: Color("6e7c96"), 8: Color("b4bec2")}
 
 var known: Dictionary = {}         # realm id -> PackedByteArray, 1 where surveyed
 var marks: Array = []              # your markers: [tile, time planted]

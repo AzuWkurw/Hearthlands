@@ -64,7 +64,7 @@ func _init() -> void:
 			if spot.x < 0 and sim.inb(x, y) and sim.owner[sim.idx(x, y)] == 0 and sim.bmap[sim.idx(x, y)] == 0 and sim.ter[sim.idx(x, y)] == Sim.GRASS and Vector2(x - st.x, y - st.y).length() > 4.5 and Vector2(x - st.x, y - st.y).length() < 5.8:
 				spot = Vector2i(x, y)
 	var hut := sim.add_bld("hut", spot.x, spot.y, foe, true, 0)
-	hut.garrison = 1; hut.gmix = [1, 0, 0, 0, 0, 0]
+	hut.garrison = 1; hut.gmix = [0, 1, 0, 0, 0, 0, 0]
 	sim.recompute_territory()
 	print("rival hut at ", spot, ": stone dead ", st.dead, ", hut alive ", not hut.dead, ", land ", _land(sim, 1))
 	if not st.dead or hut.dead:

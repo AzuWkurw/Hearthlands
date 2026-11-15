@@ -27,7 +27,7 @@ func _refresh_folk() -> void:
 	var lux_n := 0
 	for c in GameData.luxury:
 		lux_n += (GameData.luxury[c] as Dictionary).size() if c == "noble" else 0
-	if p.noble > 0 and lux_n > 0 and (p.lux > 0 or p.age >= 2):
+	if p.noble > 0 and lux_n > 0 and (p.lux > 0 or p.age >= 3):
 		t += "Luxuries  [b]%d[/b] of %d%s\n" % [p.lux, lux_n, ("  [color=#8fc070](noble tax +%d%%)[/color]" % roundi(p.lux * Sim.LUX_TAX * 100)) if p.lux > 0 else "  [color=#9a9c88](spices, silk, porcelain, coffee)[/color]"]
 	t += "Soldiers  [b]%d[/b] (%d in HQ, %d veterans): %s\n" % [main.sim.soldiers(p), p.reserve, int(p.vets), Sim.mix_text(main.sim.soldier_mix(p))]
 	var worn := p.blunt

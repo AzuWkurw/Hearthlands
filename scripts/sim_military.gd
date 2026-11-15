@@ -352,18 +352,20 @@ func mix_of(b: Sim.Bld) -> Array:
 
 
 ## Kinds of soldier: what each is strong against. ADV[x][y] = 1 when kind x beats kind y.
-## 0 legionary, 1 spearman, 2 man-at-arms, 3 pikeman, 4 musketeer, 5 rifleman.
+## 0 bronze warrior, 1 legionary, 2 spearman, 3 man-at-arms, 4 pikeman, 5 musketeer, 6 rifleman.
 const ADV := [
-	[0, 1, 0, 0, 0, 0],   # legionaries beat spearmen
-	[0, 0, 0, 0, 0, 0],   # spearmen: cheap and quick to train instead
-	[1, 1, 0, 0, 0, 0],   # men-at-arms beat legionaries and spearmen
-	[1, 0, 1, 0, 0, 0],   # pikemen beat legionaries and men-at-arms
-	[0, 0, 0, 1, 0, 0],   # musketeers beat pikemen
-	[1, 1, 1, 1, 1, 0],   # riflemen beat everything older
+	[0, 0, 0, 0, 0, 0, 0],   # bronze warriors: the first soldiers, beaten by most who come after
+	[1, 0, 1, 0, 0, 0, 0],   # legionaries beat bronze warriors and spearmen
+	[0, 0, 0, 0, 0, 0, 0],   # spearmen: cheap and quick to train instead
+	[1, 1, 1, 0, 0, 0, 0],   # men-at-arms beat bronze warriors, legionaries and spearmen
+	[1, 1, 0, 1, 0, 0, 0],   # pikemen beat bronze warriors, legionaries and men-at-arms
+	[1, 0, 0, 0, 1, 0, 0],   # musketeers beat bronze warriors and pikemen
+	[1, 1, 1, 1, 1, 1, 0],   # riflemen beat everything older
 ]
 const COUNTER := 0.12      # win chance gained by a kind against one it beats
 ## Guns: [range in tiles, seconds to reload, chance each shot fells a soldier]
-const GUNS := {4: [4.0, 6.0, 0.2], 5: [7.0, 2.5, 0.25]}
+const GUNS := {5: [4.0, 6.0, 0.2], 6: [7.0, 2.5, 0.25]}
+const GUN0 := 5           # the first kind with guns (musketeers): a.vt[g - GUN0]
 
 
 ## Which of the kinds in mix m is best at fighting a soldier of kind k (the defenders always send it).
@@ -383,9 +385,9 @@ func best_counter(m: Array, k: int) -> int:
 ## gate; musketeers, reloading, are poor in a melee.
 static func _melee_edge(k: int, defending: bool) -> float:
 	match k:
-		0: return 0.06 if defending else 0.0
-		3: return 0.06 if defending else 0.0
-		4: return -0.04
+		1: return 0.06 if defending else 0.0
+		4: return 0.06 if defending else 0.0
+		5: return -0.04
 	return 0.0
 
 
@@ -403,7 +405,7 @@ func defender_xp(t: Sim.Bld) -> float:
 	return sim.players[b.p - 1].res_xp if b.ty == "hq" else b.sxp
 
 
-## Average age of the soldiers defending t (0 legionaries ... 5 riflemen).
+## Average age of the soldiers defending t (0 bronze warriors ... 6 riflemen).
 func defender_era(t: Sim.Bld) -> float:
 	return Sim.mix_avg(mix_of(_defending(t)))
 
@@ -881,7 +883,7 @@ func _attack_tick(dt: float) -> void:
 				_add_blunt(db2, 1)
 			if sim.rng.randf() < dw:
 				# men-at-arms' armour turns half the blows that would fell them (not pikes or bullets)
-				if ak == 2 and dk < 3 and sim.rng.randf() < 0.5:
+				if ak == 3 and dk < 4 and sim.rng.randf() < 0.5:
 					continue
 				Sim.mix_remove(a.amix, ak)
 				a.n -= 1
@@ -892,7 +894,7 @@ func _attack_tick(dt: float) -> void:
 				p.vets = maxf(0.0, p.vets - a.vet)
 				_defender_gains_xp(t)
 			else:
-				if dk == 2 and ak < 3 and sim.rng.randf() < 0.5:
+				if dk == 3 and ak < 4 and sim.rng.randf() < 0.5:
 					continue
 				kill_defender(t, dk)
 				a.sxp += 3.0 / maxf(1.0, a.n)
@@ -1123,12 +1125,12 @@ func _field_battles(dt: float) -> void:
 			if not bb and sim.rng.randf() < WEAPON_WEAR:
 				b.blunt = mini(b.blunt + 1, b.n)
 			if sim.rng.randf() < aw:
-				if bk == 2 and ak < 3 and sim.rng.randf() < 0.5:
+				if bk == 3 and ak < 4 and sim.rng.randf() < 0.5:
 					continue
 				_fall(b, pb, bk)
 				a.sxp += 3.0 / maxf(1.0, a.n)
 			else:
-				if ak == 2 and bk < 3 and sim.rng.randf() < 0.5:
+				if ak == 3 and bk < 4 and sim.rng.randf() < 0.5:
 					continue
 				_fall(a, pa, ak)
 				b.sxp += 3.0 / maxf(1.0, b.n)
@@ -1212,11 +1214,11 @@ func _column_volleys(a: Sim.Attack, b: Sim.Attack, d: float) -> void:
 	for g: int in GUNS:
 		var gun: Array = GUNS[g]
 		var shooters := int(a.amix[g]) if a.amix.size() > g else 0
-		if shooters > 0 and d <= float(gun[0]) and sim.time >= float(a.vt[g - 4]):
+		if shooters > 0 and d <= float(gun[0]) and sim.time >= float(a.vt[g - GUN0]):
 			shooters = _ammo_for(a, shooters)
-		if shooters <= 0 or d > float(gun[0]) or sim.time < float(a.vt[g - 4]):
+		if shooters <= 0 or d > float(gun[0]) or sim.time < float(a.vt[g - GUN0]):
 			continue
-		a.vt[g - 4] = sim.time + float(gun[1])
+		a.vt[g - GUN0] = sim.time + float(gun[1])
 		a.shot_t = sim.time
 		for s in shooters:
 			if b.n > 0 and sim.rng.randf() < float(gun[2]):
@@ -1359,10 +1361,10 @@ func _volleys(a: Sim.Attack, p: Sim.Player, t: Sim.Bld) -> void:
 	for g: int in GUNS:
 		var gun: Array = GUNS[g]
 		var shooters := int(a.amix[g]) if a.amix.size() > g else 0
-		if shooters > 0 and left <= float(gun[0]) and sim.time >= float(a.vt[g - 4]):
+		if shooters > 0 and left <= float(gun[0]) and sim.time >= float(a.vt[g - GUN0]):
 			shooters = _ammo_for(a, shooters)
-		if shooters > 0 and left <= float(gun[0]) and sim.time >= float(a.vt[g - 4]):
-			a.vt[g - 4] = sim.time + float(gun[1])
+		if shooters > 0 and left <= float(gun[0]) and sim.time >= float(a.vt[g - GUN0]):
+			a.vt[g - GUN0] = sim.time + float(gun[1])
 			a.shot_t = sim.time
 			var hits := 0
 			for s in shooters:
@@ -1380,10 +1382,10 @@ func _volleys(a: Sim.Attack, p: Sim.Player, t: Sim.Bld) -> void:
 		# the defenders' musketeers and riflemen fire back (the building's cannon fire below)
 		var dm := mix_of(db)
 		var dshooters := int(dm[g])
-		if dshooters > 0 and left <= float(gun[0]) and sim.time >= float(a.dvt[g - 4]):
+		if dshooters > 0 and left <= float(gun[0]) and sim.time >= float(a.dvt[g - GUN0]):
 			dshooters = _ammo_from_stores(sim.players[db.p - 1], dshooters)
-		if dshooters > 0 and left <= float(gun[0]) and sim.time >= float(a.dvt[g - 4]):
-			a.dvt[g - 4] = sim.time + float(gun[1])
+		if dshooters > 0 and left <= float(gun[0]) and sim.time >= float(a.dvt[g - GUN0]):
+			a.dvt[g - GUN0] = sim.time + float(gun[1])
 			a.dshot_t = sim.time
 			for s in dshooters:
 				if a.n > 0 and sim.rng.randf() < float(gun[2]):

@@ -471,12 +471,12 @@ func ai_think(p: Sim.Player) -> void:
 		elif b.def.has("mine") and b.msg == "Deposit exhausted":
 			sim.destroy(b)
 			return
-		elif b.state == "ready" and (b.ty == "weaponsmith" or b.ty == "barracks" or b.ty == "toolsmith"):
+		elif b.state == "ready" and (b.ty == "weaponsmith" or b.ty == "barracks" or b.ty == "toolsmith" or b.ty == "bronze_weaponsmith" or b.ty == "bronze_smith"):
 			# short of soldiers (or out of room, so land must be taken): weapons and soldiers come first;
 			# the toolsmith (who takes iron too) waits unless a new worker is waiting for a tool
 			var short := p.crowded or p.reserve < 2
 			var want := Sim.PRIO_HIGH if short else Sim.PRIO_NORMAL
-			if b.ty == "toolsmith":
+			if b.ty == "toolsmith" or b.ty == "bronze_smith":
 				want = Sim.PRIO_LOW if short and p.tool_wait.is_empty() and float(p.stock.get("weapons", 0.0)) < 2.0 else Sim.PRIO_NORMAL
 			if b.prio != want and b.prio != Sim.PRIO_PAUSED:
 				b.prio = want
@@ -517,6 +517,12 @@ func ai_think(p: Sim.Player) -> void:
 		["farm", mini(6, 1 + pop / 35) + (1 if food < pop * 0.3 + 10 else 0)],
 		["mill", ceili(farms * 0.9)], ["bakery", ceili(farms * 0.8)], ["well", maxi(1, ceili(c.call("bakery") / 1.5))],
 		["hut", 0 if unocc > 0 or p.reserve < 1 else mini(12, roundi(2 + mins * 0.5 * ex))],
+		# the Bronze Age: copper and tin ore with charcoal into bronze, for tools and weapons (build 65)
+		["charcoal_burner", (1 if not p.techs.has("iron_working") or c.call("bronze_foundry") > 0 else 0) + (1 if c.call("brickworks") + c.call("copper_smelter") > 0 else 0)],
+		["copper_mine", 1 if not p.techs.has("iron_working") else 0], ["tin_mine", 1 if not p.techs.has("iron_working") else 0],
+		["bronze_foundry", 1 if c.call("copper_mine") > 0 and c.call("tin_mine") > 0 else 0],
+		["bronze_smith", 1 if c.call("bronze_foundry") > 0 and c.call("toolsmith") == 0 else 0],
+		["bronze_weaponsmith", 1 if c.call("bronze_foundry") > 0 and c.call("weaponsmith") == 0 else 0],
 		["coal_mine", mini(4, 2 + int(mins / 10.0))], ["iron_mine", mini(3, 1 + int(mins / 12.0))], ["iron_smelter", 1], ["toolsmith", 1], ["school", mini(2, 1 + pop / 100)], ["weaponsmith", 1], ["barracks", 1],
 		["clay_pit", 1 if mins > 4 else 0], ["brickworks", 1 if mins > 4 and c.call("clay_pit") > 0 else 0],
 		["orchard", mini(3, (1 if mins > 5 else 0) + pop / 70)],
@@ -527,6 +533,7 @@ func ai_think(p: Sim.Player) -> void:
 		["keep", 0 if unocc > 0 or p.reserve < 4 or mins < 12 else mini(4, int(mins * 0.1 * ex))],
 		["hunter", 1], ["tannery", 1 if mins > 8 and S.hides > 2 else 0],
 		["armorer", 1 if mins > 9 and (war or p.pers == "balanced") else 0],
+		["bronze_armorer", 1 if mins > 9 and (war or p.pers == "balanced") and c.call("armorer") == 0 and c.call("bronze_foundry") > 0 else 0],
 		["saltworks", 1 if mins > 8 else 0], ["smokehouse", 1 if mins > 8 and c.call("saltworks") > 0 and c.call("fisher") > 0 else 0],
 		["hop_farm", 1 if mins > 8 else 0], ["brewery", 1 if mins > 8 and c.call("hop_farm") > 0 else 0],
 		["pig_farm", 1 if mins > 9 and pop > 40 else 0],
@@ -584,7 +591,7 @@ func ai_think(p: Sim.Player) -> void:
 	# guns need powder: a rival with cannon forts, a coastal fort or a naval yard (or soon one) makes it
 	var powder: bool = p.techs.has("gunpowder") and mins > 25 and (c.call("bastion") + c.call("battery") + c.call("redoubt") + c.call("coastal_fort") + c.call("naval_yard") > 0 or p.techs.has("drill_manuals"))
 	# musketeers and riflemen need cartridges: lead and gunpowder
-	var guns: bool = p.age >= 4 and p.techs.has("musketry") and p.techs.has("gunpowder")
+	var guns: bool = p.age >= 5 and p.techs.has("musketry") and p.techs.has("gunpowder")
 	powder = powder or guns
 	var have_sulfur := false
 	var have_lead := false
@@ -616,7 +623,7 @@ func ai_think(p: Sim.Player) -> void:
 		# cartridges once its soldiers carry guns (musketeers from the age of reason), lead for them
 		["lead_mine", 1 if guns and have_lead else 0],
 		["lead_smelter", 1 if guns and c.call("lead_mine") > 0 else 0],
-		["cartridge_works", (2 if p.age >= 5 else 1) if guns and c.call("lead_smelter") > 0 and c.call("powder_mill") > 0 else 0],
+		["cartridge_works", (2 if p.age >= 6 else 1) if guns and c.call("lead_smelter") > 0 and c.call("powder_mill") > 0 else 0],
 		# fireworks for its festivals, once the powder chain stands and it has taverns
 		["pyrotechnist", 1 if c.call("powder_mill") > 0 and c.call("tavern") > 0 and mins > 40 else 0],
 		# steel for steam engines and rails, and a railway from home to the farthest store (build 64)
@@ -674,7 +681,8 @@ func ai_think(p: Sim.Player) -> void:
 		var key := ""
 		if c.call("barracks") == 0 and mins > 6: key = "barracks"
 		elif c.call("school") == 0: key = "school"
-		elif c.call("toolsmith") == 0: key = "toolsmith"
+		elif c.call("toolsmith") == 0 and p.techs.has("iron_working"): key = "toolsmith"
+		elif c.call("bronze_smith") == 0 and c.call("bronze_foundry") > 0 and not p.techs.has("iron_working"): key = "bronze_smith"
 		elif c.call("iron_smelter") == 0 and c.call("iron_mine") > 0: key = "iron_smelter"
 		elif c.call("storehouse") == 0 and mins > 12: key = "storehouse"
 		if key != "":

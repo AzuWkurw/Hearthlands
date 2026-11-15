@@ -581,7 +581,7 @@ func _draw_card(p: Sim.Player, id: String, r: Rect2, plan: Dictionary) -> void:
 	if not ub.is_empty():
 		var bx := tx
 		for k in mini(4, ub.size()):
-			var bt := Tex.bld_era_tex("bld_" + String(ub[k]), int(d.get("age", 1)))
+			var bt := Tex.bld_era_tex("bld_" + String(ub[k]), int(d.get("age", 2)))
 			if bt != null:
 				draw_rect(Rect2(bx, y3, 22 * z, 22 * z), Color("15181a"))
 				draw_texture_rect(bt, Rect2(bx + 1, y3 + 1, 20 * z, 20 * z), false, Color(1, 1, 1, fade))

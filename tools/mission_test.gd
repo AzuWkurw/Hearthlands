@@ -43,6 +43,7 @@ func _init() -> void:
 	var a := Sim.new()
 	a.new_game(String(m2.seed), 2, 5, true, 0, false, {}, m2, {"name": "x", "goals": [{"kind": "pop", "n": 999, "text": "x"}]})
 	a.players[0].ai = true
+	a._recompute_mods(a.players[0])     # (a rival picks its age's path at once, as on loading)
 	while a.time < 240.0: a.tick(Sim.TICK)
 	var b := Sim.new()
 	b.from_save(bytes_to_var(var_to_bytes(a.to_save())))

@@ -96,6 +96,13 @@
   "icon": "orechunk"
  },
  {
+  "id": "ore_tin",
+  "name": "Tin ore",
+  "abbr": "Sn",
+  "color": "#a9b2b6",
+  "icon": "orechunk"
+ },
+ {
   "id": "planks",
   "name": "Planks",
   "abbr": "Pl",
@@ -216,6 +223,13 @@
   "color": "#ffd34d",
   "icon": "ingot",
   "cap": 40
+ },
+ {
+  "id": "bronze",
+  "name": "Bronze",
+  "abbr": "Br",
+  "color": "#b8873e",
+  "icon": "ingot"
  },
  {
   "id": "axes",

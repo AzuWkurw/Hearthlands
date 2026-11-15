@@ -2433,6 +2433,7 @@ MINE = {
     "iron_mine": {"rock": (128, 112, 98), "ore": (150, 78, 54), "glint": (190, 100, 70), "veins": (160, 80, 56)},
     "gold_mine": {"rock": (126, 118, 100), "ore": (210, 172, 60), "glint": (255, 230, 110), "veins": (230, 190, 70), "sluice": True},
     "copper_mine": {"rock": (118, 110, 96), "ore": (80, 150, 120), "glint": (110, 200, 170), "veins": (90, 170, 140)},
+    "tin_mine": {"rock": (124, 120, 112), "ore": (64, 58, 56), "glint": (206, 212, 216), "veins": (150, 156, 162)},
 }
 
 
@@ -2624,6 +2625,135 @@ def v_redoubt(g, icon):
     p.rectangle([29, b - 7, 35, b - 1], fill=(48, 36, 24, 255))
 
 
+# ------------------------------------------------------------------ the Bronze Age (build 65)
+BRONZE = (204, 150, 70)
+
+
+def _bronze_ingots(g, x, y, n=3):
+    p = g.p
+    for r in range(2):
+        for k in range(n - r):
+            xx = x + k * 3.4 + r * 1.7
+            yy = y - r * 1.6
+            p.polygon([(xx, yy), (xx + 3, yy), (xx + 2.6, yy - 1.5), (xx + 0.4, yy - 1.5)], fill=C(BRONZE), outline=(120, 80, 30, 255), width=0.25)
+            p.line([(xx + 0.6, yy - 1.3), (xx + 2.2, yy - 1.3)], fill=(240, 200, 120, 255), width=0.3)
+
+
+def _bellows(g, x, y):
+    """A pair of leather bellows on the ground, its pipe running to the furnace."""
+    p = g.p
+    for k in range(2):
+        bx = x + k * 4.6
+        p.ellipse([bx, y - 3, bx + 4, y], fill=(150, 108, 66, 255), outline=(90, 62, 36, 255), width=0.3)
+        p.line([(bx + 2, y - 3), (bx + 2, y - 6)], fill=C(mt.WOOD), width=0.5)
+    p.line([(x + 4, y - 1.5), (x - 3, y - 2.5)], fill=(110, 90, 70, 255), width=0.8)
+
+
+def v_bronze_foundry(g, icon):
+    p, b = g.p, g.b
+    top = small_hut(g, 34, 58, 15, "planks", 10)
+    g.sign(44, top + 3, icon) if icon is not None else None
+    # a domed clay furnace, bellows at its foot, a crucible of molten bronze being poured into moulds
+    dome = [(5, b), (27, b), (26, b - 9), (22, b - 16), (19, b - 19), (13, b - 19), (10, b - 16), (6, b - 9)]
+    stone_fill(g, dome, (176, 120, 76), "plaster")
+    p.polygon([(16, b), (27, b), (26, b - 9), (22, b - 16), (19, b - 19), (16, b - 19)], fill=(0, 0, 0, 46))
+    p.polygon(dome, outline=(104, 66, 40, 255), width=0.5)
+    p.ellipse([13, b - 21, 19, b - 18.4], fill=(70, 50, 36, 255))
+    glow_hole(g, 12, b - 7, 18, b)
+    _set("glow", 15, b - 3.5)
+    _set("smoke", 16, b - 23)
+    _bellows(g, 0.5, b + 0.5)
+    # the crucible on its tongs, a thin bright stream into the stone moulds
+    p.line([(27, b - 12), (31, b - 9)], fill=(70, 66, 60, 255), width=0.6)
+    p.polygon([(29.6, b - 11), (32.6, b - 11), (32.2, b - 8.4), (30, b - 8.4)], fill=(96, 90, 84, 255), outline=(50, 46, 42, 255), width=0.3)
+    p.line([(32.4, b - 9.4), (33.2, b - 3)], fill=(255, 200, 90, 255), width=0.6)
+    p.rectangle([29.5, b - 3, 35.5, b - 0.6], fill=(150, 144, 132, 255), outline=(90, 86, 80, 255), width=0.3)
+    p.rectangle([31.6, b - 2.6, 34.4, b - 1.4], fill=(255, 170, 70, 255))
+    # green copper ore, black tin stone, finished bronze
+    heap(g, 0, 7, b - 9.5, 3, (90, 140, 110), "rock", glints=(120, 200, 170))
+    heap(g, 52, 58, b + 1, 3, (70, 64, 60), "rock", glints=(200, 206, 210))
+    _bronze_ingots(g, 41, b, 3)
+
+
+def v_bronze_smith(g, icon):
+    p, b = g.p, g.b
+    top, ridge = body(g, 24, 50, 17, "timber", 10)
+    g.door(28, 7, 10)
+    g.window(43, top + 4, 5, 5)
+    g.sign(37, top + 3, icon)
+    # a small hearth with bellows, stone moulds and new tools of bronze on a rack
+    hearth = [(4, b), (14, b), (14, b - 5), (4, b - 5)]
+    stone_fill(g, hearth, (150, 126, 100))
+    p.polygon(hearth, outline=(80, 70, 60, 255), width=0.4)
+    p.rectangle([5, b - 6, 13, b - 5], fill=(255, 150, 60, 255))
+    for k in range(4):
+        p.disc(6 + k * 2.2, b - 6, 0.8, (255, 200, 90, 255) if k % 2 else (220, 80, 30, 255))
+    _set("glow", 9, b - 6)
+    _bellows(g, 15.5, b + 0.4)
+    # the rack: axes, a sickle and a chisel
+    for x in (53, 62):
+        p.line([(x, b), (x, b - 15)], fill=C(mt.WOOD), width=0.9)
+    p.line([(52.5, b - 13), (62.5, b - 13)], fill=C(mt.WOOD), width=0.8)
+    for k, x in enumerate((54.5, 57.5, 60.5)):
+        p.line([(x, b - 13), (x, b - 6)], fill=(120, 86, 52, 255), width=0.5)
+        if k == 1:
+            p.arc([x - 2.6, b - 8.4, x + 1.4, b - 4.4], 200, 340, fill=C(BRONZE), width=0.8)
+        else:
+            p.polygon([(x - 0.2, b - 6.6), (x + 2.2, b - 7.6), (x + 2.4, b - 5), (x - 0.2, b - 5.6)], fill=C(BRONZE), outline=(120, 80, 30, 255), width=0.25)
+    _anim("sparks", 9, b - 6, 4)
+
+
+def v_bronze_weaponsmith(g, icon):
+    p, b = g.p, g.b
+    top, ridge = body(g, 6, 36, 20, "timber", 11)
+    chim(g, 10, ridge - 8, top - 2)
+    g.door(10, 7, 11)
+    glow_hole(g, 20, b - 8, 24, b - 3)
+    _set("glow", 22, b - 5.5)
+    g.sign(27, top + 3, icon)
+    anvil(g, 37, b)
+    # a rack of bronze-tipped spears and leaf-bladed swords, a round hide shield
+    for x in (46, 61):
+        p.line([(x, b), (x, b - 18)], fill=C(mt.WOOD), width=1.0)
+    p.line([(45, b - 16), (62, b - 16)], fill=C(mt.WOOD), width=1.0)
+    p.line([(45, b - 5), (62, b - 5)], fill=C(mt.WOOD), width=0.8)
+    for k in range(4):
+        x = 48 + k * 3.2
+        p.line([(x, b - 1), (x + 0.6, b - 23)], fill=(130, 96, 60, 255), width=0.5)
+        p.polygon([(x - 0.1, b - 23), (x + 0.6, b - 27), (x + 1.3, b - 23), (x + 0.6, b - 22)], fill=C(BRONZE), outline=(120, 80, 30, 255), width=0.2)
+    for x in (57, 59.4):
+        p.polygon([(x - 0.6, b - 8), (x, b - 16), (x + 0.6, b - 8)], fill=C(BRONZE), outline=(120, 80, 30, 255), width=0.2)
+        p.line([(x - 1.2, b - 8), (x + 1.2, b - 8)], fill=(110, 76, 44, 255), width=0.5)
+    p.disc(42.5, b - 5, 4.0, (150, 108, 64, 255))
+    p.disc(42.5, b - 5, 3.3, (182, 138, 86, 255))
+    p.disc(42.5, b - 5, 1.2, C(BRONZE))
+    _anim("sparks", 37, b - 7, 4)
+
+
+def v_bronze_armorer(g, icon):
+    p, b = g.p, g.b
+    top, ridge = body(g, 10, 40, 20, "timber", 11)
+    chim(g, 32, ridge - 5, top - 4)
+    g.door(14, 7, 11)
+    g.window(32, top + 5, lit=True)
+    g.sign(23, top + 3, icon)
+    anvil(g, 25, b)
+    # a bronze breastplate, greaves and a crested helmet on a stand
+    x = 54
+    p.line([(x, b), (x, b - 22)], fill=C(mt.WOOD), width=1.0)
+    p.line([(x - 4, b), (x + 4, b)], fill=C(mt.WOOD), width=1.0)
+    cuir = [(x - 4.2, b - 18), (x + 4.2, b - 18), (x + 3.6, b - 10), (x + 2.2, b - 8.4), (x - 2.2, b - 8.4), (x - 3.6, b - 10)]
+    p.polygon(cuir, fill=C(BRONZE), outline=(110, 74, 30, 255), width=0.4)
+    p.shade(cuir, b - 18, b - 8, (255, 255, 255, 70), (0, 0, 0, 60))
+    p.arc([x - 3, b - 17, x - 0.4, b - 13], 0, 180, fill=(240, 200, 120, 255), width=0.4)
+    p.arc([x + 0.4, b - 17, x + 3, b - 13], 0, 180, fill=(240, 200, 120, 255), width=0.4)
+    p.polygon([(x - 2.6, b - 18.4), (x - 2, b - 22.6), (x, b - 24.4), (x + 2, b - 22.6), (x + 2.6, b - 18.4)], fill=C(BRONZE), outline=(110, 74, 30, 255), width=0.3)
+    p.pieslice([x - 3.4, b - 27.6, x + 3.4, b - 22], 180, 360, fill=(190, 50, 40, 255))
+    for gx in (44.5, 47.5):
+        p.polygon([(gx, b), (gx + 2, b), (gx + 2.2, b - 7), (gx - 0.2, b - 7)], fill=C(BRONZE), outline=(110, 74, 30, 255), width=0.3)
+    _anim("sparks", 28, b - 7, 4)
+
+
 VARIANTS = {
     "sawmill": v_sawmill, "bakery": v_bakery, "brewery": v_brewery, "mint": v_mint, "toolsmith": v_toolsmith,
     "weaponsmith": v_weaponsmith, "bowyer": v_bowyer, "armorer": v_armorer, "tannery": v_tannery, "weaver": v_weaver,
@@ -2649,6 +2779,8 @@ VARIANTS = {
     "coffee_plantation": v_coffee_plantation, "coffee_roaster": v_coffee_roaster,
     "keep": v_keep, "watch_tower": v_watch_tower, "paper_mill": v_paper_mill, "guardhouse": v_guardhouse,
     "redoubt": v_redoubt,
+    "bronze_foundry": v_bronze_foundry, "bronze_smith": v_bronze_smith, "bronze_weaponsmith": v_bronze_weaponsmith,
+    "bronze_armorer": v_bronze_armorer,
 }
 
 
@@ -2688,7 +2820,12 @@ def write_anchors(path):
         for key in ("smoke", "glow"):
             art[key] = [round(a[key][0] / W, 3), round(a[key][1] / H, 3)] if key in a else []
         if "anim" in a:
-            art["anim"] = [[k, round(x / W, 3), round(y / H, 3), round(sz / W, 3)] for k, x, y, sz in a["anim"]]
+            an = []
+            for k, x, y, sz in a["anim"]:
+                e = [k, round(x / W, 3), round(y / H, 3), round(sz / W, 3)]
+                if e not in an:
+                    an.append(e)
+            art["anim"] = an
         elif "anim" in art:
             del art["anim"]
         if art.get("style") == "mill" and bid != "mill":

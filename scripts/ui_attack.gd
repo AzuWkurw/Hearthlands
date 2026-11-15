@@ -124,11 +124,11 @@ func open(t: Sim.Bld) -> String:
 		var et := ", ".join(extra)
 		body.add_child(main._label(et[0].to_upper() + et.substr(1) + ".", 13, Color("e0b060")))
 	var total := 0
-	var have := [0, 0, 0, 0, 0, 0]
+	var have := [0, 0, 0, 0, 0, 0, 0]
 	for s in src:
 		total += int(s[1])
 		var m: Array = sim.military.mix_of(s[0])
-		for k in mini(6, m.size()):
+		for k in mini(Sim.KINDS, m.size()):
 			have[k] += int(m[k])
 	count_lbl = main._label("", 15)
 	body.add_child(count_lbl)
@@ -144,7 +144,7 @@ func open(t: Sim.Bld) -> String:
 	var kr := HFlowContainer.new()
 	body.add_child(kr)
 	kinds = {}
-	for k in 6:
+	for k in Sim.KINDS:
 		if have[k] <= 0:
 			continue
 		var cb := CheckBox.new()

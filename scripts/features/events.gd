@@ -147,7 +147,7 @@ func _possible(p: Sim.Player) -> Array:
 			"pilgrims": ok = food >= 20.0 and not pending.has(p.id) and sim.time >= p.gates_until
 			"comet": ok = not pending.has(p.id)
 			"grumbling": ok = p.noble > 0 and p.peasant >= 20 and not pending.has(p.id)
-			"strange_ship": ok = p.age >= 2 and not pending.has(p.id) and sim.realm_blds(p).any(func(b): return b.ty in ["harbour", "fisher", "saltworks"])
+			"strange_ship": ok = p.age >= 3 and not pending.has(p.id) and sim.realm_blds(p).any(func(b): return b.ty in ["harbour", "fisher", "saltworks"])
 			"great_fire":
 				var fires = sim.get_feature("fires")
 				ok = not pending.has(p.id) and fires != null and sim.realm_blds(p).filter(func(b): return b.state == "ready" and b.cyc > 0.0 and fires.flammable(b)).size() >= 8
@@ -231,7 +231,7 @@ func _apply(p: Sim.Player, k: String) -> String:
 			var gold := rng.randi_range(4, 10)
 			var goods := ["iron", "salt", "cloth", "leather", "bricks"]
 			# from the High Medieval age on, merchants bring a taste of the luxuries from far away
-			if p.age >= 2:
+			if p.age >= 3:
 				goods.append_array(["spices", "silk", "porcelain", "coffee"])
 			var g: String = goods[rng.randi() % goods.size()]
 			var n := rng.randi_range(3, 6)
@@ -375,7 +375,7 @@ func _answer(p: Sim.Player, k: String, i: int) -> void:
 						boosts.append([p.id, "all", -0.05, sim.time + 60.0])
 						text = "there were no candles or beer for the prayers, and the people are uneasy: all work 5% slower for a minute."
 				1:
-					var rpts := 40.0 + 15.0 * p.age
+					var rpts := 40.0 + 15.0 * maxi(0, p.age - 1)
 					p.rp += rpts
 					text = "your scholars measured the comet's path: %d research points." % roundi(rpts)
 				_:

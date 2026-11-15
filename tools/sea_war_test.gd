@@ -41,7 +41,7 @@ func _init() -> void:
 	# 2. a landing: soldiers waiting, food in the stores, war
 	for i in 20: sim.tick(Sim.TICK)
 	me.reserve = 12
-	me.rmix = [12, 0, 0, 0, 0, 0]
+	me.rmix = [0, 12, 0, 0, 0, 0, 0]
 	me.ships = 2
 	sim.give(me, "bread", 40.0)
 	var bread0 := float(me.stock.get("bread", 0.0))

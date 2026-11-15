@@ -3,7 +3,7 @@ extends SceneTree
 func _col(sim: Sim, p: int, k: int, n: int, from: Vector2, to: Vector2, tgt: int) -> Sim.Attack:
 	var a := Sim.Attack.new()
 	a.p = p; a.src = 0; a.tgt = tgt; a.n = n
-	a.amix = [0, 0, 0, 0, 0, 0]; a.amix[k] = n; a.era = float(k)
+	a.amix = [0, 0, 0, 0, 0, 0, 0]; a.amix[k] = n; a.era = float(k)
 	a.from = from; a.to = to; a.t0 = sim.time; a.t1 = sim.time + from.distance_to(to) * 1.1 + 1.0
 	a.vt = [sim.time, sim.time]; a.dvt = [sim.time, sim.time]
 	sim._bid += 1; a.uid = sim._bid
@@ -16,8 +16,8 @@ func _init() -> void:
 	sim.new_game("field", 1, 5, false, 0, true, {"features": []})
 	Diplomacy.set_relation(sim, 1, 2, Diplomacy.WAR)
 	var p1 := sim.players[0]; var p2 := sim.players[1]
-	var K := ["legion", "spear", "m-at-a", "pike", "musket", "rifle"]
-	for c in [[3, 6, 4, 4], [4, 4, 3, 6], [2, 5, 3, 5], [5, 3, 3, 6], [1, 5, 1, 5]]:
+	var K := ["bronze", "legion", "spear", "m-at-a", "pike", "musket", "rifle"]
+	for c in [[4, 6, 5, 4], [5, 4, 4, 6], [3, 5, 4, 5], [6, 3, 4, 6], [2, 5, 2, 5]]:
 		var wins := 0; var left := 0; var met := 0
 		for r in 60:
 			# far-off targets so neither column arrives during the test

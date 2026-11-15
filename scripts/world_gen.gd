@@ -2,6 +2,8 @@ class_name WorldGen
 extends RefCounted
 ## Random map generation. Terrain: 0 water, 1 beach, 2 grass, 3 mountain.
 ## Decorations: 1 tree, 2 rock, 3 clay patch. Ore (on mountains): see GameData.ORE_NAMES.
+## The ores of the home mountain each realm finds near its start: coal, iron, gold, granite, copper and tin.
+const HOME_ORES := [1, 2, 3, 4, 5, 8]
 
 const WATER := 0
 const BEACH := 1
@@ -77,7 +79,7 @@ static func _try(s: int, size: int, n: int, att: int, gp: Dictionary = GEN_DEFAU
 	var hn := _noise(s, 1.0 / feat)
 	var fn := _noise(s + 500, 1.0 / 16.0)
 	var orn: Array = []
-	for k in 7:
+	for k in 8:
 		orn.append(_noise(s + 1000 + k * 31, 1.0 / 9.0, 3))
 	var water_t := -0.24 - att * 0.008 + (float(gp.water) - 0.5) * 0.7
 	var mount_t := 0.30 + att * 0.004 - (float(gp.mountains) - 0.5) * 0.5
@@ -156,9 +158,9 @@ static func _try(s: int, size: int, n: int, att: int, gp: Dictionary = GEN_DEFAU
 			elif t == MOUNT:
 				var bi := 0
 				var bv := -9.0
-				for k in 7:
-					# gold, sulfur and lead are rarer than the others
-					var v: float = (orn[k] as FastNoiseLite).get_noise_2d(x, y) - (0.08 if k == 2 else (0.10 if k >= 5 else 0.0))
+				for k in 8:
+					# gold, sulfur and lead are rarer than the others (tin, k 7, is as common as copper)
+					var v: float = (orn[k] as FastNoiseLite).get_noise_2d(x, y) - (0.08 if k == 2 else (0.10 if k == 5 or k == 6 else 0.0))
 					if v > bv:
 						bv = v; bi = k + 1
 				if bv > ore_t:
@@ -380,7 +382,7 @@ static func _stamp(g: Dictionary, sx: int, sy: int, rng: RandomNumberGenerator) 
 					continue
 				var i := (p.y + dy) * w + p.x + dx
 				ter[i] = MOUNT; deco[i] = 0
-				ore[i] = 1 + ((dx + 3) + (dy + 3) * 3) % 5
+				ore[i] = HOME_ORES[((dx + 3) + (dy + 3) * 3) % HOME_ORES.size()]
 				amt[i] = 14 + rng.randi() % 14
 		break
 

@@ -195,7 +195,7 @@ func _open_tech() -> void:
 	tree.set_search("")
 	tree.rebuild()
 	if tree.sel == "":
-		tree.show_age(maxi(1, main.sim.human().age))
+		tree.show_age(main.sim.human().age)
 	_fill_tech()
 
 

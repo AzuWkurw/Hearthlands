@@ -81,7 +81,7 @@ func _init() -> void:
 	check(bt.staffed, "a battery takes goods (carriers bring it gunpowder)")
 	var q := sim.players[1]
 	var a := Sim.Attack.new()
-	a.p = q.id; a.n = 10; a.amix = [10, 0, 0, 0, 0, 0]; a.dvt = [0.0, 0.0, 0.0]
+	a.p = q.id; a.n = 10; a.amix = [0, 10, 0, 0, 0, 0, 0]; a.dvt = [0.0, 0.0, 0.0]
 	bt.inbuf = {}
 	sim.military._cannon(a, q, bt, 3.0)
 	check(a.n == 10 and a.dshot_t < sim.time, "no gunpowder: the guns stay quiet")
@@ -113,7 +113,7 @@ func _init() -> void:
 	check(int(me.stock.get("ammunition", 0.0)) + int(cwb.out_buf.get("ammunition", 0)) >= a0 + 3, "the cartridge works makes 3 cartridges")
 	# musketeers fire only with cartridges
 	var col := Sim.Attack.new()
-	col.p = 1; col.n = 10; col.amix = [0, 0, 0, 0, 10, 0]
+	col.p = 1; col.n = 10; col.amix = [0, 0, 0, 0, 0, 10, 0]
 	sim.take(me, "ammunition", float(me.stock.get("ammunition", 0.0)))
 	sim.military.pack_supplies(col, me, me.hq)
 	check(col.ammo == 0 and sim.military._ammo_for(col, 10) == 0, "no cartridges in store: the musketeers set out without, and cannot fire")

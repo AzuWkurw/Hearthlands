@@ -11,9 +11,9 @@ func _run(seed_n: int, blunt: int, weapons: float) -> Array:
 	var foe := sim.players[1]
 	var mx := me.hq.x; var my := me.hq.y
 	var a := sim.add_bld("tower", mx + 2, my - 14, foe, true, 0)
-	a.garrison = 9; a.gmix = [9, 0, 0, 0, 0, 0]
+	a.garrison = 9; a.gmix = [0, 9, 0, 0, 0, 0, 0]
 	var d := sim.add_bld("tower", mx + 2, my - 2, me, true, 0)
-	d.garrison = 6; d.gmix = [6, 0, 0, 0, 0, 0]
+	d.garrison = 6; d.gmix = [0, 6, 0, 0, 0, 0, 0]
 	var have := float(me.stock.get("weapons", 0.0))
 	sim.take(me, "weapons", have)
 	sim.take(foe, "weapons", float(foe.stock.get("weapons", 0.0)))

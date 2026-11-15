@@ -26,7 +26,7 @@ TESTS = [
 	("garrisons",         "garrison_test", [], False, False, [r"attack: '' marching"]),
 	("field battles",     "field_test", [], False, False, [r"first side wins"]),
 	("research",          "research_test", [], False, False, [r"load: '' reps"]),
-	("new-game options",  "options_test", [], False, False, [r"all research: techs 136 of 137", r"creative stores"]),
+	("new-game options",  "options_test", [], False, False, [r"all research: techs 154 of 155", r"creative stores"]),
 	("reachable spots",   "reach_test", [], False, True, [r"reach test: \d+ ok, 0 bad"]),
 	("store transfers",   "transfer_test", [], False, False, [r"transfer test: ok"]),
 	("road carriers",     "stretch_test", [], False, False, [r"stretch test: ok"]),
@@ -69,14 +69,20 @@ TESTS = [
 	("guilds and queue",  "guild_test", [], False, False, [r"GUILD TEST: PASS"]),
 	("sandbox goals",     "goals_test", [], False, False, [r"GOALS TEST: PASS"]),
 	("steam and rails",   "rail_test", [], False, False, [r"RAIL TEST: PASS"]),
+	("the Bronze Age",    "bronze_test", [], False, False, [r"BRONZE TEST: PASS"]),
 	("blueprints",        "bp_test", [], False, False, [r"BLUEPRINT TEST: PASS"]),
 	("toolbar tools",     "toolbar_tool_test", [], True, False, [r"tool clicks answered: 8 of 8"]),
 ]
 
 
-def run(cmd, timeout):
+# tests written for the Bronze Age itself; the older ones start their games in the Roman age, as
+# games did before build 65 (Sim.new_game reads HEARTHLANDS_START_AGE)
+BRONZE_AWARE = {"bronze_test", "save_test"}
+
+
+def run(cmd, timeout, env=None):
 	try:
-		p = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, timeout=timeout)
+		p = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, timeout=timeout, env=env)
 		return p.stdout + p.stderr
 	except subprocess.TimeoutExpired:
 		return "TIMEOUT"
@@ -115,7 +121,10 @@ def main():
 			cmd += ["--script", "res://tools/%s.gd" % script]
 			if extra:
 				cmd += ["--"] + extra
-			out = run(cmd, 1800)
+			env = dict(os.environ)
+			if script not in BRONZE_AWARE:
+				env["HEARTHLANDS_START_AGE"] = "1"
+			out = run(cmd, 900, env)
 			ok = out != "TIMEOUT" and "SCRIPT ERROR" not in out and all(re.search(p, out) for p in pats)
 		why = ""
 		if not ok:

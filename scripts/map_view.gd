@@ -91,7 +91,7 @@ var _press := Vector2.ZERO
 var _preview := PackedInt32Array()
 var _preview_key := Vector4i(-1, -1, -1, -1)
 var _bld_tex: Dictionary = {}
-var _era_tex: Dictionary = {}        # building type -> its picture in each of the six ages
+var _era_tex: Dictionary = {}        # building type -> its picture in each of the seven ages
 var _res_tex: Dictionary = {}
 var _carrier_tex: Dictionary = {}
 var _constr: Texture2D
@@ -2400,7 +2400,7 @@ var _snow_any := false    # whether snow lies anywhere this frame (else roofs ar
 func bld_snow_texture(ty: String, era: int) -> Texture2D:
 	var key := "%s:%d" % [ty, era]
 	if not _snow_tex.has(key):
-		var id := "%s_e%d_snow" % [GameData.bld_tex_id(ty), clampi(maxi(era, 0), 0, 5)]
+		var id := "%s_e%d_snow" % [GameData.bld_tex_id(ty), clampi(maxi(era, 0), 0, Sim.ERAS - 1)]
 		_snow_tex[key] = Tex.get_tex(id) if ResourceLoader.exists("res://textures/%s.png" % id) else null
 	return _snow_tex[key]
 
@@ -2409,10 +2409,10 @@ func bld_snow_texture(ty: String, era: int) -> Texture2D:
 func bld_texture(ty: String, era: int) -> Texture2D:
 	var list: Array = _era_tex.get(ty, [])
 	if list.is_empty():
-		for e in 6:
+		for e in Sim.ERAS:
 			list.append(Tex.bld_era_tex(GameData.bld_tex_id(ty), e))
 		_era_tex[ty] = list
-	return list[clampi(era, 0, 5)] if era >= 0 else _bld_tex.get(ty, Tex.placeholder())
+	return list[clampi(era, 0, Sim.ERAS - 1)] if era >= 0 else _bld_tex.get(ty, Tex.placeholder())
 
 
 ## A building's shadow on the ground: as wide as its picture, falling a little to the right.
@@ -3184,15 +3184,15 @@ func _person(id: String, at: Vector2, f: int, flip: bool, col: Color, age := -1)
 	return h2
 
 
-## People wear the hat of their realm's age (build 63): straw hats in Roman times, then a hood, a feathered
+## People wear the hat of their realm's age (build 63): straw hats in the Bronze Age and Roman times, then a hood, a feathered
 ## beret, a tricorn, a top hat, a flat cap. Only when near enough to see it.
 const HAT_TOP := 0.9      # where the top of the head is, as a share of a person's picture
 func _hat(at: Vector2, hh: float, flip: bool, age: int) -> void:
-	# the Roman age keeps the straw hats the pictures have; later hats go over them
-	if age <= 1 or zoom < 22.0 or not show_hats:
+	# the Bronze and Roman ages keep the straw hats the pictures have; later hats go over them
+	if age <= 2 or zoom < 22.0 or not show_hats:
 		return
 	_batch_layer = 1
-	_sprite("unit_hat_e%d" % clampi(age - 1, 0, 5), at - Vector2(0.0, hh * HAT_TOP - 0.1), 0.24, 0, flip)
+	_sprite("unit_hat_e%d" % clampi(age - 2, 0, 5), at - Vector2(0.0, hh * HAT_TOP - 0.1), 0.24, 0, flip)
 	_batch_layer = 0
 
 
@@ -3312,7 +3312,7 @@ func _tex_top(tex: Texture2D) -> float:
 
 ## The soldier picture for soldiers of average age era (legionary ... rifleman).
 static func _soldier_id(era: float) -> String:
-	return "unit_soldier_e%d" % clampi(roundi(era), 0, 5)
+	return "unit_soldier_e%d" % clampi(roundi(era), 0, Sim.KINDS - 1)
 
 
 # ---------------------------------------------------------------- townsfolk

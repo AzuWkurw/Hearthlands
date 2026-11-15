@@ -63,9 +63,9 @@ func _init() -> void:
 	for k in 2:
 		sim.naval.launch(me, me.hq)
 	me.reserve = 40
-	me.rmix = [40, 0, 0, 0, 0, 0]
+	me.rmix = [0, 40, 0, 0, 0, 0, 0]
 	q.reserve = 18
-	q.rmix = [18, 0, 0, 0, 0, 0]
+	q.rmix = [0, 18, 0, 0, 0, 0, 0]
 	q.ships = 3
 	q.general_back = 0.0
 	sim.give(q, "bread", 40.0)
@@ -105,7 +105,7 @@ func _init() -> void:
 	sim.navy.clear(); me.warships = 0
 	for k in 4:
 		sim.naval.launch(me, me.hq)
-	me.reserve = 6; me.rmix = [6, 0, 0, 0, 0, 0]; me.ships = 1; me.ships_out = 0
+	me.reserve = 6; me.rmix = [0, 6, 0, 0, 0, 0, 0]; me.ships = 1; me.ships_out = 0
 	sim.give(me, "bread", 30.0)
 	why = sim.military.launch_landing(me.hq, tgt, 6)
 	var mine: Sim.Attack = null

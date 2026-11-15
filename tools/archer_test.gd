@@ -3,7 +3,7 @@ extends SceneTree
 ## godot --headless --script res://tools/archer_test.gd
 func _hut(sim: Sim, p: Sim.Player, x: int, y: int, n: int) -> Sim.Bld:
 	var b := sim.add_bld("tower", x, y, p, true, 0)
-	b.garrison = n; b.gmix = [n, 0, 0, 0, 0, 0]
+	b.garrison = n; b.gmix = [0, n, 0, 0, 0, 0, 0]
 	return b
 
 func _run(archers: int, sally: bool, luck := 0) -> Array:

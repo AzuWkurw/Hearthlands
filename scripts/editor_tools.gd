@@ -143,11 +143,11 @@ static func river(sim: Sim, a: Vector2i, b: Vector2i, ford_every := 14) -> Array
 	return [water.keys(), ford.keys()]
 
 
-## What lies within r tiles of each start: [{trees, stone, clay, ore (7 kinds), fish, land, mountain}].
+## What lies within r tiles of each start: [{trees, stone, clay, ore (8 kinds), fish, land, mountain}].
 static func fairness(sim: Sim, starts: Array, r := 15) -> Array:
 	var out := []
 	for s: Vector2i in starts:
-		var e := {"trees": 0, "stone": 0, "clay": 0, "coal": 0, "iron": 0, "gold": 0, "granite": 0, "copper": 0, "sulfur": 0, "lead": 0, "fish": 0, "land": 0, "mountain": 0}
+		var e := {"trees": 0, "stone": 0, "clay": 0, "coal": 0, "iron": 0, "gold": 0, "granite": 0, "copper": 0, "sulfur": 0, "lead": 0, "tin": 0, "fish": 0, "land": 0, "mountain": 0}
 		for y in range(maxi(0, s.y - r), mini(sim.h - 1, s.y + r) + 1):
 			for x in range(maxi(0, s.x - r), mini(sim.w - 1, s.x + r) + 1):
 				if (x - s.x) * (x - s.x) + (y - s.y) * (y - s.y) > r * r:

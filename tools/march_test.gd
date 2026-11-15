@@ -19,9 +19,9 @@ func _init() -> void:
 		for x in range(mx - 12, mx + 16):
 			if sim.inb(x, y) and sim.ter[y * sim.w + x] == Sim.WATER and not (y >= my + 7 and y < my + 10 and x >= mx - 5 and x < mx + 9): sim.ter[y * sim.w + x] = Sim.GRASS
 	var a := sim.add_bld("tower", mx + 2, my + 3, me, true, 0)
-	a.garrison = 4; a.gmix = [0, 0, 4, 0, 0, 0]
+	a.garrison = 4; a.gmix = [0, 0, 0, 4, 0, 0, 0]
 	var d := sim.add_bld("tower", mx + 2, my + 13, foe, true, 0)
-	d.garrison = 1; d.gmix = [1, 0, 0, 0, 0, 0]
+	d.garrison = 1; d.gmix = [0, 1, 0, 0, 0, 0, 0]
 	var path := sim.military.land_path(a.x, a.y, d.x, d.y)
 	var wet := 0
 	for i in path:
@@ -76,11 +76,11 @@ func _init() -> void:
 		for x in range(hx - 4, hx + 12):
 			if sim2.inb(x, y) and sim2.ter[y * sim2.w + x] == Sim.WATER: sim2.ter[y * sim2.w + x] = Sim.GRASS
 	var src := sim2.add_bld("tower", hx + 2, hy + sg * 22, foe2, true, 0)
-	src.garrison = 4; src.gmix = [4, 0, 0, 0, 0, 0]
+	src.garrison = 4; src.gmix = [0, 4, 0, 0, 0, 0, 0]
 	var tgt := sim2.add_bld("tower", hx + 2, hy + sg * 4, me2, true, 0)
-	tgt.garrison = 2; tgt.gmix = [2, 0, 0, 0, 0, 0]
+	tgt.garrison = 2; tgt.gmix = [0, 2, 0, 0, 0, 0, 0]
 	var side := sim2.add_bld("tower", hx + 5, hy + sg * 13, me2, true, 0)
-	side.garrison = 4; side.gmix = [4, 0, 0, 0, 0, 0]; side.sally = true; side.archers = 2; side.archer_want = 2
+	side.garrison = 4; side.gmix = [0, 4, 0, 0, 0, 0, 0]; side.sally = true; side.archers = 2; side.archer_want = 2
 	var r3 := sim2.military.launch_attack(src, tgt, 3)
 	var chased := false
 	var field := false

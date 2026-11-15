@@ -7,6 +7,7 @@ extends RefCounted
 var sim: Sim
 
 const AI_TECHS_PER_AGE := 12     # techs a computer realm studies in an age before it aims for the next
+const AI_BRONZE_TECHS := 7       # (in the Bronze Age, with fewer techs: soon on to iron)
 
 
 
@@ -257,7 +258,7 @@ func choose_age_bonus(p: Sim.Player, age: int, id: String) -> void:
 
 ## A rival's pick: a warlord takes war, a builder wealth, the others learning or wealth by turns.
 func _ai_age_bonus(p: Sim.Player, age: int) -> String:
-	var want := "learning" if age % 2 == 1 else "wealth"
+	var want := "learning" if age % 2 == 0 else "wealth"
 	if p.pers == "warlord": want = "war"
 	elif p.pers == "builder": want = "wealth"
 	var opts := age_bonus_options(age)
@@ -305,7 +306,7 @@ func complete_tech(p: Sim.Player, id: String) -> void:
 		sim.emit_log("Research complete: %s%s." % [String(t.name), (": " + "; ".join(parts)) if not parts.is_empty() else ""], Color("8fc0ff"))
 		if p.age > old_age:
 			sim.emit_log("Your realm enters the %s age." % GameData.age_name(p.age), Color("8fc0ff"))
-	elif p.age > old_age and p.age >= 3:
+	elif p.age > old_age and p.age >= 4:
 		sim.emit_log("%s has reached the %s age." % [p.name, GameData.age_name(p.age)], Color("c0a0e0"))
 	sim.tech_done.emit(p.id, id)
 	if t.get("final", false) and sim.research_victory and not sim.over:
@@ -352,7 +353,7 @@ func _ai_pick_tech(p: Sim.Player) -> String:
 		if int(GameData.techs[id].get("age", 0)) > p.age and tech_available(p, id):
 			next_open = true
 			break
-	var push := p.age >= 1 and in_age >= AI_TECHS_PER_AGE and next_open
+	var push := in_age >= (AI_BRONZE_TECHS if p.age == 0 else AI_TECHS_PER_AGE) and next_open
 	for id in GameData.techs:
 		if not tech_available(p, id):
 			continue

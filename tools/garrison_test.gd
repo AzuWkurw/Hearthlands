@@ -12,23 +12,23 @@ func _init() -> void:
 			if tw == null and Vector2(x - p.hq.x, y - p.hq.y).length() > 5 and sim.can_place("tower", x, y, p.id) == "":
 				tw = sim.add_bld("tower", x, y, p, true)
 	p.reserve = 12
-	p.rmix = [0, 2, 4, 6, 0, 0]
+	p.rmix = [0, 0, 2, 4, 6, 0, 0]
 	sim.mil_fill(p)
 	print("tower fills: %s; HQ: %s" % [Sim.mix_text(sim.gmix_of(tw)), Sim.mix_text(sim.rmix_of(p))])
 	tw.want_n = 2
 	sim.mil_fill(p)
 	print("want 2: %s; HQ %d: %s" % [Sim.mix_text(sim.gmix_of(tw)), p.reserve, Sim.mix_text(sim.rmix_of(p))])
 	tw.want_n = -1
-	tw.want_kinds = [false, false, true, false, false, false]
+	tw.want_kinds = [false, false, false, true, false, false, false]
 	for i in 6: sim.mil_fill(p)
 	print("men-at-arms only, full: %s; HQ %d: %s" % [Sim.mix_text(sim.gmix_of(tw)), p.reserve, Sim.mix_text(sim.rmix_of(p))])
-	tw.want_kinds = [false, true, false, false, false, false]
+	tw.want_kinds = [false, false, true, false, false, false, false]
 	for i in 6: sim.mil_fill(p)
 	print("spearmen only (2 at HQ): %s; HQ: %s" % [Sim.mix_text(sim.gmix_of(tw)), Sim.mix_text(sim.rmix_of(p))])
 	# who stays home: an attack from a mixed tower
 	tw.want_kinds = []
-	tw.garrison = 4; tw.gmix = [0, 1, 1, 2, 0, 0]
-	tw.keep_kind = 1
+	tw.garrison = 4; tw.gmix = [0, 0, 1, 1, 2, 0, 0]
+	tw.keep_kind = 2
 	var tgt: Sim.Bld = null
 	for b in sim.realm_blds(e):
 		if sim.is_mil(b): tgt = b

@@ -33,9 +33,9 @@ const BRUSHES := [
 	["Deer", "animal", "deer"], ["Boar", "animal", "boar"], ["Hare", "animal", "hare"], ["Wolf", "animal", "wolf"], ["No animals", "animal", ""],
 	["Game decides", "climate", 0], ["Temperate", "climate", 1], ["Taiga", "climate", 2], ["Steppe", "climate", 3], ["Wetland", "climate", 4],
 	["Ruins", "place", "ruins"], ["Bandit camp", "place", "bandits"], ["Remove place", "place", ""],
-	["Sulfur", "ore", 6], ["Lead", "ore", 7],
+	["Sulfur", "ore", 6], ["Lead", "ore", 7], ["Tin", "ore", 8],
 ]
-## The brushes in the order the panel shows them: sulfur and lead (added in build 58) next to the other
+## The brushes in the order the panel shows them: sulfur and lead (added in build 58) and tin (build 65) next to the other
 ## ores, before "No ore".
 static func _brush_order() -> Array:
 	var out := []
@@ -852,7 +852,7 @@ func _check_tab() -> void:
 			_fill()))
 	var fair := EditorTools.fairness(sim, starts, _fair_r)
 	var cols := [["land", "Open land"], ["trees", "Trees"], ["stone", "Rocks"], ["clay", "Clay"], ["fish", "Fish"], ["mountain", "Mountain"],
-		["coal", "Coal"], ["iron", "Iron"], ["gold", "Gold"], ["granite", "Granite"], ["copper", "Copper"], ["sulfur", "Sulfur"], ["lead", "Lead"]]
+		["coal", "Coal"], ["iron", "Iron"], ["gold", "Gold"], ["granite", "Granite"], ["copper", "Copper"], ["sulfur", "Sulfur"], ["lead", "Lead"], ["tin", "Tin"]]
 	var g := GridContainer.new()
 	g.columns = starts.size() + 1
 	body.add_child(g)

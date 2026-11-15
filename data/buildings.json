@@ -127,36 +127,6 @@
      0.195,
      0.703,
      0.312
-    ],
-    [
-     "saw",
-     0.195,
-     0.703,
-     0.312
-    ],
-    [
-     "saw",
-     0.195,
-     0.703,
-     0.312
-    ],
-    [
-     "saw",
-     0.195,
-     0.703,
-     0.312
-    ],
-    [
-     "saw",
-     0.195,
-     0.703,
-     0.312
-    ],
-    [
-     "saw",
-     0.195,
-     0.703,
-     0.312
     ]
    ]
   },
@@ -208,8 +178,7 @@
   "out": {
    "charcoal": 1
   },
-  "tech": "gunpowder",
-  "info": "Burns logs slowly under turf into charcoal, the fine fuel gunpowder needs.",
+  "info": "Burns logs slowly under turf into charcoal: the fuel for bronze, copper and bricks, and later for gunpowder.",
   "art": {
    "style": "shed",
    "wall": "#5a4a3a",
@@ -411,7 +380,7 @@
    "smoke": [],
    "glow": []
   },
-  "tech": "wool_trade",
+  "tech": "herding",
   "trade": "farming"
  },
  "pig_farm": {
@@ -442,7 +411,7 @@
    "smoke": [],
    "glow": []
   },
-  "tech": "heavy_plough",
+  "tech": "herding",
   "trade": "farming"
  },
  "well": {
@@ -594,36 +563,6 @@
      0.844,
      0.672,
      0.094
-    ],
-    [
-     "steam",
-     0.844,
-     0.672,
-     0.094
-    ],
-    [
-     "steam",
-     0.844,
-     0.672,
-     0.094
-    ],
-    [
-     "steam",
-     0.844,
-     0.672,
-     0.094
-    ],
-    [
-     "steam",
-     0.844,
-     0.672,
-     0.094
-    ],
-    [
-     "steam",
-     0.844,
-     0.672,
-     0.094
     ]
    ]
   },
@@ -656,7 +595,8 @@
    "smoke": [],
    "glow": []
   },
-  "trade": "mining"
+  "trade": "mining",
+  "tech": "iron_working"
  },
  "iron_mine": {
   "name": "Iron mine",
@@ -684,7 +624,8 @@
    "smoke": [],
    "glow": []
   },
-  "trade": "mining"
+  "trade": "mining",
+  "tech": "iron_working"
  },
  "gold_mine": {
   "name": "Gold mine",
@@ -742,6 +683,34 @@
   },
   "trade": "mining"
  },
+ "tin_mine": {
+  "name": "Tin mine",
+  "cat": "industry",
+  "size": "mine",
+  "cost": {
+   "planks": 4,
+   "stone": 2
+  },
+  "time": 16,
+  "worker": "artisan",
+  "cycle": 20,
+  "in": {
+   "food": 1
+  },
+  "out": {
+   "ore_tin": 1
+  },
+  "mine": 8,
+  "info": "On a tin deposit: tin is rare, and bronze needs it. Miners eat.",
+  "art": {
+   "style": "mine",
+   "wall": "#7c8486",
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
+  },
+  "trade": "mining"
+ },
  "brickworks": {
   "name": "Brickworks",
   "cat": "industry",
@@ -755,18 +724,19 @@
   "cycle": 16,
   "in": {
    "clay": 2,
-   "coal": 1
+   "charcoal": 1
   },
   "out": {
    "bricks": 2
   },
-  "info": "Clay and coal into bricks.",
+  "info": "Clay fired with charcoal into bricks.",
   "art": {
    "style": "kiln",
    "wall": "#b5533a",
    "sw": 2.0
   },
-  "trade": "kilns"
+  "trade": "kilns",
+  "tech": "kilns"
  },
  "iron_smelter": {
   "name": "Iron smelter",
@@ -805,40 +775,11 @@
      0.867,
      0.812,
      0.047
-    ],
-    [
-     "sparks",
-     0.867,
-     0.812,
-     0.047
-    ],
-    [
-     "sparks",
-     0.867,
-     0.812,
-     0.047
-    ],
-    [
-     "sparks",
-     0.867,
-     0.812,
-     0.047
-    ],
-    [
-     "sparks",
-     0.867,
-     0.812,
-     0.047
-    ],
-    [
-     "sparks",
-     0.867,
-     0.812,
-     0.047
     ]
    ]
   },
-  "trade": "metal"
+  "trade": "metal",
+  "tech": "iron_working"
  },
  "copper_smelter": {
   "name": "Copper smelter",
@@ -853,12 +794,12 @@
   "cycle": 18,
   "in": {
    "ore_copper": 1,
-   "coal": 1
+   "charcoal": 1
   },
   "out": {
    "copper": 1
   },
-  "info": "Copper ore and coal into copper.",
+  "info": "Copper ore and charcoal into copper.",
   "art": {
    "style": "kiln",
    "wall": "#a8703a",
@@ -866,6 +807,41 @@
    "smoke": [
     0.234,
     0.297
+   ],
+   "glow": [
+    0.234,
+    0.883
+   ]
+  },
+  "trade": "metal"
+ },
+ "bronze_foundry": {
+  "name": "Bronze foundry",
+  "cat": "industry",
+  "size": "medium",
+  "cost": {
+   "planks": 3,
+   "stone": 2
+  },
+  "time": 16,
+  "worker": "artisan",
+  "cycle": 20,
+  "in": {
+   "ore_copper": 2,
+   "ore_tin": 1,
+   "charcoal": 1
+  },
+  "out": {
+   "bronze": 2
+  },
+  "info": "Copper and tin ore melted together over charcoal: bronze, the metal of the age.",
+  "art": {
+   "style": "kiln",
+   "wall": "#b08048",
+   "sw": 2.0,
+   "smoke": [
+    0.25,
+    0.578
    ],
    "glow": [
     0.234,
@@ -903,7 +879,8 @@
    ],
    "glow": []
   },
-  "trade": "metal"
+  "trade": "metal",
+  "tech": "iron_working"
  },
  "toolsmith": {
   "name": "Toolsmith",
@@ -939,38 +916,48 @@
      0.312,
      0.828,
      0.062
-    ],
-    [
-     "sparks",
-     0.312,
-     0.828,
-     0.062
-    ],
-    [
-     "sparks",
-     0.312,
-     0.828,
-     0.062
-    ],
-    [
-     "sparks",
-     0.312,
-     0.828,
-     0.062
-    ],
-    [
-     "sparks",
-     0.312,
-     0.828,
-     0.062
-    ],
-    [
-     "sparks",
-     0.312,
-     0.828,
-     0.062
     ]
    ]
+  },
+  "trade": "metal",
+  "makes_tools": 2,
+  "tech": "iron_working"
+ },
+ "bronze_smith": {
+  "name": "Bronze smith",
+  "cat": "crafts",
+  "size": "medium",
+  "cost": {
+   "planks": 3,
+   "stone": 2
+  },
+  "time": 16,
+  "worker": "artisan",
+  "cycle": 16,
+  "in": {
+   "bronze": 1,
+   "planks": 1
+  },
+  "info": "Casts and hammers bronze into the tool each trade needs, whichever is wanted most.",
+  "art": {
+   "style": "workshop",
+   "wall": "#a0784a",
+   "sw": 2.0,
+   "smoke": [],
+   "glow": [
+    0.141,
+    0.844
+   ],
+   "anim": [
+    [
+     "sparks",
+     0.141,
+     0.844,
+     0.062
+    ]
+   ],
+   "sign": "hammer",
+   "sign_color": "#c8964a"
   },
   "trade": "metal",
   "makes_tools": 2
@@ -1012,34 +999,47 @@
      0.469,
      0.828,
      0.062
-    ],
+    ]
+   ]
+  },
+  "trade": "metal",
+  "tech": "iron_working"
+ },
+ "bronze_weaponsmith": {
+  "name": "Bronze weaponsmith",
+  "cat": "crafts",
+  "size": "medium",
+  "cost": {
+   "planks": 3,
+   "stone": 2
+  },
+  "time": 16,
+  "worker": "artisan",
+  "cycle": 24,
+  "in": {
+   "bronze": 1,
+   "charcoal": 1
+  },
+  "out": {
+   "weapons": 1
+  },
+  "info": "Bronze spearheads, axes and swords for the barracks.",
+  "art": {
+   "style": "workshop",
+   "wall": "#9a5a3a",
+   "sw": 2.0,
+   "smoke": [
+    0.188,
+    0.258
+   ],
+   "glow": [
+    0.344,
+    0.852
+   ],
+   "anim": [
     [
      "sparks",
-     0.469,
-     0.828,
-     0.062
-    ],
-    [
-     "sparks",
-     0.469,
-     0.828,
-     0.062
-    ],
-    [
-     "sparks",
-     0.469,
-     0.828,
-     0.062
-    ],
-    [
-     "sparks",
-     0.469,
-     0.828,
-     0.062
-    ],
-    [
-     "sparks",
-     0.469,
+     0.578,
      0.828,
      0.062
     ]
@@ -1074,7 +1074,8 @@
    "smoke": [],
    "glow": []
   },
-  "trade": "woodwork"
+  "trade": "woodwork",
+  "tech": "bows"
  },
  "armorer": {
   "name": "Armorer",
@@ -1111,31 +1112,41 @@
      0.438,
      0.828,
      0.062
-    ],
-    [
-     "sparks",
-     0.438,
-     0.828,
-     0.062
-    ],
-    [
-     "sparks",
-     0.438,
-     0.828,
-     0.062
-    ],
-    [
-     "sparks",
-     0.438,
-     0.828,
-     0.062
-    ],
-    [
-     "sparks",
-     0.438,
-     0.828,
-     0.062
-    ],
+    ]
+   ]
+  },
+  "tech": "chainmail",
+  "trade": "metal"
+ },
+ "bronze_armorer": {
+  "name": "Bronze armourer",
+  "cat": "crafts",
+  "size": "medium",
+  "cost": {
+   "planks": 3,
+   "stone": 3
+  },
+  "time": 16,
+  "worker": "artisan",
+  "cycle": 28,
+  "in": {
+   "bronze": 1,
+   "leather": 1
+  },
+  "out": {
+   "armor": 1
+  },
+  "info": "Bronze breastplates and greaves: veteran soldiers fight better in them.",
+  "art": {
+   "style": "workshop",
+   "wall": "#8a7a5a",
+   "sw": 2.0,
+   "smoke": [
+    0.531,
+    0.305
+   ],
+   "glow": [],
+   "anim": [
     [
      "sparks",
      0.438,
@@ -1144,7 +1155,7 @@
     ]
    ]
   },
-  "tech": "chainmail",
+  "tech": "bronze_armour",
   "trade": "metal"
  },
  "tannery": {
@@ -1200,7 +1211,7 @@
    "smoke": [],
    "glow": []
   },
-  "tech": "wool_trade",
+  "tech": "weaving",
   "trade": "textiles"
  },
  "tailor": {
@@ -1372,36 +1383,6 @@
      0.234,
      0.797,
      0.078
-    ],
-    [
-     "saw",
-     0.234,
-     0.797,
-     0.078
-    ],
-    [
-     "saw",
-     0.234,
-     0.797,
-     0.078
-    ],
-    [
-     "saw",
-     0.234,
-     0.797,
-     0.078
-    ],
-    [
-     "saw",
-     0.234,
-     0.797,
-     0.078
-    ],
-    [
-     "saw",
-     0.234,
-     0.797,
-     0.078
     ]
    ]
   },
@@ -1460,7 +1441,8 @@
    "style": "apartments",
    "wall": "#bfa27a",
    "sw": 2.4
-  }
+  },
+  "tech": "iron_working"
  },
  "school": {
   "name": "School",
@@ -1654,36 +1636,6 @@
      0.828,
      0.859,
      0.094
-    ],
-    [
-     "steam",
-     0.828,
-     0.859,
-     0.094
-    ],
-    [
-     "steam",
-     0.828,
-     0.859,
-     0.094
-    ],
-    [
-     "steam",
-     0.828,
-     0.859,
-     0.094
-    ],
-    [
-     "steam",
-     0.828,
-     0.859,
-     0.094
-    ],
-    [
-     "steam",
-     0.828,
-     0.859,
-     0.094
     ]
    ]
   },
@@ -1862,7 +1814,8 @@
    "style": "tower",
    "wall": "#9a9a92",
    "sw": 1.6
-  }
+  },
+  "tech": "citadels"
  },
  "keep": {
   "name": "Keep",
@@ -1935,7 +1888,8 @@
    "glow": []
   },
   "trade": "hunting",
-  "feature": "fog"
+  "feature": "fog",
+  "tech": "bows"
  },
  "watch_tower": {
   "name": "Watch tower",
@@ -2044,36 +1998,6 @@
    "glow": [],
    "hub": [],
    "anim": [
-    [
-     "wheel",
-     0.797,
-     0.781,
-     0.191
-    ],
-    [
-     "wheel",
-     0.797,
-     0.781,
-     0.191
-    ],
-    [
-     "wheel",
-     0.797,
-     0.781,
-     0.191
-    ],
-    [
-     "wheel",
-     0.797,
-     0.781,
-     0.191
-    ],
-    [
-     "wheel",
-     0.797,
-     0.781,
-     0.191
-    ],
     [
      "wheel",
      0.797,
@@ -2268,36 +2192,6 @@
      0.181,
      0.547,
      0.094
-    ],
-    [
-     "sparks",
-     0.181,
-     0.547,
-     0.094
-    ],
-    [
-     "sparks",
-     0.181,
-     0.547,
-     0.094
-    ],
-    [
-     "sparks",
-     0.181,
-     0.547,
-     0.094
-    ],
-    [
-     "sparks",
-     0.181,
-     0.547,
-     0.094
-    ],
-    [
-     "sparks",
-     0.181,
-     0.547,
-     0.094
     ]
    ]
   },
@@ -2334,66 +2228,6 @@
    ],
    "glow": [],
    "anim": [
-    [
-     "cog",
-     0.219,
-     0.75,
-     0.117
-    ],
-    [
-     "cog",
-     0.338,
-     0.65,
-     0.056
-    ],
-    [
-     "cog",
-     0.219,
-     0.75,
-     0.117
-    ],
-    [
-     "cog",
-     0.338,
-     0.65,
-     0.056
-    ],
-    [
-     "cog",
-     0.219,
-     0.75,
-     0.117
-    ],
-    [
-     "cog",
-     0.338,
-     0.65,
-     0.056
-    ],
-    [
-     "cog",
-     0.219,
-     0.75,
-     0.117
-    ],
-    [
-     "cog",
-     0.338,
-     0.65,
-     0.056
-    ],
-    [
-     "cog",
-     0.219,
-     0.75,
-     0.117
-    ],
-    [
-     "cog",
-     0.338,
-     0.65,
-     0.056
-    ],
     [
      "cog",
      0.219,
@@ -2481,7 +2315,8 @@
    "style": "market",
    "wall": "#b08a5a",
    "sw": 2.0
-  }
+  },
+  "tech": "barter"
  },
  "warehouse": {
   "name": "Warehouse",
@@ -2559,7 +2394,8 @@
    "smoke": [],
    "glow": []
   },
-  "trade": "transport"
+  "trade": "transport",
+  "tech": "pack_animals"
  },
  "cart_yard": {
   "name": "Ox cart yard",
@@ -2670,7 +2506,7 @@
    "smoke": [],
    "glow": []
   },
-  "tech": "heavy_plough",
+  "tech": "herding",
   "trade": "farming"
  },
  "cheesery": {
@@ -2754,7 +2590,7 @@
    "smoke": [],
    "glow": []
   },
-  "tech": "monasteries",
+  "tech": "iron_working",
   "trade": "farming"
  },
  "winery": {
@@ -2782,7 +2618,7 @@
    "smoke": [],
    "glow": []
   },
-  "tech": "monasteries",
+  "tech": "iron_working",
   "trade": "victuals"
  },
  "chandler": {
@@ -2901,7 +2737,8 @@
    "smoke": [],
    "glow": []
   },
-  "trade": "farming"
+  "trade": "farming",
+  "tech": "pack_animals"
  },
  "harbour": {
   "name": "Harbour",
@@ -2923,7 +2760,8 @@
    "style": "harbour",
    "wall": "#6f8fa8",
    "sw": 2.0
-  }
+  },
+  "tech": "seafaring"
  },
  "shipyard": {
   "name": "Shipyard",
@@ -2951,7 +2789,8 @@
    "smoke": [],
    "glow": []
   },
-  "trade": "woodwork"
+  "trade": "woodwork",
+  "tech": "seafaring"
  },
  "great_hall": {
   "name": "Great hall",
@@ -3312,36 +3151,6 @@
     0.906
    ],
    "anim": [
-    [
-     "steam",
-     0.141,
-     0.734,
-     0.062
-    ],
-    [
-     "steam",
-     0.141,
-     0.734,
-     0.062
-    ],
-    [
-     "steam",
-     0.141,
-     0.734,
-     0.062
-    ],
-    [
-     "steam",
-     0.141,
-     0.734,
-     0.062
-    ],
-    [
-     "steam",
-     0.141,
-     0.734,
-     0.062
-    ],
     [
      "steam",
      0.141,

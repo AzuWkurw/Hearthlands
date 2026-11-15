@@ -315,7 +315,7 @@ def decos():
     p.polygon([(20, 16), (22.6, 16.8), (21.6, 20), (19.2, 19.2)], fill=(150, 154, 160, 255), outline=(80, 80, 86, 255), width=0.3)
     save(p.done(), "deco_clay")
     # ore deposits: a few rocks with glinting coloured nuggets
-    ores = {1: (34, 34, 36), 2: (176, 100, 70), 3: (246, 206, 70), 4: (220, 220, 210), 5: (206, 116, 58), 6: (200, 214, 60), 7: (110, 124, 150)}
+    ores = {1: (34, 34, 36), 2: (176, 100, 70), 3: (246, 206, 70), 4: (220, 220, 210), 5: (206, 116, 58), 6: (200, 214, 60), 7: (110, 124, 150), 8: (196, 204, 208)}
     for k, c in ores.items():
         p = Pen(16, 16, 2)
         for (x, y, r) in [(4, 11, 4), (11, 11, 4), (7.5, 6, 4)]:
@@ -554,21 +554,25 @@ THATCH = ("raw", "food")
 DARK = (40, 33, 24, 255)
 
 # Each age has its own building style: the same shapes, built in that age's materials.
-# 0 Roman: whitewashed plaster, terracotta tiles, arched doors, shuttered windows, pilasters.
-# 1 Early Medieval: timber framing and thatch (the original look).
-# 2 High Medieval: stone footings under the timber, steep slate roofs.
-# 3 Renaissance: pale plastered fronts, red tiles, framed windows, a cornice.
-# 4 Enlightenment: brick, dark slate, tall white sash windows, a cornice.
-# 5 Industrial: dark red brick, grey slate, iron-framed factory windows, tall chimneys.
-ERAS = ["roman", "early_medieval", "high_medieval", "renaissance", "enlightenment", "industrial"]
-ERA = 1
+# 0 Bronze (build 65): sun-dried mud brick, reed thatch, beam ends under the eaves, small unglazed
+#   windows, a hide hung in the doorway.
+# 1 Roman: whitewashed plaster, terracotta tiles, arched doors, shuttered windows, pilasters.
+# 2 Early Medieval: timber framing and thatch (the original look).
+# 3 High Medieval: stone footings under the timber, steep slate roofs.
+# 4 Renaissance: pale plastered fronts, red tiles, framed windows, a cornice.
+# 5 Enlightenment: brick, dark slate, tall white sash windows, a cornice.
+# 6 Industrial: dark red brick, grey slate, iron-framed factory windows, tall chimneys.
+ERAS = ["bronze", "roman", "early_medieval", "high_medieval", "renaissance", "enlightenment", "industrial"]
+ERA = 2
 ERA_LOOK = {
-    0: {"wall": ((236, 228, 210), 0.65), "roof": (186, 98, 62), "roof_mat": "tiles", "wall_mat": "plaster", "window": "shutter", "columns": True},
-    1: {},
-    2: {"roof": (84, 90, 106), "roof_mat": "slate", "footing": True},
-    3: {"wall": ((240, 228, 196), 0.45), "roof": (172, 74, 54), "roof_mat": "tiles", "wall_mat": "plaster", "window": "framed", "cornice": True},
-    4: {"wall": ((168, 92, 66), 0.6), "roof": (78, 82, 94), "roof_mat": "slate", "wall_mat": "brick", "window": "sash", "cornice": True},
-    5: {"wall": ((134, 64, 46), 0.75), "roof": (66, 68, 74), "roof_mat": "slate", "wall_mat": "brick", "window": "factory", "tall_chimney": True},
+    0: {"wall": ((198, 156, 104), 0.72), "roof": (192, 166, 100), "roof_mat": "thatch", "wall_mat": "mudbrick", "window": "hole",
+        "beam_ends": True, "hide_door": True},
+    1: {"wall": ((236, 228, 210), 0.65), "roof": (186, 98, 62), "roof_mat": "tiles", "wall_mat": "plaster", "window": "shutter", "columns": True},
+    2: {},
+    3: {"roof": (84, 90, 106), "roof_mat": "slate", "footing": True},
+    4: {"wall": ((240, 228, 196), 0.45), "roof": (172, 74, 54), "roof_mat": "tiles", "wall_mat": "plaster", "window": "framed", "cornice": True},
+    5: {"wall": ((168, 92, 66), 0.6), "roof": (78, 82, 94), "roof_mat": "slate", "wall_mat": "brick", "window": "sash", "cornice": True},
+    6: {"wall": ((134, 64, 46), 0.75), "roof": (66, 68, 74), "roof_mat": "slate", "wall_mat": "brick", "window": "factory", "tall_chimney": True},
 }
 
 
@@ -650,6 +654,9 @@ class B:
             tex = lambda W, H, F: BT.blocks(W, H, F, base, sd, row=2, wmin=4, brick=True, mortar=0.45, rough=0.6)
         elif mat == "plaster":
             tex = lambda W, H, F: BT.plaster(W, H, F, base, sd)
+        elif mat == "mudbrick":
+            # Bronze Age: big sun-dried bricks, soft-edged, under a thin wash of mud
+            tex = lambda W, H, F: BT.blocks(W, H, F, base, sd, row=3, wmin=5, wmax=7, brick=True, mortar=0.25, rough=1.4)
         elif mat == "planks":
             tex = lambda W, H, F: BT.wood(W, H, F, base, sd, board=3)
         elif mat == "rock":
@@ -693,6 +700,13 @@ class B:
                 p.line([(cx + 0.5, top + 1.5), (cx + 0.5, b - 0.5)], fill=(255, 255, 250, 255), width=0.4)
                 p.line([(cx + 1.6, top + 1.5), (cx + 1.6, b - 0.5)], fill=(200, 194, 180, 255), width=0.4)
                 p.rectangle([cx - 0.6, top, cx + 2.6, top + 1.4], fill=(230, 226, 214, 255))
+        if look("beam_ends") and x1 - x0 >= 12:
+            # Bronze Age: the round ends of the roof beams stick out under the eaves
+            n = max(3, int((x1 - x0) / 6))
+            for k in range(n):
+                bx = x0 + 2 + (x1 - x0 - 4) * k / (n - 1)
+                p.disc(bx, top + 2.2, 0.95, (96, 66, 38, 255))
+                p.disc(bx - 0.25, top + 1.95, 0.45, (150, 112, 70, 255))
         if look("cornice"):
             p.line([(x0 - 1, top + 0.8), (x1 + 0.5, top + 0.8)], fill=sh(w, 1.35), width=1.3)
             p.line([(x0 - 1, top + 1.6), (x1 + 0.5, top + 1.6)], fill=sh(w, 0.7), width=0.4)
@@ -711,7 +725,7 @@ class B:
 
     def material(self, pts, x0, x1, top, b, mat, f):
         w = sh(self.wall, f)
-        if mat in ("stone", "brick", "plaster", "planks"):
+        if mat in ("stone", "brick", "plaster", "planks", "mudbrick"):
             self.surface(pts, mat, w, 1.0, 0.25 if mat == "stone" else 0.0)
             return
         if mat == "timber":
@@ -738,12 +752,12 @@ class B:
         p = self.p
         r = self.roof
         mat = mat or ("thatch" if self.cat in THATCH else ("slate" if self.cat in ("industry", "mil", "science") else "tiles"))
-        if look("roof_mat") and not (ERA == 2 and mat == "thatch"):
+        if look("roof_mat") and not (ERA == 3 and mat == "thatch"):
             mat = look("roof_mat")
         ridge = top - dy / 2 - rh
         gable = [(x1, top), (x1 + dx, top - dy), (x1 + dx / 2, ridge)]
         p.polygon(gable, fill=sh(self.wall, 0.76))
-        gm = "stone" if look("wall_mat") in ("brick",) else ("plaster" if look("wall_mat") == "plaster" else "planks")
+        gm = "stone" if look("wall_mat") in ("brick",) else ("plaster" if look("wall_mat") == "plaster" else ("mudbrick" if look("wall_mat") == "mudbrick" else "planks"))
         self.surface(gable, gm if gm != "stone" else "brick", sh(self.wall, 0.76))
         p.polygon(gable, outline=sh(self.wall, 0.4), width=0.5)
         slope = [(x0 - 2, top + 1.5), (x1 + 1, top + 1.5), (x1 + dx / 2 + 1, ridge), (x0 - 2 + dx / 2, ridge)]
@@ -799,9 +813,19 @@ class B:
 
     def door(self, x, w=8, h=12, arch=False):
         p, b = self.p, self.b
-        arch = arch or ERA == 0
+        arch = arch or ERA == 1
         # the opening in the wall, a little deeper than the door
         p.rectangle([x - 1, b - h - 1, x + w, b], fill=sh(self.wall, 0.45))
+        if look("hide_door"):
+            # Bronze Age: a dark doorway under a wooden lintel, a hide hung over half of it
+            p.rectangle([x, b - h, x + w - 1, b], fill=DARK)
+            hide = [(x, b - h + 0.8), (x + w * 0.62, b - h + 0.8), (x + w * 0.5, b - h * 0.45), (x + w * 0.66, b), (x, b)]
+            p.polygon(hide, fill=(176, 136, 90, 255), outline=(110, 80, 50, 255), width=0.3)
+            for k in range(3):
+                p.line([(x + 0.6 + k * w * 0.18, b - h + 1.2), (x + 0.4 + k * w * 0.2, b - 0.5)], fill=(150, 112, 72, 255), width=0.3)
+            p.rectangle([x - 1.6, b - h - 1.8, x + w + 0.6, b - h - 0.4], fill=(110, 76, 44, 255), outline=DARK, width=0.3)
+            p.rectangle([x - 1.5, b - 1, x + w + 0.5, b + 0.6], fill=(150, 124, 90, 255))
+            return
         if arch:
             p.pieslice([x - 1, b - h - w / 2 - 1, x + w, b - h + w / 2], 180, 360, fill=sh(self.wall, 0.45))
             p.pieslice([x, b - h - w / 2, x + w - 1, b - h + w / 2], 180, 360, fill=DARK)
@@ -850,6 +874,11 @@ class B:
     def window(self, x, y, w=6, h=6, lit=False):
         p = self.p
         style = look("window")
+        if style == "hole":
+            # Bronze Age: a small square opening, no glass, a wooden lintel over it
+            p.rectangle([x + 0.5, y + 0.5, x + w - 1.5, y + h - 1.5], fill=(40, 30, 22, 255) if not lit else (236, 180, 90, 255))
+            p.rectangle([x - 0.6, y - 0.8, x + w - 0.4, y + 0.4], fill=(110, 76, 44, 255), outline=DARK, width=0.25)
+            return
         if style == "shutter":
             # Roman: a dark opening between two wooden shutters
             p.rectangle([x, y, x + w - 1, y + h - 1], fill=(48, 40, 32, 255) if not lit else (236, 190, 100, 255))
@@ -890,7 +919,7 @@ class B:
         p.line([(x - 1.6, y + h), (x + w + 0.6, y + h)], fill=(196, 190, 178, 255), width=0.3)
         p.shade([(x - 1.6, y + h + 1), (x + w + 0.6, y + h + 1), (x + w + 0.6, y + h + 2.4), (x - 1.6, y + h + 2.4)], y + h + 1, y + h + 2.4, (0, 0, 0, 80), (0, 0, 0, 0))
         # now and then a box of flowers under it
-        if not lit and random.random() < 0.4 and ERA in (1, 2, 3):
+        if not lit and random.random() < 0.4 and ERA in (2, 3, 4):
             p.rectangle([x - 1, y + h + 1, x + w, y + h + 2.6], fill=(120, 80, 44, 255), outline=(70, 46, 26, 255), width=0.3)
             for k in range(int(w) + 1):
                 fx = x - 0.5 + k
@@ -913,6 +942,15 @@ class B:
             p.shade(body, y_top, y_top + 5, (20, 18, 16, 150), (20, 18, 16, 0))
             return
         body = [(x, y_top), (x + 4, y_top), (x + 4, y_base), (x, y_base)]
+        if look("wall_mat") == "mudbrick":
+            # Bronze Age: a smoke stack of clay-daubed mud brick, a pot on top
+            p.polygon(body, fill=(170, 128, 84, 255))
+            self.surface(body, "plaster", (170, 128, 84))
+            p.rectangle([x + 3, y_top, x + 4, y_base], fill=(0, 0, 0, 60))
+            p.polygon(body, outline=(100, 72, 44, 255), width=0.5)
+            p.ellipse([x - 0.6, y_top - 1.6, x + 4.6, y_top + 0.6], fill=(150, 98, 60, 255), outline=(90, 60, 36, 255), width=0.35)
+            p.shade(body, y_top, y_top + 3, (24, 20, 16, 140), (24, 20, 16, 0))
+            return
         p.polygon(body, fill=(150, 76, 58, 255))
         self.surface(body, "brick", (150, 76, 58))
         p.rectangle([x + 3, y_top, x + 4, y_base], fill=(0, 0, 0, 60))
@@ -1315,7 +1353,7 @@ def buildings():
             ic = icon(res[outs[0]].get("icon", "dot"), rgb(res[outs[0]]["color"]), 96)
         global ERA
         # one picture per age; the plain name is the Early Medieval one (the look before ages had styles)
-        for era in range(6):
+        for era in range(len(ERAS)):
             ERA = era
             if bid == "hq":
                 im = make_building("hq", wall, roof, cat, None, 128, 96)
@@ -1324,12 +1362,12 @@ def buildings():
             else:
                 im = make_building(style, wall, roof, cat, ic, bid=bid)
             save(im, "bld_%s_e%d" % (bid, era))
-            if era == 1:
+            if era == 2:
                 save(im, "bld_" + bid)
             if LAST_SNOW is not None:
                 # (saved as it is: the finishing pass's outline and grain are for the building itself)
                 LAST_SNOW.save(os.path.join(OUT, "bld_%s_e%d_snow.png" % (bid, era)))
-        ERA = 1
+        ERA = 2
     import bld_variants as BV
     if BV.write_anchors(os.path.join(ROOT, "data", "buildings.json")):
         print("buildings.json: smoke and glow places updated")
@@ -1359,6 +1397,11 @@ def person(p, ox, step, arm=0.0, hat=None, carry=None, tool=None, swing=None, be
     if hat == "crest":
         p.pieslice([hx - 3, hy - 3.6, hx + 2.6, hy + 2], 180, 360, fill=(200, 170, 90, 255), outline=(120, 96, 40, 255), width=0.3)
         p.pieslice([hx - 2.6, hy - 6, hx + 2.2, hy - 1.6], 180, 360, fill=(190, 40, 36, 255))
+    elif hat == "bronzehelm":
+        # a pointed bronze helmet with cheek guards
+        p.polygon([(hx - 3, hy - 0.4), (hx - 2.4, hy - 3.2), (hx - 0.2, hy - 5.6), (hx + 2.2, hy - 3.2), (hx + 2.8, hy - 0.4)], fill=(196, 146, 70, 255), outline=(112, 78, 34, 255), width=0.3)
+        p.line([(hx - 2.2, hy - 2.6), (hx - 0.4, hy - 4.8)], fill=(236, 196, 120, 255), width=0.4)
+        p.line([(hx - 2.8, hy - 0.4), (hx - 2.6, hy + 1.6)], fill=(176, 128, 60, 255), width=0.8)
     elif hat == "greathelm":
         p.rectangle([hx - 2.8, hy - 3.4, hx + 2.6, hy + 1.6], fill=(170, 174, 184, 255), outline=(90, 92, 100, 255), width=0.3)
         p.line([(hx - 0.2, hy - 0.6), (hx + 2.6, hy - 0.6)], fill=(30, 30, 34, 255), width=0.5)
@@ -1448,13 +1491,14 @@ def walkers():
             p = Pen(16, 20, 2); person(p, 0, 0, 0, tool=tool, swing=sw, bend=0.8 if sw and tool in ("shovel", "seed") else 0.0); frames.append(p.done())
         save(strip(frames), "unit_worker_" + tool)
     # soldiers, one kind per age: 4 walking frames, then 2 fighting frames
-    #   0 legionary (crested helmet, big oblong shield, short spear)
-    #   1 spearman (round helmet, kite shield, spear) - the original soldier
-    #   2 man-at-arms (great helm, heater shield, spear)
-    #   3 pikeman (morion, long pike, no shield)
-    #   4 musketeer (tricorne, musket with bayonet)
-    #   5 rifleman (peaked cap, rifle)
-    kit = [("crest", "scutum", "spear", 18), ("helmet", "kite", "spear", 20), ("greathelm", "heater", "spear", 20),
+    #   0 bronze warrior (pointed bronze helmet, round hide shield, spear) - build 65
+    #   1 legionary (crested helmet, big oblong shield, short spear)
+    #   2 spearman (round helmet, kite shield, spear) - the original soldier
+    #   3 man-at-arms (great helm, heater shield, spear)
+    #   4 pikeman (morion, long pike, no shield)
+    #   5 musketeer (tricorne, musket with bayonet)
+    #   6 rifleman (peaked cap, rifle)
+    kit = [("bronzehelm", "round", "spear", 17), ("crest", "scutum", "spear", 18), ("helmet", "kite", "spear", 20), ("greathelm", "heater", "spear", 20),
            ("morion", None, "pike", 21), ("tricorne", None, "musket", 15), ("cap", None, "rifle", 14)]
     for era, (hat, shield, arm, reach) in enumerate(kit):
         frames = []
@@ -1487,7 +1531,13 @@ def walkers():
                     if i == 5:
                         p.disc(sx + 4, y0 - 0.4, 1.6, (236, 236, 230, 220))
                         p.disc(sx + 3, y0 - 1.6, 1.0, (250, 210, 120, 255))
-            if shield == "scutum":
+            if shield == "round":
+                # a round hide shield (in the realm's colour) with a bronze boss and rim
+                p.disc(5, 14.2, 3.4, (176, 128, 60, 255))
+                p.disc(5, 14.2, 2.8, CLOTH)
+                p.disc(5, 14.2, 1.1, (214, 160, 80, 255))
+                p.disc(4.7, 13.9, 0.4, (250, 220, 150, 255))
+            elif shield == "scutum":
                 p.rounded_rectangle([2, 9, 8, 19], 1.2, fill=CLOTH, outline=(100, 100, 100, 255), width=0.4)
                 p.disc(5, 14, 1.0, (210, 180, 90, 255))
             elif shield == "kite":
@@ -1498,7 +1548,7 @@ def walkers():
                 p.line([(2.9, 13.4), (8.1, 13.4)], fill=(170, 170, 170, 255), width=0.8)
             frames.append(p.done())
         save(strip(frames), "unit_soldier_e%d" % era)
-        if era == 1:
+        if era == 2:
             save(strip(frames), "unit_soldier")
     # scout: green hood, a bow on his back and a staff; 4 walking frames
     frames = []
@@ -1728,7 +1778,7 @@ def resources():
         save(icon_polish(icon(r.get("icon", "dot"), rgb(r["color"]), 48)), "res_" + r["id"])
 
 
-AGE_COL = [(150, 60, 50), (120, 90, 60), (90, 110, 70), (70, 100, 150), (120, 80, 150), (70, 70, 80)]
+AGE_COL = [(160, 112, 52), (150, 60, 50), (120, 90, 60), (90, 110, 70), (70, 100, 150), (120, 80, 150), (70, 70, 80)]
 
 
 def techs():

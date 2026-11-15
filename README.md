@@ -10,7 +10,7 @@ economy you do.
 ## Download
 
 The ready-made Windows game is on the [Releases page](../../releases/latest): download the
-`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.59.0 build 64** (see
+`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.60.0 build 65** (see
 `CHANGELOG.md`). Every build is a release of its own, made by GitHub Actions
 (`.github/workflows/release.yml`) when a new version reaches `main`; older builds up to 50 are also
 on the [`downloads` branch](../../tree/downloads).
@@ -61,6 +61,7 @@ Done (builds 43 to 57):
 | 62 | Guilds (workplaces of one trade together work faster), the build queue (Shift+Q: sites built one after another), copy a building's settings to all of its kind |
 | 63 | Hats for each age, music for the later ages, workers' voices, sandbox goals (24 goals in endless games); a fix for geologists' marks on sulfur and lead |
 | 64 | Steam and rails: steel, rails and locomotives; track, stations and trains; steam engines for old workshops (faster for coal, smoke near homes) |
+| 65 | The Bronze Age, first age of every game: tin, bronze foundries and smiths, mud-brick and thatch buildings, bronze warriors; Iron working opens the Roman age |
 
 Later: a story campaign through the ages, multiplayer, scripted scenarios, a chronicle at the end of a
 game, more animations, music for each age, and quality-of-life features (a production chain overlay,
@@ -410,25 +411,25 @@ Open **Settings** (top bar or F10). Everything there is remembered in `user://se
 - Command line (also for the exported game): `--rendering-method gl_compatibility` or `forward_plus` or
   `mobile` starts with that renderer once; `--resolution 1280x720` sets the window size.
 
-## Resources (82)
+## Resources (84)
 
-Logs, Stone, Clay, Water, Grain, Hops, Wool, Hides, Salt, Coal, Iron ore, Copper ore, Gold ore, Planks, Bricks, Flour, Bread, Fish, Smoked fish, Meat, Apples, Vegetables, Beer, Cloth, Leather, Paper, Iron, Copper, Gold, Axes, Pickaxes, Farm tools, Bows and rods, Knives, Saws, Smith's tongs, Trowels, Shears, Chisels, Quills, Harnesses, Weapons, Bows, Armor, Clothes, Flax, Linen clothes, Fur coats, Jewelry, Furniture, Sand, Glassware, Milk, Cheese, Sausages, Honey, Beeswax, Candles, Grapes, Wine, Herbs, Medicine, Donkeys, Peppercorns, Spices, Silk cocoons, Silk, Kaolin, Porcelain, Coffee beans, Coffee, Sulfur, Saltpeter, Charcoal, Gunpowder, Lead ore, Lead, Cartridges, Fireworks, Steel, Rails, Locomotives.
+Logs, Stone, Clay, Water, Grain, Hops, Wool, Hides, Salt, Coal, Iron ore, Copper ore, Gold ore, Tin ore, Planks, Bricks, Flour, Bread, Fish, Smoked fish, Meat, Apples, Vegetables, Beer, Cloth, Leather, Paper, Iron, Copper, Gold, Bronze, Axes, Pickaxes, Farm tools, Bows and rods, Knives, Saws, Smith's tongs, Trowels, Shears, Chisels, Quills, Harnesses, Weapons, Bows, Armor, Clothes, Flax, Linen clothes, Fur coats, Jewelry, Furniture, Sand, Glassware, Milk, Cheese, Sausages, Honey, Beeswax, Candles, Grapes, Wine, Herbs, Medicine, Donkeys, Peppercorns, Spices, Silk cocoons, Silk, Kaolin, Porcelain, Coffee beans, Coffee, Sulfur, Saltpeter, Charcoal, Gunpowder, Lead ore, Lead, Cartridges, Fireworks, Steel, Rails, Locomotives.
 
 Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples, Vegetables, Cheese, Sausages, Honey.
 
-## Buildings (120 you can build)
+## Buildings (125 you can build)
 
 **Raw**
 
 | Building | Cost | Worker (trade) | Uses | Makes | Research |
 |---|---|---|---|---|---|
-| Woodcutter | 2 planks | peasant (woodland) | – | 1 logs | Roman (start) |
-| Forester | 2 planks | peasant (woodland) | – | – | Roman (start) |
-| Quarry | 2 planks | peasant (mining and quarrying) | – | 1 stone | Roman (start) |
-| Sawmill | 2 planks, 1 stone | peasant (woodwork) | 1 logs | 1 planks | Roman (start) |
-| Clay pit | 2 planks | peasant (mining and quarrying) | – | 1 clay | Roman (start) |
+| Woodcutter | 2 planks | peasant (woodland) | – | 1 logs | Bronze (start) |
+| Forester | 2 planks | peasant (woodland) | – | – | Bronze (start) |
+| Quarry | 2 planks | peasant (mining and quarrying) | – | 1 stone | Bronze (start) |
+| Sawmill | 2 planks, 1 stone | peasant (woodwork) | 1 logs | 1 planks | Bronze (start) |
+| Clay pit | 2 planks | peasant (mining and quarrying) | – | 1 clay | Bronze (start) |
 | Saltworks | 3 planks, 1 stone | peasant (mining and quarrying) | – | 1 salt | Salt roads |
-| Flax farm | 3 planks | peasant (farming) | – | 2 flax | Roman (start) |
+| Flax farm | 3 planks | peasant (farming) | – | 2 flax | Bronze (start) |
 | Sand pit | 2 planks | peasant (mining and quarrying) | – | 1 sand | Guilds |
 | Mulberry grove | 3 planks | peasant (farming) | – | 2 silk cocoons | Dyeing |
 | Pepper garden | 3 planks | peasant (farming) | – | 2 peppercorns | Cartography |
@@ -439,24 +440,24 @@ Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples,
 
 | Building | Cost | Worker (trade) | Uses | Makes | Research |
 |---|---|---|---|---|---|
-| Fisher | 2 planks | peasant (fishing and hunting) | – | 1 fish | Roman (start) |
-| Hunter | 2 planks | peasant (fishing and hunting) | – | 1 meat, 1 hides | Roman (start) |
-| Farm | 3 planks, 1 stone | peasant (farming) | – | 3 grain | Roman (start) |
-| Orchard | 3 planks | peasant (farming) | – | 3 apples | Roman (start) |
+| Fisher | 2 planks | peasant (fishing and hunting) | – | 1 fish | Bronze (start) |
+| Hunter | 2 planks | peasant (fishing and hunting) | – | 1 meat, 1 hides | Bronze (start) |
+| Farm | 3 planks, 1 stone | peasant (farming) | – | 3 grain | Bronze (start) |
+| Orchard | 3 planks | peasant (farming) | – | 3 apples | Bronze (start) |
 | Hop farm | 3 planks, 1 stone | peasant (farming) | – | 2 hops | Monasteries |
-| Sheep farm | 3 planks, 1 stone | peasant (farming) | 1 water | 2 wool | Wool trade |
-| Pig farm | 4 planks, 2 stone | peasant (farming) | 1 grain, 1 water | 3 meat, 1 hides | Heavy plough |
-| Well | 2 planks, 1 stone | peasant (farming) | – | 1 water | Roman (start) |
-| Mill | 3 planks, 2 stone | peasant (food and drink) | 1 grain | 1 flour | Roman (start) |
-| Bakery | 3 planks, 2 stone | peasant (food and drink) | 1 flour, 1 water | 3 bread | Roman (start) |
+| Sheep farm | 3 planks, 1 stone | peasant (farming) | 1 water | 2 wool | Herding |
+| Pig farm | 4 planks, 2 stone | peasant (farming) | 1 grain, 1 water | 3 meat, 1 hides | Herding |
+| Well | 2 planks, 1 stone | peasant (farming) | – | 1 water | Bronze (start) |
+| Mill | 3 planks, 2 stone | peasant (food and drink) | 1 grain | 1 flour | Bronze (start) |
+| Bakery | 3 planks, 2 stone | peasant (food and drink) | 1 flour, 1 water | 3 bread | Bronze (start) |
 | Smokehouse | 3 planks, 2 stone | peasant (food and drink) | 2 fish, 1 salt, 1 logs | 3 smoked fish | Salt roads |
 | Brewery | 4 planks, 3 stone | artisan (food and drink) | 1 grain, 1 hops, 1 water | 2 beer | Monasteries |
-| Apiary | 3 planks | peasant (woodland) | – | 1 honey, 1 beeswax | Roman (start) |
-| Dairy farm | 3 planks, 1 stone | peasant (farming) | 1 grain, 1 water | 2 milk | Heavy plough |
+| Apiary | 3 planks | peasant (woodland) | – | 1 honey, 1 beeswax | Bronze (start) |
+| Dairy farm | 3 planks, 1 stone | peasant (farming) | 1 grain, 1 water | 2 milk | Herding |
 | Cheesery | 3 planks, 2 stone | peasant (food and drink) | 2 milk, 1 salt | 3 cheese | Salt roads |
 | Butcher | 3 planks, 2 stone | peasant (food and drink) | 2 meat, 1 salt | 4 sausages | Salt roads |
-| Vineyard | 3 planks, 1 stone | peasant (farming) | – | 2 grapes | Monasteries |
-| Winery | 4 planks, 3 stone | artisan (food and drink) | 2 grapes | 2 wine | Monasteries |
+| Vineyard | 3 planks, 1 stone | peasant (farming) | – | 2 grapes | Iron working |
+| Winery | 4 planks, 3 stone | artisan (food and drink) | 2 grapes | 2 wine | Iron working |
 | Spice mill | 3 planks, 2 stone | artisan (food and drink) | 2 peppercorns, 1 salt | 2 spices | Cartography |
 | Coffee roaster | 3 planks, 2 stone | artisan (food and drink) | 2 coffee beans, 1 coal | 2 coffee | Agricultural societies |
 
@@ -464,15 +465,17 @@ Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples,
 
 | Building | Cost | Worker (trade) | Uses | Makes | Research |
 |---|---|---|---|---|---|
-| Charcoal burner | 2 planks, 1 stone | peasant (woodland) | 2 logs | 1 charcoal | Gunpowder |
-| Coal mine | 4 planks, 2 stone | artisan (mining and quarrying) | 1 food | 1 coal | Roman (start) |
-| Iron mine | 4 planks, 2 stone | artisan (mining and quarrying) | 1 food | 1 iron ore | Roman (start) |
-| Gold mine | 4 planks, 2 stone | artisan (mining and quarrying) | 1 food | 1 gold ore | Roman (start) |
-| Copper mine | 4 planks, 2 stone | artisan (mining and quarrying) | 1 food | 1 copper ore | Roman (start) |
-| Brickworks | 3 planks, 2 stone | peasant (kilns and glass) | 2 clay, 1 coal | 2 bricks | Roman (start) |
-| Iron smelter | 3 planks, 3 stone | artisan (metalwork) | 1 iron ore, 1 coal | 1 iron | Roman (start) |
-| Copper smelter | 3 planks, 3 stone | artisan (metalwork) | 1 copper ore, 1 coal | 1 copper | Roman (start) |
-| Mint | 3 planks, 3 stone | artisan (metalwork) | 1 gold ore, 1 coal | 1 gold | Roman (start) |
+| Charcoal burner | 2 planks, 1 stone | peasant (woodland) | 2 logs | 1 charcoal | Bronze (start) |
+| Coal mine | 4 planks, 2 stone | artisan (mining and quarrying) | 1 food | 1 coal | Iron working |
+| Iron mine | 4 planks, 2 stone | artisan (mining and quarrying) | 1 food | 1 iron ore | Iron working |
+| Gold mine | 4 planks, 2 stone | artisan (mining and quarrying) | 1 food | 1 gold ore | Bronze (start) |
+| Copper mine | 4 planks, 2 stone | artisan (mining and quarrying) | 1 food | 1 copper ore | Bronze (start) |
+| Tin mine | 4 planks, 2 stone | artisan (mining and quarrying) | 1 food | 1 tin ore | Bronze (start) |
+| Brickworks | 3 planks, 2 stone | peasant (kilns and glass) | 2 clay, 1 charcoal | 2 bricks | Kilns |
+| Iron smelter | 3 planks, 3 stone | artisan (metalwork) | 1 iron ore, 1 coal | 1 iron | Iron working |
+| Copper smelter | 3 planks, 3 stone | artisan (metalwork) | 1 copper ore, 1 charcoal | 1 copper | Bronze (start) |
+| Bronze foundry | 3 planks, 2 stone | artisan (metalwork) | 2 copper ore, 1 tin ore, 1 charcoal | 2 bronze | Bronze (start) |
+| Mint | 3 planks, 3 stone | artisan (metalwork) | 1 gold ore, 1 coal | 1 gold | Iron working |
 | Steelworks | 6 planks, 8 bricks, 4 iron | artisan (metalwork) | 2 iron ore, 1 coal | 3 iron | Steam engine |
 | Glassworks | 3 planks, 3 stone, 2 bricks | artisan (kilns and glass) | 2 sand, 1 coal | 1 glassware | Guilds |
 | Porcelain kiln | 3 planks, 2 stone, 3 bricks | artisan (kilns and glass) | 2 kaolin, 1 coal | 1 porcelain | Porcelain |
@@ -488,15 +491,18 @@ Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples,
 
 | Building | Cost | Worker (trade) | Uses | Makes | Research |
 |---|---|---|---|---|---|
-| Toolsmith | 3 planks, 3 stone | artisan (metalwork) | 1 iron, 1 planks | 2 tools, the kind most wanted | Roman (start) |
-| Weaponsmith | 3 planks, 3 stone | artisan (metalwork) | 1 iron, 1 coal | 1 weapons | Roman (start) |
-| Bowyer | 3 planks, 1 stone | artisan (woodwork) | 2 logs | 1 bows | Roman (start) |
+| Toolsmith | 3 planks, 3 stone | artisan (metalwork) | 1 iron, 1 planks | 2 tools, the kind most wanted | Iron working |
+| Bronze smith | 3 planks, 2 stone | artisan (metalwork) | 1 bronze, 1 planks | 2 tools, the kind most wanted | Bronze (start) |
+| Weaponsmith | 3 planks, 3 stone | artisan (metalwork) | 1 iron, 1 coal | 1 weapons | Iron working |
+| Bronze weaponsmith | 3 planks, 2 stone | artisan (metalwork) | 1 bronze, 1 charcoal | 1 weapons | Bronze (start) |
+| Bowyer | 3 planks, 1 stone | artisan (woodwork) | 2 logs | 1 bows | Bows |
 | Armorer | 3 planks, 3 stone | artisan (metalwork) | 1 iron, 1 leather, 1 coal | 1 armor | Chainmail |
-| Tannery | 3 planks, 2 stone | artisan (textiles and leather) | 1 hides, 1 water | 1 leather | Roman (start) |
-| Weaver | 3 planks, 2 stone | peasant (textiles and leather) | 2 wool | 1 cloth | Wool trade |
+| Bronze armourer | 3 planks, 3 stone | artisan (metalwork) | 1 bronze, 1 leather | 1 armor | Bronze armour |
+| Tannery | 3 planks, 2 stone | artisan (textiles and leather) | 1 hides, 1 water | 1 leather | Bronze (start) |
+| Weaver | 3 planks, 2 stone | peasant (textiles and leather) | 2 wool | 1 cloth | Weaving |
 | Tailor | 3 planks, 2 stone | artisan (textiles and leather) | 2 cloth | 1 clothes | Guilds |
-| Linen weaver | 3 planks, 1 stone | peasant (textiles and leather) | 2 flax | 2 linen clothes | Roman (start) |
-| Furrier | 3 planks, 1 stone | peasant (textiles and leather) | 2 hides | 2 fur coats | Roman (start) |
+| Linen weaver | 3 planks, 1 stone | peasant (textiles and leather) | 2 flax | 2 linen clothes | Bronze (start) |
+| Furrier | 3 planks, 1 stone | peasant (textiles and leather) | 2 hides | 2 fur coats | Bronze (start) |
 | Jeweller | 3 planks, 3 stone, 2 bricks | artisan (fine crafts) | 1 gold, 1 copper | 1 jewelry | Guilds |
 | Carpenter | 3 planks, 2 stone | artisan (woodwork) | 2 planks | 1 furniture | Guilds |
 | Machine works | 5 planks, 6 bricks, 3 iron | artisan (metalwork) | 1 iron, 1 coal | 3 tools, the kind most wanted, 1 weapons | Steam engine |
@@ -512,19 +518,19 @@ Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples,
 
 | Building | Cost | Worker (trade) | Uses | Makes | Research |
 |---|---|---|---|---|---|
-| House | 2 planks, 1 stone | – | – | houses 8 | Roman (start) |
-| Workers' lodge | 3 planks, 1 stone | – | – | – | Roman (start) |
-| Apartments | 4 planks, 3 stone, 3 bricks | – | – | houses 20 | Roman (start) |
-| School | 4 planks, 3 stone | peasant (teaching and learning) | 2 bread | trains an artisan | Roman (start) |
-| Barracks | 4 planks, 4 stone | artisan (teaching and learning) | 1 weapons, 1 bread | trains a soldier | Roman (start) |
+| House | 2 planks, 1 stone | – | – | houses 8 | Bronze (start) |
+| Workers' lodge | 3 planks, 1 stone | – | – | – | Bronze (start) |
+| Apartments | 4 planks, 3 stone, 3 bricks | – | – | houses 20 | Iron working |
+| School | 4 planks, 3 stone | peasant (teaching and learning) | 2 bread | trains an artisan | Bronze (start) |
+| Barracks | 4 planks, 4 stone | artisan (teaching and learning) | 1 weapons, 1 bread | trains a soldier | Bronze (start) |
 | Manor | 6 planks, 4 stone, 4 bricks, 3 gold | artisan (teaching and learning) | 2 gold, 1 bread | trains a noble | Feudalism |
-| Herb garden | 2 planks | peasant (farming) | – | 2 herbs | Roman (start) |
-| Apothecary | 3 planks, 2 stone | artisan (healing) | 2 herbs | 2 medicine | Roman (start) |
-| Infirmary | 4 planks, 3 stone | artisan (healing) | 1 medicine | – | Roman (start) |
-| Bathhouse | 4 planks, 3 stone | peasant (healing) | 1 water, 1 logs | – | Roman (start) |
-| Tavern | 4 planks, 2 stone | peasant (food and drink) | 1 beer, 1 bread | – | Roman (start) |
-| Chapel | 3 planks, 4 stone | peasant (healing) | 1 candles | – | Roman (start) |
-| Fire station | 2 planks, 3 stone | peasant (healing) | – | – | Roman (start) |
+| Herb garden | 2 planks | peasant (farming) | – | 2 herbs | Bronze (start) |
+| Apothecary | 3 planks, 2 stone | artisan (healing) | 2 herbs | 2 medicine | Bronze (start) |
+| Infirmary | 4 planks, 3 stone | artisan (healing) | 1 medicine | – | Bronze (start) |
+| Bathhouse | 4 planks, 3 stone | peasant (healing) | 1 water, 1 logs | – | Bronze (start) |
+| Tavern | 4 planks, 2 stone | peasant (food and drink) | 1 beer, 1 bread | – | Bronze (start) |
+| Chapel | 3 planks, 4 stone | peasant (healing) | 1 candles | – | Bronze (start) |
+| Fire station | 2 planks, 3 stone | peasant (healing) | – | – | Bronze (start) |
 | Great hall | 30 planks, 24 stone, 6 gold | – | – | – | The new kingdoms |
 | Cathedral | 50 stone, 20 planks, 16 bricks, 12 gold | – | – | – | Rise of the towns |
 | Grand academy | 30 stone, 30 bricks, 16 paper, 16 gold | – | – | – | Rebirth of learning |
@@ -535,7 +541,7 @@ Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples,
 
 | Building | Cost | Worker (trade) | Uses | Makes | Research |
 |---|---|---|---|---|---|
-| Scriptorium | 3 planks, 2 stone | artisan (teaching and learning) | 1 bread | 4 research | Roman (start) |
+| Scriptorium | 3 planks, 2 stone | artisan (teaching and learning) | 1 bread | 4 research | Bronze (start) |
 | Library | 4 planks, 4 stone | artisan (teaching and learning) | 1 bread | 8 research | Monasteries |
 | Paper mill | 3 planks, 2 stone | peasant (woodwork) | 1 logs, 1 water | 2 paper | Papermaking |
 | University | 6 planks, 6 stone, 6 bricks | artisan (teaching and learning) | 1 paper, 1 beer | 16 research | Printing press |
@@ -544,15 +550,15 @@ Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples,
 
 | Building | Cost | Worker (trade) | Uses | Makes | Research |
 |---|---|---|---|---|---|
-| Storehouse | 4 planks, 2 stone | – | – | room for 40 of each good, 8 porters | Roman (start) |
-| Market | 5 planks, 3 stone | – | – | room for 20 of each good, 3 porters | Roman (start) |
+| Storehouse | 4 planks, 2 stone | – | – | room for 40 of each good, 8 porters | Bronze (start) |
+| Market | 5 planks, 3 stone | – | – | room for 20 of each good, 3 porters | Barter and trade |
 | Warehouse | 6 planks, 6 stone, 4 bricks | – | – | room for 120 of each good, 12 porters | Trade fairs |
 | Great depot | 8 planks, 10 bricks, 4 iron | – | – | room for 300 of each good, 20 porters | Railways |
-| Mule station | 3 planks, 1 stone | peasant (transport) | 1 grain | 6 mules carrying 3 within 10 tiles | Roman (start) |
+| Mule station | 3 planks, 1 stone | peasant (transport) | 1 grain | 6 mules carrying 3 within 10 tiles | Pack animals |
 | Ox cart yard | 5 planks, 2 stone | artisan (transport) | 1 planks | 4 carts carrying 6 within 12 tiles | Ox carts |
-| Donkey farm | 4 planks, 2 stone | peasant (farming) | 1 grain, 1 water | 1 donkeys | Roman (start) |
-| Harbour | 6 planks, 4 stone | – | – | claims 5 tiles, holds 1 | Roman (start) |
-| Shipyard | 5 planks, 2 stone | artisan (woodwork) | 4 planks | 1 ship | Roman (start) |
+| Donkey farm | 4 planks, 2 stone | peasant (farming) | 1 grain, 1 water | 1 donkeys | Pack animals |
+| Harbour | 6 planks, 4 stone | – | – | claims 5 tiles, holds 1 | Seafaring |
+| Shipyard | 5 planks, 2 stone | artisan (woodwork) | 4 planks | 1 ship | Seafaring |
 | Naval yard | 6 planks, 3 stone, 2 iron | artisan (woodwork) | 4 planks, 1 iron, 1 weapons, 2 gunpowder | 1 warship | Navigators' school |
 | River landing | 3 planks, 1 stone | – | – | room for 12 of each good, 2 porters | Timber framing |
 | Railway station | 6 planks, 6 bricks, 2 iron | – | – | room for 60 of each good, 3 porters | Railways |
@@ -561,15 +567,15 @@ Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples,
 
 | Building | Cost | Worker (trade) | Uses | Makes | Research |
 |---|---|---|---|---|---|
-| Boundary stone | 3 stone, 1 planks | – | – | – | Roman (start) |
-| Palisade | 3 planks | – | – | claims 5 tiles, holds 1 | Roman (start) |
-| Guard hut | 2 planks, 1 stone | – | – | claims 6 tiles, holds 2 | Roman (start) |
+| Boundary stone | 3 stone, 1 planks | – | – | – | Bronze (start) |
+| Palisade | 3 planks | – | – | claims 5 tiles, holds 1 | Bronze (start) |
+| Guard hut | 2 planks, 1 stone | – | – | claims 6 tiles, holds 2 | Bronze (start) |
 | Guardhouse | 2 planks, 3 stone | – | – | claims 7 tiles, holds 3, walls +3% | Shield walls |
-| Tower | 3 planks, 4 stone | – | – | claims 9 tiles, holds 4 | Roman (start) |
+| Tower | 3 planks, 4 stone | – | – | claims 9 tiles, holds 4 | Citadels |
 | Keep | 4 planks, 6 stone | – | – | claims 11 tiles, holds 6, walls +5% | Town walls |
 | Castle | 5 planks, 6 stone, 4 bricks, 2 gold | – | – | claims 13 tiles, holds 8 | Stone castles |
-| Scout lodge | 3 planks, 1 stone | peasant (fishing and hunting) | 1 bread, 1 bows | trains a scout | Roman (start) |
-| Watch tower | 3 planks, 2 stone | scout (mil) | – | – | Roman (start) |
+| Scout lodge | 3 planks, 1 stone | peasant (fishing and hunting) | 1 bread, 1 bows | trains a scout | Bows |
+| Watch tower | 3 planks, 2 stone | scout (mil) | – | – | Bronze (start) |
 | Fortress | 6 planks, 10 stone, 8 bricks, 2 iron | – | – | claims 15 tiles, holds 12 | Gunpowder |
 | Star fort | 4 planks, 10 stone, 6 bricks | – | 3 gunpowder | claims 14 tiles, holds 10, walls +8%, 2 cannon (range 7) | Star forts |
 | Gun battery | 3 planks, 4 stone, 3 iron | – | 3 gunpowder | claims 8 tiles, holds 5, 3 cannon (range 8) | Drill manuals |
@@ -584,6 +590,24 @@ Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples,
 
 | Age | Tech | Cost | Requires | Unlocks | Effect |
 |---|---|---|---|---|---|
+| Bronze | Herding | 45 | – | – | – |
+| Bronze | Irrigation | 35 | – | – | Farm +15% speed |
+| Bronze | The wheel | 35 | – | – | carrier speed +8% |
+| Bronze | Pack animals | 45 | – | – | – |
+| Bronze | Barter and trade | 55 | – | – | – |
+| Bronze | Kilns | 55 | – | – | – |
+| Bronze | Writing | 55 | – | – | research +10% |
+| Bronze | Bows | 45 | – | – | Hunter +10% speed |
+| Bronze | Citadels | 65 | – | – | – |
+| Bronze | Weaving | 45 | Herding | – | – |
+| Bronze | Seafaring | 65 | Barter and trade | – | – |
+| Bronze | Lost-wax casting | 55 | Kilns | – | Bronze foundry +25% speed, Bronze smith +15% speed |
+| Bronze | Bronze armour | 65 | Citadels | – | defence odds +2% |
+| Roman | Iron working | 110 | – | – | all production +2% |
+| Roman | Roman roads | 100 | Iron working | – | carrier speed +8% |
+| Roman | Roman concrete | 100 | Iron working | – | build speed +10% |
+| Roman | Aqueducts | 100 | Iron working | – | Well +25% speed, housing +5% |
+| Roman | Drilled legions | 110 | Iron working | – | attack odds +4% |
 | Early Medieval | The new kingdoms | 90 | – | – | gold tax +5% |
 | High Medieval | Rise of the towns | 360 | – | – | all production +3% |
 | Renaissance | Rebirth of learning | 640 | – | – | research +8% |
@@ -593,7 +617,7 @@ Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples,
 | Early Medieval | Coppicing | 110 | The new kingdoms | – | Forester +30% speed |
 | Early Medieval | Fish traps | 110 | The new kingdoms | – | Fisher +20% speed |
 | Early Medieval | Wells and cisterns | 110 | The new kingdoms | – | Well +30% speed |
-| Early Medieval | Heavy plough | 120 | The new kingdoms | Pig farm, Dairy farm | Farm +25% speed |
+| Early Medieval | Heavy plough | 120 | The new kingdoms | – | Farm +25% speed |
 | Early Medieval | Watermills | 120 | The new kingdoms | – | Mill +50% speed, Sawmill +50% speed |
 | Early Medieval | Stone masonry | 120 | The new kingdoms | – | Quarry +20% speed |
 | Early Medieval | Beekeeping | 120 | The new kingdoms | – | Apiary +30% speed |
@@ -603,7 +627,7 @@ Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples,
 | Early Medieval | Timber framing | 130 | The new kingdoms | – | build speed +10%, housing +10% |
 | Early Medieval | Herbal lore | 130 | Monasteries | – | people eat -5% |
 | Early Medieval | Village markets | 130 | The new kingdoms | – | carrier speed +5%, gold tax +5% |
-| Early Medieval | Monasteries | 140 | The new kingdoms | Hop farm, Brewery, Library, Vineyard, Winery, Chandler | – |
+| Early Medieval | Monasteries | 140 | The new kingdoms | Hop farm, Brewery, Library, Chandler | – |
 | Early Medieval | Chainmail | 140 | The new kingdoms | Armorer | defence odds +3% |
 | Early Medieval | Ox carts | 140 | The new kingdoms | Ox cart yard | – |
 | Early Medieval | Horse collar | 140 | Heavy plough | – | carrier speed +10% |
@@ -620,7 +644,7 @@ Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples,
 | Early Medieval | Village smithy | 140 | Bellows | – | Toolsmith +20% speed, Weaponsmith +10% speed |
 | Early Medieval | Militia levy | 130 | Longbows | – | defence odds +3% |
 | Early Medieval | Pack mules | 130 | Ox carts | – | carrier speed +10% |
-| High Medieval | Wool trade | 240 | Rise of the towns, Heavy plough | Sheep farm, Weaver | – |
+| High Medieval | Wool trade | 240 | Rise of the towns, Heavy plough | – | – |
 | High Medieval | Salt roads | 240 | Rise of the towns | Saltworks, Smokehouse, Cheesery, Butcher | carrier speed +10% |
 | High Medieval | Post windmills | 240 | Rise of the towns, Watermills | – | Mill +30% speed |
 | High Medieval | Cheesemaking | 240 | Rise of the towns, Heavy plough | – | Cheesery +30% speed, Dairy farm +20% speed |
@@ -936,6 +960,32 @@ order the buildings within it. The numbers are saved with the game.
   expeditions and lands on its enemies' coasts; rivals at war by the sea build naval yards and coastal
   forts, and warlords keep field depots near the front.
 
+## The Bronze Age
+
+Every game starts in the Bronze Age (build 65), before the Romans. Its buildings are mud brick under reed
+thatch, with beam ends under the eaves, small unglazed windows and a hide hung in the doorway; its
+soldiers are bronze warriors with a pointed bronze helmet and a round hide shield.
+
+- **Tin** is a new ore (8) on the mountains, as common as copper; every realm's home mountain has some,
+  geologists find it, and the map editor has a Tin brush (and counts tin in its fairness check).
+- **Bronze**: a tin mine and a copper mine feed a **bronze foundry** (2 copper ore, 1 tin ore and 1
+  charcoal make 2 bronze). A **bronze smith** makes the tools every trade needs from bronze and planks, a
+  **bronze weaponsmith** weapons for the barracks, and with Bronze armour a **bronze armourer** armour.
+  The charcoal burner is there from the start; copper smelters and brickworks burn charcoal now.
+- **From the start**: woodcutters, foresters, quarries, sawmills, clay pits, farms, mills, bakeries,
+  wells, fishers, hunters, orchards, apiaries, flax, linen, furs, the tannery, houses, the lodge, the
+  storehouse, the school, the scriptorium, barracks, huts, palisades and boundary stones.
+- **Bronze studies** open the rest: Herding (sheep, pigs, dairy), Weaving, Kilns (brickworks), Pack
+  animals (donkeys and mule stations), Barter and trade (the market), Seafaring (harbour and shipyard),
+  Bows (bowyer and scout lodge), Citadels (the tower), Bronze armour, Writing, Irrigation, The wheel and
+  Lost-wax casting.
+- **Iron working** opens the Roman age once 5 Bronze techs are known: iron and coal mines, iron smelters,
+  toolsmiths, weaponsmiths, the mint, apartments, the vineyard and winery, and legionaries. The Roman age
+  has four techs of its own (Roman roads, Roman concrete, Aqueducts, Drilled legions) and its own bonus
+  to choose (Roman law, The legions, Latin letters); The new kingdoms needs 2 of its techs.
+- Saves from before build 65 load one age on: their realms get the Bronze studies and Iron working, and
+  their buildings and soldiers keep their age and kind. `tools/bronze_test.gd` checks it all.
+
 ## Steam and rails
 
 **Railways** (the Railways study, Industrial age):
@@ -1125,8 +1175,8 @@ of; rivals with nobles trade for the luxuries they lack.
 
 ## Ages: building looks and soldiers
 
-A realm enters a new age by finishing that age's opening study (The new kingdoms, Rise of the towns,
-Rebirth of learning, Age of reason, Dawn of industry). Every tech of an age needs it, and the study
+A realm enters a new age by finishing that age's opening study (Iron working, The new kingdoms, Rise of
+the towns, Rebirth of learning, Age of reason, Dawn of industry). Every tech of an age needs it, and the study
 itself needs a number of techs of the age before (`"gate": true` and `"need"` in `data/techs.json`).
 On entering an age a window shows what it brings and asks you to choose the realm's path for it:
 wealth, war or learning, each with its own lasting bonus (`"age_bonuses"` in `data/techs.json`).
@@ -1137,11 +1187,11 @@ academy, the Observatory and the Exhibition palace. A realm builds each once; it
 gives a lasting bonus while it stands (`"wonder"` in `data/buildings.json`). With the peaceful victory
 on, the first realm with all five wonders wins, as does the first to the Industrial Revolution.
 
-Each building is drawn in the style of the age its realm was in when it was placed (Roman, Early
+Each building is drawn in the style of the age its realm was in when it was placed (Bronze, Roman, Early
 Medieval, High Medieval, Renaissance, Enlightenment, Industrial); Renovate brings it up to date. The
-textures are `bld_<id>_e0.png` to `bld_<id>_e5.png` (plain `bld_<id>.png` is the Early Medieval one);
-a custom `bld_<id>.png` in the texture folder stands for every age. Soldiers come in six kinds, one per
-age (`unit_soldier_e0` to `unit_soldier_e5`). Buildings, headquarters and attacks count each kind; every
+textures are `bld_<id>_e0.png` to `bld_<id>_e6.png` (plain `bld_<id>.png` is the Early Medieval one);
+a custom `bld_<id>.png` in the texture folder stands for every age. Soldiers come in seven kinds, one per
+age (`unit_soldier_e0` to `unit_soldier_e6`). Buildings, headquarters and attacks count each kind; every
 kind is 15% stronger per age, some beat others (+12% a duel), and each has its own edge: legionaries'
 shield wall, quick-to-train spearmen, men-at-arms' armour, pikemen's reach, musketeers' and riflemen's
 volleys on the way in (and from defending buildings). Military tab: "Soldier kinds" explains it in game;
@@ -1241,6 +1291,8 @@ sounds/          sound effects (WAV, longer ones OGG) and ambience loops (OGG), 
 music/           the music (OGG), composed and rendered by tools/make_music.py
 tools/
   run_all.py         runs every test and says which passed ("quick" for the fast ones)
+                     (tests written before build 65 start their games in the Roman age:
+                     HEARTHLANDS_START_AGE=1, read by Sim.new_game)
   check_data.py      checks data/*.json (and mods) for unknown goods, techs and sizes
   extract_strings.py collects interface text into data/lang_*.json for translating
   checksum_run.gd, checksum_diff.gd   prove a code move changed nothing / find what differs after a load

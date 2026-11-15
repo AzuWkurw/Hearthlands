@@ -5,7 +5,7 @@ extends RefCounted
 ## change resources, buildings and population needs without editing the project.
 
 const CATEGORIES := [["raw", "Raw"], ["food", "Food"], ["industry", "Industry"], ["crafts", "Crafts"], ["folk", "Folk"], ["science", "Science"], ["logistics", "Roads & stores"], ["mil", "Military"]]
-const ORE_NAMES := {1: "coal", 2: "iron", 3: "gold", 4: "granite", 5: "copper", 6: "sulfur", 7: "lead"}
+const ORE_NAMES := {1: "coal", 2: "iron", 3: "gold", 4: "granite", 5: "copper", 6: "sulfur", 7: "lead", 8: "tin"}
 const CLASSES := ["peasant", "artisan", "noble", "soldier"]
 
 static var loaded := false
@@ -17,7 +17,7 @@ static var luxury: Dictionary = {}        # class -> {luxury good: rate}: not ne
 static var food_ids: Array = []           # food resources, cheapest first
 static var techs: Dictionary = {}         # tech id -> definition, in tree order
 static var reps: Dictionary = {}          # repeatable study id -> definition (age, cost, max levels, effects)
-static var age_bonuses: Dictionary = {}   # age ("1".."5") -> the three bonuses a realm picks one of on entering it
+static var age_bonuses: Dictionary = {}   # age ("1".."6") -> the three bonuses a realm picks one of on entering it
 static var lanes: Array = []              # branches of the tech tree, top to bottom: [id, name]
 static var ages: Array = []
 static var values: Dictionary = {}       # rough worth of one unit of each resource, for trading
@@ -86,7 +86,7 @@ static func reload() -> void:
 	reps = {}
 	age_bonuses = {}
 	lanes = []
-	ages = ["Roman", "Early Medieval", "High Medieval", "Renaissance", "Enlightenment", "Industrial"]
+	ages = ["Bronze", "Roman", "Early Medieval", "High Medieval", "Renaissance", "Enlightenment", "Industrial"]
 	var base_t = _read("res://data/techs.json")
 	var mod_t = _read("user://data/techs.json")
 	for src in [base_t, mod_t]:

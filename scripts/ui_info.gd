@@ -561,7 +561,7 @@ func _garrison_ui(b: Sim.Bld) -> void:
 	main.garrison_box.add_child(row2)
 	var grid := GridContainer.new()
 	grid.columns = 2
-	for k in 6:
+	for k in Sim.KINDS:
 		var tb := Button.new()
 		tb.focus_mode = Control.FOCUS_NONE
 		tb.toggle_mode = true
@@ -589,7 +589,7 @@ func _garrison_ui(b: Sim.Bld) -> void:
 		var kk := k
 		tb.toggled.connect(func(on):
 			if b.want_kinds.is_empty():
-				b.want_kinds = [true, true, true, true, true, true]
+				b.want_kinds = [true, true, true, true, true, true, true]
 			b.want_kinds[kk] = on
 			if not b.want_kinds.has(true):
 				b.want_kinds[kk] = true       # at least one kind must be allowed
@@ -607,7 +607,7 @@ func _garrison_ui(b: Sim.Bld) -> void:
 	var ob := OptionButton.new()
 	ob.focus_mode = Control.FOCUS_NONE
 	ob.add_item("The oldest kind", 0)
-	for k in 6:
+	for k in Sim.KINDS:
 		ob.add_item(Sim.soldier_name(k).capitalize(), k + 1)
 	ob.select(b.keep_kind + 1)
 	ob.tooltip_text = "When this building attacks, all but one soldier march. This picks who stays to hold it (if one of that kind is here)."

@@ -66,11 +66,11 @@ static func _load(id: String) -> Texture2D:
 	return placeholder()
 
 
-## A building's picture in age era (0 Roman to 5 Industrial): your own bld_x_e<era>.png if there is
+## A building's picture in age era (0 Bronze to 6 Industrial): your own bld_x_e<era>.png if there is
 ## one, else your own bld_x.png (it then stands for every age), else the built-in picture for that age,
 ## else the plain built-in one.
 static func bld_era_tex(base: String, era: int) -> Texture2D:
-	var id := "%s_e%d" % [base, clampi(era, 0, 5)]
+	var id := "%s_e%d" % [base, clampi(era, 0, Sim.ERAS - 1)]
 	var key := "era:" + id
 	if cache.has(key):
 		return cache[key]
@@ -153,7 +153,7 @@ static func all_ids() -> Array:
 		out.append("res_" + String(r.id))
 	for b in GameData.bld:
 		out.append(GameData.bld_tex_id(b))
-		for e in 6:
+		for e in Sim.ERAS:
 			out.append("%s_e%d" % [GameData.bld_tex_id(b), e])
 	for t in GameData.techs:
 		out.append("tech_" + String(t))

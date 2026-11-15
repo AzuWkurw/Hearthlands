@@ -1,5 +1,17 @@
 # Changelog
 
+## Build 65 (v0.60.0, 2026-11-15)
+
+Build 65: the Bronze Age.
+- Every game now starts in the Bronze Age, before the Romans: seven ages in all. Bronze Age buildings are mud brick under reed thatch, with beam ends under the eaves, small unglazed windows and a hide hung in the doorway; its soldiers are bronze warriors with a pointed bronze helmet and a round shield.
+- Tin, a new ore on the mountains (every home mountain has some; geologists find it; the map editor has a Tin brush and counts tin in its fairness check).
+- Bronze: a tin mine and a copper mine feed a bronze foundry (copper and tin ore with charcoal). A bronze smith makes tools of bronze, a bronze weaponsmith weapons, and a bronze armourer (Bronze armour) armour. The charcoal burner is there from the start; copper smelters and brickworks burn charcoal now. Realms start with bronze in store instead of iron.
+- Bronze studies open the rest: Herding, Weaving, Kilns, Pack animals, Barter and trade, Seafaring, Bows, Citadels, Bronze armour, Writing, Irrigation, The wheel and Lost-wax casting.
+- Iron working (after 5 Bronze techs) opens the Roman age: iron and coal mines, smelters, toolsmiths, weaponsmiths, the mint, apartments, the vineyard and winery, and legionaries. The Roman age has four techs of its own and its own bonus to choose (Roman law, The legions, Latin letters).
+- Legionaries, men-at-arms, pikemen, musketeers and riflemen beat bronze warriors.
+- Rivals mine tin and copper, burn charcoal, cast bronze and study their way to iron.
+- Saves from before this build load one age on, with the Bronze studies known: buildings and soldiers keep their age and kind.
+
 ## Build 64 (v0.59.0, 2026-11-15)
 
 Build 64: steam and rails.

@@ -18,7 +18,7 @@ func _init() -> void:
 				if tw == null and sim.inb(x, y) and sim.bmap[sim.idx(x, y)] == 0 and sim.plot[sim.idx(x, y)] == 0 and sim.road[sim.idx(x, y)] == 0 and sim.ter[sim.idx(x, y)] == Sim.GRASS:
 					tw = sim.add_bld("tower", x, y, foe, true, 0)
 	tw.garrison = 4
-	tw.gmix = [4, 0, 0, 0, 0, 0]
+	tw.gmix = [0, 4, 0, 0, 0, 0, 0]
 	# our catapult near the headquarters, with its road
 	var cp := ""
 	var spot := Vector2i(-1, -1)

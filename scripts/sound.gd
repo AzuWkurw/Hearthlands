@@ -429,7 +429,7 @@ func _gunfire() -> void:
 		seen[key] = true
 		var last: Array = _shots.get(key, [a.shot_t, a.dshot_t])
 		if (a.shot_t > float(last[0]) or a.dshot_t > float(last[1])) and r.has_point(a.to):
-			var rifles := a.amix.size() > 5 and int(a.amix[5]) > 0
+			var rifles := a.amix.size() > 6 and int(a.amix[6]) > 0
 			play_at("shot_1" if rifles else "shot_0", a.to, clampf((view.zoom - 6.0) / 30.0, 0.3, 1.0), 0.1)
 		_shots[key] = [a.shot_t, a.dshot_t]
 	for k in _shots.keys():
@@ -597,13 +597,13 @@ func _start_piece(id: String, _fade := 2.0) -> void:
 	_mus_target[nxt] = 1.0
 
 
-## The calm pieces for the age your realm is in (build 63): the early ones alone in the first two ages,
-## the court dance joining from the third, the foundry from the fifth (and the oldest leaving).
+## The calm pieces for the age your realm is in (build 63): the early ones alone in the first three ages,
+## the court dance joining from the Renaissance, the foundry in the Industrial age (and the oldest leaving).
 func _peace_for_age() -> Array:
 	var age := main.sim.human().age if main.sim != null and not main.sim.players.is_empty() else 1
-	if age >= 5:
+	if age >= 6:
 		return ["peace_foundry", "peace_court", "peace_market", "peace_foundry"]
-	if age >= 3:
+	if age >= 4:
 		return ["peace_court", "peace_hearth", "peace_market", "peace_furrow", "peace_court"]
 	return PEACE
 

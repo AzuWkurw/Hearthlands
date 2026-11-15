@@ -15,7 +15,7 @@ func _init() -> void:
 		for x in range(mx - 8, mx + 9):
 			if t == null and sim.can_place("tower", x, y, 1) == "" and Vector2(x - mx, y - my).length() > 3:
 				t = sim.add_bld("guardhouse", x, y, me, true, 0)
-	t.garrison = 2; t.gmix = [2, 0, 0, 0, 0, 0]
+	t.garrison = 2; t.gmix = [0, 2, 0, 0, 0, 0, 0]
 	var ups := sim.upgrades_of(t)
 	print("guardhouse (3 soldiers) can become: %s" % str(ups))
 	if not ups.has("tower"): ok = false; print("FAIL: a guardhouse should upgrade to a tower")

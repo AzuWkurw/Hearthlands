@@ -89,6 +89,11 @@ func _init() -> void:
 		same = same and o.keep == 4 and o.prio == Sim.PRIO_HIGH
 	check(copied == mills.size() - 1 and same, "the sawmill's priority and inputs kept copied to the %d others" % copied)
 	# 4. saved and loaded
+	# (a site still being built: a new one if the first is up already)
+	if a.state != "build":
+		var at2 := spot(sim, "house", me.hq.x + 4, me.hq.y + 8)
+		sim.place("house", at2.x, at2.y, me, 0, true)
+		a = sim.bld_at(at2.x, at2.y)
 	sim.queue_site(a, true)
 	var s2 := Sim.new()
 	s2.from_save(bytes_to_var(var_to_bytes(sim.to_save())))

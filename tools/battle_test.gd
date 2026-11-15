@@ -33,11 +33,11 @@ func _init() -> void:
 		for r in runs:
 			var hut := sim.add_bld("hut", spot.x, spot.y, d_p, true)
 			hut.garrison = int(c[3])
-			hut.gmix = [0, 0, 0, 0, 0, 0]
+			hut.gmix = [0, 0, 0, 0, 0, 0, 0]
 			hut.gmix[int(c[2])] = int(c[3])
 			var at := Sim.Attack.new()
 			at.p = 1; at.src = a_p.hq.id; at.tgt = hut.id; at.n = int(c[1])
-			at.amix = [0, 0, 0, 0, 0, 0]
+			at.amix = [0, 0, 0, 0, 0, 0, 0]
 			at.amix[int(c[0])] = int(c[1])
 			at.era = float(c[0])
 			at.from = Vector2(spot.x - 9, spot.y); at.to = Vector2(spot.x, spot.y)

@@ -87,7 +87,7 @@ const LUX_TAX := 0.08          # more of the nobles' tax for each luxury they ha
 const BASIC := ["planks", "stone"]
 
 
-const SAVE_VERSION := 3
+const SAVE_VERSION := 4    # 4: build 65, the Bronze Age (ages and soldier kinds one further on)
 
 
 const INF := 1e9                           # "unreachable" distance on the road network
@@ -267,7 +267,7 @@ class Bld:
 	var retrain := false # a barracks retraining an old soldier this cycle instead of training a new one
 	var gmix: Array = [] # the garrison by kind: how many legionaries, spearmen ... riflemen (see mix_fix)
 	var want_n := -1                       # soldiers the player wants here (-1: as many as it holds)
-	var want_kinds: Array = []             # 6 flags: which kinds may serve here (empty: any)
+	var want_kinds: Array = []             # 7 flags (KINDS): which kinds may serve here (empty: any)
 	var keep_kind := -1                    # the kind that stays home when it attacks (-1: the oldest)
 	var archer_want := 0                   # how many archers it should have (extra to its soldiers; each takes a bow)
 	var archers := 0                       # how many archers it has now (not counted as soldiers)
@@ -377,7 +377,7 @@ class Player:
 	var techs: Dictionary = {}
 	var research := ""
 	var reps: Dictionary = {}     # repeatable study id -> levels done
-	var age_bonus: Dictionary = {} # age ("1".."5") -> id of the bonus chosen on entering it
+	var age_bonus: Dictionary = {} # age ("1".."6") -> id of the bonus chosen on entering it
 	var lux := 0                  # luxuries the nobles have had lately (spices, silk, porcelain, coffee)
 	var rqueue: Array = []        # what to study after the current research, in order (a study can repeat)
 	var rp := 0.0
@@ -415,7 +415,7 @@ class Trip:
 	var res2 := ""    # a second good in the same load for that building (filling the load up)
 	var n2 := 0
 	                   # kind "builder" or "soldier": a person walking to building `site` (0: walking home);
-	                   # for a soldier, n is his kind (0 legionary to 5 rifleman, -1 any)
+	                   # for a soldier, n is his kind (0 bronze warrior to 6 rifleman, -1 any)
 
 
 class Attack:
@@ -704,6 +704,9 @@ func new_game(p_seed: String, p_foes: int, p_strength: int, p_mix: bool, p_size 
 	seed_str = p_seed; foes = p_foes; strength = p_strength; mix = p_mix; map_size = p_size; research_victory = p_research_victory
 	opts = DEFAULT_OPTS.duplicate()
 	opts.merge(p_opts, true)
+	# the test runner starts the tests written before build 65 in the Roman age (tools/run_all.py)
+	if not p_opts.has("start_age") and OS.has_environment("HEARTHLANDS_START_AGE"):
+		opts["start_age"] = int(OS.get_environment("HEARTHLANDS_START_AGE"))
 	w = g.w; h = g.h
 	ter = g.ter; deco = g.deco; amt = g.amt; ore = g.ore; shade = g.shade
 	height = WorldGen.heights(p_seed, ter, w, h)
@@ -745,7 +748,10 @@ func new_game(p_seed: String, p_foes: int, p_strength: int, p_mix: bool, p_size 
 		p.res_era = 0.0
 		for r in GameData.resources:
 			p.stock[r.id] = 0.0
-		var start_stock := {"wood": 20, "planks": 24, "stone": 18, "bread": 14, "fish": 8, "weapons": 2, "water": 6, "iron": 4}
+		var start_stock := {"wood": 20, "planks": 24, "stone": 18, "bread": 14, "fish": 8, "weapons": 2, "water": 6, "bronze": 4}
+		if int(opts.get("start_age", 0)) >= 1:
+			start_stock["iron"] = start_stock["bronze"]
+			start_stock.erase("bronze")
 		start_stock.merge(START_TOOLS)
 		var sg := float(opts.start_goods)
 		for r in start_stock:
@@ -800,6 +806,11 @@ func new_game(p_seed: String, p_foes: int, p_strength: int, p_mix: bool, p_size 
 		_recount_stores(p)
 	recompute_territory()
 	emit_log("The realm is founded. Build woodcutters, a sawmill and a quarry first.", Color("d8aa4a"))
+	if int(opts.get("start_age", 0)) >= 1:
+		# (not on the new-game screen: every game starts in the Bronze Age. Tests and scripts that need
+		# the Roman age's buildings at once start there, as games did before build 65.)
+		for p in players:
+			learn_bronze_age(p)
 	if bool(opts.get("all_research", false)):
 		# every realm starts in the last age, with everything studied but the Industrial Revolution itself
 		for p in players:
@@ -1484,28 +1495,30 @@ func _site_arrival(t: Trip, p: Player) -> void:
 
 # ================================================================ ages: looks, renovation, soldiers
 
-const SOLDIER_NAMES := ["legionary", "spearman", "man-at-arms", "pikeman", "musketeer", "rifleman"]
+const ERAS := 7      # ages, each with its own look for buildings (GameData.ages)
+const KINDS := 7     # kinds of soldier, one for each age: bronze warrior, legionary ... rifleman
+const SOLDIER_NAMES := ["bronze warrior", "legionary", "spearman", "man-at-arms", "pikeman", "musketeer", "rifleman"]
 
 
-const SOLDIER_PLURALS := ["legionaries", "spearmen", "men-at-arms", "pikemen", "musketeers", "riflemen"]
+const SOLDIER_PLURALS := ["bronze warriors", "legionaries", "spearmen", "men-at-arms", "pikemen", "musketeers", "riflemen"]
 
 
 # ---------------------------------------------------------------- soldiers by kind
-## A "mix" is an array of six counts: legionaries, spearmen, men-at-arms, pikemen, musketeers,
+## A "mix" is an array of seven counts (KINDS): bronze warriors, legionaries, spearmen, men-at-arms, pikemen, musketeers,
 ## riflemen. The plain counts (reserve, garrison, attack size) stay the totals; mix_fix keeps a mix
 ## matching its total, adding soldiers of the given kind or dropping the oldest, so the two can never
 ## drift apart.
 static func mix_fix(m: Array, n: int, fill: int) -> Array:
-	while m.size() < 6:
+	while m.size() < KINDS:
 		m.append(0)
 	var sum := 0
-	for k in 6:
+	for k in KINDS:
 		m[k] = maxi(0, int(m[k]))
 		sum += int(m[k])
 	if sum < n:
-		m[clampi(fill, 0, 5)] += n - sum
+		m[clampi(fill, 0, KINDS - 1)] += n - sum
 	var k2 := 0
-	while sum > n and k2 < 6:
+	while sum > n and k2 < KINDS:
 		var take := mini(int(m[k2]), sum - n)
 		m[k2] -= take
 		sum -= take
@@ -1520,7 +1533,7 @@ static func mix_count(m: Array) -> int:
 	return n
 
 
-## The average kind (0 legionaries to 5 riflemen), or 0 if empty.
+## The average kind (0 bronze warriors to 6 riflemen), or 0 if empty.
 static func mix_avg(m: Array) -> float:
 	var n := 0
 	var s := 0
@@ -1546,13 +1559,13 @@ static func mix_oldest(m: Array) -> int:
 
 static func mix_add(dst: Array, src: Array) -> void:
 	mix_fix(dst, mix_count(dst), 0)
-	for k in mini(6, src.size()):
+	for k in mini(KINDS, src.size()):
 		dst[k] += int(src[k])
 
 
 ## Takes up to n soldiers out of m, the newest kinds first, and returns them as a new mix.
 static func mix_take_best(m: Array, n: int) -> Array:
-	var out := [0, 0, 0, 0, 0, 0]
+	var out := [0, 0, 0, 0, 0, 0, 0]
 	for k in range(m.size() - 1, -1, -1):
 		var t := mini(int(m[k]), n)
 		m[k] -= t
@@ -1619,11 +1632,74 @@ func soldier_mix(p: Player) -> Array:
 
 
 static func soldier_name(era: int) -> String:
-	return SOLDIER_NAMES[clampi(era, 0, 5)]
+	return SOLDIER_NAMES[clampi(era, 0, KINDS - 1)]
 
 
 static func soldier_plural(era: int) -> String:
-	return SOLDIER_PLURALS[clampi(era, 0, 5)]
+	return SOLDIER_PLURALS[clampi(era, 0, KINDS - 1)]
+
+
+## Every Bronze study and Iron working, known at once: realm p is in the Roman age, its buildings and
+## soldiers Roman.
+func learn_bronze_age(p: Player) -> void:
+	for id in GameData.techs:
+		if int(GameData.techs[id].get("age", 0)) == 0 or id == GameData.gate_of(1):
+			p.techs[id] = true
+	_recompute_mods(p)
+	p.res_era = float(p.age)
+	p.rmix = []
+	for b in blds:
+		if b.p == p.id:
+			b.era = p.age
+			b.sera = float(p.age)
+			b.gmix = []
+
+
+## Saves from before build 65 knew no Bronze Age: every age and every kind of soldier is one further on
+## now. Their realms were past the Bronze Age already, so they get its studies (and the gate to the
+## Roman age) and go on as they were.
+static func bronze_age_migrate(d0: Dictionary) -> Dictionary:
+	var d := d0.duplicate(true)
+	var bronze := []
+	for id in GameData.techs:
+		if int(GameData.techs[id].get("age", 0)) == 0 or id == GameData.gate_of(1):
+			bronze.append(id)
+	var shift := func(m) -> Array:
+		var a: Array = (m as Array).duplicate() if m is Array else []
+		if not a.is_empty():
+			a.push_front(0)
+		return a
+	for bd in d.get("blds", []):
+		if int(bd.get("era", -1)) >= 0: bd["era"] = int(bd.era) + 1
+		if int(bd.get("reno_to", -1)) >= 0: bd["reno_to"] = int(bd.reno_to) + 1
+		if float(bd.get("sera", -1.0)) >= 0.0: bd["sera"] = float(bd.sera) + 1.0
+		if bd.has("gmix"): bd["gmix"] = shift.call(bd.gmix)
+		if bd.has("want_kinds") and not (bd.want_kinds as Array).is_empty():
+			var wk: Array = (bd.want_kinds as Array).duplicate()
+			wk.push_front(wk[0])
+			bd["want_kinds"] = wk
+		if int(bd.get("keep_kind", -1)) >= 0: bd["keep_kind"] = int(bd.keep_kind) + 1
+	for pd in d.get("players", []):
+		if float(pd.get("res_era", -1.0)) >= 0.0: pd["res_era"] = float(pd.res_era) + 1.0
+		if pd.has("rmix"): pd["rmix"] = shift.call(pd.rmix)
+		var ab := {}
+		for k in pd.get("age_bonus", {}):
+			ab[str(int(k) + 1)] = pd.age_bonus[k]
+		pd["age_bonus"] = ab
+		var tc: Dictionary = (pd.get("techs", {}) as Dictionary).duplicate()
+		for id in bronze:
+			tc[id] = true
+		pd["techs"] = tc
+	for ad in d.get("attacks", []):
+		ad["era"] = float(ad.get("era", 0.0)) + 1.0
+		if ad.has("amix"): ad["amix"] = shift.call(ad.amix)
+	for td in d.get("trips", []):
+		if String(td.get("kind", "")) == "soldier" and int(td.get("n", -1)) >= 0:
+			td["n"] = int(td.n) + 1
+	for pl in d.get("places", []):
+		if pl is Dictionary and pl.get("party") is Dictionary and (pl.party as Dictionary).has("mix"):
+			pl.party["mix"] = shift.call(pl.party.mix)
+	return d
 
 
 ## Saves from before build 18: buildings keep the Early Medieval look they always had, and soldiers
@@ -1634,7 +1710,7 @@ func _fix_eras() -> void:
 			p.res_era = float(p.age)
 	for b in blds:
 		if b.era < 0:
-			b.era = 1
+			b.era = 2
 		if b.sera < 0.0:
 			b.sera = float(players[b.p - 1].age)
 
@@ -2554,6 +2630,8 @@ func from_save(d: Dictionary) -> String:
 	if int(d.get("version", 0)) > SAVE_VERSION:
 		return "This save is from a newer version of the game"
 	GameData.ensure()
+	if int(d.get("version", 0)) < 4:
+		d = bronze_age_migrate(d)
 	seed_str = d.seed; foes = d.foes; strength = d.strength; map_size = d.map_size; mix = d.mix; research_victory = d.research_victory
 	opts = DEFAULT_OPTS.duplicate()
 	opts.merge(d.get("opts", {}), true)

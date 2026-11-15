@@ -80,7 +80,11 @@ func _init() -> void:
 	var placed := 0
 	var at := -1
 	for i in g.w * g.h:
-		if g.ter[i] == Sim.MOUNT and placed < 4 and (at < 0 or i == at + 1):
+		# (away from the starts: their home mountains are stamped over the map)
+		var far := true
+		for st in g.starts:
+			if Vector2(i % g.w - st.x, i / g.w - st.y).length() < 22.0: far = false
+		if g.ter[i] == Sim.MOUNT and far and placed < 4 and (at < 0 or i == at + 1):
 			m.ore[i] = 2; m.amt[i] = WorldGen.ORE_AMOUNTS[3]
 			at = i; placed += 1
 		elif g.ter[i] == Sim.MOUNT:

@@ -55,7 +55,7 @@ func rate(p: Sim.Player, b: Sim.Bld) -> float:
 	for f: Feature in sim.features:
 		bonus += f.speed_bonus(p, b)
 	# spearmen are cheap and quick to train
-	if p.age == 1 and String(b.def.get("train", "")) == "soldier":
+	if p.age == 2 and String(b.def.get("train", "")) == "soldier":
 		bonus += 0.3
 	if String(b.def.get("worker", "")) == "artisan":
 		r *= 1.0 + 0.25 * float(p.sat.artisan)

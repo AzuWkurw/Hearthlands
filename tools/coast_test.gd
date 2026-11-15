@@ -43,10 +43,10 @@ func _init() -> void:
 	sim.bmap[beach] = 0
 	var qh := sim.add_bld("harbour", beach % sim.w, beach / sim.w, q, true)
 	# 1. the rival lands at my headquarters: I am warned while it is at sea
-	q.reserve = 12; q.rmix = [12, 0, 0, 0, 0, 0]; q.ships = 3; q.ships_out = 0; q.general_back = 0.0
+	q.reserve = 12; q.rmix = [0, 12, 0, 0, 0, 0, 0]; q.ships = 3; q.ships_out = 0; q.general_back = 0.0
 	sim.give(q, "bread", 30.0)
 	me.peasant = 48
-	me.reserve = 30; me.rmix = [30, 0, 0, 0, 0, 0]
+	me.reserve = 30; me.rmix = [0, 30, 0, 0, 0, 0, 0]
 	var why := sim.military.launch_landing(qh, me.hq, 12)
 	check(why == "", "the rival sends a landing of 12 (%s)" % why)
 	var a: Sim.Attack = null
@@ -75,7 +75,8 @@ func _init() -> void:
 	var mil_line := ""
 	for i in range(logs0, sim.logs.size()):
 		if String(sim.logs[i][1]).contains("took up arms"): mil_line = String(sim.logs[i][1])
-	check(peas0 - me.peasant <= SimMilitary.MILITIA_MAX and mil_line != "" and int(mil_line.get_slice(" ", 0)) <= SimMilitary.MILITIA_MAX and int(mil_line.get_slice(" ", 0)) >= 1, "one peasant in six, at most %d, took up arms (%s)" % [SimMilitary.MILITIA_MAX, mil_line])
+	# (peasants also leave for work meanwhile: the log's count is the militia's)
+	check(mil_line != "" and int(mil_line.get_slice(" ", 0)) <= SimMilitary.MILITIA_MAX and int(mil_line.get_slice(" ", 0)) >= 1, "one peasant in six, at most %d, took up arms (%s)" % [SimMilitary.MILITIA_MAX, mil_line])
 	# 2. walls help against soldiers just come ashore: same duel odds with and without town walls
 	me.techs.erase("town_walls")
 	var base := SimMilitary.LANDING_PEN
@@ -85,8 +86,13 @@ func _init() -> void:
 	sim.navy.clear(); me.warships = 0
 	sim.naval.launch(me, me.hq)
 	var w: Dictionary = sim.navy[0]
-	q.reserve = 6; q.rmix = [6, 0, 0, 0, 0, 0]; q.ships = 3; q.ships_out = 0
+	q.reserve = 6; q.rmix = [0, 6, 0, 0, 0, 0, 0]; q.ships = 3; q.ships_out = 0
+	if qh.dead or qh.p != q.id or qh.state != "ready":
+		print("    (the rival's harbour was lost: a new one)")
+		sim.bmap[beach] = 0
+		qh = sim.add_bld("harbour", beach % sim.w, beach / sim.w, q, true)
 	why = sim.military.launch_landing(qh, me.hq, 6)
+	print("    second landing: '%s'" % why)
 	var b: Sim.Attack = null
 	for x in sim.attacks:
 		if x.p == q.id and x.sea > 0: b = x

@@ -336,10 +336,10 @@ func finish_prod(b: Sim.Bld, p: Sim.Player) -> void:
 			if b.retrain:
 				b.retrain = false
 				var rm := sim.rmix_of(p)
-				for k in clampi(p.age, 0, 5):
+				for k in clampi(p.age, 0, Sim.KINDS - 1):
 					if int(rm[k]) > 0:
 						rm[k] -= 1
-						rm[clampi(p.age, 0, 5)] += 1
+						rm[clampi(p.age, 0, Sim.KINDS - 1)] += 1
 						p.res_era = Sim.mix_avg(rm)
 						if not p.ai: sim.emit_log("A %s was retrained as a %s." % [Sim.soldier_name(k), Sim.soldier_name(p.age)], Color("86ad5c"), Vector2i(b.x, b.y))
 						break
@@ -348,7 +348,7 @@ func finish_prod(b: Sim.Bld, p: Sim.Player) -> void:
 				p.artisan -= 1
 				p.res_xp = Sim.mix_xp(p.res_xp, p.reserve, 0.0, 1)
 				var rm := sim.rmix_of(p)
-				rm[clampi(p.age, 0, 5)] += 1
+				rm[clampi(p.age, 0, Sim.KINDS - 1)] += 1
 				p.reserve += 1
 				p.res_era = Sim.mix_avg(rm)
 				var vet := false
