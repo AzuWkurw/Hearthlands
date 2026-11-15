@@ -1,5 +1,15 @@
 # Changelog
 
+## Build 58 (v0.53.0, 2026-11-15)
+
+Build 58: blueprints.
+- Blueprints (U, or Blueprints on the top bar): copy a group of your buildings and the roads between them from the map (click two corners), name it and pick a category. Blueprints are kept for every game.
+- The Blueprints window has a tab for each category (Food, Industry, Homes, Military, Other and your own). Rename, move to another category, delete, or copy a blueprint as a code to share; paste a code to add one.
+- Placing a blueprint: it follows the mouse, each building's plot green where it fits, orange where only trees or roads are in the way, red where it can't go. One click puts down every building site and road, and joins each building to your roads. Hold Shift to place it again.
+- Trees or roads in the way: you are asked whether to clear the way and build. The same question now comes when a single building can't go only because trees or a road stand on its plot.
+- Map editor: sulfur and lead brushes for painting the new deposits; the fairness check counts them.
+- Fixed: a test map put a tower off the edge of the map.
+
 ## Build 57 (v0.52.0, 2026-11-15)
 
 Build 57: gunpowder and lead.

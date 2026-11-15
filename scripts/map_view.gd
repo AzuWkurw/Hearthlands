@@ -61,6 +61,11 @@ var preview_tiles := PackedInt32Array()   # land a demolition would lose (drawn 
 var preview_blds: Array = []               # buildings it would lose (crossed out)
 var sel_tile := -1               # a selected map tile (deposit info), or -1
 var road_start := Vector2i(-1, -1)
+var blueprint: Dictionary = {}    # the blueprint being placed (the @bp_place tool, Blueprints)
+var bp_corner := Vector2i(-1, -1) # the first corner clicked with the @bp_copy tool
+var _bp_key := Vector3i(-1, -1, -1)
+var _bp_why: Array = []
+var _bp_obs: Dictionary = {}
 var door := 0                     # the side a building being placed faces (Sim.DOOR_NAMES); R turns it
 var road_after := false           # the road tool was started for a building just placed: it stops once joined
 var show_sites := false           # a building group is open: mark the largest building each spot takes
@@ -1562,6 +1567,20 @@ func _draw_selection_and_tools() -> void:
 			if can:
 				_cv.draw_line(g.position + Vector2(0.2, 0.2), g.end - Vector2(0.2, 0.2), dc, 0.1)
 				_cv.draw_line(Vector2(g.position.x + 0.8, g.position.y + 0.2), Vector2(g.position.x + 0.2, g.position.y + 0.8), dc, 0.1)
+		"@bp_copy":
+			var r := Rect2i(bp_corner if bp_corner.x >= 0 else ghost, Vector2i.ZERO)
+			if bp_corner.x >= 0:
+				r = Rect2i(bp_corner, ghost - bp_corner).abs()
+			r.size += Vector2i.ONE
+			_unlift()
+			_cv.draw_rect(Rect2(r), Color(1.0, 0.9, 0.4, 0.12))
+			_cv.draw_rect(Rect2(r), Color(1.0, 0.9, 0.4, 0.95), false, 0.1)
+			for b in sim.blds:
+				if not b.dead and b.p == 1 and b.ty != "hq" and r.has_point(Vector2i(b.x, b.y)):
+					_cv.draw_rect(Rect2(b.x, b.y, 1, 1), Color(1.0, 0.9, 0.4, 0.5))
+			_tool_labels.append([Vector2(r.position.x, r.position.y - 0.4), "%d×%d" % [r.size.x, r.size.y] if bp_corner.x >= 0 else tr("first corner"), Color("f2cf5a")])
+		"@bp_place":
+			_draw_blueprint()
 		"@pave", "@unroad":
 			var on_road := sim.road[sim.idx(ghost.x, ghost.y)] == 1
 			_cv.draw_rect(g, Color("86ad5c") if on_road else Color("d9483d"), false, 0.08)
@@ -2995,6 +3014,56 @@ static func _count(d: Dictionary) -> int:
 
 ## A building as last seen through the fog: its picture, slightly faded, with a scaffold if it was
 ## still being built.
+## The blueprint at the mouse: its roads, each building's plot green where it fits, orange where only
+## trees or roads are in the way (they can be cleared), red where it can't go; trees in the way crossed.
+func _draw_blueprint() -> void:
+	if blueprint.is_empty():
+		return
+	_unlift()
+	var w := sim.w
+	var at := UiBlueprints.corner_at(blueprint, ghost)
+	var key := Vector3i(at.x, at.y, int(sim.time * 2.0))
+	if key != _bp_key:
+		_bp_key = key
+		_bp_why = Blueprints.check(sim, 1, blueprint, at)
+		_bp_obs = Blueprints.obstacles(sim, 1, blueprint, at)
+	_cv.draw_rect(Rect2(at.x, at.y, int(blueprint.w), int(blueprint.h)), Color(1, 1, 1, 0.5), false, 0.05)
+	for r in blueprint.roads:
+		var x: int = at.x + int(r[0])
+		var y: int = at.y + int(r[1])
+		if sim.inb(x, y):
+			_cv.draw_rect(Rect2(x + 0.25, y + 0.25, 0.5, 0.5), Color(0.66, 0.55, 0.37, 0.85))
+	var items: Array = blueprint.items
+	for k in items.size():
+		var it: Array = items[k]
+		var x: int = at.x + int(it[1])
+		var y: int = at.y + int(it[2])
+		var why: String = _bp_why[k] if k < _bp_why.size() else ""
+		var clearable := why.begins_with("Trees in the way") or why.begins_with("A road")
+		var gc := Color("86ad5c") if why == "" else (Color("e0a040") if clearable else Color("d9483d"))
+		for t in sim.plot_tiles(String(it[0]), x, y):
+			_cv.draw_rect(Rect2(t % w, t / w, 1, 1), Color(gc, 0.35))
+			_cv.draw_rect(Rect2(t % w, t / w, 1, 1), gc, false, 0.05)
+		var dt := sim.door_at(x, y, int(it[3]))
+		if dt >= 0:
+			_cv.draw_rect(Rect2(dt % w + 0.3, dt / w + 0.3, 0.4, 0.4), Color(1, 0.95, 0.6, 0.8))
+	for t: int in _bp_obs.get("trees", []):
+		var c := Vector2(t % w + 0.5, t / w + 0.5)
+		_cv.draw_line(c - Vector2(0.3, 0.3), c + Vector2(0.3, 0.3), Color("e0a040"), 0.09)
+		_cv.draw_line(c + Vector2(-0.3, 0.3), c + Vector2(0.3, -0.3), Color("e0a040"), 0.09)
+	for k in items.size():
+		var it: Array = items[k]
+		if sim.inb(at.x + int(it[1]), at.y + int(it[2])):
+			draw_ghost(String(it[0]), at.x + int(it[1]), at.y + int(it[2]), sim.players[0].color, true, -1)
+	var nt := (_bp_obs.get("trees", []) as PackedInt32Array).size()
+	var nr := (_bp_obs.get("roads", []) as PackedInt32Array).size()
+	var ok := _bp_why.count("")
+	var lab := "%s %d/%d" % [String(blueprint.name), ok, items.size()]
+	if nt + nr > 0:
+		lab += " · " + tr("%d in the way") % (nt + nr)
+	_tool_labels.append([Vector2(at.x, at.y - 0.4), lab, Color("f2cf5a")])
+
+
 func draw_ghost(ty: String, x: int, y: int, col: Color, building: bool, era := 1) -> void:
 	var tex: Texture2D = bld_texture(ty, era)
 	if tex == null:

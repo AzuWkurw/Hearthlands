@@ -112,6 +112,7 @@ var carry_prio_ui := UiPriorities.new(self, UiPriorities.MODE_CARRY)  # transpor
 var work_prio_ui := UiPriorities.new(self, UiPriorities.MODE_WORK)    # worker priorities, L
 var market_ui := UiMarket.new(self)            # market prices, M (ui_market.gd)
 var neck_ui := UiBottlenecks.new(self)         # the bottleneck finder, N (ui_bottlenecks.gd)
+var blueprints_ui := UiBlueprints.new(self)   # blueprints, U (ui_blueprints.gd)
 var undo_ui := UiUndo.new(self)          # Ctrl+Z (ui_undo.gd)
 var minimap_filter: OptionButton
 var achievements := Achievements.new(self)
@@ -764,6 +765,9 @@ func _build_ui() -> void:
 	var mkb := _button("Market", func(): market_ui.toggle())
 	mkb.tooltip_text = "Market prices: what each good is worth now, and selling and buying at your market (M)"
 	tb.add_child(mkb)
+	var bpb := _button("Blueprints", func(): blueprints_ui.toggle())
+	bpb.tooltip_text = "Blueprints: groups of buildings and roads you copied, to place again with one click (U)"
+	tb.add_child(bpb)
 	var trb := _button("Traffic", func(): traffic_ui.toggle())
 	trb.tooltip_text = "Colour your roads by how busy they are (F7)"
 	tb.add_child(trb)
@@ -917,6 +921,7 @@ func _build_ui() -> void:
 	carry_prio_ui.build()
 	work_prio_ui.build()
 	market_ui.build()
+	blueprints_ui.build()
 	neck_ui.build()
 	sim.tech_done.connect(func(pid, tid):
 		if pid != 1:
@@ -1487,6 +1492,8 @@ func _feature_tool(id: String) -> Array:
 
 func _cancel_place() -> void:
 	moving_id = 0
+	view.bp_corner = Vector2i(-1, -1)
+	view.blueprint = {}
 	view.road_after = false
 	view.place_type = ""
 	view.road_start = Vector2i(-1, -1)
@@ -1504,6 +1511,8 @@ func _on_tile(t: Vector2i) -> void:
 		var ty := view.place_type
 		sim.logistics.last_laid = PackedInt32Array(); sim.logistics.last_bridge_planks = 0
 		var r := sim.place(ty, t.x, t.y, sim.human(), view.door, settings.auto_roads)
+		if r != "" and _ask_clear(ty, t):
+			return
 		if r != "":
 			_show_hint(r, 2.5)
 			sound.play("deny", 0.7)
@@ -1592,6 +1601,34 @@ func _on_tile(t: Vector2i) -> void:
 	_refresh_sel()
 
 
+static func _cap(t: String) -> String:
+	return t.left(1).to_upper() + t.substr(1)
+
+
+## A building that can't go at t only because trees or roads stand on its plot: asks whether to clear
+## them (build 58). True when asked.
+func _ask_clear(ty: String, t: Vector2i) -> bool:
+	var obs := Blueprints.obstacles_one(sim, 1, ty, t.x, t.y)
+	var nt := (obs.trees as PackedInt32Array).size()
+	var nr := (obs.roads as PackedInt32Array).size()
+	if nt + nr == 0 or not Blueprints.fits_cleared(sim, 1, ty, t.x, t.y, view.door, obs):
+		return false
+	var parts := []
+	if nt > 0: parts.append(tr("%d trees") % nt if nt != 1 else tr("a tree"))
+	if nr > 0: parts.append(tr("%d road tiles") % nr if nr != 1 else tr("a road tile"))
+	var door := view.door
+	var keep := Input.is_key_pressed(KEY_SHIFT)
+	confirm(tr("Where the %s would go: %s. Clear the way and build it? (The wood of felled trees is lost; taking up roads can cut buildings off.)") % [String(GameData.bld[ty].name).to_lower(), " and ".join(parts)], tr("Clear and build"), func():
+		Blueprints.clear(sim, 1, obs)
+		var was := view.door
+		view.door = door
+		view.place_type = ty
+		_on_tile(t)
+		view.door = was
+		if keep: view.place_type = ty)
+	return true
+
+
 ## The road and work-area tools from the "Roads & stores" tab and the info window.
 func _use_tool(t: Vector2i) -> void:
 	var me := sim.human()
@@ -1635,6 +1672,10 @@ func _use_tool(t: Vector2i) -> void:
 				_show_hint("The headquarters cannot be demolished.", 2.0)
 			else:
 				_ask_demolish(bd)
+		"@bp_copy":
+			blueprints_ui.copy_click(t)
+		"@bp_place":
+			blueprints_ui.place_click(t)
 		"@pave":
 			var r2 := sim.pave_road(t.x, t.y, me)
 			_show_hint(r2 if r2 != "" else "Road paved.", 2.0)
@@ -1693,6 +1734,7 @@ const KEY_ACTIONS := [
 	["workers", "Worker priorities", KEY_L],
 	["bottlenecks", "Bottleneck finder", KEY_N],
 	["market", "Market prices", KEY_M],
+	["blueprints", "Blueprints", KEY_U],
 ]
 var expedition_from := 0   # the harbour an expedition will leave from (the @expedition tool)
 var watch := {}     # building sites the player wants to hear about when finished (id -> true)
@@ -1868,6 +1910,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event.keycode == KEY_M and not setup.visible and not editor_ui.open:
 		market_ui.toggle()
+		return
+	if event.keycode == KEY_U and not setup.visible and not editor_ui.open:
+		blueprints_ui.toggle()
 		return
 	if event.keycode == KEY_B and not setup.visible and not save_panel.visible:
 		toolbar.toggle_sites()

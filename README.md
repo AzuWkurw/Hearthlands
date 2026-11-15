@@ -10,7 +10,7 @@ economy you do.
 ## Download
 
 The ready-made Windows game is on the [Releases page](../../releases/latest): download the
-`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.52.0 build 57** (see
+`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.53.0 build 58** (see
 `CHANGELOG.md`). Every build is a release of its own, made by GitHub Actions
 (`.github/workflows/release.yml`) when a new version reaches `main`; older builds up to 50 are also
 on the [`downloads` branch](../../tree/downloads).
@@ -54,6 +54,7 @@ Done (builds 43 to 57):
 | 56 | Rolling autosaves (the last 3), a guide to the sea and army supplies, interface size Auto and up to 200% (Ctrl and + or -), notices you can click to go to the place |
 | 56.1 to 56.3 | Bug fixes and speed-ups (a loaded game now goes on exactly as saved; faster carriers, workers and farms on big games) |
 | 57 | Gunpowder and lead: sulfur and lead deposits and mines, saltpeter works, charcoal burners, the powder mill, lead smelter, cartridge works, gunsmith and pyrotechnist; guns need gunpowder, musketeers and riflemen need cartridges; blasting in mines; fireworks at festivals |
+| 58 | Blueprints (U): copy a group of your buildings and roads from the map, keep it for every game in categories you choose, place it again with one click, share it as a code; trees and roads in the way: you are asked whether to clear them (for single buildings too); sulfur and lead brushes in the map editor |
 
 Later: a story campaign through the ages, multiplayer, scripted scenarios, a chronicle at the end of a
 game, more animations, music for each age, and quality-of-life features (a production chain overlay,
@@ -128,6 +129,7 @@ Exporting needs Godot 4.3's export templates (in the editor: Editor > Manage Exp
 | Worker priorities | L or Workers: which kinds of building get workers first, 1 to 9 |
 | Bottleneck finder | N or Bottlenecks: what holds your economy back, biggest first, with Go and Map |
 | Market prices | M or Market: every good's price in gold and its trend; sell or buy 10 at your market |
+| Blueprints | U or Blueprints: copy a group of buildings and roads, place it again with one click, sorted in categories |
 | Interface size | Ctrl and + or -, or Settings > Interface size (Auto fits big screens) |
 | Sea and supplies guide | Shift+H, or the button in a harbour's info and the attack window |
 | Notices | Important news with a place (attacks, ships sunk, starving soldiers) shows under the top bar for a while: click it to go there |
@@ -922,6 +924,24 @@ order the buildings within it. The numbers are saved with the game.
 - **Rivals at sea:** a rival with no way to reach anyone by land builds a harbour and ships early, sends
   expeditions and lands on its enemies' coasts; rivals at war by the sea build naval yards and coastal
   forts, and warlords keep field depots near the front.
+
+## Blueprints
+
+A blueprint is a group of your buildings and the roads between them, kept for every game in
+`user://blueprints.json`. Open **Blueprints** (U):
+
+- **Copy from the map**: click one corner of an area of your land, then the opposite corner. Its buildings
+  (not the headquarters or wonders) and roads become a blueprint; name it and pick its category (a guess is
+  made: food, industry, homes, military).
+- **Categories**: one tab each. Add your own, move a blueprint with its category list, remove a category
+  (its blueprints go to Other).
+- **Place**: the blueprint follows the mouse; each building's plot is green where it fits, orange where only
+  trees or roads stand in the way, red where it can't go. A click puts down every site and road at once and
+  joins each building to your roads. Hold Shift to place it again.
+- **Trees or roads in the way**: you are asked "Clear the way and build?" The trees are felled (their wood is
+  lost) and the roads taken up. The same question comes when a single building can't go only because of
+  trees or roads on its plot.
+- **Code**: copies the blueprint as a line of text (HLBP1:...) to paste into another game or send to a friend.
 
 ## Gunpowder
 

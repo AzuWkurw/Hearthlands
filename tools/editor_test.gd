@@ -117,6 +117,19 @@ func _init() -> void:
 	ed._paint(spot, true); ed._paint_done()
 	print("a speck of water smoothed away: %s" % (sim.ter[sim.idx(spot.x, spot.y)] == Sim.GRASS))
 	if sim.ter[sim.idx(spot.x, spot.y)] != Sim.GRASS: ok = false; print("FAIL: smoothing")
+	# sulfur and lead painted on a mountain (build 58)
+	var mt := -1
+	for i in sim.w * sim.h:
+		if mt < 0 and sim.ter[i] == Sim.MOUNT and sim.ore[i] == 0: mt = i
+	var got := []
+	for nm in ["Sulfur", "Lead"]:
+		for k in UiEditor.BRUSHES.size():
+			if UiEditor.BRUSHES[k][0] == nm: ed.brush = k
+		ed.tool = "brush"; ed.size = 1
+		ed._paint(Vector2i(mt % sim.w, mt / sim.w), true); ed._paint_done()
+		got.append(sim.ore[mt])
+	print("ore brushes: sulfur %d, lead %d" % [got[0], got[1]])
+	if got != [6, 7]: ok = false; print("FAIL: sulfur and lead brushes")
 	# a river with fords
 	ed.tool = "river"; ed.ford_k = 1
 	var ra := Vector2i(sim.w / 2 - 30, sim.h / 2 - 10)

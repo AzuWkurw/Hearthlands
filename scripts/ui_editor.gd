@@ -33,7 +33,21 @@ const BRUSHES := [
 	["Deer", "animal", "deer"], ["Boar", "animal", "boar"], ["Hare", "animal", "hare"], ["Wolf", "animal", "wolf"], ["No animals", "animal", ""],
 	["Game decides", "climate", 0], ["Temperate", "climate", 1], ["Taiga", "climate", 2], ["Steppe", "climate", 3], ["Wetland", "climate", 4],
 	["Ruins", "place", "ruins"], ["Bandit camp", "place", "bandits"], ["Remove place", "place", ""],
+	["Sulfur", "ore", 6], ["Lead", "ore", 7],
 ]
+## The brushes in the order the panel shows them: sulfur and lead (added in build 58) next to the other
+## ores, before "No ore".
+static func _brush_order() -> Array:
+	var out := []
+	for k in BRUSHES.size():
+		if String(BRUSHES[k][0]) == "No ore":
+			for j in BRUSHES.size():
+				if BRUSHES[j][1] == "ore" and int(BRUSHES[j][2]) > 5: out.append(j)
+		if not (BRUSHES[k][1] == "ore" and int(BRUSHES[k][2]) > 5):
+			out.append(k)
+	return out
+
+
 const GROUPS := [["Ground", ["ter"]], ["Things on it", ["deco"]], ["Ore", ["ore", "amount"]], ["Climate", ["climate"]],
 	["Animals", ["animal"]], ["Places", ["place"]]]
 const AMOUNT_NAMES := ["Poor", "Normal", "Rich", "Very rich"]
@@ -329,7 +343,7 @@ func _paint_tab() -> void:
 			body.add_child(main._label(String(g[0]), 13, Main.DIM))
 			var gf := HFlowContainer.new()
 			body.add_child(gf)
-			for k in BRUSHES.size():
+			for k in _brush_order():
 				if not (g[1] as Array).has(BRUSHES[k][1]):
 					continue
 				var b := _toggle(String(BRUSHES[k][0]), k == brush and moving < 0, func():
