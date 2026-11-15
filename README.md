@@ -17,10 +17,11 @@ on the [`downloads` branch](../../tree/downloads).
 
 What is in the game now:
 
-- Six ages from Roman to Industrial, 137 techs and a special study at the end of each age that opens
+- Seven ages from the Bronze Age to the Industrial age, 155 techs and a special study at the end of each age that opens
   the next, a choice of path (wealth, war or learning) for each age and a wonder to build in it; each
   age has its own building looks and kind of soldier.
-- 104 buildings in long production chains, each drawn with the tools and goods of its trade.
+- Over 120 buildings in long production chains, each drawn with the tools and goods of its trade;
+  tools and weapons of bronze, iron or steel, each working and lasting by its metal.
 - Up to 8 rival AIs with personalities, diplomacy, attacks and sieges, sea expeditions and colonies.
 - Four classes of people with needs and contentment, seasons and weather, diseases, fires, wildlife,
   random events, ruins and bandit camps.
@@ -31,7 +32,7 @@ What is in the game now:
 
 The full plan is in the [roadmap](https://claude.ai/artifact/YVAWwJGUN4FRBYtpz3zgQh).
 
-Done (builds 43 to 57):
+Done (builds 43 to 67):
 
 | Build | What came in |
 |---|---|
