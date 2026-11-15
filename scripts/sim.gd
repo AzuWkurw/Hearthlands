@@ -408,6 +408,8 @@ class Trip:
 
 
 class Attack:
+	var warned := false     # a landing: its target's realm was warned it is coming (build 59)
+	var militia := false    # a landing: the peasants by the headquarters took up arms against it
 	var p := 0
 	var src := 0
 	var tgt := 0

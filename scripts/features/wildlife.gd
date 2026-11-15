@@ -44,14 +44,21 @@ func on_start(loaded: bool) -> void:
 				animals.append([String(a[0]), float(a[1]), float(a[2]), float(a[1]), float(a[2]), sim.time, sim.time + rng.randf_range(0.0, 6.0)])
 	if animals.is_empty():
 		for k: String in KINDS:
-			for n in maxi(2, _land / int(KINDS[k].per)):
+			for n in maxi(2, mini(_land / int(KINDS[k].per), _cap(k) / 2)):
 				var at := _habitat_spot(k, -1, -1, 0)
 				if at.x >= 0:
 					animals.append([k, at.x, at.y, at.x, at.y, sim.time, sim.time + rng.randf_range(0.0, 6.0)])
 
 
+## Each kind's share of the most animals a map holds (build 59: one for every 40 tiles of the map, so a
+## big map's herds no longer run to thousands).
+const SHARE := {"deer": 0.35, "boar": 0.22, "hare": 0.37, "wolf": 0.06}
+const TILES_PER := 40.0
+
 func _cap(k: String) -> int:
-	return maxi(3, int(_land / int(KINDS[k].per) * 2.0))
+	var by_land := int(_land / int(KINDS[k].per) * 2.0)
+	var by_map := int(sim.w * sim.h / TILES_PER * float(SHARE[k]))
+	return maxi(3, mini(by_land, by_map))
 
 
 ## A tile where an animal of kind k likes to be: grass away from buildings, in or near woods for deer,
@@ -157,6 +164,14 @@ func _breed() -> void:
 		var list: Array = by.get(k, [])
 		var n := list.size()
 		var cap := _cap(k)
+		# more than the map holds (a game saved before build 59): some die off each half minute
+		if n > cap:
+			var die := maxi(1, (n - cap) / 4)
+			for m in die:
+				var gone: Array = list[rng.randi() % list.size()]
+				list.erase(gone)
+				animals.erase(gone)
+			continue
 		var births := 0
 		if n == 0:
 			births = 1

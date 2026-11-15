@@ -22,6 +22,7 @@ const STEPS := [
 	["Find food: a fisher or a hunter", "any:fisher,hunter", "Workers and miners need food. Fishers need water close by, hunters need woods with game."],
 	["Build a guard hut to claim land", "any:hut,palisade,tower", "Soldiers walk there from the headquarters; the land is yours when they arrive."],
 	["Build a house for more people", "has:house", "Newcomers arrive when there is food and room; homes keep people until a job needs them."],
+	["Pick something to study (R)", "studying", "Scriptoriums make research. Each age opens with one study, its gate: it can be studied once you know enough techs of the age you are in (the research window counts them for you)."],
 ]
 
 
@@ -151,6 +152,8 @@ func refresh() -> void:
 
 func _check(rule: String) -> bool:
 	var sim: Sim = main.sim
+	if rule == "studying":
+		return sim.human().research != "" or sim.human().techs.size() > 0
 	var kind := rule.get_slice(":", 0)
 	var tys := rule.get_slice(":", 1).split(",")
 	for b in sim.blds:

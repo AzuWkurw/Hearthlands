@@ -124,6 +124,43 @@ func helpers(t: Sim.Bld) -> Array:
 	return out
 
 
+## Peasants against a landing (build 59): when soldiers from the sea reach a building within MILITIA_R
+## tiles of its realm's headquarters, up to MILITIA_MAX peasants (one in six) take up pitchforks first.
+## Each fights one soldier: he wins MILITIA_WIN of the time (more behind town walls) or falls.
+const MILITIA_R := 14.0
+const MILITIA_MAX := 8
+const MILITIA_WIN := 0.35
+const LANDING_PEN := 0.03   # the defenders' edge a duel over soldiers just come ashore
+const LANDING_WALL := 0.05  # and more for each of town walls and star forts
+
+func _militia(a: Sim.Attack, p: Sim.Player, t: Sim.Bld) -> void:
+	var op := sim.players[t.p - 1]
+	if op.hq == null or op.hq.dead or Vector2(t.x, t.y).distance_to(Vector2(op.hq.x, op.hq.y)) > MILITIA_R:
+		return
+	var n := mini(op.peasant / 6, MILITIA_MAX)
+	if n < 1:
+		return
+	var win := MILITIA_WIN + (0.1 if op.techs.has("town_walls") else 0.0)
+	var killed := 0
+	var fell := 0
+	for i in n:
+		if a.n <= 0:
+			break
+		if sim.rng.randf() < win:
+			Sim.mix_remove(a.amix, Sim.mix_pick(a.amix, sim.rng))
+			a.n -= 1
+			a.blunt = mini(a.blunt, a.n)
+			killed += 1
+		else:
+			op.peasant -= 1
+			fell += 1
+	a.era = Sim.mix_avg(a.amix) if a.n > 0 else a.era
+	if t.p == 1:
+		sim.emit_log("%d peasants took up arms on the shore: %d of the landing fell, %d peasants were killed." % [n, killed, fell], Color("e8c870"), Vector2i(t.x, t.y))
+	elif a.p == 1:
+		sim.emit_log("Peasants met your landing on the shore: %d of your soldiers fell." % killed, Color("e08a6a"), Vector2i(t.x, t.y))
+
+
 func defenders(t: Sim.Bld) -> int:
 	var n := own_def(t)
 	for hh in helpers(t):
@@ -775,6 +812,14 @@ func _attack_tick(dt: float) -> void:
 				if a.p == 1 or t.p == 1:
 					sim.emit_log("The attack on %s was shot to pieces before it reached the gate." % String(t.def.name), Color("86ad5c") if t.p == 1 else Color("e08a6a"), Vector2i(t.x, t.y))
 				continue
+			if sim.time >= a.t1 and a.sea > 0 and not a.militia:
+				a.militia = true
+				_militia(a, p, t)
+				if a.n <= 0:
+					sim.attacks.remove_at(k)
+					if a.p == 1 or t.p == 1:
+						sim.emit_log("The landing at %s was thrown back into the sea by the peasants." % String(t.def.name).to_lower(), Color("86ad5c") if t.p == 1 else Color("e08a6a"), Vector2i(t.x, t.y))
+					continue
 			if defenders(t) <= 0 and sim.time >= a.t1:
 				_capture(a, t, p, sim.players[t.p - 1])
 				sim.attacks.remove_at(k)
@@ -808,6 +853,9 @@ func _attack_tick(dt: float) -> void:
 			dw += 0.03 * (Sim.level(defender_xp(t), Sim.SOLDIER_XP) - Sim.level(a.sxp, Sim.SOLDIER_XP))
 			# hungry soldiers far from home
 			dw += SUPPLY_PEN * a.hunger
+			# soldiers just come ashore, against town walls and star forts (build 59)
+			if a.sea > 0:
+				dw += LANDING_PEN + (LANDING_WALL if op.techs.has("town_walls") else 0.0) + (LANDING_WALL if op.techs.has("star_forts") else 0.0)
 			# the general's experience
 			dw -= sim.naval.duel_edge(a)
 			# one soldier of each side: the attacker comes as he is, the defenders send their best

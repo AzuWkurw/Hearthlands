@@ -33,6 +33,8 @@ const HIT := 0.35           # warship against warship, a second
 const HIT_FLEET := 0.4      # a soldier on a landing fleet killed, a second
 const FLEET_HITS := 0.12    # a landing fleet's soldiers hit back
 const ESCORTS := 3
+const INTERCEPT := 30.0     # a guard sails this far from its harbour to meet a fleet making for its realm
+const WARN_R := 30.0        # a landing this near its target is seen, and its realm warned
 
 const GENERAL_XP := [0.0, 5.0, 15.0, 35.0, 70.0]
 const GEN_DUEL := 0.02
@@ -206,6 +208,7 @@ func tick(dt: float) -> void:
 	if second:
 		_forts_fire()
 		_generals_check()
+		_warn_landings()
 		if not fx.is_empty():
 			fx = fx.filter(func(e): return sim.time - float(e[2]) < 1.0)
 
@@ -281,11 +284,37 @@ func _target(w: Dictionary, p: Sim.Player, home: Sim.Bld, escorting: bool):
 	for c in cands:
 		var cp: Vector2 = c[1]
 		var d := pos.distance_to(cp)
-		# an escort fights what comes near its fleet; a guard, whatever enters the water it guards
-		if d <= SEE or (not escorting and hp.distance_to(cp) <= GUARD_R + GUARD_OUT):
+		# an escort fights what comes near its fleet; a guard, whatever enters the water it guards, and
+		# a fleet making for its own realm further out still (build 59)
+		var reach := GUARD_R + GUARD_OUT
+		if String(c[0]) == "fleet":
+			var ft: Sim.Bld = sim.by_id.get((c[2] as Sim.Attack).tgt)
+			if ft != null and ft.p == p.id:
+				reach = maxf(reach, INTERCEPT)
+		if d <= SEE or (not escorting and hp.distance_to(cp) <= reach):
 			if d < bd:
 				bd = d; best = c
 	return best
+
+
+## Lookouts on the coast see a landing coming: its target's realm is told once, while it is still at sea.
+func _warn_landings() -> void:
+	for a: Sim.Attack in sim.attacks:
+		if a.warned or a.sea <= 0 or not sim.military.at_sea(a):
+			continue
+		var t: Sim.Bld = sim.by_id.get(a.tgt)
+		if t == null or t.dead:
+			continue
+		var at := sim.military.column_pos(a)
+		if at.distance_to(Vector2(t.x, t.y)) > WARN_R:
+			continue
+		a.warned = true
+		if t.p == 1:
+			var q := sim.players[a.p - 1]
+			var secs := maxi(0, int(a.t_land - sim.time))
+			sim.emit_log("Sails off the coast! %d ships with %d soldiers of %s make for your %s and land in about %d s. Guard the shore: warships, a coastal fort, soldiers at home. Peasants near the headquarters will take up arms." % [a.ships, a.n, q.name, String(t.def.name).to_lower(), secs], Color("e0402f"), Vector2i(t.x, t.y))
+		elif a.p == 1:
+			sim.emit_log("Your fleet has been seen from %s's coast." % sim.players[t.p - 1].name, Color("e08a6a"), Vector2i(at.round()))
 
 
 func _fire(w: Dictionary, p: Sim.Player, tgt: Array) -> void:

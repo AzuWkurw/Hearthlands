@@ -10,7 +10,7 @@ economy you do.
 ## Download
 
 The ready-made Windows game is on the [Releases page](../../releases/latest): download the
-`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.53.0 build 58** (see
+`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.54.0 build 59** (see
 `CHANGELOG.md`). Every build is a release of its own, made by GitHub Actions
 (`.github/workflows/release.yml`) when a new version reaches `main`; older builds up to 50 are also
 on the [`downloads` branch](../../tree/downloads).
@@ -55,6 +55,7 @@ Done (builds 43 to 57):
 | 56.1 to 56.3 | Bug fixes and speed-ups (a loaded game now goes on exactly as saved; faster carriers, workers and farms on big games) |
 | 57 | Gunpowder and lead: sulfur and lead deposits and mines, saltpeter works, charcoal burners, the powder mill, lead smelter, cartridge works, gunsmith and pyrotechnist; guns need gunpowder, musketeers and riflemen need cartridges; blasting in mines; fireworks at festivals |
 | 58 | Blueprints (U): copy a group of your buildings and roads from the map, keep it for every game in categories you choose, place it again with one click, share it as a code; trees and roads in the way: you are asked whether to clear them (for single buildings too); sulfur and lead brushes in the map editor |
+| 59 | The coast defended: a warning while a landing is at sea, peasants with pitchforks by the headquarters, walls against soldiers just ashore, warships meeting fleets further out; wild animals capped by the map size; a faster late game; the guide explains research and age gates |
 
 Later: a story campaign through the ages, multiplayer, scripted scenarios, a chronicle at the end of a
 game, more animations, music for each age, and quality-of-life features (a production chain overlay,
@@ -924,6 +925,14 @@ order the buildings within it. The numbers are saved with the game.
 - **Rivals at sea:** a rival with no way to reach anyone by land builds a harbour and ships early, sends
   expeditions and lands on its enemies' coasts; rivals at war by the sea build naval yards and coastal
   forts, and warlords keep field depots near the front.
+
+## Landings and the coast
+
+- A landing within 30 tiles of its target is seen: you are told while it is still at sea, and about when it lands.
+- When soldiers from the sea land at a building within 14 tiles of your headquarters, up to 8 peasants (one in
+  six) meet them first; each wins about a third of the time (more with Town walls) or falls.
+- Soldiers just come ashore lose a little more of each duel, and more again for each of Town walls and Star forts.
+- Your warships go up to 30 tiles out from their harbour for a fleet making for your realm (23 for others).
 
 ## Blueprints
 

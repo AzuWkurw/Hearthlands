@@ -508,6 +508,10 @@ func prod_tick(b: Sim.Bld, p: Sim.Player, _dt: float) -> void:
 			# waiting for goods: look again soon; waiting for the land or the stores to change (trees to
 			# grow, a store to empty): that takes a while, so look less often
 			var cap := 3.0 if why.begins_with("Needs") or why.begins_with("No idle") or why.begins_with("Waiting") else 6.0
+			# waiting for its inputs: a carrier bringing them wakes it at once (input_arrival), so it
+			# need not look often itself (build 59)
+			if d.has("in") and (why.begins_with("Needs ") or (why.begins_with("Waiting for ") and why.ends_with("on its way"))):
+				cap = 8.0
 			b.retry = sim.time + minf(1.0 + b.fails * 0.5, cap) + sim.rng.randf() * 0.3
 		b.fails += 1
 		return

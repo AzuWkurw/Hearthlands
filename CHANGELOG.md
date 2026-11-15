@@ -1,5 +1,16 @@
 # Changelog
 
+## Build 59 (v0.54.0, 2026-11-15)
+
+Build 59: the coast defended, and a faster late game.
+- Sails off the coast: when an enemy landing comes within sight of the building it makes for, you are told while it is still at sea, with about how long until it lands.
+- Peasants take up arms: soldiers from the sea who land at a building near your headquarters first meet up to 8 peasants (one in six) with pitchforks; town walls help them.
+- Soldiers just come ashore fight a little worse, and worse again against town walls and star forts.
+- Warships go out further (up to 30 tiles from their harbour) to meet a fleet making for your realm.
+- Wild animals are capped by the map's size (about one for every 40 tiles); on big maps with thousands, some die off until the land holds the right number.
+- Faster late game: buildings that are stocked up are no longer sorted into every carriers' round, and workshops waiting for their inputs sleep until a carrier brings them.
+- The first-game guide has a last step: pick something to study, with how the gate of each age opens.
+
 ## Build 58 (v0.53.0, 2026-11-15)
 
 Build 58: blueprints.

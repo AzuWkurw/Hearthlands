@@ -1521,6 +1521,10 @@ func _dispatch_inputs() -> void:
 		for b: Sim.Bld in _input_blds(p):
 			if b.dead or b.state != "ready" or not b.staffed or b.prio == Sim.PRIO_PAUSED or b.reno_to >= 0:
 				continue
+			# found stocked up (or with nothing to send) a moment ago: it sleeps until in_next, and is not
+			# even sorted into the rounds (build 59: most buildings sleep most of the time)
+			if sim.time < b.in_next:
+				continue
 			if hungry and food_chain().has(b.ty):
 				buckets[0].append(b)
 			else:
