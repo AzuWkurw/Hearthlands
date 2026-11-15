@@ -10,7 +10,7 @@ economy you do.
 ## Download
 
 The ready-made Windows game is on the [Releases page](../../releases/latest): download the
-`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.58.0 build 63** (see
+`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.59.0 build 64** (see
 `CHANGELOG.md`). Every build is a release of its own, made by GitHub Actions
 (`.github/workflows/release.yml`) when a new version reaches `main`; older builds up to 50 are also
 on the [`downloads` branch](../../tree/downloads).
@@ -60,6 +60,7 @@ Done (builds 43 to 57):
 | 61 | Lots of 50 at the market; standing orders (sell or buy every few minutes, keeping a reserve); the realms graph (V) with gold and wealth |
 | 62 | Guilds (workplaces of one trade together work faster), the build queue (Shift+Q: sites built one after another), copy a building's settings to all of its kind |
 | 63 | Hats for each age, music for the later ages, workers' voices, sandbox goals (24 goals in endless games); a fix for geologists' marks on sulfur and lead |
+| 64 | Steam and rails: steel, rails and locomotives; track, stations and trains; steam engines for old workshops (faster for coal, smoke near homes) |
 
 Later: a story campaign through the ages, multiplayer, scripted scenarios, a chronicle at the end of a
 game, more animations, music for each age, and quality-of-life features (a production chain overlay,
@@ -409,13 +410,13 @@ Open **Settings** (top bar or F10). Everything there is remembered in `user://se
 - Command line (also for the exported game): `--rendering-method gl_compatibility` or `forward_plus` or
   `mobile` starts with that renderer once; `--resolution 1280x720` sets the window size.
 
-## Resources (79)
+## Resources (82)
 
-Logs, Stone, Clay, Water, Grain, Hops, Wool, Hides, Salt, Coal, Iron ore, Copper ore, Gold ore, Planks, Bricks, Flour, Bread, Fish, Smoked fish, Meat, Apples, Vegetables, Beer, Cloth, Leather, Paper, Iron, Copper, Gold, Axes, Pickaxes, Farm tools, Bows and rods, Knives, Saws, Smith's tongs, Trowels, Shears, Chisels, Quills, Harnesses, Weapons, Bows, Armor, Clothes, Flax, Linen clothes, Fur coats, Jewelry, Furniture, Sand, Glassware, Milk, Cheese, Sausages, Honey, Beeswax, Candles, Grapes, Wine, Herbs, Medicine, Donkeys, Peppercorns, Spices, Silk cocoons, Silk, Kaolin, Porcelain, Coffee beans, Coffee, Sulfur, Saltpeter, Charcoal, Gunpowder, Lead ore, Lead, Cartridges, Fireworks.
+Logs, Stone, Clay, Water, Grain, Hops, Wool, Hides, Salt, Coal, Iron ore, Copper ore, Gold ore, Planks, Bricks, Flour, Bread, Fish, Smoked fish, Meat, Apples, Vegetables, Beer, Cloth, Leather, Paper, Iron, Copper, Gold, Axes, Pickaxes, Farm tools, Bows and rods, Knives, Saws, Smith's tongs, Trowels, Shears, Chisels, Quills, Harnesses, Weapons, Bows, Armor, Clothes, Flax, Linen clothes, Fur coats, Jewelry, Furniture, Sand, Glassware, Milk, Cheese, Sausages, Honey, Beeswax, Candles, Grapes, Wine, Herbs, Medicine, Donkeys, Peppercorns, Spices, Silk cocoons, Silk, Kaolin, Porcelain, Coffee beans, Coffee, Sulfur, Saltpeter, Charcoal, Gunpowder, Lead ore, Lead, Cartridges, Fireworks, Steel, Rails, Locomotives.
 
 Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples, Vegetables, Cheese, Sausages, Honey.
 
-## Buildings (116 you can build)
+## Buildings (120 you can build)
 
 **Raw**
 
@@ -479,6 +480,9 @@ Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples,
 | Saltpeter works | 3 planks, 2 stone | peasant (kilns and glass) | 1 logs | 1 saltpeter | Gunpowder |
 | Lead mine | 4 planks, 2 stone | artisan (mining and quarrying) | 1 food | 1 lead ore | Gunpowder |
 | Lead smelter | 3 planks, 4 stone | artisan (metalwork) | 1 lead ore, 1 coal | 2 lead | Gunpowder |
+| Steel mill | 6 planks, 8 bricks, 4 iron | artisan (metalwork) | 2 iron, 1 coal | 1 steel | Steam engine |
+| Rolling mill | 5 planks, 6 bricks, 2 iron | artisan (metalwork) | 1 steel | 2 rails | Railways |
+| Locomotive works | 8 planks, 10 bricks, 4 iron | artisan (metalwork) | 2 steel, 1 iron, 1 planks | 1 locomotives | Railways |
 
 **Crafts**
 
@@ -551,6 +555,7 @@ Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples,
 | Shipyard | 5 planks, 2 stone | artisan (woodwork) | 4 planks | 1 ship | Roman (start) |
 | Naval yard | 6 planks, 3 stone, 2 iron | artisan (woodwork) | 4 planks, 1 iron, 1 weapons, 2 gunpowder | 1 warship | Navigators' school |
 | River landing | 3 planks, 1 stone | – | – | room for 12 of each good, 2 porters | Timber framing |
+| Railway station | 6 planks, 6 bricks, 2 iron | – | – | room for 60 of each good, 3 porters | Railways |
 
 **Military**
 
@@ -930,6 +935,28 @@ order the buildings within it. The numbers are saved with the game.
 - **Rivals at sea:** a rival with no way to reach anyone by land builds a harbour and ships early, sends
   expeditions and lands on its enemies' coasts; rivals at war by the sea build naval yards and coastal
   forts, and warlords keep field depots near the front.
+
+## Steam and rails
+
+**Railways** (the Railways study, Industrial age):
+
+- A **steel mill** makes steel from iron and coal, a **rolling mill** rails from steel, and a **locomotive
+  works** locomotives from steel, iron and planks.
+- **Rail** on the toolbar (once Railways is studied) lays track: click one of your railway stations or rails,
+  then where the track goes. One rail a tile; three a tile on a bridge (straight across water, up to 5 tiles).
+  Rails cross roads at level crossings. **No rail** takes a stretch up again (half the rails come back).
+- A **railway station** is a small store; it joins the track touching its plot. Two stations on the same
+  track make a line.
+- Every **locomotive** in your stores is a train. A free train takes up to 40 goods from a station with
+  plenty to one on the same track with little, about four times as fast as a cart, for 1 coal a trip, and
+  comes back. The station's info shows its line, trains and the goods they carried.
+- Enemy columns marching over a line tear up a few tiles of it.
+
+**Steam engines** (the Steam engine study): sawmills, mills, bakeries, breweries, weavers, brickworks,
+smelters, smithies and other workshops can take one (**Steam upgrade** in their info: 4 iron, 6 bricks,
+2 steel, fitted in 40 s while the workshop keeps working). It then works 60% faster for 1 coal every 2 work
+cycles (without coal, at the old speed), and its smoke makes homes within 4 tiles a little less content.
+Rivals fit steam engines to their busiest workshops and lay a railway between two of their stores.
 
 ## Sandbox goals
 

@@ -3717,5 +3717,129 @@
    "glow": []
   },
   "trade": "fine"
+ },
+ "steel_mill": {
+  "name": "Steel mill",
+  "cat": "industry",
+  "size": "large",
+  "cost": {
+   "planks": 6,
+   "bricks": 8,
+   "iron": 4
+  },
+  "time": 34,
+  "worker": "artisan",
+  "cycle": 40,
+  "in": {
+   "iron": 2,
+   "coal": 1
+  },
+  "out": {
+   "steel": 1
+  },
+  "tech": "steam_engine",
+  "info": "A Bessemer converter blows air through molten iron: steel for rails, locomotives and steam engines.",
+  "art": {
+   "style": "kiln",
+   "wall": "#6a5a50",
+   "sw": 3,
+   "smoke": [
+    0.25,
+    0.15
+   ],
+   "glow": [
+    0.5,
+    0.7
+   ]
+  },
+  "trade": "metal"
+ },
+ "rolling_mill": {
+  "name": "Rolling mill",
+  "cat": "industry",
+  "size": "medium",
+  "cost": {
+   "planks": 5,
+   "bricks": 6,
+   "iron": 2
+  },
+  "time": 26,
+  "worker": "artisan",
+  "cycle": 30,
+  "in": {
+   "steel": 1
+  },
+  "out": {
+   "rails": 2
+  },
+  "tech": "railways",
+  "info": "Red-hot steel is rolled into rails: one rail lays one tile of track.",
+  "art": {
+   "style": "workshop",
+   "wall": "#7a6a5e",
+   "sw": 2.2,
+   "smoke": [
+    0.3,
+    0.2
+   ],
+   "glow": []
+  },
+  "trade": "metal"
+ },
+ "locomotive_works": {
+  "name": "Locomotive works",
+  "cat": "industry",
+  "size": "large",
+  "cost": {
+   "planks": 8,
+   "bricks": 10,
+   "iron": 4
+  },
+  "time": 40,
+  "worker": "artisan",
+  "cycle": 120,
+  "in": {
+   "steel": 2,
+   "iron": 1,
+   "planks": 1
+  },
+  "out": {
+   "locomotive": 1
+  },
+  "tech": "railways",
+  "info": "Builds steam locomotives. Each locomotive in your stores runs as a train between two of your stations on the same track.",
+  "art": {
+   "style": "workshop",
+   "wall": "#5e6a5a",
+   "sw": 3,
+   "smoke": [
+    0.2,
+    0.15
+   ],
+   "glow": []
+  },
+  "trade": "metal"
+ },
+ "railway_station": {
+  "name": "Railway station",
+  "cat": "logistics",
+  "size": "medium",
+  "cost": {
+   "planks": 6,
+   "bricks": 6,
+   "iron": 2
+  },
+  "time": 24,
+  "store": 60,
+  "porters": 3,
+  "tech": "railways",
+  "info": "A small store with a platform. Lay rails up to it (it joins the track touching its plot): two stations on the same track make a line, and your locomotives run trains between them, up to 40 goods a trip, for 1 coal a trip.",
+  "art": {
+   "style": "house",
+   "wall": "#a07a5a",
+   "sw": 2.2,
+   "smoke": [],
+   "glow": []
+  }
  }
 }

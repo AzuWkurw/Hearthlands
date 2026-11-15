@@ -1781,6 +1781,8 @@ func _dispatch() -> void:
 
 
 func _free_carrier(t: Sim.Trip) -> void:
+	if t.kind == "train":
+		return                     # the locomotive is back in its station's shed
 	if t.kind == "boat":
 		var lb: Sim.Bld = sim.by_id.get(t.site)
 		if lb != null:

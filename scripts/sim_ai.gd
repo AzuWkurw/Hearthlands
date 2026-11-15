@@ -80,6 +80,23 @@ func _site_score(ty: String, x: int, y: int, p: Sim.Player) -> float:
 		return -dist
 	if ty == "river_landing":
 		return _landing_score(x, y, p)
+	if ty == "railway_station":
+		# the first by the headquarters, the second far off by another store
+		var first: Sim.Bld = null
+		for b: Sim.Bld in sim.realm_blds(p):
+			if b.ty == "railway_station" and not b.dead:
+				first = b
+				break
+		if first == null:
+			return -dist
+		var d1 := Vector2(x - first.x, y - first.y).length()
+		if d1 < 14.0:
+			return -1000.0
+		var ns := 99.0
+		for b: Sim.Bld in sim.realm_blds(p):
+			if sim.is_store(b) and b.ty != "railway_station" and not b.dead:
+				ns = minf(ns, Vector2(x - b.x, y - b.y).length())
+		return minf(d1, 40.0) - ns * 1.5
 	return -dist
 
 
@@ -97,6 +114,32 @@ func _river_land(p: Sim.Player) -> bool:
 	p.river_t = sim.time + 300.0
 	p.river = yes
 	return yes
+
+
+## Steam engines and railways (build 64), every minute or so: a steam engine for the busiest workshop
+## that can take one, when the materials and coal are there; track between its first two stations.
+func _ai_steam_rails(p: Sim.Player) -> void:
+	if sim.time < p.rail_t:
+		return
+	p.rail_t = sim.time + 60.0
+	var rw := sim.railway
+	if p.techs.has("steam_engine") and float(p.stock.get("coal", 0.0)) >= 15.0 and float(p.stock.get("steel", 0.0)) >= 2.0 \
+			and float(p.stock.get("iron", 0.0)) >= 6.0 and float(p.stock.get("bricks", 0.0)) >= 8.0:
+		var best: Sim.Bld = null
+		for b: Sim.Bld in sim.realm_blds(p):
+			if b.staffed and rw.steam_why(b) == "" and (best == null or b.wxp > best.wxp or (b.wxp == best.wxp and b.id < best.id)):
+				best = b
+		if best != null:
+			rw.fit_steam(best)
+	if p.techs.has("railways"):
+		var sts := rw.stations(p)
+		if sts.size() >= 2:
+			var a: Sim.Bld = sts[0]
+			var b2: Sim.Bld = sts[1]
+			if rw.station_piece(a) < 0 or rw.station_piece(a) != rw.station_piece(b2):
+				var path := rw.find_path(a.x, a.y, b2.x, b2.y, p.id)
+				if not path.is_empty() and float(p.stock.get("rails", 0.0)) >= rw.cost_of(path):
+					rw.lay(path, p)
 
 
 ## Where realm p's town centre is: the middle of its taverns, chapels and markets (any state), or
@@ -412,6 +455,7 @@ func ai_think(p: Sim.Player) -> void:
 	_free_pid = -1
 	_plan_town(p)
 	_ai_priorities(p)
+	_ai_steam_rails(p)
 	var isl := sim.naval.island(p)
 	if p.crowded or isl:
 		sim.sea.ai_expedition(p)
@@ -575,6 +619,11 @@ func ai_think(p: Sim.Player) -> void:
 		["cartridge_works", (2 if p.age >= 5 else 1) if guns and c.call("lead_smelter") > 0 and c.call("powder_mill") > 0 else 0],
 		# fireworks for its festivals, once the powder chain stands and it has taverns
 		["pyrotechnist", 1 if c.call("powder_mill") > 0 and c.call("tavern") > 0 and mins > 40 else 0],
+		# steel for steam engines and rails, and a railway from home to the farthest store (build 64)
+		["steel_mill", 1 if p.techs.has("steam_engine") and mins > 40 else 0],
+		["rolling_mill", 1 if p.techs.has("railways") and c.call("steel_mill") > 0 else 0],
+		["locomotive_works", 1 if c.call("rolling_mill") > 0 else 0],
+		["railway_station", 2 if c.call("rolling_mill") > 0 and c.call("storehouse") + c.call("warehouse") + c.call("depot") > 0 else 0],
 	])
 	if not extra.is_empty():
 		var at := 13

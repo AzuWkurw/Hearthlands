@@ -611,5 +611,26 @@
   "abbr": "Fw",
   "color": "#d84a6a",
   "icon": "cone"
+ },
+ {
+  "id": "steel",
+  "name": "Steel",
+  "abbr": "St",
+  "color": "#8a96a8",
+  "icon": "ingot"
+ },
+ {
+  "id": "rails",
+  "name": "Rails",
+  "abbr": "Rl",
+  "color": "#9aa0a8",
+  "icon": "stack"
+ },
+ {
+  "id": "locomotive",
+  "name": "Locomotives",
+  "abbr": "Lo",
+  "color": "#2f5a3a",
+  "icon": "wedge"
  }
 ]

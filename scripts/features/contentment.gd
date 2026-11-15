@@ -19,7 +19,8 @@ const FEST_COVER := 0.15
 ## (MARKET_R tiles) form a quarter. Its people are more content and its nobles pay more tax.
 const MARKET_R := 10
 const QUARTER_MOOD := 0.1
-const QUARTER_TAX := 0.25   # share of homes its taverns must reach for a festival (0.3 before build 53)
+const QUARTER_TAX := 0.25
+const SMOKE_MOOD := 0.1      # less content: the share of homes in the smoke of steam engines (build 64)   # share of homes its taverns must reach for a festival (0.3 before build 53)
 
 var served := {}           # building id -> time of its last cycle
 var mood_of := {}          # realm id -> contentment now
@@ -58,6 +59,7 @@ func _cover(p: Sim.Player) -> Array:
 	var taverns := []
 	var chapels := []
 	var markets := []
+	var smoky := []
 	var homes := []
 	for b: Sim.Bld in sim.realm_blds(p):
 		if b.state != "ready" or b.dead:
@@ -68,12 +70,16 @@ func _cover(p: Sim.Player) -> Array:
 			chapels.append(b)
 		elif b.ty == "market":
 			markets.append(b)
+		elif b.steam and sim.railway.steam_on(b):
+			smoky.append(b)
 		elif b.def.has("housing"):
 			homes.append(b)
 	var room := 0.0
 	var by_t := 0.0
 	var by_c := 0.0
 	var by_q := 0.0
+	var by_s := 0.0
+	var sr := SimRail.SMOKE_R
 	for h: Sim.Bld in homes:
 		var n := float(h.def.housing)
 		room += n
@@ -89,14 +95,24 @@ func _cover(p: Sim.Player) -> Array:
 				by_c += n
 				nc = true
 				break
+		for f: Sim.Bld in smoky:
+			if (f.x - h.x) * (f.x - h.x) + (f.y - h.y) * (f.y - h.y) <= sr * sr:
+				by_s += n
+				break
 		if nt and nc:
 			for m: Sim.Bld in markets:
 				if (m.x - h.x) * (m.x - h.x) + (m.y - h.y) * (m.y - h.y) <= MARKET_R * MARKET_R:
 					by_q += n
 					break
 	if room <= 0.0:
-		return [0.0, 0.0, 0.0]
-	return [by_t / room, by_c / room, by_q / room]
+		return [0.0, 0.0, 0.0, 0.0]
+	return [by_t / room, by_c / room, by_q / room, by_s / room]
+
+
+## The share of realm p's homes within reach of a steam engine's smoke (build 64).
+func smoke_share(p: Sim.Player) -> float:
+	var cv: Array = cover.get(p.id, [])
+	return float(cv[3]) if cv.size() > 3 else 0.0
 
 
 ## The share of realm p's homes in a town quarter (0 to 1).
@@ -128,7 +144,7 @@ func on_second() -> void:
 		if _t % 5 == 0 or not cover.has(p.id):
 			cover[p.id] = _cover(p)
 		var cv: Array = cover[p.id]
-		var m := 0.5 + 0.3 * float(cv[0]) + 0.2 * float(cv[1]) + QUARTER_MOOD * quarter_share(p)
+		var m := 0.5 + 0.3 * float(cv[0]) + 0.2 * float(cv[1]) + QUARTER_MOOD * quarter_share(p) - SMOKE_MOOD * smoke_share(p)
 		if p.starve > 0:
 			m -= 0.25
 		var dis = sim.get_feature("diseases")
@@ -184,6 +200,8 @@ func panel_lines(p: Sim.Player) -> PackedStringArray:
 	var col := "#86ad5c" if m >= 0.6 else ("#d9483d" if m < LOW else "#e7e3d0")
 	var eff := roundi((m - 0.5) * 20.0 + (10.0 if in_festival(p) else 0.0))
 	var t := "Contentment  [color=%s][b]%d%%[/b][/color] (work %s%d%%): taverns serve %d%% of homes, chapels %d%%" % [col, roundi(m * 100.0), "+" if eff >= 0 else "", eff, roundi(float(cv[0]) * 100.0), roundi(float(cv[1]) * 100.0)]
+	if smoke_share(p) > 0.0:
+		t += ", [color=#e0b060]%d%% of homes in factory smoke[/color]" % roundi(smoke_share(p) * 100.0)
 	if quarter_share(p) > 0.0:
 		t += ", town quarters %d%% of homes (tax +%d%%)" % [roundi(quarter_share(p) * 100.0), roundi(quarter_share(p) * QUARTER_TAX * 100.0)]
 	if in_festival(p):

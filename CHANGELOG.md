@@ -1,5 +1,15 @@
 # Changelog
 
+## Build 64 (v0.59.0, 2026-11-15)
+
+Build 64: steam and rails.
+- Railways (the Railways study, Industrial age): a steel mill makes steel from iron and coal, a rolling mill makes rails from steel, and a locomotive works builds locomotives.
+- Lay track with the Rail tool (on the toolbar once Railways is studied): from a railway station or rail to where it should go, one rail a tile, three a tile on a bridge across water. Rails cross roads at level crossings; "No rail" takes a stretch up again (half the rails come back).
+- Railway stations are small stores on the track. Two stations on the same track make a line. Every locomotive in your stores is a train: it carries up to 40 goods from a station with plenty to one with little, about four times as fast as a cart, for 1 coal a trip. You see the engine, its smoke and its wagons with their loads. A station's info shows its line, the trains and the goods they carried.
+- Enemy columns marching over a line tear up a few tiles of it.
+- Steam engines: with the Steam engine study, sawmills, mills, bakeries, breweries, weavers, brickworks, smelters, smithies and other workshops can take a steam engine (4 iron, 6 bricks, 2 steel; fitted in 40 seconds while they keep working). They then work 60% faster for 1 coal every 2 work cycles, with a brick chimney and smoke; without coal they work at the old speed. The smoke makes homes within 4 tiles a little less content.
+- Rivals build steel, fit steam engines to their busiest workshops and lay a railway between two of their stores.
+
 ## Build 63 (v0.58.0, 2026-11-15)
 
 Build 63: dressed for the age, music for the later ages, voices, goals.

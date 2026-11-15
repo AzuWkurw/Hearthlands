@@ -42,7 +42,7 @@ func _refresh_sel() -> void:
 		return
 	var d := b.def
 	var owner := main.sim.players[b.p - 1]
-	var t := "[b]%s[/b]%s%s\n%s\n" % [String(d.name), (" of " + b.town) if b.town != "" else "", "" if b.p == 1 else " (" + owner.name + ")", main.sim.status(b)]
+	var t := "[b]%s[/b]%s%s\n%s\n" % [("Steam " + String(d.name).to_lower()) if b.steam else String(d.name), (" of " + b.town) if b.town != "" else "", "" if b.p == 1 else " (" + owner.name + ")", main.sim.status(b)]
 	if b.state == "build" and b.mat_total > 0:
 		t += "Materials: %s\n[color=#9a9c88]Carriers bring them from the stores as the site needs them; nothing is set aside before.[/color]\n" % main.sim.materials_text(b)
 	# people walking here (a builder, the worker, soldiers), with how long until they arrive
@@ -145,6 +145,31 @@ func _refresh_sel() -> void:
 			t += "[color=#e0b060]Its vein has run dry: demolish it to get back 40%% of its cost.[/color]\n"
 	if b.p == 1 and main.sim.has_priority(b):
 		t += "Priority: [b]%s[/b]. %s\n" % [Sim.PRIO_NAMES[b.prio], Main.PRIO_HELP[b.prio]]
+	# steam engines and railways (build 64)
+	var rw: SimRail = main.sim.railway
+	if b.steam:
+		if not rw.steam_on(b):
+			t += tr("[color=#e8c870]Steam engine:[/color] being fitted, ready in %d s (it keeps working meanwhile).\n") % maxi(0, ceili(b.steam_at - main.sim.time))
+		else:
+			var coal := int(main.sim.players[b.p - 1].stock.get("coal", 0.0))
+			t += (tr("[color=#e8c870]Steam engine:[/color] works [b]%d%% faster[/b] for 1 coal every 2 cycles (%d coal in store). Its smoke makes homes within %d tiles a little less content.\n") % [roundi(SimRail.STEAM * 100), coal, SimRail.SMOKE_R]) \
+				+ ("" if coal > 0 or b.steam_coal >= 0.5 else tr("[color=#e0b060]No coal: it works at the old speed.[/color]\n"))
+	elif b.p == 1 and SimRail.STEAM_KINDS.has(b.ty) and b.state == "ready" and main.sim.human().techs.has("steam_engine"):
+		t += tr("[color=#9a9c88]It can take a steam engine: %d%% faster for 1 coal every 2 cycles.[/color]\n") % roundi(SimRail.STEAM * 100)
+	if SimRail.is_station(b) and b.state == "ready":
+		var piece := rw.station_piece(b)
+		var others := 0
+		for o: Sim.Bld in rw.stations(main.sim.players[b.p - 1]):
+			if o != b and piece >= 0 and rw.station_piece(o) == piece:
+				others += 1
+		var pl := main.sim.players[b.p - 1]
+		if piece < 0:
+			t += tr("[color=#e0b060]No track touches it yet: lay rails up to its plot (Rail on the toolbar).[/color]\n")
+		elif others == 0:
+			t += tr("[color=#e0b060]On the track, but no other station on it yet: a line needs two.[/color]\n")
+		else:
+			t += tr("On a line with %d other station%s. Trains: %d (%d out now), one for each locomotive in store; 1 coal a trip.\n") % [others, "" if others == 1 else "s", rw.trains(pl), rw.trains_out(pl)]
+		t += tr("Goods its trains carried: %d\n") % b.carried
 	# its guild (build 62)
 	if b.p == 1 and b.state == "ready" and GameData.trade(b.ty) != "" and String(b.def.get("worker", "")) != "":
 		var me := main.sim.human()
@@ -207,6 +232,27 @@ func _refresh_sel() -> void:
 			sb.set_pressed_no_signal(b.policy == k)
 			sb.tooltip_text = helps[k]
 			main.prio_row.add_child(sb)
+	# a steam engine: fit one, or take it out (build 64)
+	if b.p == 1 and b.state == "ready" and SimRail.STEAM_KINDS.has(b.ty) and main.sim.human().techs.has("steam_engine"):
+		if b.steam:
+			main.sel_actions.add_child(main._button(tr("Take the steam engine out"), func():
+				var bb: Sim.Bld = main.sim.by_id.get(main.view.sel_id)
+				if bb:
+					main.sim.railway.remove_steam(bb)
+					_refresh_sel()))
+		else:
+			var cost := []
+			for k in SimRail.STEAM_COST:
+				cost.append("%d %s" % [int(SimRail.STEAM_COST[k]), GameData.res_name(k).to_lower()])
+			var sb2 := main._button(tr("Steam upgrade: %s") % ", ".join(cost), func():
+				var bb: Sim.Bld = main.sim.by_id.get(main.view.sel_id)
+				if bb:
+					var why := main.sim.railway.fit_steam(bb)
+					main._show_hint(why if why != "" else tr("The steam engine is being fitted: %d s.") % int(SimRail.STEAM_FIT), 3.0)
+					_refresh_sel())
+			sb2.tooltip_text = tr("A steam engine and a chimney: %d%% faster for 1 coal every 2 work cycles. Its smoke makes homes within %d tiles a little less content.") % [roundi(SimRail.STEAM * 100), SimRail.SMOKE_R]
+			sb2.disabled = main.sim.railway.steam_why(b) != ""
+			main.sel_actions.add_child(sb2)
 	# a workshop: how many work cycles of inputs to keep here
 	if b.p == 1 and b.state == "ready" and b.def.has("in") and b.def.has("cycle"):
 		main.prio_row.add_child(main._label("Keep inputs for", 14, Main.DIM))

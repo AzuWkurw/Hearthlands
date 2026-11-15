@@ -781,6 +781,167 @@ func road_preview() -> PackedInt32Array:
 	return _preview
 
 
+## The track a new railway would take from road_start to the mouse (the @rail tool), worked out once
+## for each pair of tiles.
+var _rail_key := Vector4i(-1, -1, -1, -1)
+var _rail_prev := PackedInt32Array()
+
+func rail_preview() -> PackedInt32Array:
+	if road_start.x < 0 or not sim.inb(ghost.x, ghost.y):
+		return PackedInt32Array()
+	var key := Vector4i(road_start.x, road_start.y, ghost.x, ghost.y)
+	if key != _rail_key:
+		_rail_key = key
+		_rail_prev = sim.railway.find_path(road_start.x, road_start.y, ghost.x, ghost.y, 1) if ghost != road_start else PackedInt32Array()
+	return _rail_prev
+
+
+## Railways on the ground (build 64): a gravel bed, sleepers and two steel rails from each tile's
+## middle towards each neighbour with a rail (or a station it touches); a timber trestle under bridges.
+const RAIL_DIRS := [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+
+## Whether any rail lies on the map (looked at again when the railways change).
+var _any_key := Vector2i(-1, -1)
+var _rail_any := false
+
+func _any_rail() -> bool:
+	# (looked at again when track is laid or taken up, and every few seconds, as after loading a game)
+	var key := Vector2i(sim.railway.ver, int(sim.time) / 3)
+	if key != _any_key:
+		_any_key = key
+		_rail_any = sim.rail.count(1) > 0
+	return _rail_any
+
+
+func _draw_rails(x0: int, x1: int, y0: int, y1: int) -> void:
+	var w := sim.w
+	var any := false
+	for y in range(y0, y1 + 1):
+		var row := y * w
+		for x in range(x0, x1 + 1):
+			if sim.rail[row + x] == 0:
+				continue
+			any = true
+			var i := row + x
+			var c := Vector2(x + 0.5, y + 0.55 - lift_at(x + 0.5, y + 0.55))
+			var arms := []
+			for d: Vector2i in RAIL_DIRS:
+				var nx := x + d.x
+				var ny := y + d.y
+				if not sim.inb(nx, ny):
+					continue
+				var ni := ny * w + nx
+				if sim.rail[ni] != 0 or SimRail.is_station(sim.by_id.get(sim.bmap[ni])) or SimRail.is_station(sim.by_id.get(sim.plot[ni])):
+					arms.append(Vector2(d))
+			if arms.is_empty():
+				arms = [Vector2(1, 0), Vector2(-1, 0)]
+			elif arms.size() == 1:
+				arms.append(-arms[0])
+			if sim.ter[i] == Sim.WATER:
+				_cv.draw_rect(Rect2(c.x - 0.45, c.y - 0.12, 0.9, 0.5), Color(0.38, 0.27, 0.16))
+				_cv.draw_line(Vector2(c.x - 0.35, c.y + 0.38), Vector2(c.x - 0.35, c.y + 0.7), Color(0.32, 0.22, 0.13), 0.07)
+				_cv.draw_line(Vector2(c.x + 0.35, c.y + 0.38), Vector2(c.x + 0.35, c.y + 0.7), Color(0.32, 0.22, 0.13), 0.07)
+			for a: Vector2 in arms:
+				var e := c + a * 0.52
+				_cv.draw_line(c, e, Color(0.55, 0.52, 0.47, 0.95), 0.6)
+			for a: Vector2 in arms:
+				var n := Vector2(-a.y, a.x)
+				for k in 2:
+					var sp := c + a * (0.12 + 0.25 * k)
+					_cv.draw_line(sp - n * 0.27, sp + n * 0.27, Color(0.36, 0.25, 0.15), 0.09)
+			for a: Vector2 in arms:
+				var n2 := Vector2(-a.y, a.x)
+				for side in [-0.15, 0.15]:
+					_cv.draw_line(c + n2 * side - a * 0.15, c + a * 0.52 + n2 * side, Color(0.78, 0.8, 0.84), 0.05)
+	if not any:
+		return
+
+
+## A train: the engine with smoke and its wagons, each carrying the colour of its load, along the track.
+func _draw_train(t: Sim.Trip, x0: int, x1: int, y0: int, y1: int) -> void:
+	var w := sim.w
+	var n := t.path.size() - 1
+	var prog := 0.0
+	var back := t.delivered
+	if not t.delivered:
+		prog = clampf((sim.time - t.t0 - 2.0) / maxf(0.01, t.t1 - t.t0 - 4.0), 0.0, 1.0)
+	else:
+		prog = 1.0 - clampf((sim.time - t.t1) / maxf(0.01, t.t2 - t.t1 - 2.0), 0.0, 1.0)
+	var head := prog * n
+	var pa := t.path[0]
+	var pb := t.path[n]
+	if mini(pa % w, pb % w) > x1 + 30 or maxi(pa % w, pb % w) < x0 - 30 or mini(pa / w, pb / w) > y1 + 30 or maxi(pa / w, pb / w) < y0 - 30:
+		return
+	var cars := 6 if not back else 1
+	var pc: Color = sim.players[t.p - 1].color
+	for k in range(cars - 1, -1, -1):
+		# the engine leads; going back it runs on alone
+		var f := clampf(head - (k * 0.95 if not back else 0.0) * (1.0 if not back else -1.0), 0.0, float(n))
+		var i0 := mini(floori(f), n - 1)
+		var a := t.path[i0]
+		var c := t.path[i0 + 1]
+		var at := Vector2(a % w, a / w).lerp(Vector2(c % w, c / w), f - i0) + Vector2(0.5, 0.55)
+		at.y -= lift_at(at.x, at.y)
+		var dir := Vector2(c % w - a % w, c / w - a / w).normalized()
+		if back:
+			dir = -dir
+		if dir == Vector2.ZERO:
+			dir = Vector2.RIGHT
+		var nn := Vector2(-dir.y, dir.x)
+		if k == 0:
+			_box(at, dir, nn, 0.85, 0.5, Color(0.12, 0.12, 0.12), 0.08)
+			_box(at + dir * 0.08, dir, nn, 0.6, 0.38, Color("2f5a3a"), 0.28)
+			_box(at - dir * 0.28, dir, nn, 0.28, 0.46, pc.darkened(0.4), 0.5)
+			var ch := at + dir * 0.32 - Vector2(0, 0.5)
+			_cv.draw_line(ch, ch - Vector2(0, 0.22), Color(0.08, 0.08, 0.08), 0.1)
+			if animate:
+				for s2 in 5:
+					var ph := fmod(sim.time * 1.5 + s2 * 0.2, 1.0)
+					var pf := ch - Vector2(dir.x * 0.4 * ph, 0.3 + 0.7 * ph)
+					_cv.draw_circle(pf, 0.08 + 0.18 * ph, Color(0.92, 0.92, 0.92, 0.7 * (1.0 - ph)))
+		else:
+			var load := t.res if k % 2 == 1 or t.res2 == "" else t.res2
+			_box(at, dir, nn, 0.82, 0.48, Color(0.38, 0.24, 0.16), 0.08)
+			_box(at, dir, nn, 0.7, 0.38, _load_col(load), 0.3)
+		for wx in [-0.28, 0.28]:
+			for wy in [-0.2, 0.2]:
+				_cv.draw_circle(at + dir * wx + nn * wy, 0.07, Color(0.1, 0.1, 0.1))
+
+
+func _box(at: Vector2, dir: Vector2, nn: Vector2, l: float, wd: float, col: Color, up: float) -> void:
+	var o := Vector2(0, -up)
+	var pts := PackedVector2Array([at - dir * l / 2 - nn * wd / 2 + o, at + dir * l / 2 - nn * wd / 2 + o, at + dir * l / 2 + nn * wd / 2 + o, at - dir * l / 2 + nn * wd / 2 + o])
+	_cv.draw_colored_polygon(pts, col)
+	pts.append(pts[0])
+	_cv.draw_polyline(pts, col.darkened(0.45), 0.02)
+
+
+func _load_col(res: String) -> Color:
+	var d: Dictionary = GameData.res_by_id.get(res, {})
+	return Color(String(d.get("color", "#8a6a40")))
+
+
+## A steam engine's brick chimney beside the roof, a stone band at its top, and its smoke.
+func _draw_steam(b: Sim.Bld, moving: bool) -> void:
+	var sw := float(b.def.get("art", {}).get("sw", 2.0))
+	var fx := b.x + 0.5 + sw * 0.3
+	var fy := b.y + 0.85 - lift_at(b.x + 0.5, b.y + 0.85)
+	var wd := 0.16
+	var hg := sw * 0.95
+	_cv.draw_rect(Rect2(fx - wd / 2, fy - hg, wd, hg), Color("8a4a32"))
+	for k in range(1, 9):
+		_cv.draw_line(Vector2(fx - wd / 2, fy - hg * k / 9.0), Vector2(fx + wd / 2, fy - hg * k / 9.0), Color("6e3826"), 0.012)
+	_cv.draw_rect(Rect2(fx - wd * 0.65, fy - hg - wd * 0.35, wd * 1.3, wd * 0.4), Color("5a5048"))
+	if not sim.railway.steam_on(b):
+		return     # still being fitted
+	var top := Vector2(fx, fy - hg - wd * 0.4)
+	var going := b.working
+	for s in 7:
+		var f := fmod(float(s) / 7.0 + (sim.time * 0.25 if moving else 0.0), 1.0)
+		var p := top + Vector2(0.12 + 0.45 * f, -(0.15 + 0.6 * f))
+		_cv.draw_circle(p, 0.08 + 0.12 * f, Color(0.35, 0.35, 0.36, (0.75 if going else 0.35) * (1.0 - f)))
+
+
 ## Draws the ground on the child layer, which sits behind everything this view draws itself.
 func _draw_ground() -> void:
 	if _relief_dirty and _relief_tex != null:
@@ -939,6 +1100,10 @@ func _draw() -> void:
 			if prof_on: _pm("ground:" + f.id)
 	_ground_mat.set_shader_parameter("use_season", _season_on)
 	if prof_on: _pm("features_ground")
+	# railways (build 64), on the ground under the buildings
+	if z >= 8.0 and _any_rail():
+		_draw_rails(x0, x1, y0, y1)
+		if prof_on: _pm("rails")
 	# building-site markers (while placing, or with a building group open), under the buildings
 	_tool_labels = []
 	_site_markers(x0, y0, x1, y1)
@@ -1045,6 +1210,8 @@ func _draw() -> void:
 	for t in sim.trips:
 		if drawn > 700:
 			break
+		if t.kind == "train":
+			continue
 		var n := t.path.size() - 1
 		if n < 1:
 			continue
@@ -1170,6 +1337,14 @@ func _draw() -> void:
 		prof["n_carriers"] = int(prof.get("n_carriers", 0)) + drawn * 1000
 	_flush_batches()
 	if prof_on: _pm("flush")
+	# trains on the railways (build 64)
+	for t in sim.trips:
+		if t.kind == "train" and t.path.size() >= 2:
+			_draw_train(t, x0, x1, y0, y1)
+	# steam engines: a chimney and smoke on the buildings that have one
+	for b in vis:
+		if b.steam and not b.dead and b.state == "ready":
+			_draw_steam(b, detail)
 	# marching soldiers
 	for a in sim.attacks:
 		if fog_on and a.p != 1:
@@ -1586,6 +1761,22 @@ func _draw_selection_and_tools() -> void:
 			_tool_labels.append([Vector2(r.position.x, r.position.y - 0.4), "%d×%d" % [r.size.x, r.size.y] if bp_corner.x >= 0 else tr("first corner"), Color("f2cf5a")])
 		"@bp_place":
 			_draw_blueprint()
+		"@rail":
+			_unlift()
+			if road_start.x >= 0:
+				var rp := rail_preview()
+				var need := sim.railway.cost_of(rp)
+				for i in rp:
+					var dl := lift_at(i % w + 0.5, i / w + 0.5)
+					_cv.draw_rect(Rect2(i % w + 0.2, i / w + 0.2 - dl, 0.6, 0.6), Color(0.78, 0.8, 0.84, 0.75) if sim.rail[i] == 0 else Color(0.5, 0.9, 0.5, 0.5))
+				var have := int(sim.human().stock.get("rails", 0.0))
+				_tool_labels.append([Vector2(ghost.x + 0.5, ghost.y - 0.5), (tr("%d rails (%d in store)") % [need, have]) if not rp.is_empty() else tr("no way for track"), Color("86ad5c") if not rp.is_empty() and need <= have else Color("e07a5f")])
+			else:
+				var sb := sim.bld_at(ghost.x, ghost.y)
+				var ok := sim.railway.has_rail(sim.idx(ghost.x, ghost.y), 1) or (SimRail.is_station(sb) and sb.p == 1)
+				_cv.draw_rect(g, Color("86ad5c") if ok else Color("d9483d"), false, 0.08)
+		"@unrail":
+			_cv.draw_rect(g, Color("86ad5c") if sim.railway.has_rail(sim.idx(ghost.x, ghost.y), 1) else Color("d9483d"), false, 0.08)
 		"@pave", "@unroad":
 			var on_road := sim.road[sim.idx(ghost.x, ghost.y)] == 1
 			_cv.draw_rect(g, Color("86ad5c") if on_road else Color("d9483d"), false, 0.08)

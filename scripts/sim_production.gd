@@ -541,6 +541,9 @@ func prod_tick(b: Sim.Bld, p: Sim.Player, _dt: float) -> void:
 	b.msg = "Working"
 	b.t_start = sim.time
 	b.rate_c = sim.rate(p, b)
+	# a steam engine (build 64): half a coal a cycle, and the cycle goes faster
+	if b.steam:
+		b.rate_c *= sim.railway.steam_cycle(b, p)
 	# blasting (build 57): with Blasting powder, mines and quarries charge the rock with gunpowder from
 	# the stores when there is some, and break it 30% faster
 	if String(d.get("trade", "")) == "mining" and p.techs.has("blasting_powder") and float(p.stock.get("gunpowder", 0.0)) >= BLAST_MIN:

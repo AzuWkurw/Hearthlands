@@ -28,6 +28,7 @@ var research := SimResearch.new(self)
 var sea := SimSea.new(self)
 var naval := SimNavy.new(self)
 var market := SimMarket.new(self)
+var railway := SimRail.new(self)      # steam engines and railways (build 64)
 var people := SimPeople.new(self)
 var production := SimProduction.new(self)
 
@@ -252,6 +253,10 @@ class Bld:
 	var inv: Dictionary = {}   # a store's goods (res -> amount); the realm's stock is their total
 	var policy := 0            # a store: 0 normal, 1 gather here (others send it goods), 2 send away (takes nothing new)
 	var queue_n := 0   # a building site's place in the build queue (build 62; 0: not queued)
+	var steam := false      # a steam engine fitted (build 64; SimRail)
+	var steam_at := 0.0     # ... and working from this time on
+	var steam_coal := 0.0   # coal it has burnt ahead (half a coal a cycle)
+	var carried := 0        # a railway station: goods its trains carried, out and in
 	var keep := 0      # a workshop: how many work cycles of inputs it keeps (0: the usual two)
 	var in_next := 0.0 # its inputs were all there: carriers look again at this time (SimLogistics)
 	var inbuf: Dictionary = {}     # goods carried here for its work (res -> count), used as it works
@@ -290,6 +295,7 @@ class Player:
 	var stock: Dictionary = {}
 	var goal_i := 0          # the sandbox goal being worked on (build 63; SandboxGoals.LIST)
 	var routes: Array = []   # standing orders at the market (build 61): see SimMarket.run_routes
+	var rail_t := 0.0        # a rival looks at steam engines and its railway again at this time (build 64)
 	var river_t := -1.0      # the rival looked for river water in its land (build 60), and found it
 	var river := false
 	var peasant := 14
@@ -413,6 +419,7 @@ class Trip:
 
 
 class Attack:
+	var tore := false       # it tore up a railway on its way (build 64), told once
 	var warned := false     # a landing: its target's realm was warned it is coming (build 59)
 	var militia := false    # a landing: the peasants by the headquarters took up arms against it
 	var p := 0
@@ -535,6 +542,7 @@ var owner := PackedByteArray()
 
 
 var road := PackedByteArray()
+var rail := PackedByteArray()        # 1 where a rail lies (build 64); whose it is goes with the land
 var plot := PackedInt32Array()      # per tile: the building standing there (all its plot tiles); not saved, see _rebuild_plots
 
 
@@ -712,6 +720,8 @@ func new_game(p_seed: String, p_foes: int, p_strength: int, p_mix: bool, p_size 
 	_pending = {}; _supply = {}; queued = {}; _reno = {}; reno_queue = {}; _mil_dirty = true; _tick_dirty = true
 	owner = PackedByteArray(); owner.resize(w * h)
 	road = PackedByteArray(); road.resize(w * h)
+	rail = PackedByteArray(); rail.resize(w * h)
+	railway.reset()
 	bmap = PackedInt32Array(); bmap.resize(w * h)
 	plot = PackedInt32Array(); plot.resize(w * h)
 	_avail = {}; _avail_at = {}
@@ -2240,6 +2250,8 @@ func tick(dt: float) -> void:
 				sea.ship_arrival(t, p)
 			elif t.kind == "boat":
 				sea.boat_arrival(t, p)
+			elif t.kind == "train":
+				railway.train_arrival(t, p)
 			elif t.kind == "trade":
 				Diplomacy.cart_arrival(self, t)
 			elif t.kind == "builder" or t.kind == "soldier" or t.kind == "worker":
@@ -2381,6 +2393,7 @@ func _secondly() -> void:
 	if log_checksums and int(time) % 60 == 0:
 		print("minute %d checksum %d" % [int(time) / 60, checksum()])
 	_rebuild_realm_lists()
+	railway.second()
 	Crops.grow(self)
 	if logistics.road_carriers_on():
 		for p in players:
@@ -2389,6 +2402,7 @@ func _secondly() -> void:
 		logistics.transfers()
 		sea.sea_transfers()
 		sea.river_transfers()
+		railway.transfers()
 	Diplomacy.expire(self)
 	if not places.is_empty():
 		Places.tick(self)
@@ -2523,7 +2537,7 @@ func to_save() -> Dictionary:
 		"features_known": Features.available().map(func(e): return e.id), "build": Version.BUILD, "reno_queue": reno_queue.duplicate(true), "w": w, "h": h, "ter": ter, "deco": deco, "amt": amt, "ore": ore, "shade": shade,
 		"owner": owner, "road": road, "bmap": bmap, "time": time, "over": over, "logs": logs, "bid": _bid, "acc1": _acc1,
 		"rng_seed": rng.seed, "rng_state": rng.state, "players": pl, "blds": bl, "trips": tr, "attacks": at,
-		"vein": vein, "vein_amt": vein_amt, "vein_tiles": vein_tiles, "pave": pave, "fields": fields, "places": places, "map_biome": map_biome,
+		"vein": vein, "vein_amt": vein_amt, "vein_tiles": vein_tiles, "pave": pave, "rail": rail, "fields": fields, "places": places, "map_biome": map_biome,
 		"rel": rel, "rel_since": rel_since, "proposals": proposals, "standing": standing, "prop_id": _prop_id,
 		"mission": mission, "mission_done": mission_done, "ticks": _ticks,
 		"coming": _coming, "coming_tick": _coming_tick, "navy": navy, "prices": prices, "price_hist": price_hist,
@@ -2608,6 +2622,10 @@ func from_save(d: Dictionary) -> String:
 	pave = d.get("pave", PackedByteArray())
 	if pave.size() != w * h:
 		pave = PackedByteArray(); pave.resize(w * h)
+	rail = d.get("rail", PackedByteArray())
+	if rail.size() != w * h:
+		rail = PackedByteArray(); rail.resize(w * h)
+	railway.reset()
 	fields = {}
 	_ff_dirty = true
 	places = (d.get("places", []) as Array).duplicate(true)

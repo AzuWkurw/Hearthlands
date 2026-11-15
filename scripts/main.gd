@@ -1666,6 +1666,30 @@ func _use_tool(t: Vector2i) -> void:
 				_show_hint("Road joined.", 1.5)
 			else:
 				view.road_start = t
+		"@rail":
+			# railways (build 64): a rail or a station of yours to start from, then where it goes
+			var why0 := sim.railway.can_lay(1)
+			if why0 != "":
+				_show_hint(why0, 3.0)
+				return
+			if view.road_start.x < 0:
+				var rb := sim.bld_at(t.x, t.y)
+				if sim.inb(t.x, t.y) and (sim.railway.has_rail(sim.idx(t.x, t.y), 1) or (SimRail.is_station(rb) and rb.p == 1)):
+					view.road_start = t
+					_show_hint("Now click where the track should go (it is laid tile by tile, one rail a tile).", 3.0)
+				else:
+					_show_hint("Start the track at one of your railway stations or rails.", 3.0)
+				return
+			var rr := sim.railway.build(view.road_start.x, view.road_start.y, t.x, t.y, 1)
+			if rr == "":
+				sound.play_at("road", Vector2(t.x + 0.5, t.y + 0.5), 0.8)
+				view.road_start = t
+			else:
+				sound.play("deny", 0.6)
+				_show_hint(rr, 3.5)
+		"@unrail":
+			var nr := sim.railway.remove(t.x, t.y, 1)
+			_show_hint(tr("Took up %d tiles of track (half the rails come back).") % nr if nr > 0 else "Click one of your rails.", 2.5)
 		"@demolish":
 			var bd := sim.bld_at(t.x, t.y)
 			if bd == null or bd.p != 1:

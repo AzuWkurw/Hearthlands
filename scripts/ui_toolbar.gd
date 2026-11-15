@@ -13,6 +13,8 @@ const CAT_SHORT := {"logistics": "Stores", "mil": "Military"}
 const ROAD_TOOLS := [["@road", "Road", "road_5", "Build road: click one of your roads or buildings (or a building's entrance flag), then where the road should go. Esc stops."],
 	["@pave", "Pave", "road_paved_5", "Pave road: click a road to pave up to 12 tiles with stone (1 stone each). Carriers walk paved roads faster."],
 	["@unroad", "Remove", "road_15", "Remove road: click a road to take up that stretch, up to the next junction or building."],
+	["@rail", "Rail", "rail_icon", "Lay railway track (Railways, Industrial age): click one of your railway stations or rails, then where the track should go. One rail a tile, three on a bridge. Esc stops."],
+	["@unrail", "No rail", "rail_remove_icon", "Take up railway track: click a rail to take up that stretch, up to the next junction (half the rails come back)."],
 	["@flag", "Flag", "unit_flag", "Flag (road carriers): click one of your roads to set a flag or take it away. Each flag splits a stretch, so more carriers share the road and goods move faster."]]
 
 var main: Main
@@ -185,7 +187,7 @@ func rebuild_tools() -> void:
 	for ch in explore_box.get_children():
 		ch.queue_free()
 	for k in tool_btns.keys():
-		if not (k in ["@road", "@pave", "@unroad", "@demolish"]):
+		if not (k in ["@road", "@pave", "@unroad", "@rail", "@unrail", "@flag", "@demolish"]):
 			tool_btns.erase(k)
 	explore_row = null
 	if tools.is_empty():
@@ -282,6 +284,11 @@ func refresh() -> void:
 		if is_instance_valid(tool_btns[id]):
 			(tool_btns[id] as Button).set_pressed_no_signal(main.view.place_type == id)
 	auto_btn.set_pressed_no_signal(main.settings.auto_roads)
+	# the rail tools only once your realm has studied Railways (build 64)
+	var rails_known: bool = main.sim != null and not main.sim.players.is_empty() and main.sim.human().techs.has("railways")
+	for rid in ["@rail", "@unrail"]:
+		if tool_btns.has(rid) and is_instance_valid(tool_btns[rid]):
+			(tool_btns[rid] as Button).visible = rails_known
 	# a building picked from the panel: the panel steps aside so the map is free to place it
 	if popup.visible and GameData.bld.has(main.view.place_type):
 		open_cat = ""
