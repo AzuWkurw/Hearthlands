@@ -102,6 +102,8 @@ func on_second() -> void:
 	for p: Sim.Player in alive:
 		if p.ai and (int(sim.time) / EVERY + p.id) % 2 == 0:
 			ai_trade(p)
+		if not p.routes.is_empty():
+			run_routes(p)
 
 
 ## Sells n of res from realm p's stores at the market. "" when done, else why not.
@@ -113,6 +115,9 @@ func sell(p: Sim.Player, res: String, n: int) -> String:
 	if float(p.stock.get(res, 0.0)) < n:
 		return "Not enough %s in store" % GameData.res_name(res).to_lower()
 	var gold := sell_price(res, n)
+	# gold the stores have no room for would be lost (build 61)
+	if sim.capacity(p, "gold") - float(p.stock.get("gold", 0.0)) < gold:
+		return "No room in your stores for the gold: build a storehouse or spend some"
 	var got := int(sim.take(p, res, float(n)))
 	if got < n:
 		sim.give(p, res, float(got))
@@ -141,6 +146,59 @@ func buy(p: Sim.Player, res: String, n: int) -> String:
 	sim.made(p, res, float(n))
 	sim.prices[res] = clampf(factor(res) * (1.0 + PUSH * n), MIN_F, MAX_F)
 	return ""
+
+
+# ---------------------------------------------------------------- standing orders (build 61)
+## A standing order: {"res", "sell": true to sell / false to buy, "n": how many each time, "every":
+## minutes between, "keep": sell only while more than this stays in store / buy only up to this,
+## "done": how many went so far, "gold": gold made (+) or spent (-)}. Merchants carry the goods to and
+## from the market each time it is due.
+const ROUTE_MAX := 12
+const ROUTE_EVERY := [1, 2, 5, 10]
+const ROUTE_N := [10, 25, 50]
+
+
+func add_route(p: Sim.Player, res: String, sell_it: bool, n: int, every: int, keep: int) -> String:
+	if not traded(res):
+		return "This cannot be traded"
+	if p.routes.size() >= ROUTE_MAX:
+		return "At most %d standing orders" % ROUTE_MAX
+	p.routes.append({"res": res, "sell": sell_it, "n": maxi(1, n), "every": maxi(1, every), "keep": maxi(0, keep), "done": 0, "gold": 0})
+	return ""
+
+
+func remove_route(p: Sim.Player, i: int) -> void:
+	if i >= 0 and i < p.routes.size():
+		p.routes.remove_at(i)
+
+
+## Once a minute: the standing orders that are due go through, while the stores allow.
+func run_routes(p: Sim.Player) -> void:
+	if not has_market(p):
+		return
+	var minute := int(sim.time / 60.0)
+	var said := []
+	for r: Dictionary in p.routes:
+		if minute % int(r.every) != 0:
+			continue
+		var res := String(r.res)
+		var n := int(r.n)
+		var have := float(p.stock.get(res, 0.0))
+		var g0 := float(p.stock.get("gold", 0.0))
+		var why := ""
+		if bool(r.sell):
+			why = ("Keeping %d" % int(r.keep)) if have - n < int(r.keep) else sell(p, res, n)
+		else:
+			why = ("%d in store already" % int(have)) if have + n > int(r.keep) else buy(p, res, n)
+		r.why = why
+		if why != "":
+			continue
+		var dg := int(float(p.stock.get("gold", 0.0)) - g0)
+		r.done = int(r.done) + n
+		r.gold = int(r.gold) + dg
+		said.append("%s %d %s (%+d gold)" % ["sold" if bool(r.sell) else "bought", n, GameData.res_name(res).to_lower(), dg])
+	if not said.is_empty() and not p.ai:
+		sim.emit_log("Standing orders at your market: %s." % ", ".join(said), Color("d8aa4a"))
 
 
 ## A rival with a market sells 10 of what it has most of and buys stone or planks when short.

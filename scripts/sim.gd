@@ -287,6 +287,7 @@ class Player:
 	var ai := false
 	var alive := true
 	var stock: Dictionary = {}
+	var routes: Array = []   # standing orders at the market (build 61): see SimMarket.run_routes
 	var river_t := -1.0      # the rival looked for river water in its land (build 60), and found it
 	var river := false
 	var peasant := 14

@@ -1,5 +1,13 @@
 # Changelog
 
+## Build 61 (v0.56.0, 2026-11-15)
+
+Build 61: trade worth doing, standing orders, the realms graph.
+- The Market window (M) sells and buys in lots of 50 as well as 10, so cheap goods like planks and stone are worth a trip.
+- Standing orders at the market: sell or buy a good every 1, 2, 5 or 10 minutes, keeping a reserve (sell only while more than it stays; buy only up to it). The window lists each order with how much went and the gold it made or cost, and why it waited last time. The log says what went through.
+- A sale no longer loses gold the stores have no room for: it waits until there is room.
+- The realms graph: a Realms button (and V) opens the Statistics window on every realm compared over time, now with gold and wealth (goods and gold, in gold), and a gold column in the table.
+
 ## Build 60 (v0.55.0, 2026-11-15)
 
 Build 60: town quarters and rivals that plan towns.

@@ -532,7 +532,29 @@ def ambience():
     save_loop("amb_summer", crickets(), crickets(), 0.35)
 
 
-GROUPS = {"ui": ui, "work": work, "nature": nature, "animals": animals, "war": war, "ambience": ambience}
+# ---------------------------------------------------------------- voices (build 63)
+def voices():
+    """A word from the worker when you pick a building: "aye?" and "hm" murmurs, low (soldiers), middle
+    (workers) and high (artisans), two vowels gliding into each other."""
+    A = [(750, 5, 3.0), (1200, 6, 2.2), (2600, 7, 0.8)]     # "a"
+    E = [(400, 5, 3.0), (2000, 7, 1.8), (2700, 7, 0.9)]     # "e"/"i"
+    O = [(450, 5, 3.0), (850, 6, 2.0), (2500, 7, 0.5)]      # "o"
+    M = [(280, 4, 3.0), (1100, 5, 0.5), (2400, 6, 0.2)]     # "m"
+    def word(f0, v1, v2, sec, rise):
+        n = int(sec * SR)
+        x = t(sec)
+        f = f0 * (1 + rise * (x / sec) ** 2) * (1 + 0.01 * np.sin(2 * np.pi * 5.5 * x))
+        a = voice(f, v1, sec, 0.05)
+        b = voice(f, v2, sec, 0.05)
+        w = np.clip((x / sec - 0.35) / 0.3, 0, 1)
+        env = np.clip(x / 0.03, 0, 1) * np.clip((sec - x) / 0.08, 0, 1)
+        return (a * (1 - w) + b * w) * env
+    save("voice_low", room(word(105, A, E, 0.38, -0.15), 0.25, 0.15), 0.5)
+    save("voice_mid", room(word(150, M, A, 0.34, 0.12), 0.25, 0.15), 0.5)
+    save("voice_high", room(word(215, O, E, 0.32, 0.18), 0.25, 0.15), 0.5)
+
+
+GROUPS = {"ui": ui, "voices": voices, "work": work, "nature": nature, "animals": animals, "war": war, "ambience": ambience}
 
 if __name__ == "__main__":
     want = sys.argv[1:] or list(GROUPS)

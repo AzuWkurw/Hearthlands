@@ -10,7 +10,7 @@ economy you do.
 ## Download
 
 The ready-made Windows game is on the [Releases page](../../releases/latest): download the
-`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.55.0 build 60** (see
+`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.56.0 build 61** (see
 `CHANGELOG.md`). Every build is a release of its own, made by GitHub Actions
 (`.github/workflows/release.yml`) when a new version reaches `main`; older builds up to 50 are also
 on the [`downloads` branch](../../tree/downloads).
@@ -57,6 +57,7 @@ Done (builds 43 to 57):
 | 58 | Blueprints (U): copy a group of your buildings and roads from the map, keep it for every game in categories you choose, place it again with one click, share it as a code; trees and roads in the way: you are asked whether to clear them (for single buildings too); sulfur and lead brushes in the map editor |
 | 59 | The coast defended: a warning while a landing is at sea, peasants with pitchforks by the headquarters, walls against soldiers just ashore, warships meeting fleets further out; wild animals capped by the map size; a faster late game; the guide explains research and age gates |
 | 60 | Town quarters (homes near a tavern, chapel and market: more content, more tax); rivals that plan their towns round such a centre, buy what their workshops lack and use river boats |
+| 61 | Lots of 50 at the market; standing orders (sell or buy every few minutes, keeping a reserve); the realms graph (V) with gold and wealth |
 
 Later: a story campaign through the ages, multiplayer, scripted scenarios, a chronicle at the end of a
 game, more animations, music for each age, and quality-of-life features (a production chain overlay,
@@ -131,6 +132,7 @@ Exporting needs Godot 4.3's export templates (in the editor: Editor > Manage Exp
 | Worker priorities | L or Workers: which kinds of building get workers first, 1 to 9 |
 | Bottleneck finder | N or Bottlenecks: what holds your economy back, biggest first, with Go and Map |
 | Market prices | M or Market: every good's price in gold and its trend; sell or buy 10 at your market |
+| Realms graph | V or Realms: every realm compared over time (people, soldiers, land, gold, wealth...) |
 | Blueprints | U or Blueprints: copy a group of buildings and roads, place it again with one click, sorted in categories |
 | Interface size | Ctrl and + or -, or Settings > Interface size (Auto fits big screens) |
 | Sea and supplies guide | Shift+H, or the button in a harbour's info and the attack window |
@@ -926,6 +928,13 @@ order the buildings within it. The numbers are saved with the game.
 - **Rivals at sea:** a rival with no way to reach anyone by land builds a harbour and ships early, sends
   expeditions and lands on its enemies' coasts; rivals at war by the sea build naval yards and coastal
   forts, and warlords keep field depots near the front.
+
+## Standing orders at the market
+
+In the Market window (M), below the prices: **Sell** or **Buy**, how many (10, 25, 50), which good, **every**
+1, 2, 5 or 10 minutes, and what to **keep**: a sale goes through only while more than that stays in store, a
+purchase only up to it. Each order shows how much went, the gold it made or cost, and why it waited last
+time. Orders need a market; they are saved with the game.
 
 ## Town quarters
 

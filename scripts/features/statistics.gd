@@ -124,6 +124,12 @@ func on_second() -> void:
 		b["rp"] = p.rp_total
 		b["land"] = sim.owned(p.id)[0].size()
 		b["techs"] = p.techs.size()
+		b["gold"] = float(p.stock.get("gold", 0.0))
+		var worth := 0.0
+		for k in p.stock:
+			if sim.market.traded(k):
+				worth += float(p.stock[k]) * sim.market.price(k)
+		b["wealth"] = snappedf(worth + float(p.stock.get("gold", 0.0)), 0.1)
 		b["alive"] = p.alive
 		var made_total := 0.0
 		for k in b.made:
@@ -159,7 +165,9 @@ func load_state(d: Dictionary) -> void:
 
 func build_ui(main: Main) -> void:
 	main.add_feature_button(self, "Statistics", open)
+	main.add_feature_button(self, "Realms", open_realms)
 	main.add_feature_key(self, KEY_F2, open)
+	main.add_feature_key(self, KEY_V, open_realms)
 	win = main.add_feature_window(self, "Statistics (F2)", Vector2i(760, 520))
 	var tabs := TabContainer.new()
 	tabs.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -197,7 +205,7 @@ func build_ui(main: Main) -> void:
 	realms.name = "Realms"
 	tabs.add_child(realms)
 	realm_metric = OptionButton.new()
-	for t in ["Population", "Buildings", "Soldiers", "Goods made per minute", "Research points (total)", "Land (tiles)", "Techs studied"]:
+	for t in ["Population", "Buildings", "Soldiers", "Goods made per minute", "Research points (total)", "Land (tiles)", "Techs studied", "Gold", "Wealth (goods and gold, in gold)"]:
 		realm_metric.add_item(t)
 	realm_metric.item_selected.connect(func(_i): refresh())
 	realms.add_child(realm_metric)
@@ -249,6 +257,16 @@ func open() -> void:
 		refresh()
 
 
+## The Realms tab: every realm compared over time (V, build 61).
+func open_realms() -> void:
+	if win.visible and tab_box.current_tab == 1:
+		win.visible = false
+		return
+	tab_box.current_tab = 1
+	win.visible = true
+	refresh()
+
+
 func _span() -> int:
 	return [30, 60, 240][range_opt.selected]
 
@@ -280,7 +298,7 @@ func refresh() -> void:
 			var net := (m - u) / maxf(1.0, last.size())
 			rows.append("%s: made [color=#86c55c]%.1f[/color], used [color=#e07a5f]%.1f[/color] per minute (%s), %d in store" % [r.name, m / maxf(1.0, last.size()), u / maxf(1.0, last.size()), ("[color=#86c55c]%+.1f[/color]" if net >= 0.0 else "[color=#e07a5f]%+.1f[/color]") % net, int(p.stock.get(r.id, 0.0))])
 	table.text = tr("[b]%s[/b]: green made, red used, per game minute.\n[b]Last 10 minutes[/b]\n%s") % [GameData.res_name(sel_good), "\n".join(rows) if rows.size() > 0 else "nothing counted yet"]
-	var key: String = ["pop", "bld", "sol", "made_total", "rp", "land", "techs"][realm_metric.selected]
+	var key: String = ["pop", "bld", "sol", "made_total", "rp", "land", "techs", "gold", "wealth"][realm_metric.selected]
 	var ser := []
 	var legend := []
 	for q: Sim.Player in sim.players:
@@ -292,9 +310,9 @@ func refresh() -> void:
 		legend.append("[color=#%s]■ %s[/color]" % [q.color.to_html(false), q.name])
 	realm_chart.set_series(ser)
 	# where you stand now against each rival
-	var rank := ["[table=6][cell][b]Realm[/b]  [/cell][cell][b]People[/b]  [/cell][cell][b]Buildings[/b]  [/cell][cell][b]Soldiers[/b]  [/cell][cell][b]Land[/b]  [/cell][cell][b]Techs[/b][/cell]"]
+	var rank := ["[table=7][cell][b]Realm[/b]  [/cell][cell][b]People[/b]  [/cell][cell][b]Buildings[/b]  [/cell][cell][b]Soldiers[/b]  [/cell][cell][b]Land[/b]  [/cell][cell][b]Techs[/b]  [/cell][cell][b]Gold[/b][/cell]"]
 	for q: Sim.Player in sim.players:
-		var cells := [sim.pop_total(q), sim.realm_blds(q).size(), sim.soldiers(q), sim.owned(q.id)[0].size(), q.techs.size()]
+		var cells := [sim.pop_total(q), sim.realm_blds(q).size(), sim.soldiers(q), sim.owned(q.id)[0].size(), q.techs.size(), int(q.stock.get("gold", 0.0))]
 		rank.append("[cell][color=#%s]■ %s%s[/color]  [/cell]" % [q.color.to_html(false), q.name, "" if q.alive else " (gone)"] + "".join(cells.map(func(v): return "[cell]%d  [/cell]" % v)))
 	realm_legend.text = "   ".join(legend) + "\n\n" + "".join(rank) + "[/table]"
 	_refresh_borders()

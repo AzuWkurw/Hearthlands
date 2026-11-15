@@ -8,6 +8,13 @@ var win: Window
 var head: Label
 var grid: GridContainer
 var only_mine: CheckBox
+var routes_box: VBoxContainer
+var r_res: OptionButton
+var r_kind: OptionButton
+var r_n: OptionButton
+var r_every: OptionButton
+var r_keep: SpinBox
+var _r_ids: Array = []
 
 
 func _init(p_owner: Main) -> void:
@@ -19,7 +26,7 @@ func build() -> void:
 	win.title = "Market prices"
 	win.transient = true
 	win.wrap_controls = false
-	win.size = Vector2i(720, 640)
+	win.size = Vector2i(900, 720)
 	win.theme = UiLog.window_theme()
 	win.visible = false
 	var bg := PanelContainer.new()
@@ -42,10 +49,40 @@ func build() -> void:
 	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	v.add_child(sc)
 	grid = GridContainer.new()
-	grid.columns = 7
+	grid.columns = 9
 	grid.add_theme_constant_override("h_separation", 10)
 	grid.add_theme_constant_override("v_separation", 4)
 	sc.add_child(grid)
+	# standing orders (build 61)
+	v.add_child(HSeparator.new())
+	var rh := main._label(tr("Standing orders: merchants sell or buy for you every few minutes, as long as you keep what you set."), 13, Main.DIM)
+	rh.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(rh)
+	var add := HBoxContainer.new()
+	add.add_theme_constant_override("separation", 6)
+	v.add_child(add)
+	r_kind = OptionButton.new()
+	r_kind.add_item(tr("Sell")); r_kind.add_item(tr("Buy"))
+	r_kind.item_selected.connect(func(_i): _keep_hint())
+	add.add_child(r_kind)
+	r_n = OptionButton.new()
+	for n in SimMarket.ROUTE_N: r_n.add_item(str(n))
+	add.add_child(r_n)
+	r_res = OptionButton.new()
+	r_res.custom_minimum_size = Vector2(170, 0)
+	add.add_child(r_res)
+	add.add_child(main._label(tr("every"), 13))
+	r_every = OptionButton.new()
+	for m in SimMarket.ROUTE_EVERY: r_every.add_item(tr("%d min") % m)
+	r_every.select(1)
+	add.add_child(r_every)
+	add.add_child(main._label(tr("keep"), 13))
+	r_keep = SpinBox.new()
+	r_keep.min_value = 0; r_keep.max_value = 999; r_keep.step = 5; r_keep.value = 40
+	add.add_child(r_keep)
+	add.add_child(main._button(tr("Add order"), _add_route))
+	routes_box = VBoxContainer.new()
+	v.add_child(routes_box)
 	win.close_requested.connect(func(): win.visible = false)
 	main.add_child(win)
 
@@ -67,7 +104,7 @@ func refresh() -> void:
 	for c in grid.get_children():
 		grid.remove_child(c)
 		c.queue_free()
-	for h in ["", tr("Good"), tr("10 cost (gold)"), tr("Last 30 min"), tr("You have"), "", ""]:
+	for h in ["", tr("Good"), tr("10 cost (gold)"), tr("Last 30 min"), tr("You have"), "", "", "", ""]:
 		grid.add_child(main._label(h, 12, Main.DIM))
 	var ids := []
 	for r in GameData.resources:
@@ -101,6 +138,66 @@ func refresh() -> void:
 		var bb := main._button(tr("Buy 10 (-%d)") % sim.market.buy_price(id, 10), func(): _do(sim.market.buy(me, id, 10)))
 		bb.disabled = not has or float(me.stock.get("gold", 0.0)) < sim.market.buy_price(id, 10)
 		grid.add_child(bb)
+		# in lots of 50, so cheap goods are worth the trip (build 61)
+		var sb5 := main._button(tr("Sell 50 (+%d)") % sim.market.sell_price(id, 50), func(): _do(sim.market.sell(me, id, 50)))
+		sb5.disabled = not has or float(me.stock.get(id, 0.0)) < 50.0
+		grid.add_child(sb5)
+		var bb5 := main._button(tr("Buy 50 (-%d)") % sim.market.buy_price(id, 50), func(): _do(sim.market.buy(me, id, 50)))
+		bb5.disabled = not has or float(me.stock.get("gold", 0.0)) < sim.market.buy_price(id, 50)
+		grid.add_child(bb5)
+	_refresh_routes()
+
+
+func _refresh_routes() -> void:
+	var sim: Sim = main.sim
+	var me := sim.human()
+	# the goods to pick from: everything that can be traded and that the realm knows
+	var ids := []
+	for r in GameData.resources:
+		var id := String(r.id)
+		if sim.market.traded(id) and main.res_shown(id):
+			ids.append(id)
+	if ids != _r_ids:
+		_r_ids = ids
+		var sel := r_res.selected
+		r_res.clear()
+		for id in ids:
+			r_res.add_icon_item(Tex.get_tex("res_" + id), GameData.res_name(id))
+		r_res.select(clampi(sel, 0, ids.size() - 1))
+	for c in routes_box.get_children():
+		routes_box.remove_child(c)
+		c.queue_free()
+	if me.routes.is_empty():
+		routes_box.add_child(main._label(tr("No standing orders yet."), 13, Main.DIM))
+	for i in me.routes.size():
+		var r: Dictionary = me.routes[i]
+		var row := HBoxContainer.new()
+		var t := (tr("Sell %d %s every %d min while more than %d stay") if bool(r.sell) else tr("Buy %d %s every %d min up to %d in store")) % [int(r.n), GameData.res_name(String(r.res)).to_lower(), int(r.every), int(r.keep)]
+		var wy := String(r.get("why", ""))
+		var l := main._label(t + "  ·  " + tr("%d so far, %+d gold") % [int(r.done), int(r.gold)] + ("  ·  " + tr("last time: %s") % tr(wy) if wy != "" else ""), 13)
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(l)
+		row.add_child(main._button(tr("Remove"), func():
+			sim.market.remove_route(me, i)
+			refresh()))
+		routes_box.add_child(row)
+
+
+func _keep_hint() -> void:
+	r_keep.value = 40 if r_kind.selected == 0 else 20
+
+
+func _add_route() -> void:
+	var sim: Sim = main.sim
+	if _r_ids.is_empty():
+		return
+	var why := sim.market.add_route(sim.human(), String(_r_ids[maxi(0, r_res.selected)]), r_kind.selected == 0, int(SimMarket.ROUTE_N[r_n.selected]), int(SimMarket.ROUTE_EVERY[r_every.selected]), int(r_keep.value))
+	if why != "":
+		main._show_hint(why, 3.0)
+	elif not sim.market.has_market(sim.human()):
+		main._show_hint(tr("The order is kept, but it goes through only once you have a market."), 4.0)
+	refresh()
 
 
 func _do(why: String) -> void:
