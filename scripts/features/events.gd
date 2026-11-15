@@ -404,7 +404,7 @@ func _answer(p: Sim.Player, k: String, i: int) -> void:
 		"great_fire":
 			var fires = sim.get_feature("fires")
 			var b := _pick_bld(p, func(bb): return bb.ty != "hq" and not sim.is_mil(bb) and not sim.is_store(bb) and bb.cyc > 0.0 and fires != null and fires.flammable(bb))
-			if b == null:
+			if b == null or fires == null:
 				text = "the fire burned out on its own."
 			else:
 				var nm := String(b.def.name).to_lower()

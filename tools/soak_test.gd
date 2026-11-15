@@ -7,7 +7,7 @@ extends SceneTree
 ## fires only for living buildings. It prints what it saw of the new things (trades, fires, bridges...).
 func _init() -> void:
 	GameData.ensure()
-	var seed := "valley"; var mins := 60; var size := 0; var foes := 5; var places := false
+	var seed := "valley"; var mins := 60; var size := 0; var foes := 5; var places := false; var save_at := 0
 	var opts := {}     # new-game options switched on: opt=road_carriers,all_research
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("seed="): seed = a.substr(5)
@@ -15,6 +15,8 @@ func _init() -> void:
 		if a.begins_with("size="): size = int(a.substr(5))
 		if a.begins_with("foes="): foes = int(a.substr(5))
 		if a == "places": places = true
+		if a.begins_with("save_at="):
+			save_at = int(a.substr(8))
 		if a.begins_with("shape="):
 			opts["gen"] = {"shape": a.substr(6)}
 		if a.begins_with("opt="):
@@ -22,6 +24,7 @@ func _init() -> void:
 				opts[o] = true
 	var sim := Sim.new()
 	sim.new_game(seed, foes, 6, true, size, false, opts)
+	var twin: Sim = null       # (save_at=M) the game saved and loaded at minute M, played alongside
 	if places:
 		# ruins and bandit camps on free grass between the realms (as a hand-made map would have)
 		var put := 0
@@ -47,10 +50,42 @@ func _init() -> void:
 	var last_min := -1
 	while sim.time < mins * 60.0 and not sim.over:
 		sim.tick(Sim.TICK)
+		if twin != null:
+			twin.tick(Sim.TICK)
 		var m := int(sim.time / 60.0)
 		if m == last_min:
 			continue
 		last_min = m
+		if save_at > 0 and m == save_at and twin == null:
+			twin = Sim.new()
+			twin.from_save(bytes_to_var(var_to_bytes(sim.to_save())))
+			twin.human().ai = true
+		elif twin != null and m == save_at + 3:
+			var same := sim.checksum() == twin.checksum()
+			print("save at minute %d, loaded and played 3 minutes: %s" % [save_at, "same" if same else "DIFFERENT"])
+			if not same:
+				bad += 1
+			twin = null
+		# build 52-56: warships, children, prices, boats, generals
+		var counted := {}
+		for w in sim.navy:
+			counted[int(w.p)] = int(counted.get(int(w.p), 0)) + 1
+			if not sim.inb(floori(float(w.x) + 0.5), floori(float(w.y) + 0.5)) or sim.ter[sim.idx(floori(float(w.x) + 0.5), floori(float(w.y) + 0.5))] != Sim.WATER:
+				bad += 1; print("BAD a warship on land at minute %d" % m)
+		for p in sim.players:
+			if int(counted.get(p.id, 0)) != p.warships:
+				bad += 1; print("BAD %s warships %d but %d afloat" % [p.name, p.warships, int(counted.get(p.id, 0))])
+			if p.general_uid != 0 and sim.military._by_uid(p.general_uid) == null:
+				bad += 1; print("BAD %s general with a column that is gone" % p.name)
+		for r in sim.prices:
+			if float(sim.prices[r]) < SimMarket.MIN_F - 0.001 or float(sim.prices[r]) > SimMarket.MAX_F + 0.001:
+				bad += 1; print("BAD price of %s: %f" % [r, sim.prices[r]])
+		var boats := {}
+		for t in sim.trips:
+			if t.kind == "boat": boats[t.site] = true
+		for b in sim.blds:
+			if b.ty == "river_landing" and (b.busy > 0) != boats.has(b.id):
+				bad += 1; print("BAD river landing %d busy %d, boat out %s" % [b.id, b.busy, boats.has(b.id)])
 		for p in sim.players:
 			for k in p.stock:
 				if float(p.stock[k]) < -0.001:

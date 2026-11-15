@@ -17,7 +17,7 @@ func _init(p_sim: Sim) -> void:
 
 func _site_score(ty: String, x: int, y: int, p: Sim.Player) -> float:
 	var d: Dictionary = GameData.bld[ty]
-	var dist := Vector2(x - p.hq.x, y - p.hq.y).length()
+	var dist := Vector2(x - p.hq.x, y - p.hq.y).length() if p.hq != null else 0.0
 	if d.has("mine"):
 		return sim.count_near(x, y, 2, "ore", int(d.mine))
 	match String(d.get("act", "")):
@@ -209,7 +209,7 @@ func _plan_town(p: Sim.Player) -> void:
 		if sim.site_size(x, y, p.id) != "large" or _near_reserved(p, x, y, 6) >= 0:
 			continue
 		# open land not too far from the headquarters, near a road
-		var d := Vector2(x - p.hq.x, y - p.hq.y).length()
+		var d := Vector2(x - p.hq.x, y - p.hq.y).length() if p.hq != null else 9.0
 		var sc := sim.count_near(x, y, 2, "open") - absf(d - 9.0) * 0.3 + _pack_score("farm", x, y, p)
 		if sc > best_sc:
 			best_sc = sc; best = i
@@ -286,7 +286,7 @@ func _ai_mil_sites(p: Sim.Player, ty: String) -> Array:
 	var enemy: Sim.Player = null
 	var ed := 1e9
 	for q in sim.players:
-		if q.id != p.id and q.alive:
+		if q.id != p.id and q.alive and q.hq != null and p.hq != null:
 			var dd := Vector2(q.hq.x - p.hq.x, q.hq.y - p.hq.y).length()
 			if dd < ed: ed = dd; enemy = q
 	var r := int(d.radius)

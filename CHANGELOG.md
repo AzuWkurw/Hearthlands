@@ -1,5 +1,14 @@
 # Changelog
 
+## Build 56.2 (v0.51.0, 2026-11-15)
+
+Build 56.2: optimization and bug round 2.
+- Fixed: a harbour founded by an expedition did not add its room and porters to the realm's stores until something else changed (so stores could seem full; a loaded game also played on differently).
+- Fixed: a beaten realm's headquarters was still pointed at after it was gone (a loaded game differed); rivals' site choices no longer fail without a headquarters.
+- Fixed: a great fire answered after the fires feature was switched off could stop the game script.
+- Faster: wild animals graze longer between moves and are looked at half each second (a big map has over 9,000); wolves find nearby farms and prey through a grid instead of looking at every animal.
+- The long test game now checks warships, generals, prices and river boats every minute, and can save and load mid-game and compare (save_at=); a new tool, divergence.gd, finds the first tick where a loaded game plays differently.
+
 ## Build 56.1 (v0.51.0, 2026-11-15)
 
 Build 56.1: optimization and bug round 1.

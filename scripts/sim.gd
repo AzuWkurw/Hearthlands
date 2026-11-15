@@ -906,6 +906,9 @@ func add_bld(ty: String, x: int, y: int, p: Player, instant: bool, door := -1) -
 	for t in plot_tiles(ty, x, y):
 		plot[t] = b.id
 	_after_building_change(b)
+	# a store standing at once (an expedition's harbour) adds its room and porters now
+	if instant and b.def.has("store"):
+		_recount_stores(p)
 	return b
 
 
@@ -2305,6 +2308,10 @@ func checksum() -> int:
 
 
 func _secondly() -> void:
+	# a headquarters that is gone (its realm beaten) is no longer pointed at, as in a loaded game
+	for p in players:
+		if not p.alive and p.hq != null and (p.hq.dead or not by_id.has(p.hq.id)):
+			p.hq = null
 	if not mission.is_empty() and not over:
 		_mission_check()
 	if log_checksums and int(time) % 60 == 0:
@@ -2433,7 +2440,7 @@ func to_save() -> Dictionary:
 	var pl := []
 	for p in players:
 		var pd := _dump(p, ["hq"])
-		pd["hq_id"] = p.hq.id if p.hq != null else 0
+		pd["hq_id"] = p.hq.id if p.hq != null and not p.hq.dead and by_id.has(p.hq.id) else 0
 		pl.append(pd)
 	var bl := []
 	for b in blds:
