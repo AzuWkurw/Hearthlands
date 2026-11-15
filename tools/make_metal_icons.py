@@ -23,7 +23,7 @@ RAMP = {
 BADGE = {"bronze": (196, 132, 58), "iron": (150, 158, 168), "steel": (110, 160, 214)}
 
 
-def recolour(im, metal):
+def recolour(im, metal, vmax=1.01):
     lo, hi = RAMP[metal]
     out = im.copy()
     px = out.load()
@@ -33,7 +33,7 @@ def recolour(im, metal):
             if a == 0:
                 continue
             h, s, v = colorsys.rgb_to_hsv(r / 255.0, g / 255.0, b / 255.0)
-            if s < 0.2 and v > 0.3:
+            if s < 0.2 and v > 0.3 and v < vmax:
                 t = min(1.0, max(0.0, (v - 0.3) / 0.7))
                 if metal == "steel":
                     t = min(1.0, t * 1.08)
@@ -56,8 +56,23 @@ def badge(metal):
     return im.resize((S, S), Image.LANCZOS)
 
 
-def main():
+def soldiers():
+    """Build 71: the soldiers of each kind with bronze or steel arms and helmets (the white of their
+    tunics, which takes the realm's colour, stays white). unit_soldier_e<k>_bronze/_steel.png."""
     n = 0
+    for k in range(1, 7):
+        src = os.path.join(ROOT, "unit_soldier_e%d.png" % k)
+        if not os.path.exists(src):
+            continue
+        im = Image.open(src).convert("RGBA")
+        for metal in ("bronze", "steel"):
+            recolour(im, metal, 0.86).save(os.path.join(ROOT, "unit_soldier_e%d_%s.png" % (k, metal)))
+            n += 1
+    return n
+
+
+def main():
+    n = soldiers()
     for rid in METAL:
         src = os.path.join(ROOT, "res_%s.png" % rid)
         if not os.path.exists(src):

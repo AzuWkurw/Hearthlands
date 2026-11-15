@@ -2,7 +2,7 @@
 
 Every source file with what it is for, grouped by part. Written by `tools/file_list.py` from the comment at the
 top of each file; run it again after adding files. For how the parts work together, read
-`docs/SOURCE_GUIDE.md`. Besides these 290 files there are 2154 pictures in `textures/` (made by
+`docs/SOURCE_GUIDE.md`. Besides these 290 files there are 2166 pictures in `textures/` (made by
 `tools/make_textures.py` and `tools/make_scenery.py`, or your own) and 79 sounds in `sounds/` (made by
 `tools/make_sounds.py`) and 10 pieces of music in `music/` (made by `tools/make_music.py`). Godot's
 `.import` files next to them are made by the editor.
@@ -65,7 +65,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `scripts/blueprints.gd` | 326 | Blueprints (build 58): a group of buildings and the roads between them, copied from your own land and kept across games in user://blueprints.json, sorted into categories. Placing one puts down every building site and road at once; trees and roads in the way are listed first, so the player can be asked whether to clear them (Blueprints.obstacles, Blueprints.clear).  A blueprint: {"name", "cat", "w", "h", "items": [[type, dx, dy, door], ...], "roads": [[dx, dy], ...]} with every offset from the top-left corner of the area it was copied from. |
 | `scripts/editor_tools.gd` | 236 | The map editor's work on the map itself, apart from its panel (ui_editor.gd): where a mirrored brush paints, the fill bucket, smoothing, carving rivers, cutting out and stamping areas (copy and paste, turned or mirrored), and the fairness count of what lies around each start. These only work out which tiles change; the editor makes the changes, so it can undo them. |
 | `scripts/i18n.gd` | 54 | Interface languages. Each data/lang_<code>.json (and the same name in the mods folder) maps the English text to its translation; "_language" holds the language's own name. The files are loaded at start as Godot translations, so every label and button whose text is a key is shown translated, and text with numbers in it goes through tr("... %d ...") in the code. tools/extract_strings.py collects new text into the files. The game's own messages (event log, building info) stay English. |
-| `scripts/main.gd` | 2588 | Builds the interface in code and runs the game loop. |
+| `scripts/main.gd` | 2603 | Builds the interface in code and runs the game loop. |
 | `scripts/places.gd` | 190 | Neutral places a hand-made map can hold (set in the map editor): - Ruins: the first realm whose land reaches them finds what was left there (planks, stone, gold, tools). Nothing can be built on the ruins themselves. - Bandit camps: nobody can build within 3 tiles of one, and every 90 seconds the bandits steal goods from the nearest realm whose land comes within 8 tiles. A realm clears a camp by sending soldiers from a military building within reach (click the camp); they fight the bandits one by one, and whoever wins takes what the camp held. Rivals clear camps near them when they have soldiers to spare. Each place is a Dictionary in sim.places (saved with the game): {kind: "ruins"\|"bandits", x, y, done: looted or cleared, n: bandits left, raid_t, party: {} or {p, src, n, mix, t0, t1}} |
 | `scripts/prio_presets.gd` | 60 | Ready-made sets of priorities (build 54): transport numbers (Player.carry_rank) and worker numbers (Player.work_rank) together. The player's own sets are kept in the settings (Settings.prio_presets); rivals pick one of these as their situation changes (SimAI._ai_priorities). |
 | `scripts/rid_canvas.gd` | 82 | The drawing calls the map view uses (draw_rect, draw_texture_rect, ...), recorded into a canvas item of the RenderingServer instead of the map view itself. The map view draws its buildings, fields and trees through one of these when zoomed out, and keeps the recording until something changes: a frame then only moves and scales it with the camera (MapView, "the building layer"). |
@@ -84,7 +84,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `scripts/ui_diplomacy.gd` | 270 | The Diplomacy window: alliances, peace, war and trade with rivals. Part of the interface: main.gd holds the shared state and calls in here; the functions reach the rest of the game through `main`. |
 | `scripts/ui_editor.gd` | 1303 | The map editor: opened from the new-game screen. It starts from the map of the seed and size chosen there, without any realm on it. Its panel has five tabs: - Paint: tools (brush, fill bucket, smoothing, rivers with fords, copy and paste turned or mirrored) and what they paint: ground, trees/rocks/clay, ore and its amount, climate, animals, ruins and bandit camps. Brushes are square or round, and can paint mirrored (left\|right, top\|bottom, four ways, turned) for fair maps. Every stroke can be undone (Ctrl+Z) and redone (Ctrl+Y). - Map: open a saved map, make a new one from a seed with the landscape settings, name, save, play, export. - Starts: move, add and remove the headquarters' places (start 1 is yours), and set each one up: a name, the rival's personality and strength, more or fewer goods, extra soldiers. - Mission: goals, a story and a deadline, saved to your missions and played on this map. - Check: what lies around each start (trees, stone, ore, fish, open land), so the starts are fair. Maps are saved as JSON in the "maps" folder of the game's data folder (user://maps). |
 | `scripts/ui_guide.gd` | 213 | The first-game guide: a short checklist for the first minutes of a new game (build a woodcutter, join it to the roads, a sawmill, a quarry...). Each step is ticked off by itself when it is done, with a line on the rule that matters for it (entrances, sizes, roads). It closes when every step is done or with its x, and "Show the first-game guide" in Settings brings it back for the next new game. |
-| `scripts/ui_info.gd` | 759 | The building info box: what the selected building is doing, and its buttons (priority, stores, garrison...). Part of the interface: main.gd holds the shared state and calls in here; the functions reach the rest of the game through `main` (main.gd keeps a one-line wrapper for each, so callers did not change). |
+| `scripts/ui_info.gd` | 766 | The building info box: what the selected building is doing, and its buttons (priority, stores, garrison...). Part of the interface: main.gd holds the shared state and calls in here; the functions reach the rest of the game through `main` (main.gd keeps a one-line wrapper for each, so callers did not change). |
 | `scripts/ui_log.gd` | 119 | The event log: a small window, at first in the upper-left corner of the map, that you can move by its title bar and resize from its edges. Its place, size and whether it is open are remembered in Settings. E (or the Events button on the top bar) shows and hides it. Events that happened somewhere on the map end with a Go button that moves the camera there. |
 | `scripts/ui_market.gd` | 226 | The Market window (M): every good's price in gold, where it is going (a little line of the last 30 minutes and an arrow), what you have, and buttons to sell or buy 10 at your market (SimMarket). |
 | `scripts/ui_missions.gd` | 93 | The missions list, opened from the new-game screen: games with goals and often a deadline, from data/missions.json (a mod's data/missions.json adds more). Each mission plays on a map made from its seed or on a hand-made map file; its goals show in the box on the left while playing. |
@@ -330,7 +330,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `tools/make_build.py` | 250 | Make a release build of Hearthlands in one go. |
 | `tools/make_ground.py` | 381 | Ground tiles for Hearthlands: grass, beach, water and mountain rock, four variants each, 64 x 64. |
 | `tools/make_hats.py` | 79 | The hats people wear in each age (build 63), drawn over workers, porters and townsfolk: textures/unit_hat_e0.png .. unit_hat_e5.png, 64x40 each, the hat's brim at the bottom. |
-| `tools/make_metal_icons.py` | 76 | Build 66.1: the tool and weapon icons in each metal, and a small badge for each metal. |
+| `tools/make_metal_icons.py` | 91 | Build 66.1: the tool and weapon icons in each metal, and a small badge for each metal. |
 | `tools/make_music.py` | 596 | Compose and render Hearthlands' music into ../music (OGG Vorbis, stereo, 44.1 kHz). |
 | `tools/make_scenery.py` | 273 | Trees, mountain peaks and boulders for the map, drawn with light and shade so they look round. |
 | `tools/make_sounds.py` | 564 | Generate Hearthlands' sound effects and ambience into ../sounds. |
@@ -342,9 +342,9 @@ top of each file; run it again after adding files. For how the parts work togeth
 
 | File | Lines | What it is |
 |---|---:|---|
-| `CHANGELOG.md` | 978 | What changed in each build. |
-| `README.md` | 1392 | How to play, the rules, controls, settings, modding and the project layout. |
-| `docs/FILES.md` | 352 | This list (written by tools/file_list.py). |
+| `CHANGELOG.md` | 984 | What changed in each build. |
+| `README.md` | 1395 | How to play, the rules, controls, settings, modding and the project layout. |
+| `docs/FILES.md` | 353 | This list (written by tools/file_list.py). |
 | `docs/SOURCE_GUIDE.md` | 439 | A tour of the code for programmers: the parts, how a game tick runs, where things live. |
 | `docs/SUGGESTIONS.md` | 203 | Ideas and their status after each round of work. |
 | `export_presets.cfg` | 61 | Godot export settings for the Windows and Linux builds. |

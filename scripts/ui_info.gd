@@ -442,6 +442,7 @@ func _xp_line(who: String, xp: float, table: Array, unit: String, pct: int) -> S
 func _crop_ui(b: Sim.Bld) -> void:
 	var me := main.sim.human()
 	main.prio_row.add_child(main._label("Crop", 14, Main.DIM))
+	var n_ok := 0
 	for id in Crops.ORDER:
 		var cd: Dictionary = Crops.LIST[id]
 		if String(cd.need) != "" and main.sim.get_feature(String(cd.need)) == null:
@@ -461,6 +462,12 @@ func _crop_ui(b: Sim.Bld) -> void:
 			tip += "\nLocked: study %s to get the seed." % String(GameData.techs[String(cd.tech)].name)
 		cb.tooltip_text = tip
 		main.prio_row.add_child(cb)
+		if ok:
+			n_ok += 1
+	if n_ok <= 1:
+		# (build 70.1) only one seed known yet: say where the others come from
+		var lk := main._label("Other seeds come with research (point at a crop to see which study)", 13, Main.DIM)
+		main.prio_row.add_child(lk)
 	# a crop for each season (blank: the main crop above)
 	var sg := GridContainer.new()
 	sg.columns = 4

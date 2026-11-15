@@ -2252,7 +2252,10 @@ func _refresh_all() -> void:
 	choice_ui.check()
 	_refresh_build()
 	_dry_mines()
-	_refresh_sel()
+	# (build 70.1) not while the player is using the info box: rebuilding its buttons every 0.3 s lost
+	# clicks, and closed a crop list (or any list) before a choice was made in it
+	if not _sel_busy():
+		_refresh_sel()
 	_refresh_rivals()
 	guide_ui.refresh()
 	notices_ui.tick()
@@ -2290,6 +2293,18 @@ func _refresh_build() -> void:
 
 func _refresh_sel() -> void:
 	info_ui._refresh_sel()
+
+
+## Whether the player is using the info box now: a list in it is open, or a mouse button is held over it.
+func _sel_busy() -> bool:
+	if sel_box == null or not sel_box.visible:
+		return false
+	for box in [prio_row, sel_actions, garrison_box]:
+		for c in box.find_children("*", "OptionButton", true, false):
+			if (c as OptionButton).get_popup().visible:
+				return true
+	var held := Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) or Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT)
+	return held and sel_box.get_global_rect().has_point(get_viewport().get_mouse_position())
 
 
 ## What each priority does, shown in the building panel and as button tooltips.

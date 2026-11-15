@@ -10,7 +10,7 @@ economy you do.
 ## Download
 
 The ready-made Windows game is on the [Releases page](../../releases/latest): download the
-`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.65.0 build 70** (see
+`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.65.0 build 70.1** (see
 `CHANGELOG.md`). Every build is a release of its own, made by GitHub Actions
 (`.github/workflows/release.yml`) when a new version reaches `main`; older builds up to 50 are also
 on the [`downloads` branch](../../tree/downloads).
@@ -68,6 +68,7 @@ Done (builds 43 to 70):
 | 68 | Tools and weapons by metal in the production targets: which metal is used first, the most of each metal in store, metal left for the other smiths; the stores list each metal when there is more than one |
 | 69 | Faster carriers on big maps (store search without copying the map), tools wanted worked out once per moment; F3 shows the busiest realms |
 | 70 | Scrap metal (worn tools and weapons back to the stores, a scrap forge melts them into bars); armor of bronze, iron or steel plate (bronze armorer, armorer, plate armorer) with the metal settings |
+| 70.1 | Fix: farm crops could not be changed (the info box rebuilt its buttons every third of a second, losing clicks and closing lists) |
 
 Later: a story campaign through the ages, multiplayer, scripted scenarios, a chronicle at the end of a
 game, more animations, music for each age, and quality-of-life features (a production chain overlay,

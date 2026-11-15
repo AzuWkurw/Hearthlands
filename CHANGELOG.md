@@ -1,5 +1,11 @@
 # Changelog
 
+## Build 70.1 (v0.65.0, 2026-11-15)
+
+Build 70.1: farm crops can be changed again.
+- Fix: the info box rebuilt its buttons every third of a second, so a click on a crop (or any button there) was often lost, and a farm's crop-by-season list closed before a crop could be picked. It now waits while you use the box (a list open, or the mouse button held over it).
+- A farm's panel says where other seeds come from when only one is known yet (every game now starts in the Bronze Age, where wheat is the only seed: winter rye, vegetables, potatoes and hops come with research).
+
 ## Build 70 (v0.65.0, 2026-11-15)
 
 Build 70: scrap metal; armor by metal.
