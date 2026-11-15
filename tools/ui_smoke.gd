@@ -7,14 +7,19 @@ func _frames(n: int) -> void:
 
 func _init() -> void:
 	var save := "user_save"
+	var fresh := ""
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("save="): save = a.substr(5)
+		if a.begins_with("new="): fresh = a.substr(4)
 	DisplayServer.window_set_size(Vector2i(1600, 900))
 	root.size = Vector2i(1600, 900)
 	var main = load("res://main.tscn").instantiate()
 	root.add_child(main)
 	await _frames(3)
-	main._load_game(save)
+	if fresh != "":
+		main._start("smoke", 4, 5, false, 160, false, {"features": Features.default_ids(), "gen": {"shape": fresh}, "sea_start": true, "all_research": true})
+	else:
+		main._load_game(save)
 	main.setup.visible = false
 	main.paused = false
 	var sim: Sim = main.sim
@@ -57,6 +62,14 @@ func _init() -> void:
 			main.choice_ui.check()
 			await _frames(3)
 	print("step play")
+	if fresh != "":
+		# warships, a landing and a coastal fort to draw and click
+		for k in 3: sim.naval.launch(me, me.hq)
+		me.reserve = 12; me.ships = 2
+		for q in sim.players:
+			if q.id != 1:
+				print("  landing: '%s'" % sim.military.launch_landing(me.hq, q.hq, 12))
+				break
 	for i in 600:
 		sim.tick(Sim.TICK)
 		if i % 60 == 0:

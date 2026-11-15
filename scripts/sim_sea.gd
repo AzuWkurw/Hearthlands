@@ -249,7 +249,7 @@ func sea_transfers() -> void:
 # ---------------------------------------------------------------- landings
 const LANDING_PER_SHIP := 6      # soldiers a ship carries to a landing
 const LANDING_MAX := 24          # soldiers in one landing
-const LAND_R := 10               # a landing goes ashore at most this far from its target
+const LAND_R := 24               # a landing goes ashore at most this far from its target (an island's headquarters can stand well inland)
 
 
 ## The way for soldiers from harbour h to building t across the water: [the crossing (water tiles,
@@ -289,11 +289,22 @@ func landing_route(h: Sim.Bld, t: Sim.Bld) -> Array:
 		q.append(s)
 	var head := 0
 	var found := -1
+	# the beach to land on: close to the target first, then a short crossing (the ships search the
+	# water outward from the harbour; the depth of each tile is the length of the crossing to it)
+	var depth := {}
+	for s0 in starts:
+		depth[s0] = 0
+	var best_sc := INF
 	while head < q.size() and head < 120000:
 		var cur: int = q[head]
 		head += 1
 		if goal.has(cur):
-			found = cur
+			var sc := sqrt(float(gd[cur])) * 3.0 + float(depth[cur]) * 0.15
+			if sc < best_sc:
+				best_sc = sc
+				found = cur
+		# once the crossings grow long, nothing nearer the target is worth the extra sailing
+		if found >= 0 and float(depth[cur]) * 0.15 > best_sc:
 			break
 		var cx := cur % sim.w
 		var cy := cur / sim.w
@@ -307,6 +318,7 @@ func landing_route(h: Sim.Bld, t: Sim.Bld) -> Array:
 				if came.has(ni) or sim.ter[ni] != Sim.WATER:
 					continue
 				came[ni] = cur
+				depth[ni] = int(depth[cur]) + 1
 				q.append(ni)
 	if found < 0:
 		return []

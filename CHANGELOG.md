@@ -1,5 +1,12 @@
 # Changelog
 
+## Build 56.3 (v0.51.0, 2026-11-15)
+
+Build 56.3: optimization and bug round 3.
+- Fixed: on the isles map no landing could reach a headquarters in the middle of an island (fleets only landed within 10 tiles of the target). Fleets now land up to 24 tiles away, on the beach nearest the target that a short crossing reaches, and the soldiers march from there.
+- Rivals make no landing in the first 25 minutes, so a harbour start no longer lets a rival end the game from the sea before anyone could build a defence.
+- Long test games on lakes, continent and isles maps (with road carriers, places, research and harbour starts), each saved and loaded mid-game and compared, ran with no problems; the interface smoke test now also plays an isles game with warships and a landing.
+
 ## Build 56.2 (v0.51.0, 2026-11-15)
 
 Build 56.2: optimization and bug round 2.

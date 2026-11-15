@@ -756,10 +756,14 @@ func ai_attack(p: Sim.Player) -> bool:
 	return true
 
 
+const AI_LANDING_FROM := 25 * 60.0
+
 ## No target by land: a rival with a harbour, a free ship and soldiers waiting lands on an enemy coast
 ## (it looks at most once a minute: finding the way by sea takes a while).
 func _ai_landing(p: Sim.Player) -> bool:
-	if sim.time - p.sea_try < 60.0 or p.reserve < 6 or sim.sea.free_ships(p) < 1:
+	# not in the first 25 minutes: a landing from the sea must not end a game before anyone could
+	# build a defence (a harbour start gives ships at once)
+	if sim.time < AI_LANDING_FROM or sim.time - p.sea_try < 60.0 or p.reserve < 6 or sim.sea.free_ships(p) < 1:
 		return false
 	var hs := sim.sea.harbours(p)
 	if hs.is_empty():
