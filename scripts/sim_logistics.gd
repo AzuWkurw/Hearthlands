@@ -924,7 +924,18 @@ func target_of(p: Sim.Player, res: String) -> int:
 
 
 ## Tools of each kind made but not yet in store: waiting at the toolsmith or on a carrier's back.
+var _tc_memo := {}         # realm id -> [tick, trips count, tools coming] (build 69: asked many times a tick)
+
 func _tools_coming(p: Sim.Player) -> Dictionary:
+	var m = _tc_memo.get(p.id)
+	if m != null and int(m[0]) == sim._ticks and int(m[1]) == sim.trips.size():
+		return m[2]
+	var out := _tools_coming_now(p)
+	_tc_memo[p.id] = [sim._ticks, sim.trips.size(), out]
+	return out
+
+
+func _tools_coming_now(p: Sim.Player) -> Dictionary:
 	var out := {}
 	for b: Sim.Bld in realm_blds(p):
 		if b.def.has("makes_tools"):
@@ -1344,15 +1355,33 @@ func store_field(s: Sim.Bld, to := -1) -> Array:
 	_net_ready(s.p)
 	var e = _sfield.get(s.id)
 	if e == null or int(e[0]) != int(net_ver[k]):
-		var dist := PackedFloat32Array(); dist.resize(sim.w * sim.h); dist.fill(INF)
-		var par := PackedInt32Array(); par.resize(sim.w * sim.h); par.fill(-1)
-		var done := PackedByteArray(); done.resize(sim.w * sim.h)
+		var dist: PackedFloat32Array
+		var par: PackedInt32Array
+		var done: PackedByteArray
+		var touched: PackedInt32Array
+		if e != null and (e[1] as PackedFloat32Array).size() == sim.w * sim.h:
+			# (build 69) the old search's arrays, put back only where it went: on a big map far cheaper
+			# than new ones
+			dist = e[1]; par = e[2]; done = e[3]; touched = e[5]
+			e[1] = null; e[2] = null; e[3] = null; e[5] = null     # (so writing does not copy them)
+			for i in touched:
+				dist[i] = INF
+				par[i] = -1
+				done[i] = 0
+			touched.resize(0)
+		else:
+			dist = PackedFloat32Array(); dist.resize(sim.w * sim.h); dist.fill(INF)
+			par = PackedInt32Array(); par.resize(sim.w * sim.h); par.fill(-1)
+			done = PackedByteArray(); done.resize(sim.w * sim.h)
+			touched = PackedInt32Array()
 		var hp0 := Sim.MinHeap.new()
 		var st0 := sim.idx(s.x, s.y)
 		dist[st0] = 0.0
+		touched.append(st0)
 		hp0.push(0.0, st0)
-		e = [int(net_ver[k]), dist, par, done, hp0]
+		e = [int(net_ver[k]), dist, par, done, hp0, touched]
 		_sfield[s.id] = e
+		dist = PackedFloat32Array(); par = PackedInt32Array(); done = PackedByteArray(); touched = PackedInt32Array()
 	var done2: PackedByteArray = e[3]
 	if to >= 0 and done2[to] == 1:
 		return e
@@ -1361,45 +1390,82 @@ func store_field(s: Sim.Bld, to := -1) -> Array:
 		return e
 	var dist2: PackedFloat32Array = e[1]
 	var par2: PackedInt32Array = e[2]
+	var tch: PackedInt32Array = e[5]
+	# packed arrays are copied on write while shared: let go of the stored ones while searching
+	e[1] = null; e[2] = null; e[3] = null; e[5] = null
 	var pid := s.p
 	var st := sim.idx(s.x, s.y)
+	# (build 69) the map's arrays held here: the same search, with less looking up per step
+	var bmap: PackedInt32Array = sim.bmap
+	var owner: PackedByteArray = sim.owner
+	var road: PackedByteArray = sim.road
+	var pave: PackedByteArray = sim.pave
+	var height: PackedByteArray = sim.height
+	var flat := height.is_empty()
+	var W: int = sim.w
+	var H: int = sim.h
+	var by_id: Dictionary = sim.by_id
+	var s0 := float(Sim.SLOPE_STEPS[0])
+	var s1 := float(Sim.SLOPE_STEPS[1])
+	var s2 := float(Sim.SLOPE_STEPS[2])
+	var m1 := float(Sim.SLOPE_MUL[1])
+	var m2 := float(Sim.SLOPE_MUL[2])
+	var m3 := float(Sim.SLOPE_MUL[3])
 	while hp.size() > 0:
 		var cur := hp.pop()
 		if done2[cur] == 1:
 			continue
 		done2[cur] = 1
-		if sim.bmap[cur] != 0 and cur != st and not is_store(sim.by_id.get(sim.bmap[cur])):
+		var cb := bmap[cur]
+		if cb != 0 and cur != st and not is_store(by_id.get(cb)):
 			if cur == to: break
 			continue
-		var cx := cur % sim.w
-		var cy := cur / sim.w
+		var cx := cur % W
+		var cy := cur / W
+		var dcur := dist2[cur]
 		for dd in 4:
-			var nx := cx + (1 if dd == 0 else (-1 if dd == 1 else 0))
-			var ny := cy + (1 if dd == 2 else (-1 if dd == 3 else 0))
-			if nx < 0 or ny < 0 or nx >= sim.w or ny >= sim.h:
+			var ni: int
+			if dd == 0:
+				if cx + 1 >= W: continue
+				ni = cur + 1
+			elif dd == 1:
+				if cx - 1 < 0: continue
+				ni = cur - 1
+			elif dd == 2:
+				if cy + 1 >= H: continue
+				ni = cur + W
+			else:
+				if cy - 1 < 0: continue
+				ni = cur - W
+			if done2[ni] == 1 or owner[ni] != pid:
 				continue
-			var ni := ny * sim.w + nx
-			if done2[ni] == 1 or sim.owner[ni] != pid:
-				continue
-			if sim.bmap[ni] != 0:
-				var nb: Sim.Bld = sim.by_id.get(sim.bmap[ni])
+			var nbm := bmap[ni]
+			if nbm != 0:
+				var nb: Sim.Bld = by_id.get(nbm)
 				if nb == null or nb.p != pid:
 					continue
-			elif sim.road[ni] != pid:
+			elif road[ni] != pid:
 				continue
-			if (sim.bmap[cur] != 0 or sim.bmap[ni] != 0) and not sim.links(cur, ni):
+			if (cb != 0 or nbm != 0) and not sim.links(cur, ni):
 				continue
-			_f32[0] = dist2[cur] + step_cost(cur, ni)
+			var cost := Sim.PAVED_COST if (nbm != 0 or pave[ni] == 1) else Sim.DIRT_COST
+			if not flat:
+				var dh := absi(int(height[cur]) - int(height[ni]))
+				if dh >= s0:
+					cost *= m1 if dh < s1 else (m2 if dh < s2 else m3)
+			_f32[0] = dcur + cost
 			var nd := _f32[0]
-			if nd < dist2[ni] or (nd == dist2[ni] and cur < par2[ni]):
-				var better := nd < dist2[ni]
+			var old := dist2[ni]
+			if nd < old or (nd == old and cur < par2[ni]):
+				if old == INF:
+					tch.append(ni)
 				dist2[ni] = nd
 				par2[ni] = cur
-				if better: hp.push(nd, ni)
+				if nd < old: hp.push(nd, ni)
 		if cur == to:
 			break
-	# packed arrays are copied on write: put the updated ones back
-	e[1] = dist2; e[2] = par2; e[3] = done2
+	# put the updated ones back
+	e[1] = dist2; e[2] = par2; e[3] = done2; e[5] = tch
 	return e
 
 
@@ -1534,82 +1600,88 @@ func _dispatch_inputs() -> void:
 	for p in sim.players:
 		if not p.alive:
 			continue
-		# a hungry realm feeds itself first: the buildings that make food, or what food is made from
-		# (a mill's flour for the bakeries), are served before all others while food is short
-		var hungry := _hungry(p)
-		_rank_memo_check(p)
-		var buckets := [[], [], [], []]
-		for b: Sim.Bld in _input_blds(p):
-			if b.dead or b.state != "ready" or not b.staffed or b.prio == Sim.PRIO_PAUSED or b.reno_to >= 0:
-				continue
-			# found stocked up (or with nothing to send) a moment ago: it sleeps until in_next, and is not
-			# even sorted into the rounds (build 59: most buildings sleep most of the time)
+		var tz := Time.get_ticks_usec()
+		_dispatch_inputs_for(p)
+		sim.perf_realm[p.id] = int(sim.perf_realm.get(p.id, 0)) + Time.get_ticks_usec() - tz
+
+
+func _dispatch_inputs_for(p: Sim.Player) -> void:
+	# a hungry realm feeds itself first: the buildings that make food, or what food is made from
+	# (a mill's flour for the bakeries), are served before all others while food is short
+	var hungry := _hungry(p)
+	_rank_memo_check(p)
+	var buckets := [[], [], [], []]
+	for b: Sim.Bld in _input_blds(p):
+		if b.dead or b.state != "ready" or not b.staffed or b.prio == Sim.PRIO_PAUSED or b.reno_to >= 0:
+			continue
+		# found stocked up (or with nothing to send) a moment ago: it sleeps until in_next, and is not
+		# even sorted into the rounds (build 59: most buildings sleep most of the time)
+		if sim.time < b.in_next:
+			continue
+		if hungry and food_chain().has(b.ty):
+			buckets[0].append(b)
+		else:
+			buckets[1 + Sim.PRIO_HIGH - b.prio].append(b)
+	# the transport priorities: within each priority, buildings whose goods have a lower number first
+	if not p.carry_rank.is_empty():
+		var split := []
+		for list0: Array in buckets:
+			var groups := {}
+			for b0: Sim.Bld in list0:
+				var r0 := _bld_rank_c(p, b0)
+				if not groups.has(r0):
+					groups[r0] = []
+				(groups[r0] as Array).append(b0)
+			var rs := groups.keys()
+			rs.sort()
+			for r1 in rs:
+				split.append(groups[r1])
+		buckets = split
+	var out_of_carriers := false
+	for list: Array in buckets:
+		if out_of_carriers:
+			break
+		# each round starts at another building, so when carriers are short every building gets its
+		# turn (always starting with the oldest left new ones, like a late brewery, waiting for ever)
+		var n0 := list.size()
+		var start := (sim._ticks / 3) % n0 if n0 > 0 else 0
+		for j in n0:
+			var b: Sim.Bld = list[(start + j) % n0]
+			if porters_free(p) <= 0 and (_stations[p.id - 1] as Array).is_empty() and not road_carriers_on():
+				out_of_carriers = true     # this realm's carriers are all out; the next realm's turn
+				break
+			# a building found stocked up is looked at again a few seconds later, not every round
 			if sim.time < b.in_next:
 				continue
-			if hungry and food_chain().has(b.ty):
-				buckets[0].append(b)
-			else:
-				buckets[1 + Sim.PRIO_HIGH - b.prio].append(b)
-		# the transport priorities: within each priority, buildings whose goods have a lower number first
-		if not p.carry_rank.is_empty():
-			var split := []
-			for list0: Array in buckets:
-				var groups := {}
-				for b0: Sim.Bld in list0:
-					var r0 := _bld_rank_c(p, b0)
-					if not groups.has(r0):
-						groups[r0] = []
-					(groups[r0] as Array).append(b0)
-				var rs := groups.keys()
-				rs.sort()
-				for r1 in rs:
-					split.append(groups[r1])
-			buckets = split
-		var out_of_carriers := false
-		for list: Array in buckets:
-			if out_of_carriers:
-				break
-			# each round starts at another building, so when carriers are short every building gets its
-			# turn (always starting with the oldest left new ones, like a late brewery, waiting for ever)
-			var n0 := list.size()
-			var start := (sim._ticks / 3) % n0 if n0 > 0 else 0
-			for j in n0:
-				var b: Sim.Bld = list[(start + j) % n0]
-				if porters_free(p) <= 0 and (_stations[p.id - 1] as Array).is_empty() and not road_carriers_on():
-					out_of_carriers = true     # this realm's carriers are all out; the next realm's turn
-					break
-				# a building found stocked up is looked at again a few seconds later, not every round
-				if sim.time < b.in_next:
+			var all_ok := true
+			var sent := false
+			var inp: Dictionary = b.def["in"]
+			for k in _inp_order(p, b):
+				# enough for two work cycles; food for one, so less of it sits about in workshops
+				var cyc := b.keep if b.keep > 0 else 2
+				var want := int(inp[k]) * (maxi(1, cyc / 2) if k == "food" else cyc)
+				var have := food_at(b) if k == "food" else int(b.inbuf.get(k, 0)) + int(b.incoming.get(k, 0))
+				if have >= want:
 					continue
-				var all_ok := true
-				var sent := false
-				var inp: Dictionary = b.def["in"]
-				for k in _inp_order(p, b):
-					# enough for two work cycles; food for one, so less of it sits about in workshops
-					var cyc := b.keep if b.keep > 0 else 2
-					var want := int(inp[k]) * (maxi(1, cyc / 2) if k == "food" else cyc)
-					var have := food_at(b) if k == "food" else int(b.inbuf.get(k, 0)) + int(b.incoming.get(k, 0))
-					if have >= want:
+				all_ok = false
+				var res := String(k)
+				if k == "food":
+					res = ""
+					for f in GameData.food_ids:
+						if float(p.stock.get(f, 0.0)) >= 1.0:
+							res = f
+							break
+					if res == "":
 						continue
-					all_ok = false
-					var res := String(k)
-					if k == "food":
-						res = ""
-						for f in GameData.food_ids:
-							if float(p.stock.get(f, 0.0)) >= 1.0:
-								res = f
-								break
-						if res == "":
-							continue
-					elif float(p.stock.get(k, 0.0)) < 1.0:
-						continue
-					if carry_to(b, p, res, want - have, false) > 0:
-						sent = true
-						break
-				if all_ok:
-					b.in_next = sim.time + IN_RECHECK
-				elif not sent:
-					b.in_next = sim.time + IN_WAIT
+				elif float(p.stock.get(k, 0.0)) < 1.0:
+					continue
+				if carry_to(b, p, res, want - have, false) > 0:
+					sent = true
+					break
+			if all_ok:
+				b.in_next = sim.time + IN_RECHECK
+			elif not sent:
+				b.in_next = sim.time + IN_WAIT
 
 
 ## A building's inputs are looked at again this long after it was found stocked up (unless it starts

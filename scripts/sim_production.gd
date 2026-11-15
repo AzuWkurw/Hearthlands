@@ -245,6 +245,7 @@ func deliver(b: Sim.Bld, p: Sim.Player, res: String, n: int) -> void:
 		store_goods(p, res, n, sim.idx(b.x, b.y))
 		return
 	b.out_buf[res] = int(b.out_buf.get(res, 0)) + n
+	sim.logistics._tc_memo.erase(p.id)     # the tools coming have changed
 	sim._pending[b.id] = true
 
 

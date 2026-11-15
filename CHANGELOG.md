@@ -1,5 +1,12 @@
 # Changelog
 
+## Build 69 (v0.64.0, 2026-11-15)
+
+Build 69: faster carriers; which realms cost the most.
+- Carriers: the search for the nearest store with a good walks the roads with less looking up per step and no longer copies the whole map's arrays each time it starts again; the carriers' share on your 46-minute save went from 32 to 27 ms per game second (the game goes on exactly as before).
+- Toolsmiths: "which tool is wanted most" is worked out once per moment instead of for every smith (it counted every carrier on the road each time).
+- F3 (performance) now shows the three realms that cost the most: their buildings, carriers and once-a-second turns ("busiest realms: Fenwick 20 ms, Brunhild 11 ms, Eadric 10 ms").
+
 ## Build 68 (v0.63.0, 2026-11-15)
 
 Build 68: tools and weapons by metal in the production targets; the stores list each metal.

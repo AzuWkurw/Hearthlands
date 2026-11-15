@@ -251,6 +251,7 @@ var perf_label: Label
 
 var perf_t := 0.0
 var _last_sim_ms := 0.0
+var _busy_text := ""
 
 
 var perf_last := {"time": 0.0, "usec": 0}
@@ -2386,12 +2387,25 @@ func _update_perf() -> void:
 		usec += int(sim.perf[k])
 	var game_secs := sim.time - float(perf_last.time)
 	var per := float(usec - int(perf_last.usec)) / 1000.0 / maxf(0.001, game_secs)
-	perf_last = {"time": sim.time, "usec": usec}
+	# the realms that cost the most (build 69): their buildings, carriers and once-a-second turns
+	var busy := []
+	var prev: Dictionary = perf_last.get("realm", {})
+	for pid in sim.perf_realm:
+		var ms := float(int(sim.perf_realm[pid]) - int(prev.get(pid, 0))) / 1000.0 / maxf(0.001, game_secs)
+		if pid >= 1 and pid <= sim.players.size():
+			busy.append([ms, pid])
+	busy.sort_custom(func(a, b): return a[0] > b[0])
+	if game_secs > 0.05:
+		var parts := []
+		for e in busy.slice(0, 3):
+			parts.append("%s %.1f ms" % [sim.players[int(e[1]) - 1].name, float(e[0])])
+		_busy_text = (tr("\nbusiest realms: %s") % ", ".join(parts)) if not parts.is_empty() else ""
+	perf_last = {"time": sim.time, "usec": usec, "realm": sim.perf_realm.duplicate()}
 	perf_t = 0.0
 	if game_secs > 0.05:
 		_last_sim_ms = per
 	var spd := (tr("paused") if paused else tr("game speed %dx, runs at %.1fx") % [int(speed), real_speed])
-	perf_label.text = tr("%d fps · map drawing %.1f ms · simulation %.1f ms per game second · %s · %d buildings · %d carriers on the road") % [Engine.get_frames_per_second(), (view.draw_usec + view.ground_usec) / 1000.0, _last_sim_ms, spd, sim.blds.size(), sim.trips.size()]
+	perf_label.text = tr("%d fps · map drawing %.1f ms · simulation %.1f ms per game second · %s · %d buildings · %d carriers on the road") % [Engine.get_frames_per_second(), (view.draw_usec + view.ground_usec) / 1000.0, _last_sim_ms, spd, sim.blds.size(), sim.trips.size()] + _busy_text
 
 
 # ================================================================ entry points into the parts

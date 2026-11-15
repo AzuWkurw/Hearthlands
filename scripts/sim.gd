@@ -670,6 +670,12 @@ var features: Array = []             # the switched-on optional features (Featur
 
 
 var perf: Dictionary = {}          # microseconds spent in each part of the simulation (shown with F3)
+var perf_realm: Dictionary = {}    # realm id -> microseconds spent on its buildings, carriers and turns (F3, build 69)
+## The carriers' loop is skipped while no trip arrives or comes home (build 69): the earliest time one
+## does, and the trips list as it was then (a new trip, wherever it was added, makes it look again).
+var _trip_next := -1.0
+var _trip_n := -1
+var _trip_last: Trip = null
 
 
 var _acc1 := 0.0
@@ -742,7 +748,7 @@ func new_game(p_seed: String, p_foes: int, p_strength: int, p_mix: bool, p_size 
 	_avail = {}; _avail_at = {}
 	players.clear(); blds.clear(); by_id.clear(); trips.clear(); attacks.clear(); navy.clear(); naval.fx.clear(); naval._comp = PackedInt32Array(); prices.clear(); price_hist.clear(); logs.clear()
 	rel = {}; rel_since = {}; proposals = []; standing = []; _prop_id = 0
-	time = 0.0; over = false; _bid = 0; _acc1 = 0.0; _sec_n = 0; _owned_dirty = true
+	time = 0.0; over = false; _bid = 0; _acc1 = 0.0; _sec_n = 0; _owned_dirty = true; _trip_n = -1; _trip_next = -1.0
 	_alloc_path_buffers()
 	rng.seed = seed_str.hash()
 	var names := AI_NAMES.duplicate()
@@ -2323,19 +2329,26 @@ func tick(dt: float) -> void:
 		var p := players[b.p - 1]
 		if not p.alive:
 			continue
+		var tb := Time.get_ticks_usec()
 		if b.state == "build":
 			build_tick(b, p, dt * 2.0)
 		else:
 			prod_tick(b, p, dt * 2.0)
+		perf_realm[b.p] = int(perf_realm.get(b.p, 0)) + Time.get_ticks_usec() - tb
 	_pf("buildings", t0)
 	t0 = Time.get_ticks_usec()
 	if _ticks % 3 == 0:
 		_dispatch()
-	var k := trips.size() - 1
+	var n_tr := trips.size()
+	var skip := n_tr == _trip_n and time < _trip_next and (n_tr == 0 or trips[n_tr - 1] == _trip_last)
+	var removed := 0
+	var nxt := INF
+	var k := -1 if skip else trips.size() - 1
 	while k >= 0:
 		var t := trips[k]
 		if not t.delivered and time >= t.t1:
 			t.delivered = true
+			logistics._tc_memo.clear()
 			var p := players[t.p - 1]
 			if t.kind == "ship":
 				sea.ship_arrival(t, p)
@@ -2358,7 +2371,17 @@ func tick(dt: float) -> void:
 			_free_carrier(t)
 			trips[k] = trips[trips.size() - 1]
 			trips.pop_back()
+			removed += 1
+		elif t.delivered:
+			nxt = minf(nxt, t.t2)
+		else:
+			nxt = minf(nxt, t.t1)
 		k -= 1
+	if not skip:
+		# trips added while the loop ran (an arrival sends another on) are not in nxt: look again next tick
+		_trip_next = nxt if trips.size() == n_tr - removed else -1.0
+		_trip_n = trips.size()
+		_trip_last = trips[trips.size() - 1] if trips.size() > 0 else null
 	if changed_tiles.size() > 100000:
 		changed_tiles.clear()
 		map_dirty = true
@@ -2528,6 +2551,12 @@ func _secondly() -> void:
 ## A realm's once-a-second work: workers, food, people, taxes, research, and a rival's diplomacy,
 ## building and attacks. Each realm has its own tenth of the second for it (p.id % 10).
 func _player_second(p: Player) -> void:
+	var tr0 := Time.get_ticks_usec()
+	_player_second_work(p)
+	perf_realm[p.id] = int(perf_realm.get(p.id, 0)) + Time.get_ticks_usec() - tr0
+
+
+func _player_second_work(p: Player) -> void:
 	var t0 := Time.get_ticks_usec()
 	staffing(p)
 	_pf("workers", t0)

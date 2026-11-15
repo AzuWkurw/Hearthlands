@@ -10,7 +10,7 @@ economy you do.
 ## Download
 
 The ready-made Windows game is on the [Releases page](../../releases/latest): download the
-`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.63.0 build 68** (see
+`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.64.0 build 69** (see
 `CHANGELOG.md`). Every build is a release of its own, made by GitHub Actions
 (`.github/workflows/release.yml`) when a new version reaches `main`; older builds up to 50 are also
 on the [`downloads` branch](../../tree/downloads).
@@ -32,7 +32,7 @@ What is in the game now:
 
 The full plan is in the [roadmap](https://claude.ai/artifact/YVAWwJGUN4FRBYtpz3zgQh).
 
-Done (builds 43 to 68):
+Done (builds 43 to 69):
 
 | Build | What came in |
 |---|---|
@@ -66,6 +66,7 @@ Done (builds 43 to 68):
 | 66 | Tools and weapons by metal (bronze, iron, steel: speed, wear, which soldiers they arm); locked buildings shown with their study, pause when attacked; rivals and hunters much faster on big maps; fixes: first workers without tools, worn tools never replaced in time, mesh errors; a test bench on the Test map |
 | 67 | Slowdowns on big maps fixed (fields drawn in blocks, realms take turns within the second, faster fog and sea checks); tools and weapons pictured by metal, metals coloured, soldiers counted by their arms; fixes: tool info, metal list, loaded games drifting |
 | 68 | Tools and weapons by metal in the production targets: which metal is used first, the most of each metal in store, metal left for the other smiths; the stores list each metal when there is more than one |
+| 69 | Faster carriers on big maps (store search without copying the map), tools wanted worked out once per moment; F3 shows the busiest realms |
 
 Later: a story campaign through the ages, multiplayer, scripted scenarios, a chronicle at the end of a
 game, more animations, music for each age, and quality-of-life features (a production chain overlay,
