@@ -938,11 +938,14 @@ func _tools_coming(p: Sim.Player) -> Dictionary:
 
 ## The tool most wanted: buildings waiting for one count first, then the shortfall against the target.
 ## Returns "" when every tool is in stock.
-func wanted_tool(p: Sim.Player) -> String:
+func wanted_tool(p: Sim.Player, tier := 0) -> String:
 	var coming := _tools_coming(p)
 	var best := ""
 	var best_need := 0.0
 	for t: String in GameData.tool_ids:
+		# (build 68) a smith of a metal whose limit for this tool is reached makes another kind
+		if tier > 0 and not sim.arms.under_limit(p, t, tier):
+			continue
 		var tg := target_of(p, t)
 		var need := float(p.tool_wait.get(t, 0)) * 2.0 + float(maxi(tg, 0)) - float(p.stock.get(t, 0.0)) - float(coming.get(t, 0))
 		if need > best_need:

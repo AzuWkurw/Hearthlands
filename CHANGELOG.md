@@ -1,5 +1,15 @@
 # Changelog
 
+## Build 68 (v0.63.0, 2026-11-15)
+
+Build 68: tools and weapons by metal in the production targets; the stores list each metal.
+- Production targets (T) has a new part, "Tools and weapons by metal", once for tools and once for weapons:
+- Used first: which metal workers and soldiers take from the stores first (best first, as before; or poorest first, to use up the bronze and keep the steel; or any other order).
+- At most in store: the most of each metal to keep (of each kind of tool, or of weapons). Once that many are there, a smith of that metal makes another kind of tool, or the weaponsmith waits ("Limit reached").
+- Leave for the weapon smiths / tool smiths: how much bronze, iron and steel the tool smiths leave in store for the weapon smiths, and the other way round ("Leaving iron in store for the weapons").
+- The stores list: a tool or the weapons with more than one metal in store get an entry for each metal (its picture and count), instead of one.
+- The settings are kept in your save; rivals keep the usual (best first, no limits).
+
 ## Build 67 (v0.62.0, 2026-11-15)
 
 Build 67: your slowdowns fixed; tools and weapons show their metal.

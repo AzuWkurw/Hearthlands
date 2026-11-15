@@ -121,8 +121,11 @@ func start_check(b: Sim.Bld, p: Sim.Player) -> String:
 			if p.scout - p.used_scout - p.scout_out >= 2: return "Enough scouts for now (2 idle)"
 	if String(d.get("train", "")) == "noble" and p.noble >= maxi(2, p.artisan / 2):
 		return "Enough nobles for now"
-	if d.has("makes_tools") and sim.wanted_tool(p) == "":
-		return "Every tool is in stock (see production targets)"
+	if d.has("makes_tools") and sim.wanted_tool(p, sim.arms.maker_tier(b.ty)) == "":
+		return "Every tool is in stock (see production targets)" if sim.wanted_tool(p) == "" else "Limit reached for %s tools (see production targets)" % SimArms.NAMES[sim.arms.maker_tier(b.ty)]
+	var smc := sim.arms.smith_check(b, p)
+	if smc != "":
+		return smc
 	if Crops.is_farm(b):
 		var fw := Crops.farm_start(sim, b)
 		if fw != "":
@@ -324,7 +327,7 @@ func finish_prod(b: Sim.Bld, p: Sim.Player) -> void:
 	if d.has("makes_tools"):
 		# the toolsmith makes, one by one, whichever tool is wanted most at that moment
 		for n in int(d.makes_tools) + int(sim.mod(p, "out:" + b.ty)):
-			var tool := sim.wanted_tool(p)
+			var tool := sim.wanted_tool(p, sim.arms.maker_tier(b.ty))
 			if tool == "":
 				break
 			deliver(b, p, tool, 1)

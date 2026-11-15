@@ -79,4 +79,110 @@ func _open_targets() -> void:
 		hb.add_child(nm)
 		hb.add_child(_target_ctrl(String(r.id)))
 		targets_grid.add_child(hb)
+	_metal_section(p)
 	main.targets_panel.visible = true
+
+
+const KEEP_STEPS := [0, 2, 5, 10, 15, 20, 30, 50, 80, 120]
+
+
+## A − value + stepper: steps through vals, shown by fmt (a Callable value -> text), set by on_set.
+func _stepper(vals: Array, cur: int, fmt: Callable, on_set: Callable) -> HBoxContainer:
+	var hb := HBoxContainer.new()
+	var lbl := main._label(fmt.call(cur), 14)
+	lbl.custom_minimum_size = Vector2(70, 0)
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var st := [cur]
+	var step := func(dir: int):
+		var i := 0
+		for k in vals.size():
+			if int(vals[k]) <= int(st[0]): i = k
+		var nxt: int = vals[clampi(i + dir, 0, vals.size() - 1)]
+		st[0] = nxt
+		on_set.call(nxt)
+		lbl.text = fmt.call(nxt)
+	hb.add_child(main._button("−", step.bind(-1)))
+	hb.add_child(lbl)
+	hb.add_child(main._button("+", step.bind(1)))
+	return hb
+
+
+## Build 68: tools and weapons by metal: which metal is used first, the most of each metal to keep in
+## store, and how much of each metal the tool smiths and weapon smiths leave for each other.
+func _metal_section(p: Sim.Player) -> void:
+	var title := main._label("Tools and weapons by metal", 18, Main.BRASS)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 6)
+	# the grid has three columns: fill the row, then a full-width box under it
+	var sc: ScrollContainer = targets_grid.get_parent()
+	var outer: VBoxContainer = sc.get_child(0) if sc.get_child(0) is VBoxContainer else null
+	if outer == null:
+		outer = VBoxContainer.new()
+		sc.remove_child(targets_grid)
+		sc.add_child(outer)
+		outer.add_child(targets_grid)
+	for c in outer.get_children():
+		if c != targets_grid:
+			outer.remove_child(c)
+			c.queue_free()
+	outer.add_child(HSeparator.new())
+	outer.add_child(title)
+	var info := main._label("Which metal workers and soldiers take first; the most of each metal a smith keeps in store (of each kind of tool, or of weapons): once that many are there, he makes another kind or waits; and how much of each metal the tool smiths leave in store for the weapon smiths, and the other way round.", 13, Main.DIM)
+	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	info.custom_minimum_size = Vector2(900, 0)
+	outer.add_child(info)
+	outer.add_child(box)
+	for grp in ["tools", "weapons"]:
+		var g: String = grp
+		box.add_child(main._label("Tools (each kind)" if g == "tools" else "Weapons", 15))
+		var row := HFlowContainer.new()
+		row.add_theme_constant_override("h_separation", 14)
+		box.add_child(row)
+		row.add_child(main._label("Used first:", 14, Main.DIM))
+		var ob := OptionButton.new()
+		var cur: Array = p.metal_order.get(g, [3, 2, 1])
+		for k in SimArms.ORDERS.size():
+			var o: Array = SimArms.ORDERS[k]
+			ob.add_item(", ".join(o.map(func(t): return SimArms.NAMES[t])), k)
+			if o == cur:
+				ob.select(k)
+		ob.item_selected.connect(func(k): p.metal_order[g] = (SimArms.ORDERS[k] as Array).duplicate())
+		row.add_child(ob)
+		var row2 := HFlowContainer.new()
+		row2.add_theme_constant_override("h_separation", 14)
+		box.add_child(row2)
+		row2.add_child(main._label("At most in store:", 14, Main.DIM))
+		for t in [SimArms.BRONZE, SimArms.IRON, SimArms.STEEL]:
+			var tt: int = t
+			var ic := TextureRect.new()
+			ic.texture = Tex.get_tex(SimArms.icon_id("axes" if g == "tools" else "weapons", tt))
+			ic.custom_minimum_size = Vector2(20, 20)
+			ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			row2.add_child(ic)
+			row2.add_child(main._label(SimArms.NAMES[tt], 14))
+			row2.add_child(_stepper(Main.TARGET_STEPS, main.sim.arms.limit_of(p, g, tt),
+				func(v): return "no limit" if v < 0 else "%d" % v,
+				func(v):
+					if not p.metal_lim.has(g): p.metal_lim[g] = [-1, -1, -1, -1]
+					p.metal_lim[g][tt] = v))
+		var row3 := HFlowContainer.new()
+		row3.add_theme_constant_override("h_separation", 14)
+		box.add_child(row3)
+		row3.add_child(main._label("Leave for the %s:" % ("weapon smiths" if g == "tools" else "tool smiths"), 14, Main.DIM))
+		for m in ["bronze", "iron", "steel"]:
+			if not main.res_shown(m):
+				continue
+			var mm: String = m
+			var ic2 := TextureRect.new()
+			ic2.texture = Tex.get_tex("res_" + mm)
+			ic2.custom_minimum_size = Vector2(20, 20)
+			ic2.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			ic2.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			row3.add_child(ic2)
+			row3.add_child(main._label(GameData.res_name(mm), 14))
+			row3.add_child(_stepper(KEEP_STEPS, main.sim.arms.keep_of(p, g, mm),
+				func(v): return "none" if v <= 0 else "%d" % v,
+				func(v):
+					if not p.metal_keep.has(g): p.metal_keep[g] = {}
+					p.metal_keep[g][mm] = v))

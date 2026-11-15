@@ -68,23 +68,101 @@ func add(p, res: String, tier: int, n: int) -> void:
 	a[clampi(tier, BRONZE, STEEL)] = int(a[clampi(tier, BRONZE, STEEL)]) + n
 
 
-## The best metal of res in the realm's stores (without taking it); the age's metal if none is counted.
-func best(p, res: String) -> int:
+## Build 68: the player says which metal is used first (Player.metal_order: "tools" / "weapons" -> the
+## metals in order, best first by default), how many of each metal to keep at most in store (metal_lim:
+## a smith stops making a good of his metal once that many are in store) and how much of each metal the
+## tool smiths or weapon smiths leave in store for the other (metal_keep).
+const ORDERS := [[3, 2, 1], [1, 2, 3], [2, 3, 1], [2, 1, 3], [3, 1, 2], [1, 3, 2]]
+const METAL_RES := ["", "bronze", "iron", "steel"]
+
+
+static func group(res: String) -> String:
+	return "weapons" if res == "weapons" else "tools"
+
+
+func order_of(p, res: String) -> Array:
+	var o: Array = p.metal_order.get(group(res), [])
+	return o if o.size() == 3 else [STEEL, IRON, BRONZE]
+
+
+## How many of res of each metal are in store: [_, bronze, iron, steel] (goods not counted by metal are
+## the age's metal).
+func by_metal(p, res: String) -> Array:
 	var a: Array = p.tq.get(res, [])
+	var n := int(floor(float(p.stock.get(res, 0.0)) + 0.001))
+	var by := [0, 0, 0, 0]
+	var counted := 0
 	for t in [STEEL, IRON, BRONZE]:
 		if a.size() > t and int(a[t]) > 0:
+			var k := mini(int(a[t]), n - counted)
+			by[t] += k
+			counted += k
+	if counted < n:
+		by[default_tier(p)] += n - counted
+	return by
+
+
+## The metal of res that is used first (the player's order; the age's metal if none is in store).
+func best(p, res: String) -> int:
+	var by := by_metal(p, res)
+	for t in order_of(p, res):
+		if int(by[t]) > 0:
 			return t
 	return default_tier(p)
 
 
-## One of res is used: the best counted metal goes first. Returns its metal.
+## One of res is used: the first metal in the player's order that is in store. Returns its metal.
 func take_best(p, res: String) -> int:
+	var by := by_metal(p, res)
 	var a: Array = p.tq.get(res, [])
+	for t in order_of(p, res):
+		if int(by[t]) > 0:
+			if a.size() > t and int(a[t]) > 0:
+				a[t] = int(a[t]) - 1
+			return t
+	# none in store (taken on the way): the best counted, else the age's metal
 	for t in [STEEL, IRON, BRONZE]:
 		if a.size() > t and int(a[t]) > 0:
 			a[t] = int(a[t]) - 1
 			return t
 	return default_tier(p)
+
+
+## The most of res of that metal to keep in store, or -1 for no limit.
+func limit_of(p, res: String, tier: int) -> int:
+	var l: Array = p.metal_lim.get(group(res), [])
+	return int(l[tier]) if l.size() > tier else -1
+
+
+## Whether a smith of that metal may make one more res (its metal's limit not reached).
+func under_limit(p, res: String, tier: int) -> bool:
+	var lim := limit_of(p, res, tier)
+	return lim < 0 or int(by_metal(p, res)[tier]) < lim
+
+
+## How much of a metal (bronze, iron, steel) the smiths of a group leave in store.
+func keep_of(p, grp: String, metal: String) -> int:
+	return int((p.metal_keep.get(grp, {}) as Dictionary).get(metal, 0))
+
+
+## Why smith b may not start (build 68), or "": his metal's limit reached, or the metal kept for the others.
+func smith_check(b, p) -> String:
+	var d: Dictionary = b.def
+	var grp := ""
+	if d.has("makes_tools"):
+		grp = "tools"
+	elif (d.get("out", {}) as Dictionary).has("weapons"):
+		grp = "weapons"
+	else:
+		return ""
+	var tier := maker_tier(b.ty)
+	if grp == "weapons" and not under_limit(p, "weapons", tier):
+		return "Limit reached: %d %s weapons in store (see production targets)" % [int(by_metal(p, "weapons")[tier]), NAMES[tier]]
+	for m in (d.get("in", {}) as Dictionary):
+		var keep := keep_of(p, grp, String(m))
+		if keep > 0 and float(p.stock.get(m, 0.0)) < keep:
+			return "Leaving %s in store for the %s (keep %d, see production targets)" % [GameData.res_name(String(m)).to_lower(), "weapons" if grp == "tools" else "tools", keep]
+	return ""
 
 
 ## Every ten seconds: no more counted than there are (in store, made and waiting, on the way, or
@@ -228,17 +306,7 @@ func unpack(b: Sim.Bld, v: float) -> void:
 
 ## The tools or weapons of each metal a realm holds, for the stores' panel: "3 bronze, 5 iron".
 func split_text(p, res: String) -> String:
-	var a: Array = p.tq.get(res, [])
-	var n := int(floor(float(p.stock.get(res, 0.0)) + 0.001))
-	var by := [0, 0, 0, 0]
-	var counted := 0
-	for t in [STEEL, IRON, BRONZE]:
-		if a.size() > t and int(a[t]) > 0:
-			var k := mini(int(a[t]), n - counted)
-			by[t] += k
-			counted += k
-	if counted < n:
-		by[default_tier(p)] += n - counted
+	var by := by_metal(p, res)
 	var parts := []
 	for t in [STEEL, IRON, BRONZE]:
 		if by[t] > 0:

@@ -65,5 +65,9 @@ func _reload_textures() -> void:
 	main.view.refresh_textures()
 	for id in main.stock_icons:
 		main.stock_icons[id].texture = Tex.get_tex("res_" + String(id))
+		main.stock_icons[id].set_meta("tid", "")
+	for id in main.metal_rows:
+		for t in [1, 2, 3]:
+			((main.metal_rows[id][t][0] as Control).get_child(0) as TextureRect).texture = Tex.get_tex(SimArms.icon_id(String(id), t))
 	main._refresh_build()
 	main._show_hint(tr("Textures reloaded. %d custom in use.") % Tex.custom.size(), 4.0)

@@ -16,6 +16,8 @@ func _init(p_main: Main) -> void:
 func _refresh_stock_rows() -> void:
 	for id in main.stock_labels:
 		(main.stock_labels[id] as Control).get_parent().visible = main.res_shown(id)
+		if main.metal_rows.has(id):
+			main._metal_split(main.sim.human(), id, (main.stock_labels[id] as Control).get_parent())
 
 
 func _refresh_folk() -> void:

@@ -370,6 +370,9 @@ class Player:
 	var spec_tool: Dictionary = {} # the tools idle specialists keep: like spec, metal + life left (SimArms.pack)
 	var arm_q := 0                 # the metal of the weapons last handed out (how fast they wear in a fight)
 	var arm_n: Array = [0, 0, 0, 0]  # soldiers by the metal of their arms (SimArms.fit_arms), for the panels
+	var metal_order: Dictionary = {}  # "tools"/"weapons" -> the metals in the order they are used (SimArms.ORDERS)
+	var metal_lim: Dictionary = {}    # "tools"/"weapons" -> [_, bronze, iron, steel]: most of each kind in store (-1 none)
+	var metal_keep: Dictionary = {}   # "tools"/"weapons" -> metal -> how much of it that group's smiths leave in store
 	var crowded := false      # rivals only: their land is full, so they grow by taking land (attack more)
 	var crowded_t := 0.0      # game time it became crowded (0: it is not)
 	var swap_t := -999.0      # rivals only: when it last pulled down a house to make room for a key building
@@ -2897,8 +2900,8 @@ func capacity(p: Player, res: String) -> float:
 func target_of(p: Player, res: String) -> int:
 	return logistics.target_of(p, res)
 
-func wanted_tool(p: Player) -> String:
-	return logistics.wanted_tool(p)
+func wanted_tool(p: Player, tier := 0) -> String:
+	return logistics.wanted_tool(p, tier)
 
 func tool_of(b: Bld) -> String:
 	return logistics.tool_of(b)

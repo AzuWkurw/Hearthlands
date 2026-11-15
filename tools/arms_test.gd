@@ -134,5 +134,37 @@ func _init() -> void:
 	ar.rearmed(me, SimArms.STEEL)
 	check(int(me.arm_n[3]) >= 1 and SimArms.icon_id("axes", SimArms.STEEL) == "res_axes_steel" and SimArms.icon_id("axes", SimArms.IRON) == "res_axes" and SimArms.icon_id("bread", SimArms.STEEL) == "res_bread", "pictures by metal for tools and weapons only")
 	check(ResourceLoader.exists("res://textures/res_weapons_bronze.png") and ResourceLoader.exists("res://textures/metal_steel.png"), "the metal pictures are there")
+	# 11. build 68: the order metals are used in, limits by metal, metal left for the other smiths
+	sim.take(me, "axes", float(me.stock.get("axes", 0.0)))
+	me.tq["axes"] = [0, 0, 0, 0]
+	sim.give(me, "axes", 4.0); ar.add(me, "axes", SimArms.STEEL, 2); ar.add(me, "axes", SimArms.BRONZE, 2)
+	check(ar.by_metal(me, "axes") == [0, 2, 0, 2], "axes by metal in store: %s" % str(ar.by_metal(me, "axes")))
+	check(ar.best(me, "axes") == SimArms.STEEL, "by default the best metal is used first")
+	me.metal_order["tools"] = [1, 2, 3]
+	check(ar.take_best(me, "axes") == SimArms.BRONZE and ar.best(me, "pickaxes") >= 1, "poorest first: a bronze axe is taken, the steel ones kept")
+	me.metal_order["tools"] = [3, 2, 1]
+	me.metal_lim["tools"] = [-1, -1, -1, 2]
+	check(not ar.under_limit(me, "axes", SimArms.STEEL) and ar.under_limit(me, "axes", SimArms.IRON) and ar.under_limit(me, "saws", SimArms.STEEL), "at most 2 steel axes: steel axes at their limit, iron axes and steel saws not")
+	me.tool_wait = {"axes": 3}
+	check(sim.wanted_tool(me, SimArms.STEEL) != "axes" and sim.wanted_tool(me, SimArms.IRON) == "axes", "the machine works makes another tool, the toolsmith the axes (%s, %s)" % [sim.wanted_tool(me, SimArms.STEEL), sim.wanted_tool(me, SimArms.IRON)])
+	me.tool_wait = {}
+	me.metal_lim["tools"] = [-1, -1, -1, -1]
+	var ws_at := spot(sim, "weaponsmith", me.hq.x + 7, me.hq.y - 5)
+	var ws := sim.add_bld("weaponsmith", ws_at.x, ws_at.y, me, true, 0)
+	me.tq["weapons"] = [0, 0, 0, 0]
+	sim.take(me, "weapons", float(me.stock.get("weapons", 0.0)))
+	sim.give(me, "weapons", 3.0); ar.add(me, "weapons", SimArms.IRON, 3)
+	me.metal_lim["weapons"] = [-1, -1, 3, -1]
+	check(ar.smith_check(ws, me).begins_with("Limit reached"), "at most 3 iron weapons: the weaponsmith waits (%s)" % ar.smith_check(ws, me))
+	me.metal_lim["weapons"] = [-1, -1, -1, -1]
+	sim.give(me, "iron", 5.0)
+	me.metal_keep["weapons"] = {"iron": int(me.stock.get("iron", 0.0)) + 5}
+	check(ar.smith_check(ws, me).begins_with("Leaving iron"), "iron kept for the tools: the weaponsmith waits (%s)" % ar.smith_check(ws, me))
+	me.metal_keep["weapons"] = {}
+	check(ar.smith_check(ws, me) == "", "no limits: he works")
+	var s4 := Sim.new()
+	me.metal_order["weapons"] = [2, 3, 1]
+	s4.from_save(bytes_to_var(var_to_bytes(sim.to_save())))
+	check(s4.human().metal_order.get("weapons", []) == [2, 3, 1], "the settings are saved")
 	print("ARMS TEST: %s" % ("PASS" if ok else "FAIL"))
 	quit()

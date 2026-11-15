@@ -78,6 +78,7 @@ var stock_labels := {}
 
 
 var stock_icons := {}
+var metal_rows := {}         # tools and weapons: [_, bronze, iron, steel] rows (each [box, label]) shown when more than one metal is in store (build 68)
 
 
 var folk_label: RichTextLabel
@@ -877,6 +878,31 @@ func _build_ui() -> void:
 		stock_labels[r.id] = l
 		stock_icons[r.id] = ic
 		grid.add_child(hb)
+		# one entry per metal, shown instead of the one above when more than one metal is in store
+		if SimArms.PICTURED.has(String(r.id)):
+			var mr := [null]
+			for t in [SimArms.BRONZE, SimArms.IRON, SimArms.STEEL]:
+				var mb := HBoxContainer.new()
+				mb.tooltip_text = "%s %s" % [SimArms.NAMES[t].capitalize(), String(r.name).to_lower()]
+				mb.mouse_filter = Control.MOUSE_FILTER_STOP
+				mb.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+				mb.gui_input.connect(_on_stock_click.bind(String(r.id)))
+				var mi := TextureRect.new()
+				mi.texture = Tex.get_tex(SimArms.icon_id(String(r.id), t))
+				mi.custom_minimum_size = Vector2(20, 20)
+				mi.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+				mi.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+				mi.mouse_filter = Control.MOUSE_FILTER_PASS
+				mb.add_child(mi)
+				var ml := _label("0", 14)
+				ml.custom_minimum_size = Vector2(52, 0)
+				ml.mouse_filter = Control.MOUSE_FILTER_PASS
+				ml.add_theme_color_override("font_color", Color(SimArms.COLORS[t]).lerp(Color.WHITE, 0.35))
+				mb.add_child(ml)
+				mb.visible = false
+				grid.add_child(mb)
+				mr.append([mb, ml])
+			metal_rows[r.id] = mr
 
 	var fk := _section(col, "People")
 	folk_label = _rich(); fk.add_child(folk_label)
@@ -2170,6 +2196,27 @@ func _process(delta: float) -> void:
 
 # ================================================================ refresh
 
+## Tools and weapons with more than one metal in store: an entry for each metal instead of one (build 68).
+func _metal_split(p: Sim.Player, id: String, row: Control) -> void:
+	var by := sim.arms.by_metal(p, id)
+	var kinds := 0
+	for t in [1, 2, 3]:
+		if int(by[t]) > 0: kinds += 1
+	var split := kinds > 1 and res_shown(id)
+	var mr: Array = metal_rows[id]
+	for t in [1, 2, 3]:
+		var e: Array = mr[t]
+		var on := split and int(by[t]) > 0
+		if (e[0] as Control).visible != on:
+			(e[0] as Control).visible = on
+		if on and (e[1] as Label).text != str(by[t]):
+			(e[1] as Label).text = str(by[t])
+	if split and row.visible:
+		row.visible = false
+	elif not split and not row.visible and res_shown(id):
+		row.visible = true
+
+
 func _refresh_all() -> void:
 	if sim.w == 0:
 		return
@@ -2196,6 +2243,8 @@ func _refresh_all() -> void:
 				row.tooltip_text = tip
 		if not row.visible and v >= 1 and res_shown(id):
 			row.visible = true      # a good you had never seen arrived (trade, plunder, an event)
+		if metal_rows.has(id):
+			_metal_split(p, id, row)
 	_refresh_folk()
 	_refresh_research()
 	age_ui.check()
