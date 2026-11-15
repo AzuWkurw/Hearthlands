@@ -14,7 +14,12 @@ const FEST_COST := 5       # beer and bread a festival takes
 const FIREWORKS := 3.0     # fireworks a festival sets off, when there are that many in store
 var fireworks := {}        # realm id -> until when its festival has fireworks
 const LOW := 0.3           # below this the realm is unhappy
-const FEST_COVER := 0.15   # share of homes its taverns must reach for a festival (0.3 before build 53)
+const FEST_COVER := 0.15
+## Town quarters (build 60): homes within reach of a working tavern, a working chapel and a market
+## (MARKET_R tiles) form a quarter. Its people are more content and its nobles pay more tax.
+const MARKET_R := 10
+const QUARTER_MOOD := 0.1
+const QUARTER_TAX := 0.25   # share of homes its taverns must reach for a festival (0.3 before build 53)
 
 var served := {}           # building id -> time of its last cycle
 var mood_of := {}          # realm id -> contentment now
@@ -47,10 +52,12 @@ func in_festival(p: Sim.Player) -> bool:
 	return sim.time < float(festival.get(p.id, -1.0))
 
 
-## The share of realm p's homes (by room) near a working tavern and near a working chapel.
+## The share of realm p's homes (by room) near a working tavern, near a working chapel, and in a town
+## quarter (near both and a market as well).
 func _cover(p: Sim.Player) -> Array:
 	var taverns := []
 	var chapels := []
+	var markets := []
 	var homes := []
 	for b: Sim.Bld in sim.realm_blds(p):
 		if b.state != "ready" or b.dead:
@@ -59,25 +66,58 @@ func _cover(p: Sim.Player) -> Array:
 			taverns.append(b)
 		elif b.ty == "chapel" and sim.time - float(served.get(b.id, -1e9)) < SERVED_FOR:
 			chapels.append(b)
+		elif b.ty == "market":
+			markets.append(b)
 		elif b.def.has("housing"):
 			homes.append(b)
 	var room := 0.0
 	var by_t := 0.0
 	var by_c := 0.0
+	var by_q := 0.0
 	for h: Sim.Bld in homes:
 		var n := float(h.def.housing)
 		room += n
+		var nt := false
+		var nc := false
 		for t: Sim.Bld in taverns:
 			if (t.x - h.x) * (t.x - h.x) + (t.y - h.y) * (t.y - h.y) <= TAVERN_R * TAVERN_R:
 				by_t += n
+				nt = true
 				break
 		for c: Sim.Bld in chapels:
 			if (c.x - h.x) * (c.x - h.x) + (c.y - h.y) * (c.y - h.y) <= CHAPEL_R * CHAPEL_R:
 				by_c += n
+				nc = true
 				break
+		if nt and nc:
+			for m: Sim.Bld in markets:
+				if (m.x - h.x) * (m.x - h.x) + (m.y - h.y) * (m.y - h.y) <= MARKET_R * MARKET_R:
+					by_q += n
+					break
 	if room <= 0.0:
-		return [0.0, 0.0]
-	return [by_t / room, by_c / room]
+		return [0.0, 0.0, 0.0]
+	return [by_t / room, by_c / room, by_q / room]
+
+
+## The share of realm p's homes in a town quarter (0 to 1).
+func quarter_share(p: Sim.Player) -> float:
+	var cv: Array = cover.get(p.id, [])
+	return float(cv[2]) if cv.size() > 2 else 0.0
+
+
+## Whether home h stands in a town quarter: a working tavern, a working chapel and a market near it.
+func in_quarter(h: Sim.Bld) -> bool:
+	var need := {"tavern": TAVERN_R, "chapel": CHAPEL_R, "market": MARKET_R}
+	var got := {}
+	for b: Sim.Bld in sim.realm_blds(sim.players[h.p - 1]):
+		if b.dead or b.state != "ready" or not need.has(b.ty) or got.has(b.ty):
+			continue
+		if b.ty != "market" and sim.time - float(served.get(b.id, -1e9)) >= SERVED_FOR:
+			continue
+		var r: int = need[b.ty]
+		if (b.x - h.x) * (b.x - h.x) + (b.y - h.y) * (b.y - h.y) <= r * r:
+			got[b.ty] = true
+	return got.size() == 3
 
 
 func on_second() -> void:
@@ -88,7 +128,7 @@ func on_second() -> void:
 		if _t % 5 == 0 or not cover.has(p.id):
 			cover[p.id] = _cover(p)
 		var cv: Array = cover[p.id]
-		var m := 0.5 + 0.3 * float(cv[0]) + 0.2 * float(cv[1])
+		var m := 0.5 + 0.3 * float(cv[0]) + 0.2 * float(cv[1]) + QUARTER_MOOD * quarter_share(p)
 		if p.starve > 0:
 			m -= 0.25
 		var dis = sim.get_feature("diseases")
@@ -144,6 +184,8 @@ func panel_lines(p: Sim.Player) -> PackedStringArray:
 	var col := "#86ad5c" if m >= 0.6 else ("#d9483d" if m < LOW else "#e7e3d0")
 	var eff := roundi((m - 0.5) * 20.0 + (10.0 if in_festival(p) else 0.0))
 	var t := "Contentment  [color=%s][b]%d%%[/b][/color] (work %s%d%%): taverns serve %d%% of homes, chapels %d%%" % [col, roundi(m * 100.0), "+" if eff >= 0 else "", eff, roundi(float(cv[0]) * 100.0), roundi(float(cv[1]) * 100.0)]
+	if quarter_share(p) > 0.0:
+		t += ", town quarters %d%% of homes (tax +%d%%)" % [roundi(quarter_share(p) * 100.0), roundi(quarter_share(p) * QUARTER_TAX * 100.0)]
 	if in_festival(p):
 		t += ", [color=#e8c870]festival for %d s[/color]" % int(float(festival[p.id]) - sim.time)
 	if int(left.get(p.id, 0)) > 0:
@@ -152,6 +194,14 @@ func panel_lines(p: Sim.Player) -> PackedStringArray:
 
 
 func building_lines(b: Sim.Bld) -> PackedStringArray:
+	if b.def.has("housing"):
+		return PackedStringArray(["[color=#e8c870]In a town quarter:[/color] tavern, chapel and market nearby (people more content, more tax)" if in_quarter(b) else "Not in a town quarter: a working tavern (%d tiles), chapel (%d) and market (%d) near a home make one" % [TAVERN_R, CHAPEL_R, MARKET_R]])
+	if b.ty == "market":
+		var n := 0
+		for h: Sim.Bld in sim.realm_blds(sim.players[b.p - 1]):
+			if not h.dead and h.def.has("housing") and (h.x - b.x) * (h.x - b.x) + (h.y - b.y) * (h.y - b.y) <= MARKET_R * MARKET_R and in_quarter(h):
+				n += 1
+		return PackedStringArray(["Town quarter: %d homes within %d tiles have a tavern and chapel too" % [n, MARKET_R]])
 	if b.ty != "tavern" and b.ty != "chapel":
 		return PackedStringArray()
 	var on := sim.time - float(served.get(b.id, -1e9)) < SERVED_FOR
@@ -170,8 +220,8 @@ func draw_map(view: CanvasItem, _rect: Rect2i) -> void:
 	if not ("place_type" in mv):
 		return
 	var pt := String(mv.place_type)
-	if (pt == "tavern" or pt == "chapel") and mv.ghost.x >= 0:
-		var r := float(TAVERN_R if pt == "tavern" else CHAPEL_R)
+	if (pt == "tavern" or pt == "chapel" or pt == "market") and mv.ghost.x >= 0:
+		var r := float(TAVERN_R if pt == "tavern" else (CHAPEL_R if pt == "chapel" else MARKET_R))
 		view.draw_arc(Vector2(mv.ghost) + Vector2(0.5, 0.5), r, 0.0, TAU, 64, Color(0.95, 0.85, 0.5, 0.6), 0.08)
 
 

@@ -160,4 +160,18 @@ func ai_trade(p: Sim.Player) -> void:
 	for r in Sim.BASIC:
 		if float(p.stock.get(r, 0.0)) < 6.0 and float(p.stock.get("gold", 0.0)) >= buy_price(r, 10) + 5:
 			buy(p, r, 10)
-			break
+			return
+	# what its workshops stand idle for (build 60): the good most of them need, if it is not dear
+	var lack := {}
+	for b: Sim.Bld in sim.realm_blds(p):
+		if b.state == "ready" and not b.dead and b.msg.begins_with("Needs "):
+			for k in b.def.get("in", {}):
+				if GameData.res_by_id.has(k) and traded(k) and float(p.stock.get(k, 0.0)) < 1.0:
+					lack[k] = int(lack.get(k, 0)) + 1
+	var want := ""
+	var n := 0
+	for k in lack:
+		if int(lack[k]) > n or (int(lack[k]) == n and String(k) < want):
+			n = int(lack[k]); want = k
+	if want != "" and factor(want) < 1.8 and float(p.stock.get("gold", 0.0)) >= buy_price(want, 10) * 1.5:
+		buy(p, want, 10)

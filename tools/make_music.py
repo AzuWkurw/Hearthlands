@@ -463,6 +463,56 @@ def market():
     return p
 
 
+def court():
+    """The Court Dance (build 63, the Renaissance and the Age of Reason): G major, a stately pavane in
+    3/4, the lute and harp under a fiddle and a recorder."""
+    p = Piece("peace_court", 92, 3, 99)
+    A = "G4:1 B4:1 D5:1 | C5:1.5 B4:.5 A4:1 | B4:1 G4:1 D5:1 | E5:2 D5:1 | C5:1 E5:1 G5:1 | F#5:1.5 E5:.5 D5:1 | E5:1 C5:1 A4:1 | G4:3"
+    B = "D5:1.5 E5:.5 F#5:1 | G5:2 D5:1 | E5:1 F#5:1 G5:1 | A5:2 F#5:1 | G5:1 E5:1 C5:1 | D5:1.5 C5:.5 B4:1 | A4:1 B4:1 F#4:1 | G4:3"
+    chA = "G C G C C D C G"
+    chB = "D G C D C G D G"
+    PAV = [(0, 0, 2.5), (1, 2, 1.5), (2, 4, 1.0)]
+    bar = 0
+    for mel, ch, lead in [(A, chA, "lute"), (A, chA, "fiddle"), (B, chB, "recorder"), (A, chA, "both"), (B, chB, "fiddle"), (A, chA, "both")]:
+        p.chords("harp", ch, bar, PAV, 0.36, -0.25)
+        if lead in ("lute",):
+            p.melody("lute", mel, bar, 0.62, 0.1)
+        if lead in ("fiddle", "both"):
+            p.melody("fiddle", mel, bar, 0.6, 0.25)
+        if lead in ("recorder", "both"):
+            p.melody("recorder", mel, bar, 0.55 if lead == "both" else 0.7, -0.05, octave=1 if lead == "both" else 0)
+        bar += 8
+    p.chords("harp", "G", bar, PAV, 0.38, -0.2)
+    p.hold("drone", "G2", 0, bar, 0.35)
+    return p
+
+
+def foundry():
+    """Smoke over the Town (build 63, the Industrial and Modern ages): C minor, a steady march, brass
+    calls and bells over a low drone and the beat of the works."""
+    p = Piece("peace_foundry", 104, 4, 111)
+    A = "C4:1 Eb4:1 G4:1.5 F4:.5 | Eb4:1 D4:1 C4:2 | Ab4:1 G4:1 F4:1 Eb4:1 | D4:3 G3:1 | C4:1 Eb4:1 G4:1 C5:1 | Bb4:1.5 Ab4:.5 G4:2 | F4:1 Ab4:1 G4:1 D4:1 | C4:4"
+    B = "G4:1.5 Ab4:.5 G4:1 F4:1 | Eb4:2 G4:2 | Ab4:1 Bb4:1 C5:1 Ab4:1 | G4:3 G4:1 | C5:1 Bb4:1 Ab4:1 G4:1 | F4:1 G4:1 Ab4:2 | G4:1 F4:1 Eb4:1 D4:1 | C4:4"
+    chA = "Cm Cm Fm G Cm Eb Fm Cm"
+    chB = "Eb Cm Fm G Ab Fm G Cm"
+    works = [(0, "war", 0.7), (1, "tap", 0.5), (2, "war", 0.55), (3, "tap", 0.5), (3.5, "tap", 0.35)]
+    p.drums(0, 2, works, 0.5)
+    bar = 2
+    for mel, ch, lead in [(A, chA, "horn"), (B, chB, "fiddle"), (A, chA, "both"), (B, chB, "horn"), (A, chA, "both")]:
+        p.chords("harp", ch, bar, BALLAD, 0.3, -0.3)
+        p.drums(bar, 8, works, 0.45)
+        if lead in ("horn", "both"):
+            p.melody("horn", mel, bar, 0.7 if lead == "horn" else 0.5, 0.15)
+        if lead in ("fiddle", "both"):
+            p.melody("fiddle", mel, bar, 0.55, 0.3, octave=1 if lead == "both" else 0)
+        for k in range(0, 8, 4):
+            p.notes.append(["bell", p.at(bar + k), freq("C6"), 0, 0.25, -0.4])
+        bar += 8
+    p.hold("drone", "C2", 0, bar, 0.55)
+    p.hold("horn", "C4", bar, 2, 0.5, 0.15)
+    return p
+
+
 def war():
     """Banners in the East: D Phrygian, war drums, a low string ostinato, horn calls, then a fiddle."""
     p = Piece("war_banners", 100, 4, 55)
@@ -529,6 +579,7 @@ def stingers():
 
 
 PIECES = {"peace_morning": morning, "peace_furrow": furrow, "peace_hearth": hearth, "peace_market": market,
+          "peace_court": court, "peace_foundry": foundry,
           "war_banners": war}
 
 

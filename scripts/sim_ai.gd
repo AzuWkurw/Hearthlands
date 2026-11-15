@@ -57,18 +57,74 @@ func _site_score(ty: String, x: int, y: int, p: Sim.Player) -> float:
 				elif b.def.has("housing") or b.def.has("residence"): homes += 1
 		return work * 0.6 - homes * 1.0 + minf(dist, 14.0) * 0.25
 	if s.begins_with("forest"): return sim.count_near(x, y, 8, "tree") - dist * 0.05
-	if ty == "tavern" or ty == "chapel":
-		# among the homes, and away from the other taverns (chapels), so they reach as many as they can
+	if ty == "tavern" or ty == "chapel" or ty == "market":
+		# among the homes, and away from the other taverns (chapels), so they reach as many as they can;
+		# next to the town's other centre buildings, so the homes round them form a quarter (build 60)
 		var room := 0.0
 		var same := 0
+		var centre := 0
 		for b: Sim.Bld in sim.realm_blds(p):
 			var dd := Vector2(b.x - x, b.y - y).length()
 			if dd <= 9.0:
 				room += float(b.def.get("housing", 0))
 				if b.ty == ty:
 					same += 1
-		return room * 0.6 - same * 8.0 - dist * 0.05
+			if dd <= 6.0 and b.ty != ty and (b.ty == "tavern" or b.ty == "chapel" or b.ty == "market"):
+				centre += 1
+		return room * 0.6 - same * 8.0 + centre * 5.0 - dist * 0.05
+	if GameData.bld[ty].has("housing"):
+		# homes in a ring round the town centre (its tavern, chapel and market), not on top of it
+		var c := _town_centre(p)
+		if c.x >= 0.0:
+			return -absf(Vector2(x, y).distance_to(c) - 5.0) - dist * 0.03
+		return -dist
+	if ty == "river_landing":
+		return _landing_score(x, y, p)
 	return -dist
+
+
+## Whether realm p's land has water inside it, away from the coast's open sea: a river or lake for boats.
+## Worked out every few minutes.
+func _river_land(p: Sim.Player) -> bool:
+	if sim.time < p.river_t:
+		return p.river
+	var n := 0
+	var tiles: PackedInt32Array = sim.owned(p.id)[0]
+	for k in range(0, tiles.size(), 7):
+		if sim.ter[tiles[k]] == Sim.WATER:
+			n += 1
+	var yes := n >= 6
+	p.river_t = sim.time + 300.0
+	p.river = yes
+	return yes
+
+
+## Where realm p's town centre is: the middle of its taverns, chapels and markets (any state), or
+## (-1, -1) when it has none yet.
+func _town_centre(p: Sim.Player) -> Vector2:
+	var sum := Vector2.ZERO
+	var n := 0
+	for b: Sim.Bld in sim.realm_blds(p):
+		if not b.dead and (b.ty == "tavern" or b.ty == "chapel" or b.ty == "market"):
+			sum += Vector2(b.x, b.y)
+			n += 1
+	return sum / n if n > 0 else Vector2(-1, -1)
+
+
+## A river landing: the first near home; the second far from it on the same water, so the boat saves
+## a long walk (build 60).
+func _landing_score(x: int, y: int, p: Sim.Player) -> float:
+	var first: Sim.Bld = null
+	for b: Sim.Bld in sim.realm_blds(p):
+		if b.ty == "river_landing" and not b.dead:
+			first = b
+			break
+	if first == null:
+		return -Vector2(x - p.hq.x, y - p.hq.y).length() if p.hq != null else 0.0
+	var d := Vector2(x - first.x, y - first.y).length()
+	if d < 12.0 or sim.sea.water_path(first.x, first.y, x, y).is_empty():
+		return -1000.0
+	return minf(d, 30.0)
 
 
 ## How well a spot uses the land, now that buildings need room (Sim.PLOTS): a small building on a spot
@@ -460,7 +516,7 @@ func ai_think(p: Sim.Player) -> void:
 		["apiary", 1 if mins > 7 else 0], ["butcher", 1 if mins > 9 and c.call("saltworks") > 0 and c.call("hunter") + c.call("pig_farm") > 1 else 0],
 		["dairy", 1 if mins > 10 and pop > 40 else 0], ["cheesery", 1 if c.call("dairy") > 0 and c.call("saltworks") > 0 else 0],
 		["vineyard", 1 if mins > 13 and p.noble > 0 else 0], ["winery", 1 if c.call("vineyard") > 0 else 0],
-		["chandler", 1 if mins > 13 and c.call("apiary") > 0 and p.noble > 0 else 0],
+		["chandler", 1 if mins > 13 and c.call("apiary") > 0 and (p.noble > 0 or (c.call("tavern") > 0 and mins > 25)) else 0],
 		["sand_pit", 1 if mins > 16 and p.noble > 1 else 0], ["glassworks", 1 if c.call("sand_pit") > 0 else 0],
 		# luxuries for the nobles' taxes
 		["mulberry_grove", 1 if mins > 16 and p.noble > 0 else 0], ["silk_weaver", 1 if c.call("mulberry_grove") > 0 else 0],
@@ -498,6 +554,10 @@ func ai_think(p: Sim.Player) -> void:
 		# beer for the taverns, so the people are content and the realm holds festivals (build 53)
 		["hop_farm", (2 if mins > 20 and c.call("tavern") > 0 else 1) if mins > 10 else 0],
 		["brewery", (2 if mins > 20 and c.call("hop_farm") > 1 else 1) if mins > 10 and c.call("hop_farm") > 0 else 0],
+		# a town centre: a market next to the tavern (and chapel), once the town has grown (build 60)
+		["market", 1 if mins > 20 and c.call("tavern") > 0 and pop > 50 else 0],
+		# river boats: two landings on the same water (build 60)
+		["river_landing", 2 if mins > 25 and p.techs.has("timber_framing") and _river_land(p) else 0],
 		["harbour", 1 if mins > 8 and p.island else 0],
 		["shipyard", 1 if p.island and c.call("harbour") > 0 else 0],
 		["naval_yard", 1 if mins > 40 and war_by_sea else 0],

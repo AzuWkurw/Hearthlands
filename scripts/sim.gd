@@ -287,6 +287,8 @@ class Player:
 	var ai := false
 	var alive := true
 	var stock: Dictionary = {}
+	var river_t := -1.0      # the rival looked for river water in its land (build 60), and found it
+	var river := false
 	var peasant := 14
 	var artisan := 2
 	var noble := 0
@@ -2385,7 +2387,9 @@ func _secondly() -> void:
 		update_needs(p)
 		_pf("people", t0)
 		t0 = Time.get_ticks_usec()
-		p.tax += p.noble * (0.4 + 0.8 * float(p.sat.noble)) * (1.0 + mod(p, "tax") + LUX_TAX * p.lux) / 60.0
+		var ctf = get_feature("contentment")
+		var qtax: float = ctf.QUARTER_TAX * ctf.quarter_share(p) if ctf != null else 0.0
+		p.tax += p.noble * (0.4 + 0.8 * float(p.sat.noble)) * (1.0 + mod(p, "tax") + LUX_TAX * p.lux + qtax) / 60.0
 		if p.tax >= 1.0:
 			give(p, "gold", floorf(p.tax)); p.tax -= floorf(p.tax)
 		if mil_fill(p):

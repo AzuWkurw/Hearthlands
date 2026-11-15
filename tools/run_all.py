@@ -64,6 +64,7 @@ TESTS = [
 	("small touches",     "touches_test", [], True, False, [r"touches test: ok"]),
 	("fog after loading", "fogsave_test", [], True, False, [r"after 3 s: (\d+)"]),
 	("coast defended",    "coast_test", [], False, False, [r"COAST TEST: PASS"]),
+	("town quarters",     "town_test", [], False, False, [r"TOWN TEST: PASS"]),
 	("blueprints",        "bp_test", [], False, False, [r"BLUEPRINT TEST: PASS"]),
 	("toolbar tools",     "toolbar_tool_test", [], True, False, [r"tool clicks answered: 8 of 8"]),
 ]

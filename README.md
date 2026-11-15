@@ -10,7 +10,7 @@ economy you do.
 ## Download
 
 The ready-made Windows game is on the [Releases page](../../releases/latest): download the
-`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.54.0 build 59** (see
+`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.55.0 build 60** (see
 `CHANGELOG.md`). Every build is a release of its own, made by GitHub Actions
 (`.github/workflows/release.yml`) when a new version reaches `main`; older builds up to 50 are also
 on the [`downloads` branch](../../tree/downloads).
@@ -56,6 +56,7 @@ Done (builds 43 to 57):
 | 57 | Gunpowder and lead: sulfur and lead deposits and mines, saltpeter works, charcoal burners, the powder mill, lead smelter, cartridge works, gunsmith and pyrotechnist; guns need gunpowder, musketeers and riflemen need cartridges; blasting in mines; fireworks at festivals |
 | 58 | Blueprints (U): copy a group of your buildings and roads from the map, keep it for every game in categories you choose, place it again with one click, share it as a code; trees and roads in the way: you are asked whether to clear them (for single buildings too); sulfur and lead brushes in the map editor |
 | 59 | The coast defended: a warning while a landing is at sea, peasants with pitchforks by the headquarters, walls against soldiers just ashore, warships meeting fleets further out; wild animals capped by the map size; a faster late game; the guide explains research and age gates |
+| 60 | Town quarters (homes near a tavern, chapel and market: more content, more tax); rivals that plan their towns round such a centre, buy what their workshops lack and use river boats |
 
 Later: a story campaign through the ages, multiplayer, scripted scenarios, a chronicle at the end of a
 game, more animations, music for each age, and quality-of-life features (a production chain overlay,
@@ -925,6 +926,13 @@ order the buildings within it. The numbers are saved with the game.
 - **Rivals at sea:** a rival with no way to reach anyone by land builds a harbour and ships early, sends
   expeditions and lands on its enemies' coasts; rivals at war by the sea build naval yards and coastal
   forts, and warlords keep field depots near the front.
+
+## Town quarters
+
+Homes within reach of a **working tavern** (9 tiles), a **working chapel** (10) and a **market** (10) form a
+town quarter. People in quarters are more content (up to +10%), and the realm's nobles pay up to 25% more tax,
+by the share of homes in quarters. A home's info says whether it is in one; the side panel shows the share.
+Rivals plan their towns the same way: tavern, chapel and market together, homes in a ring round them.
 
 ## Landings and the coast
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## Build 60 (v0.55.0, 2026-11-15)
+
+Build 60: town quarters and rivals that plan towns.
+- Town quarters: homes within reach of a working tavern, a working chapel and a market form a quarter. Their people are more content, and the realm's nobles pay up to 25% more tax (by the share of homes in quarters). A home's info says whether it is in one; a market's info counts its quarter's homes; the side panel shows the share.
+- Placing a market shows the ring it reaches, like taverns and chapels.
+- Rivals plan their towns: the tavern, chapel and market go next to each other as a town centre, and new homes go in a ring round it.
+- Rivals build a market once their town has grown, buy the goods their workshops stand idle for (when the price is fair), and put boats on rivers: two river landings on the same water when their land has rivers or lakes.
+
 ## Build 59 (v0.54.0, 2026-11-15)
 
 Build 59: the coast defended, and a faster late game.
