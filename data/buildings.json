@@ -1051,6 +1051,48 @@
   "trade": "metal",
   "tier": 1
  },
+ "scrap_forge": {
+  "name": "Scrap forge",
+  "cat": "crafts",
+  "size": "small",
+  "cost": {
+   "planks": 2,
+   "stone": 2
+  },
+  "time": 12,
+  "worker": "artisan",
+  "cycle": 20,
+  "in": {
+   "scrap": 2,
+   "charcoal": 1
+  },
+  "info": "Melts worn-out tools, weapons and armor (scrap) back into metal: two scrap of a metal make one bar of it (bronze, iron or steel).",
+  "art": {
+   "style": "workshop",
+   "wall": "#7a6a5a",
+   "sw": 1.6,
+   "smoke": [
+    0.5,
+    0.25
+   ],
+   "glow": [
+    0.3,
+    0.85
+   ],
+   "anim": [
+    [
+     "sparks",
+     0.3,
+     0.85,
+     0.06
+    ]
+   ],
+   "sign": "scrap",
+   "sign_color": "#9a9488"
+  },
+  "trade": "metal",
+  "melts_scrap": true
+ },
  "bowyer": {
   "name": "Bowyer",
   "cat": "crafts",
@@ -1100,7 +1142,7 @@
   "out": {
    "armor": 1
   },
-  "info": "Armor makes veteran soldiers stronger.",
+  "info": "Iron armor (chainmail) for the soldiers the barracks train: each armored soldier fights as a veteran. Bronze armor protects less, steel plate more.",
   "art": {
    "style": "workshop",
    "wall": "#6f7f96",
@@ -1120,7 +1162,8 @@
    ]
   },
   "tech": "chainmail",
-  "trade": "metal"
+  "trade": "metal",
+  "tier": 2
  },
  "bronze_armorer": {
   "name": "Bronze armourer",
@@ -1140,7 +1183,7 @@
   "out": {
    "armor": 1
   },
-  "info": "Bronze breastplates and greaves: veteran soldiers fight better in them.",
+  "info": "Bronze breastplates and greaves for the soldiers the barracks train: each armored soldier fights as a veteran, though bronze counts for less than iron or steel.",
   "art": {
    "style": "workshop",
    "wall": "#8a7a5a",
@@ -1160,7 +1203,8 @@
    ]
   },
   "tech": "bronze_armour",
-  "trade": "metal"
+  "trade": "metal",
+  "tier": 1
  },
  "tannery": {
   "name": "Tannery",
@@ -2248,6 +2292,52 @@
   },
   "trade": "metal",
   "makes_tools": 3,
+  "tier": 3
+ },
+ "plate_armorer": {
+  "name": "Plate armorer",
+  "cat": "crafts",
+  "size": "medium",
+  "cost": {
+   "planks": 3,
+   "stone": 4,
+   "iron": 1
+  },
+  "time": 20,
+  "worker": "artisan",
+  "cycle": 30,
+  "in": {
+   "steel": 1,
+   "leather": 1,
+   "coal": 1
+  },
+  "out": {
+   "armor": 1
+  },
+  "info": "Steel plate armor: the best armor there is. An armored soldier fights as a veteran, in steel plate more than one.",
+  "art": {
+   "style": "workshop",
+   "wall": "#5f6f86",
+   "sw": 2.0,
+   "smoke": [
+    0.562,
+    0.258
+   ],
+   "glow": [
+    0.344,
+    0.852
+   ],
+   "anim": [
+    [
+     "sparks",
+     0.438,
+     0.828,
+     0.062
+    ]
+   ]
+  },
+  "tech": "steam_engine",
+  "trade": "metal",
   "tier": 3
  },
  "textile_mill": {

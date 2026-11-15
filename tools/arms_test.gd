@@ -166,5 +166,45 @@ func _init() -> void:
 	me.metal_order["weapons"] = [2, 3, 1]
 	s4.from_save(bytes_to_var(var_to_bytes(sim.to_save())))
 	check(s4.human().metal_order.get("weapons", []) == [2, 3, 1], "the settings are saved")
+	# 12. build 70: scrap and armor by metal
+	var sc0 := float(me.stock.get("scrap", 0.0))
+	wc.tool_q = SimArms.STEEL
+	sim.give(me, "axes", 1.0); ar.add(me, "axes", SimArms.IRON, 1)
+	tqf.held[wc.id] = [1.0, 0.5]
+	tqf.on_cycle(me, wc)
+	check(float(me.stock.get("scrap", 0.0)) >= sc0 + 1.0 and int((me.tq.get("scrap", [0, 0, 0, 0]) as Array)[3]) >= 1, "a worn-out steel axe comes back as steel scrap")
+	me.arm_n = [0, 2, 0, 0]
+	ar.rearmed(me, SimArms.IRON, -1)
+	check(int((me.tq["scrap"] as Array)[1]) >= 1, "a soldier's worn bronze weapon comes back as bronze scrap")
+	me.tq["scrap"] = [0, 1, 0, 2]
+	check(ar.melt(me) == SimArms.STEEL and int(me.tq["scrap"][3]) == 0, "the scrap forge melts two steel scrap into a steel bar")
+	check(GameData.bld.has("scrap_forge") and GameData.bld.has("plate_armorer") and ar.maker_tier("bronze_armorer") == 1 and ar.maker_tier("armorer") == 2 and ar.maker_tier("plate_armorer") == 3, "the scrap forge, and armorers of each metal")
+	var v0 := me.vets
+	me.tq["armor"] = [0, 0, 0, 0]
+	sim.take(me, "armor", float(me.stock.get("armor", 0.0)))
+	sim.give(me, "armor", 1.0); ar.add(me, "armor", SimArms.STEEL, 1)
+	me.age = 2
+	me.artisan += 2
+	sim.production.finish_prod(bk, me)
+	check(is_equal_approx(me.vets - v0, SimArms.ARMOR_VET[3]) and SimArms.ARMOR_VET[3] > 1.0 and SimArms.ARMOR_VET[1] < 1.0, "steel plate makes more than a veteran (%.2f), bronze less" % (me.vets - v0))
+	me.age = 0
+	var am_at := spot(sim, "armorer", me.hq.x - 8, me.hq.y - 6)
+	var am := sim.add_bld("armorer", am_at.x, am_at.y, me, true, 0)
+	sim.give(me, "armor", 2.0); ar.add(me, "armor", SimArms.IRON, 2)
+	me.metal_lim["armor"] = [-1, -1, 2, -1]
+	check(ar.smith_check(am, me).begins_with("Limit reached"), "armor limits by metal too: %s" % ar.smith_check(am, me))
+	me.metal_lim["armor"] = [-1, -1, -1, -1]
+	var sf_at := spot(sim, "scrap_forge", me.hq.x + 3, me.hq.y + 6)
+	var sf := sim.add_bld("scrap_forge", sf_at.x, sf_at.y, me, true, 0)
+	sim.build_road(sf.x, sf.y, me.hq.x, me.hq.y, 1)
+	me.tq["scrap"] = [0, 0, 0, 0]
+	sim.give(me, "scrap", 4.0); ar.add(me, "scrap", SimArms.BRONZE, 4)
+	sim.give(me, "charcoal", 4.0)
+	sim.give(me, "tongs", 2.0)
+	var br0 := float(me.stock.get("bronze", 0.0))
+	var t1 := sim.time
+	while sim.time < t1 + 120.0 and float(me.stock.get("bronze", 0.0)) < br0 + 1.0:
+		sim.tick(Sim.TICK)
+	check(float(me.stock.get("bronze", 0.0)) >= br0 + 1.0, "a scrap forge at work: bronze scrap back to bronze (%s)" % sf.msg)
 	print("ARMS TEST: %s" % ("PASS" if ok else "FAIL"))
 	quit()

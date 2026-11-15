@@ -127,14 +127,14 @@ func _metal_section(p: Sim.Player) -> void:
 			c.queue_free()
 	outer.add_child(HSeparator.new())
 	outer.add_child(title)
-	var info := main._label("Which metal workers and soldiers take first; the most of each metal a smith keeps in store (of each kind of tool, or of weapons): once that many are there, he makes another kind or waits; and how much of each metal the tool smiths leave in store for the weapon smiths, and the other way round.", 13, Main.DIM)
+	var info := main._label("Which metal workers and soldiers take first; the most of each metal a smith keeps in store (of each kind of tool, or of weapons): once that many are there, he makes another kind or waits; and how much of each metal these smiths leave in store for the others (tools, weapons, armor).", 13, Main.DIM)
 	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	info.custom_minimum_size = Vector2(900, 0)
 	outer.add_child(info)
 	outer.add_child(box)
-	for grp in ["tools", "weapons"]:
+	for grp in ["tools", "weapons", "armor"]:
 		var g: String = grp
-		box.add_child(main._label("Tools (each kind)" if g == "tools" else "Weapons", 15))
+		box.add_child(main._label({"tools": "Tools (each kind)", "weapons": "Weapons", "armor": "Armor"}[g], 15))
 		var row := HFlowContainer.new()
 		row.add_theme_constant_override("h_separation", 14)
 		box.add_child(row)
@@ -155,7 +155,7 @@ func _metal_section(p: Sim.Player) -> void:
 		for t in [SimArms.BRONZE, SimArms.IRON, SimArms.STEEL]:
 			var tt: int = t
 			var ic := TextureRect.new()
-			ic.texture = Tex.get_tex(SimArms.icon_id("axes" if g == "tools" else "weapons", tt))
+			ic.texture = Tex.get_tex(SimArms.icon_id("axes" if g == "tools" else g, tt))
 			ic.custom_minimum_size = Vector2(20, 20)
 			ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -169,7 +169,7 @@ func _metal_section(p: Sim.Player) -> void:
 		var row3 := HFlowContainer.new()
 		row3.add_theme_constant_override("h_separation", 14)
 		box.add_child(row3)
-		row3.add_child(main._label("Leave for the %s:" % ("weapon smiths" if g == "tools" else "tool smiths"), 14, Main.DIM))
+		row3.add_child(main._label("Leave for the other smiths:", 14, Main.DIM))
 		for m in ["bronze", "iron", "steel"]:
 			if not main.res_shown(m):
 				continue

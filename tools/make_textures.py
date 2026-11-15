@@ -448,6 +448,12 @@ def icon(shape, c, size=24):
         d.line([(5, 19), (19, 5)], fill=(210, 214, 220, 255), width=3); d.line([(6, 13), (11, 18)], fill=c, width=3); d.line([(3, 21), (6, 18)], fill=(110, 70, 40, 255), width=3)
     elif shape == "shield":
         d.polygon([(4, 4), (20, 4), (20, 12), (12, 21), (4, 12)], fill=c, outline=dk); d.line([(12, 5), (12, 19)], fill=lt, width=2)
+    elif shape == "scrap":
+        # a heap of broken metal: a snapped blade, a bent ring and shards (build 70)
+        d.polygon([(2, 20), (6, 13), (11, 15), (15, 11), (22, 20)], fill=sh(c, 0.85), outline=dk)
+        d.line([(5, 15), (15, 6)], fill=(200, 204, 210, 255), width=3); d.line([(15, 6), (17, 5)], fill=(200, 204, 210, 255), width=2)
+        d.ellipse([13, 12, 20, 18], outline=(170, 174, 180, 255), width=2)
+        d.polygon([(8, 18), (11, 16), (12, 19)], fill=lt, outline=dk)
     elif shape == "shirt":
         d.polygon([(4, 7), (9, 4), (15, 4), (20, 7), (18, 11), (16, 10), (16, 21), (8, 21), (8, 10), (6, 11)], fill=c, outline=dk)
     elif shape == "ring":

@@ -30,8 +30,9 @@ const ARM_WEAR := [1.0, 1.5, 1.0, 0.6]              # how often a weapon wears o
 ## How the metals look in the panels (build 67): a colour for the name and an ingot badge; the tools and
 ## weapons have a picture for each metal (textures/res_<good>_bronze.png and _steel.png; iron is the
 ## usual picture).
+const ARMOR_VET := [1.0, 0.7, 1.0, 1.35]           # (build 70) how much of a veteran an armored soldier is, by metal
 const COLORS := ["c8c8c0", "d9a25a", "b9bec8", "8cc8f2"]
-const PICTURED := ["axes", "pickaxes", "farm_tools", "knives", "saws", "tongs", "trowels", "shears", "chisels", "weapons"]
+const PICTURED := ["axes", "pickaxes", "farm_tools", "knives", "saws", "tongs", "trowels", "shears", "chisels", "weapons", "armor", "scrap"]
 
 var sim
 
@@ -41,7 +42,7 @@ func _init(s) -> void:
 
 
 func tiered(res: String) -> bool:
-	return res == "weapons" or GameData.is_tool_res(res)
+	return res == "weapons" or res == "armor" or res == "scrap" or GameData.is_tool_res(res)
 
 
 ## The metal of goods a realm did not make itself: that of its age.
@@ -77,7 +78,7 @@ const METAL_RES := ["", "bronze", "iron", "steel"]
 
 
 static func group(res: String) -> String:
-	return "weapons" if res == "weapons" else "tools"
+	return res if res == "weapons" or res == "armor" else "tools"
 
 
 func order_of(p, res: String) -> Array:
@@ -153,15 +154,17 @@ func smith_check(b, p) -> String:
 		grp = "tools"
 	elif (d.get("out", {}) as Dictionary).has("weapons"):
 		grp = "weapons"
+	elif (d.get("out", {}) as Dictionary).has("armor"):
+		grp = "armor"
 	else:
 		return ""
 	var tier := maker_tier(b.ty)
-	if grp == "weapons" and not under_limit(p, "weapons", tier):
-		return "Limit reached: %d %s weapons in store (see production targets)" % [int(by_metal(p, "weapons")[tier]), NAMES[tier]]
+	if grp != "tools" and not under_limit(p, grp, tier):
+		return "Limit reached: %d %s %s in store (see production targets)" % [int(by_metal(p, grp)[tier]), NAMES[tier], grp]
 	for m in (d.get("in", {}) as Dictionary):
 		var keep := keep_of(p, grp, String(m))
 		if keep > 0 and float(p.stock.get(m, 0.0)) < keep:
-			return "Leaving %s in store for the %s (keep %d, see production targets)" % [GameData.res_name(String(m)).to_lower(), "weapons" if grp == "tools" else "tools", keep]
+			return "Leaving %s in store for the other smiths (keep %d, see production targets)" % [GameData.res_name(String(m)).to_lower(), keep]
 	return ""
 
 
@@ -224,13 +227,39 @@ func armed(p, tier: int) -> void:
 	p.arm_n[clampi(tier, BRONZE, STEEL)] = int(p.arm_n[clampi(tier, BRONZE, STEEL)]) + 1
 
 
-## A soldier with a worn weapon takes a new one of that metal: his old one was of the poorest kind.
-func rearmed(p, tier: int) -> void:
+## A soldier with a worn weapon takes a new one of that metal: his old one was of the poorest kind,
+## and goes back to the stores as scrap (build 70). Returns the old one's metal.
+func rearmed(p, tier: int, at := -1) -> int:
+	var old := default_tier(p)
 	for t in [BRONZE, IRON, STEEL]:
 		if int(p.arm_n[t]) > 0:
 			p.arm_n[t] = int(p.arm_n[t]) - 1
+			old = t
 			break
 	armed(p, tier)
+	scrap(p, old, at)
+	return old
+
+
+## A worn-out tool, weapon or armor of that metal goes back to the stores (near tile at) as scrap.
+func scrap(p, tier: int, at := -1) -> void:
+	if tier <= 0:
+		return
+	sim.give(p, "scrap", 1.0, at)
+	add(p, "scrap", tier, 1)
+
+
+## The scrap forge melts two scrap into a bar: the metal it makes (both of that metal if it can; the
+## best counted first, as scrap of the age's metal otherwise).
+func melt(p) -> int:
+	var a: Array = p.tq.get("scrap", [])
+	for t in [STEEL, IRON, BRONZE]:
+		if a.size() > t and int(a[t]) >= 2:
+			a[t] = int(a[t]) - 2
+			return t
+	var t1 := take_best(p, "scrap")
+	take_best(p, "scrap")
+	return t1
 
 
 func fit_arms(p) -> void:

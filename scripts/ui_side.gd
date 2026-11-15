@@ -145,6 +145,8 @@ func _res_info(id: String) -> String:
 			users.append("%s uses %d%s" % [String(d.name), int(d["in"][id]), have])
 		if (d.get("cost", {}) as Dictionary).has(id):
 			costs.append(String(d.name))
+	if id == "scrap":
+		makers.append("worn-out tools and the worn weapons soldiers hand in, carried back to the stores")
 	if id in ["coal", "ore_iron", "ore_gold", "ore_copper", "stone"]:
 		makers.append("mines and quarries draw it from veins on the map; click a deposit to see what is left")
 	t += "Made by: %s\n" % ("; ".join(makers) if makers.size() > 0 else "nothing")
@@ -157,7 +159,7 @@ func _res_info(id: String) -> String:
 		var waiting := int(p.tool_wait.get(id, 0))
 		t += "Each new %s (%s) needs one, and a new one when it wears out; an idle specialist keeps his%s\n" % [GameData.trade_title(tr), GameData.trade_name(tr).to_lower(), (". [color=#f08a7a]%d building%s waiting for one[/color]" % [waiting, "s" if waiting != 1 else ""]) if waiting > 0 else ""]
 		t += "%s tools work %d%% slower and wear out in %d%% of the time of %s ones; %s tools work %d%% faster and last %d%% longer\n" % [SimArms.tag(1, true), roundi((1.0 - SimArms.TOOL_SPEED[1]) * 100), roundi(SimArms.TOOL_LIFE[1] * 100), SimArms.tag(2, true), SimArms.tag(3, true), roundi((SimArms.TOOL_SPEED[3] - 1.0) * 100), roundi((SimArms.TOOL_LIFE[3] - 1.0) * 100)]
-	if r.has("tool") or id == "weapons":
+	if r.has("tool") or id in ["weapons", "armor", "scrap"]:
 		var sp := main.sim.arms.split_bb(p, id)
 		if sp != "":
 			t += "In store by metal: %s\n" % sp

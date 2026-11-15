@@ -10,7 +10,7 @@ economy you do.
 ## Download
 
 The ready-made Windows game is on the [Releases page](../../releases/latest): download the
-`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.64.0 build 69** (see
+`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.65.0 build 70** (see
 `CHANGELOG.md`). Every build is a release of its own, made by GitHub Actions
 (`.github/workflows/release.yml`) when a new version reaches `main`; older builds up to 50 are also
 on the [`downloads` branch](../../tree/downloads).
@@ -32,7 +32,7 @@ What is in the game now:
 
 The full plan is in the [roadmap](https://claude.ai/artifact/YVAWwJGUN4FRBYtpz3zgQh).
 
-Done (builds 43 to 69):
+Done (builds 43 to 70):
 
 | Build | What came in |
 |---|---|
@@ -67,6 +67,7 @@ Done (builds 43 to 69):
 | 67 | Slowdowns on big maps fixed (fields drawn in blocks, realms take turns within the second, faster fog and sea checks); tools and weapons pictured by metal, metals coloured, soldiers counted by their arms; fixes: tool info, metal list, loaded games drifting |
 | 68 | Tools and weapons by metal in the production targets: which metal is used first, the most of each metal in store, metal left for the other smiths; the stores list each metal when there is more than one |
 | 69 | Faster carriers on big maps (store search without copying the map), tools wanted worked out once per moment; F3 shows the busiest realms |
+| 70 | Scrap metal (worn tools and weapons back to the stores, a scrap forge melts them into bars); armor of bronze, iron or steel plate (bronze armorer, armorer, plate armorer) with the metal settings |
 
 Later: a story campaign through the ages, multiplayer, scripted scenarios, a chronicle at the end of a
 game, more animations, music for each age, and quality-of-life features (a production chain overlay,
@@ -418,13 +419,13 @@ Open **Settings** (top bar or F10). Everything there is remembered in `user://se
 - Command line (also for the exported game): `--rendering-method gl_compatibility` or `forward_plus` or
   `mobile` starts with that renderer once; `--resolution 1280x720` sets the window size.
 
-## Resources (84)
+## Resources (85)
 
-Logs, Stone, Clay, Water, Grain, Hops, Wool, Hides, Salt, Coal, Iron ore, Copper ore, Gold ore, Tin ore, Planks, Bricks, Flour, Bread, Fish, Smoked fish, Meat, Apples, Vegetables, Beer, Cloth, Leather, Paper, Iron, Copper, Gold, Bronze, Axes, Pickaxes, Farm tools, Bows and rods, Knives, Saws, Smith's tongs, Trowels, Shears, Chisels, Quills, Harnesses, Weapons, Bows, Armor, Clothes, Flax, Linen clothes, Fur coats, Jewelry, Furniture, Sand, Glassware, Milk, Cheese, Sausages, Honey, Beeswax, Candles, Grapes, Wine, Herbs, Medicine, Donkeys, Peppercorns, Spices, Silk cocoons, Silk, Kaolin, Porcelain, Coffee beans, Coffee, Sulfur, Saltpeter, Charcoal, Gunpowder, Lead ore, Lead, Cartridges, Fireworks, Steel, Rails, Locomotives.
+Logs, Stone, Clay, Water, Grain, Hops, Wool, Hides, Salt, Coal, Iron ore, Copper ore, Gold ore, Tin ore, Planks, Bricks, Flour, Bread, Fish, Smoked fish, Meat, Apples, Vegetables, Beer, Cloth, Leather, Paper, Iron, Copper, Gold, Bronze, Axes, Pickaxes, Farm tools, Bows and rods, Knives, Saws, Smith's tongs, Trowels, Shears, Chisels, Quills, Harnesses, Weapons, Bows, Armor, Scrap, Clothes, Flax, Linen clothes, Fur coats, Jewelry, Furniture, Sand, Glassware, Milk, Cheese, Sausages, Honey, Beeswax, Candles, Grapes, Wine, Herbs, Medicine, Donkeys, Peppercorns, Spices, Silk cocoons, Silk, Kaolin, Porcelain, Coffee beans, Coffee, Sulfur, Saltpeter, Charcoal, Gunpowder, Lead ore, Lead, Cartridges, Fireworks, Steel, Rails, Locomotives.
 
 Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples, Vegetables, Cheese, Sausages, Honey.
 
-## Buildings (125 you can build)
+## Buildings (127 you can build)
 
 **Raw**
 
@@ -502,6 +503,7 @@ Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples,
 | Bronze smith | 3 planks, 2 stone | artisan (metalwork) | 1 bronze, 1 planks | 2 tools, the kind most wanted | Bronze (start) |
 | Weaponsmith | 3 planks, 3 stone | artisan (metalwork) | 1 iron, 1 coal | 1 weapons | Iron working |
 | Bronze weaponsmith | 3 planks, 2 stone | artisan (metalwork) | 1 bronze, 1 charcoal | 1 weapons | Bronze (start) |
+| Scrap forge | 2 planks, 2 stone | artisan (metalwork) | 2 scrap, 1 charcoal | – | Bronze (start) |
 | Bowyer | 3 planks, 1 stone | artisan (woodwork) | 2 logs | 1 bows | Bows |
 | Armorer | 3 planks, 3 stone | artisan (metalwork) | 1 iron, 1 leather, 1 coal | 1 armor | Chainmail |
 | Bronze armourer | 3 planks, 3 stone | artisan (metalwork) | 1 bronze, 1 leather | 1 armor | Bronze armour |
@@ -513,6 +515,7 @@ Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples,
 | Jeweller | 3 planks, 3 stone, 2 bricks | artisan (fine crafts) | 1 gold, 1 copper | 1 jewelry | Guilds |
 | Carpenter | 3 planks, 2 stone | artisan (woodwork) | 2 planks | 1 furniture | Guilds |
 | Machine works | 5 planks, 6 bricks, 3 iron | artisan (metalwork) | 1 steel, 1 coal | 3 tools, the kind most wanted, 1 weapons | Steam engine |
+| Plate armorer | 3 planks, 4 stone, 1 iron | artisan (metalwork) | 1 steel, 1 leather, 1 coal | 1 armor | Steam engine |
 | Textile mill | 5 planks, 6 bricks, 2 iron | peasant (textiles and leather) | 2 wool, 1 coal | 3 cloth, 1 clothes | Textile mills |
 | Chandler | 3 planks, 1 stone | artisan (fine crafts) | 1 beeswax | 2 candles | Monasteries |
 | Silk weaver | 3 planks, 2 stone | artisan (textiles and leather) | 2 silk cocoons | 1 silk | Dyeing |
@@ -1006,6 +1009,12 @@ most of each metal to keep (of each kind of tool, or of weapons): a smith of tha
 another kind of tool, or waits. *Leave for the weapon smiths* (and *for the tool smiths*) keeps some
 bronze, iron or steel in store for the other trade. In the stores list, a tool or the weapons with more
 than one metal in store get an entry for each metal.
+
+Scrap and armor (build 70): a worn-out tool and a soldier's worn weapon go back to the stores as
+**scrap** of their metal; the **scrap forge** (2 scrap and 1 charcoal) melts two into a bar of that metal.
+Armor comes in bronze (bronze armorer), iron (armorer) and steel plate (plate armorer, with the steam
+engine): a soldier who takes armor counts as 0.7 of a veteran in bronze, 1 in iron and 1.35 in steel. The
+production targets' metal settings cover armor too.
 
 ## The Bronze Age
 

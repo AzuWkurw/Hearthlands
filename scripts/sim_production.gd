@@ -101,6 +101,9 @@ func start_check(b: Sim.Bld, p: Sim.Player) -> String:
 	var keeps_food := String(d.get("train", "")) == "noble" or (d.get("out", {}) as Dictionary).has("research")
 	if keeps_food and sim.food_total(p) < sim.pop_total(p) * 0.2 + 10.0:
 		return "Saving food for the people"
+	if d.has("melts_scrap"):
+		# two scrap make a bar of their metal (build 70)
+		deliver(b, p, SimArms.METAL_RES[sim.arms.melt(p)], 1)
 	match String(d.get("train", "")):
 		"artisan":
 			if sim.idle(p, "peasant") < 1: return "No idle peasant"
@@ -364,7 +367,9 @@ func finish_prod(b: Sim.Bld, p: Sim.Player) -> void:
 				p.res_era = Sim.mix_avg(rm)
 				var vet := false
 				if p.stock.get("armor", 0.0) >= 1.0:
-					sim.take(p, "armor", 1.0, sim.idx(b.x, b.y)); p.vets += 1.0; vet = true
+					# armor by metal (build 70): bronze counts for less than a veteran, steel plate for more
+					var aq := sim.arms.take_best(p, "armor")
+					sim.take(p, "armor", 1.0, sim.idx(b.x, b.y)); p.vets += SimArms.ARMOR_VET[aq]; vet = true
 				if not p.ai:
 					var arm_note := ""
 					if kind < clampi(p.age, 0, Sim.KINDS - 1):

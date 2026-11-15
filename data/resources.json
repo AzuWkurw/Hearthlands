@@ -358,8 +358,17 @@
   "id": "armor",
   "name": "Armor",
   "abbr": "Ar",
-  "color": "#7f8fa6",
-  "icon": "shield"
+  "color": "#8f959e",
+  "icon": "shield",
+  "info": "Bronze, iron or steel (the armorer's metal). Each new soldier takes one if there is any: he fights as a veteran (bronze less, steel plate more)."
+ },
+ {
+  "id": "scrap",
+  "name": "Scrap",
+  "abbr": "Sc",
+  "color": "#8a8478",
+  "icon": "scrap",
+  "info": "Worn-out tools, weapons and armor, carried back to the stores. The scrap forge melts two of a metal into one bar of it."
  },
  {
   "id": "clothes",

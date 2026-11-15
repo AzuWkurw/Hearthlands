@@ -127,7 +127,9 @@ func on_cycle(p: Sim.Player, b: Sim.Bld) -> void:
 			sim.take(p, tool, 1.0, sim.idx(b.x, b.y))
 			sim.used(p, tool, 1.0)
 			var q := float(_last.get("%d:%s" % [p.id, tool], 1.0))
-			# its metal (build 66): the best in store
+			# the worn-out one goes back to the stores as scrap (build 70)
+			sim.arms.scrap(p, b.tool_q, sim.idx(b.x, b.y))
+			# its metal (build 66): the first in store by the player's order
 			sim.arms.give_tool(b, sim.arms.take_best(p, tool))
 			h = [q, q_value(LIFE, q) * SimArms.life_of(b.tool_q)]
 			if not p.ai and float(p.stock.get(tool, 0.0)) < 1.0:

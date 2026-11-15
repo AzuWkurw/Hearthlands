@@ -14,7 +14,7 @@ from PIL import Image, ImageDraw
 ROOT = os.path.join(os.path.dirname(__file__), "..", "textures")
 # the goods made of metal whose grey parts are the metal (quills, harnesses and bows keep their look:
 # only the badge tells their metal)
-METAL = ["axes", "pickaxes", "farm_tools", "knives", "saws", "tongs", "trowels", "shears", "chisels", "weapons"]
+METAL = ["axes", "pickaxes", "farm_tools", "knives", "saws", "tongs", "trowels", "shears", "chisels", "weapons", "armor", "scrap"]
 # (dark, light) of each metal's ramp
 RAMP = {
     "bronze": ((92, 52, 18), (246, 196, 112)),

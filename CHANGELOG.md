@@ -1,5 +1,12 @@
 # Changelog
 
+## Build 70 (v0.65.0, 2026-11-15)
+
+Build 70: scrap metal; armor by metal.
+- Scrap: a worn-out tool (when its worker takes a new one) and a soldier's worn weapon (when he re-arms) go back to the stores as scrap, of their metal. The new scrap forge (crafts, small: 2 scrap and 1 charcoal) melts two scrap into one bar of their metal: bronze, iron or steel. Scrap shows by metal in the stores like the tools.
+- Armor by metal: the bronze armorer (Bronze Age) makes bronze armor, the armorer iron, and the new plate armorer (with the steam engine) steel plate from steel, leather and coal. A soldier who takes armor counts as 0.7 of a veteran in bronze, 1 in iron and 1.35 in steel plate.
+- Production targets: "Tools and weapons by metal" has armor too (used first, at most in store, metal left for the other smiths).
+
 ## Build 69 (v0.64.0, 2026-11-15)
 
 Build 69: faster carriers; which realms cost the most.

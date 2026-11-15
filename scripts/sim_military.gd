@@ -243,7 +243,7 @@ func rearm_tick() -> void:
 			sim.take(p, "weapons", 1.0)
 			sim.used(p, "weapons", 1.0)
 			p.arm_q = sim.arms.take_best(p, "weapons")
-			sim.arms.rearmed(p, p.arm_q)
+			sim.arms.rearmed(p, p.arm_q, sim.idx(p.hq.x, p.hq.y) if p.hq != null else -1)
 			p.blunt -= 1
 	for b: Sim.Bld in sim.mil_list():
 		if b.ty == "hq" or b.dead:
@@ -254,7 +254,7 @@ func rearm_tick() -> void:
 			sim.take(p2, "weapons", 1.0, sim.idx(b.x, b.y))
 			sim.used(p2, "weapons", 1.0)
 			p2.arm_q = sim.arms.take_best(p2, "weapons")
-			sim.arms.rearmed(p2, p2.arm_q)
+			sim.arms.rearmed(p2, p2.arm_q, sim.idx(b.x, b.y))
 			b.blunt -= 1
 
 ## Every second: soldiers in military buildings take up bows (one from the stores each) or put them
