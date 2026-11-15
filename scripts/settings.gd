@@ -47,6 +47,8 @@ var daynight := false                     # a slow day and night (only looks)
 var cb_colors := false                    # colours that stay apart for red-green colour blindness
 var details := true                       # grass tufts, reeds, foam, snow on peaks
 var raised := true                        # hills drawn raised (2.5D); off: a flat map
+var voices := true        # a word from the worker when you pick a building (build 63)
+var goals := true         # the sandbox goals in endless games (build 63)
 var guide := true                         # show the first-game guide in a new game
 var keys := {}                            # action -> key code the player chose (Keys in Settings)
 var sea_guide := false                    # the sea and supplies guide has been shown once
@@ -79,6 +81,8 @@ func load_file() -> void:
 	log_open = bool(cf.get_value("display", "log_open", log_open))
 	features = cf.get_value("game", "features", {})
 	guide = bool(cf.get_value("game", "guide", guide))
+	voices = bool(cf.get_value("game", "voices", voices))
+	goals = bool(cf.get_value("game", "goals", goals))
 	raised = bool(cf.get_value("display", "raised", raised))
 	daynight = bool(cf.get_value("display", "daynight", daynight))
 	cb_colors = bool(cf.get_value("display", "cb_colors", cb_colors))
@@ -113,6 +117,8 @@ func save_file() -> void:
 	cf.set_value("display", "log_open", log_open)
 	cf.set_value("game", "features", features)
 	cf.set_value("game", "guide", guide)
+	cf.set_value("game", "voices", voices)
+	cf.set_value("game", "goals", goals)
 	cf.set_value("display", "raised", raised)
 	cf.set_value("display", "daynight", daynight)
 	cf.set_value("display", "details", details)

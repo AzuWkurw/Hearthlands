@@ -83,6 +83,7 @@ var flash := 0.0
 var draw_usec := 0               # time the last _draw took, for the F3 performance overlay
 var ground_usec := 0             # time the last ground drawing took
 var animate := true              # the "Animations" option; off shows still pictures
+var show_hats := true            # people wear their age's hats (build 63)
 
 var _drag := false
 var _moved := false
@@ -1111,14 +1112,14 @@ func _draw() -> void:
 		var chh := 0.0
 		# a builder on his way to a site (or home), a soldier on his way to his post
 		if t.kind == "builder":
-			_person("unit_worker_hammer", pos, step % (8 if Tex.frames("unit_worker_hammer") >= 10 else 4), dx < 0, pc.lightened(0.25))
+			_person("unit_worker_hammer", pos, step % (8 if Tex.frames("unit_worker_hammer") >= 10 else 4), dx < 0, pc.lightened(0.25), sim.players[t.p - 1].age)
 			continue
 		if t.kind == "worker":
 			# a new worker on his way from his home: peasants in straw hats, artisans in caps
 			var wb: Sim.Bld = sim.by_id.get(t.site)
 			var cls := String(wb.def.get("worker", "peasant")) if wb != null else "peasant"
 			var fid := "unit_folk_artisan" if cls == "artisan" else "unit_folk_peasant"
-			_person(fid, pos, step % (8 if Tex.frames(fid) >= 10 else 4), dx < 0, pc.lightened(0.25))
+			_person(fid, pos, step % (8 if Tex.frames(fid) >= 10 else 4), dx < 0, pc.lightened(0.25), sim.players[t.p - 1].age)
 			continue
 		if t.kind == "ship":
 			_draw_ship(pos, dx < 0, pc, t.t0, t.res if t.res != "@expedition" else "", false)
@@ -1148,6 +1149,7 @@ func _draw() -> void:
 				_batch_layer = 1
 				_sprite("unit_porter_w_tint" if woman else "unit_porter_tint", pos, 0.4, fr, dx < 0, _pcol_light[t.p - 1])
 				_batch_layer = 0
+			_hat(pos, chh, dx < 0, sim.players[t.p - 1].age)
 		elif t.kind == "mule":
 			chh = _sprite("unit_mule", pos, 0.78, step, dx < 0)
 		else:
@@ -2712,10 +2714,10 @@ func _draw_worker(b: Sim.Bld, pc: Color) -> void:
 	var nw := 8 if nf >= 10 else 4
 	if k < walk:
 		var p := spot.lerp(home, 1.0 - k / walk)
-		_person(id, p, int(home.distance_to(p) * 8.0) % nw, spot.x < home.x, col)
+		_person(id, p, int(home.distance_to(p) * 8.0) % nw, spot.x < home.x, col, sim.players[b.p - 1].age)
 	elif k > total - walk:
 		var p2 := spot.lerp(home, (k - (total - walk)) / walk)
-		var hh := _person(id, p2, int(spot.distance_to(p2) * 8.0) % nw, home.x < spot.x, col)
+		var hh := _person(id, p2, int(spot.distance_to(p2) * 8.0) % nw, home.x < spot.x, col, sim.players[b.p - 1].age)
 		var outs: Dictionary = Crops.out_of(sim, b)
 		if outs.size() > 0 and _res_tex.has(outs.keys()[0]):
 			_cv.draw_texture_rect(_res_tex[outs.keys()[0]], Rect2(p2.x - 0.13, p2.y - hh - 0.2, 0.26, 0.26), false)
@@ -2724,7 +2726,7 @@ func _draw_worker(b: Sim.Bld, pc: Color) -> void:
 		var bp := spot.lerp(tgt, 0.6) + Vector2(0, 0.04 * sin(sim.time * 2.1 + b.id))
 		var fl := -1.0 if tgt.x < spot.x else 1.0
 		_boat(bp, fl, 0.55)
-		_person(id, bp + Vector2(0, -0.06), nw + int(sim.time * 1.5 + b.id) % 2, fl < 0, col)
+		_person(id, bp + Vector2(0, -0.06), nw + int(sim.time * 1.5 + b.id) % 2, fl < 0, col, sim.players[b.p - 1].age)
 		# the line, and rings on the water where it goes in
 		var tipp := bp + Vector2(0.32 * fl, -0.42)
 		var bob := bp + Vector2(0.62 * fl, 0.08)
@@ -2732,7 +2734,7 @@ func _draw_worker(b: Sim.Bld, pc: Color) -> void:
 		var rr := fmod(sim.time * 0.8 + b.id * 0.3, 1.0)
 		_cv.draw_arc(bob, 0.05 + rr * 0.18, 0, TAU, 16, Color(1, 1, 1, 0.5 * (1.0 - rr)), 0.02)
 	else:
-		_person(id, spot, nw + int(sim.time * 3.0 + b.id) % 2, tgt.x < spot.x, col)
+		_person(id, spot, nw + int(sim.time * 3.0 + b.id) % 2, tgt.x < spot.x, col, sim.players[b.p - 1].age)
 		_work_fx(act, b, spot, tgt)
 
 
@@ -2976,7 +2978,7 @@ func _boat(p: Vector2, fl: float, sz: float) -> void:
 
 ## A worker: the picture as it is, then the tunic in the realm's colour (an older single-layer picture
 ## is tinted whole, as before). Returns the drawn height.
-func _person(id: String, at: Vector2, f: int, flip: bool, col: Color) -> float:
+func _person(id: String, at: Vector2, f: int, flip: bool, col: Color, age := -1) -> float:
 	var e := _spr_info(id)
 	if int(e[1]) >= 10:
 		var hh := _sprite(id, at, 0.4, f, flip)
@@ -2984,8 +2986,23 @@ func _person(id: String, at: Vector2, f: int, flip: bool, col: Color) -> float:
 			_batch_layer = 1
 			_sprite(id + "_tint", at, 0.4, f, flip, col)
 			_batch_layer = 0
+		_hat(at, hh, flip, age)
 		return hh
-	return _sprite(id, at, 0.4, f, flip, col.lightened(0.1))
+	var h2 := _sprite(id, at, 0.4, f, flip, col.lightened(0.1))
+	_hat(at, h2, flip, age)
+	return h2
+
+
+## People wear the hat of their realm's age (build 63): straw hats in Roman times, then a hood, a feathered
+## beret, a tricorn, a top hat, a flat cap. Only when near enough to see it.
+const HAT_TOP := 0.9      # where the top of the head is, as a share of a person's picture
+func _hat(at: Vector2, hh: float, flip: bool, age: int) -> void:
+	# the Roman age keeps the straw hats the pictures have; later hats go over them
+	if age <= 1 or zoom < 22.0 or not show_hats:
+		return
+	_batch_layer = 1
+	_sprite("unit_hat_e%d" % clampi(age - 1, 0, 5), at - Vector2(0.0, hh * HAT_TOP - 0.1), 0.24, 0, flip)
+	_batch_layer = 0
 
 
 ## Which load picture an ox cart carrying goods res shows.

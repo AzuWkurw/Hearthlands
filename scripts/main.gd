@@ -1594,6 +1594,8 @@ func _on_tile(t: Vector2i) -> void:
 			_refresh_sel()
 			return
 	view.sel_id = b.id if b != null else 0
+	if b != null and sound != null:
+		sound.voice(b)
 	sel_res = ""
 	view.sel_tile = -1
 	if b == null and _tile_has_info(sim.idx(t.x, t.y)):

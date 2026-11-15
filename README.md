@@ -10,7 +10,7 @@ economy you do.
 ## Download
 
 The ready-made Windows game is on the [Releases page](../../releases/latest): download the
-`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.57.0 build 62** (see
+`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.58.0 build 63** (see
 `CHANGELOG.md`). Every build is a release of its own, made by GitHub Actions
 (`.github/workflows/release.yml`) when a new version reaches `main`; older builds up to 50 are also
 on the [`downloads` branch](../../tree/downloads).
@@ -59,6 +59,7 @@ Done (builds 43 to 57):
 | 60 | Town quarters (homes near a tavern, chapel and market: more content, more tax); rivals that plan their towns round such a centre, buy what their workshops lack and use river boats |
 | 61 | Lots of 50 at the market; standing orders (sell or buy every few minutes, keeping a reserve); the realms graph (V) with gold and wealth |
 | 62 | Guilds (workplaces of one trade together work faster), the build queue (Shift+Q: sites built one after another), copy a building's settings to all of its kind |
+| 63 | Hats for each age, music for the later ages, workers' voices, sandbox goals (24 goals in endless games); a fix for geologists' marks on sulfur and lead |
 
 Later: a story campaign through the ages, multiplayer, scripted scenarios, a chronicle at the end of a
 game, more animations, music for each age, and quality-of-life features (a production chain overlay,
@@ -929,6 +930,13 @@ order the buildings within it. The numbers are saved with the game.
 - **Rivals at sea:** a rival with no way to reach anyone by land builds a harbour and ships early, sends
   expeditions and lands on its enemies' coasts; rivals at war by the sea build naval yards and coastal
   forts, and warlords keep field depots near the front.
+
+## Sandbox goals
+
+In a game without a mission, a box shows the goal you are working on (with how far you are), the last ones
+reached and the next: 24 goals from a first village of 30 people, through festivals, town quarters and the
+ages, to all five wonders. Each one reached gives some gold. Switch them off in Settings ("Goals to aim for in
+endless games").
 
 ## Guilds, the build queue and copying settings
 

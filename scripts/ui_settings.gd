@@ -142,6 +142,13 @@ func _fill_settings() -> void:
 	_set_row(g, "", _check("Show the first-game guide (in the next new game)", main.settings.guide, func(on):
 		main.settings.guide = on
 		main.settings.save_file()))
+	_set_row(g, "", _check("Goals to aim for in endless games", main.settings.goals, func(on):
+		main.settings.goals = on
+		main.settings.save_file()
+		main.guide_ui.start()))
+	_set_row(g, "", _check("A word from the worker when you pick a building", main.settings.voices, func(on):
+		main.settings.voices = on
+		main.settings.save_file()))
 	# optional features: each one can be switched on or off, here and in the running game
 	set_body_sound_rows(g)
 	set_body_key_rows(g)

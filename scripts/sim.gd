@@ -288,6 +288,7 @@ class Player:
 	var ai := false
 	var alive := true
 	var stock: Dictionary = {}
+	var goal_i := 0          # the sandbox goal being worked on (build 63; SandboxGoals.LIST)
 	var routes: Array = []   # standing orders at the market (build 61): see SimMarket.run_routes
 	var river_t := -1.0      # the rival looked for river water in its land (build 60), and found it
 	var river := false
@@ -2314,6 +2315,24 @@ func goal_progress(g: Dictionary) -> Array:
 	return [0, 1]
 
 
+## The sandbox goals (build 63): in a game without a mission, the human works through SandboxGoals.LIST
+## one at a time; each done gives its reward in gold and says so.
+func _goals_check() -> void:
+	if not mission.is_empty() or players.is_empty():
+		return
+	var me := human()
+	while me.goal_i < SandboxGoals.LIST.size():
+		var g: Dictionary = SandboxGoals.LIST[me.goal_i]
+		var gp := SandboxGoals.progress(self, g)
+		if int(gp[0]) < int(gp[1]):
+			return
+		me.goal_i += 1
+		var gold := int(g.get("gold", 0))
+		if gold > 0:
+			give(me, "gold", float(gold))
+		emit_log("Goal reached: %s.%s" % [String(g.text), (" %d gold from the treasury." % gold) if gold > 0 else ""], Color("e8c870"))
+
+
 func _mission_check() -> void:
 	var goals: Array = mission.get("goals", [])
 	if mission_done.size() != goals.size():
@@ -2357,6 +2376,8 @@ func _secondly() -> void:
 			p.hq = null
 	if not mission.is_empty() and not over:
 		_mission_check()
+	elif not over and int(time) % 5 == 0:
+		_goals_check()
 	if log_checksums and int(time) % 60 == 0:
 		print("minute %d checksum %d" % [int(time) / 60, checksum()])
 	_rebuild_realm_lists()

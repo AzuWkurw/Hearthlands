@@ -67,6 +67,7 @@ TESTS = [
 	("town quarters",     "town_test", [], False, False, [r"TOWN TEST: PASS"]),
 	("market orders",     "route_test", [], False, False, [r"ROUTE TEST: PASS"]),
 	("guilds and queue",  "guild_test", [], False, False, [r"GUILD TEST: PASS"]),
+	("sandbox goals",     "goals_test", [], False, False, [r"GOALS TEST: PASS"]),
 	("blueprints",        "bp_test", [], False, False, [r"BLUEPRINT TEST: PASS"]),
 	("toolbar tools",     "toolbar_tool_test", [], True, False, [r"tool clicks answered: 8 of 8"]),
 ]

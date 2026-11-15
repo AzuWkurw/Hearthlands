@@ -22,7 +22,7 @@ extends Node
 
 const VARIANT_FAMILIES := ["chop", "hammer", "pick", "saw", "build", "dig", "splash", "creak", "road", "clash",
 	"thunder", "treefall", "cow", "sheep", "pig"]
-const SINGLES := ["click", "place", "deny", "win_open", "win_close", "done", "research", "coin", "good", "bad",
+const SINGLES := ["voice_low", "voice_mid", "voice_high", "click", "place", "deny", "win_open", "win_close", "done", "research", "coin", "good", "bad",
 	"alert", "season", "bell", "demolish", "ignite", "wolf", "horse", "march", "catapult", "shot_0", "shot_1"]
 const LOOPS := ["amb_meadow", "amb_forest", "amb_shore", "amb_wind", "amb_mountain", "amb_rain", "amb_storm",
 	"amb_summer", "amb_town", "amb_battle", "amb_fire"]
@@ -221,6 +221,20 @@ func play(id: String, vol := 1.0, pitch_spread := 0.06) -> void:
 
 ## Plays effect id where tile position `at` is on screen: panned left or right and quieter the further
 ## from the middle (and not at all when far off screen).
+## A short murmur of a voice ("aye", "hm?", "ho") when you pick one of your buildings (build 63);
+## lower for soldiers, brighter for artisans, none for empty buildings.
+func voice(b: Sim.Bld) -> void:
+	if b == null or b.p != 1 or not main.settings.voices:
+		return
+	var wk := String(b.def.get("worker", ""))
+	if b.def.has("garrison"):
+		play("voice_low", 0.5, 0.08)
+	elif wk == "artisan" or wk == "noble":
+		play("voice_high", 0.45, 0.08)
+	elif wk != "" and b.staffed:
+		play("voice_mid", 0.45, 0.1)
+
+
 func play_at(id: String, at: Vector2, vol := 1.0, pitch_spread := 0.08) -> void:
 	if main == null or not main.settings.sound_on:
 		return
@@ -583,11 +597,29 @@ func _start_piece(id: String, _fade := 2.0) -> void:
 	_mus_target[nxt] = 1.0
 
 
+## The calm pieces for the age your realm is in (build 63): the early ones alone in the first two ages,
+## the court dance joining from the third, the foundry from the fifth (and the oldest leaving).
+func _peace_for_age() -> Array:
+	var age := main.sim.human().age if main.sim != null and not main.sim.players.is_empty() else 1
+	if age >= 5:
+		return ["peace_foundry", "peace_court", "peace_market", "peace_foundry"]
+	if age >= 3:
+		return ["peace_court", "peace_hearth", "peace_market", "peace_furrow", "peace_court"]
+	return PEACE
+
+
 func _next_peace() -> void:
-	if _order.is_empty():
-		_order = PEACE.duplicate()
+	if _order.is_empty() or _order_age != _age_now():
+		_order_age = _age_now()
+		_order = _peace_for_age().duplicate()
 		_order.shuffle()
 	_start_piece(String(_order.pop_front()))
+
+
+var _order_age := -1
+
+func _age_now() -> int:
+	return main.sim.human().age if main.sim != null and not main.sim.players.is_empty() else 1
 
 
 func _on_piece_end(i: int) -> void:

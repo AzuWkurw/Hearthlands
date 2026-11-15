@@ -65,11 +65,51 @@ func build() -> void:
 ## Called when a new game starts.
 func start() -> void:
 	var mission: bool = not main.sim.mission.is_empty()
-	shown = main.settings.guide or mission
+	shown = main.settings.guide or mission or main.settings.goals
 	box.visible = shown
-	title_lbl.text = String(main.sim.mission.get("name", "")) if mission else "First steps"
+	title_lbl.text = String(main.sim.mission.get("name", "")) if mission else ("First steps" if main.settings.guide else "Goals")
 	_last = ""
 	refresh()
+
+
+## The sandbox goals (build 63): the one being worked on with how far it is, the last three done, the
+## next one after it.
+func _goals() -> void:
+	var sim: Sim = main.sim
+	if not main.settings.goals:
+		box.visible = false
+		return
+	var me := sim.human()
+	var lines := []
+	for k in range(maxi(0, me.goal_i - 2), me.goal_i):
+		lines.append("[color=#86ad5c]✔[/color] [color=#9a9c88]%s[/color]" % tr(String(SandboxGoals.LIST[k].text)))
+	if me.goal_i < SandboxGoals.LIST.size():
+		var g: Dictionary = SandboxGoals.LIST[me.goal_i]
+		var gp := SandboxGoals.progress(sim, g)
+		var prog := "" if int(gp[1]) <= 1 else " (%d of %d)" % [mini(int(gp[0]), int(gp[1])), int(gp[1])]
+		lines.append("[color=#e8c870]▶[/color] [b]%s[/b][color=#b8b8a8]%s[/color]" % [tr(String(g.text)), prog])
+		if String(g.get("tip", "")) != "":
+			lines.append("[color=#b8b8a8]%s[/color]" % tr(String(g.tip)))
+		if me.goal_i + 1 < SandboxGoals.LIST.size():
+			lines.append("[color=#6a6c60]○ %s[/color]" % tr(String(SandboxGoals.LIST[me.goal_i + 1].text)))
+	else:
+		lines.append("[color=#e8c870]Every goal reached: %d of %d. Well ruled![/color]" % [me.goal_i, SandboxGoals.LIST.size()])
+	lines.append("[color=#6a6c60]Goal %d of %d[/color]" % [mini(me.goal_i + 1, SandboxGoals.LIST.size()), SandboxGoals.LIST.size()])
+	var key := "\n".join(lines)
+	if key == _last:
+		return
+	_last = key
+	for c in list.get_children():
+		c.queue_free()
+	var l := RichTextLabel.new()
+	l.bbcode_enabled = true
+	l.fit_content = true
+	l.scroll_active = false
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.custom_minimum_size = Vector2(320, 0)
+	l.add_theme_font_size_override("normal_font_size", 13)
+	l.text = key
+	list.add_child(l)
 
 
 ## A mission's goals instead of the first steps: each with how far it is, ticked when done.
@@ -114,6 +154,9 @@ func refresh() -> void:
 	if not main.sim.mission.is_empty():
 		_mission()
 		return
+	if not main.settings.guide:
+		_goals()
+		return
 	var done: Array = []
 	var all := true
 	for s in STEPS:
@@ -147,7 +190,9 @@ func refresh() -> void:
 		main._show_hint("First steps done! Your town is on its way. (The guide closes.)", 5.0)
 		main.settings.guide = false
 		main.settings.save_file()
-		box.visible = false
+		box.visible = main.settings.goals
+		title_lbl.text = "Goals"
+		_last = ""
 
 
 func _check(rule: String) -> bool:

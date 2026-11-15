@@ -1,5 +1,14 @@
 # Changelog
 
+## Build 63 (v0.58.0, 2026-11-15)
+
+Build 63: dressed for the age, music for the later ages, voices, goals.
+- People wear their age's hats: straw hats in Roman times, then hoods, feathered berets, tricorns, top hats and flat caps, on workers, porters and builders (when zoomed in near enough to see).
+- Music for the later ages: two new pieces, a stately court dance (from the Renaissance) and a march over the works (from the Industrial age), join the calm music as your realm moves on.
+- Small voices: a word from the worker when you pick one of your buildings: low for soldiers, brighter for artisans (Settings can switch them off).
+- Sandbox goals: in endless games, 24 goals one after another, from a first village of 30 people to all five wonders, each with some gold from the treasury. They show where the first-game guide was, with how far you are and what comes next (Settings: "Goals to aim for in endless games").
+- Fixed: a geologist's markers on sulfur and lead deposits stopped the deposits' marks from being drawn.
+
 ## Build 62 (v0.57.0, 2026-11-15)
 
 Build 62: guilds, a build queue, copying settings.
