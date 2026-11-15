@@ -884,8 +884,8 @@ order the buildings within it. The numbers are saved with the game.
 
 - **Landings:** click an enemy military building across the water. If you have a harbour with a free
   ship and soldiers waiting at the headquarters, the attack window offers to land from the sea. Ships
-  carry 6 soldiers each (up to 24 in one landing) to the nearest beach to the target, and the soldiers
-  march from there. The ships sail home once the soldiers are ashore.
+  carry 6 soldiers each (up to 24 in one landing) to a beach near the target (up to 24 tiles away),
+  and the soldiers march from there. Rivals make no landing in the first 25 minutes. The ships sail home once the soldiers are ashore.
 - **Battles at sea:** two enemy fleets that meet fight it out, and a fleet beaten at sea goes down
   with its ships. Fleets sink enemy cargo ships and expeditions they pass. Towers and archers on the
   coast shoot at fleets sailing by. Rivals land on your coast too when they can't reach you by land.
