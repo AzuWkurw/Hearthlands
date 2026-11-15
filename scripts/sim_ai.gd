@@ -243,7 +243,6 @@ func _try_spot(p: Sim.Player, ty: String, i: int, bad: Dictionary) -> bool:
 
 func _ai_sites(p: Sim.Player, ty: String) -> Array:
 	var d: Dictionary = GameData.bld[ty]
-	var _a := Time.get_ticks_usec()
 	var lists := sim.owned(p.id)
 	var cands := PackedInt32Array()
 	var bad := _bad_of(p, sim.size_of(ty))
@@ -274,22 +273,13 @@ func _ai_sites(p: Sim.Player, ty: String) -> Array:
 				tries += 1
 				if _try_spot(p, ty, i, bad):
 					cands.append(i)
-	var _b := Time.get_ticks_usec()
 	var scored := []
 	var large := sim.size_of(ty) == "large"
 	var kin := _kin(p, ty)
-	var _c := Time.get_ticks_usec()
-	var _ss := 0
-	var _ps := 0
 	for i in cands:
 		var x := i % sim.w
 		var y := i / sim.w
-		var _e := Time.get_ticks_usec()
-		var sc := _site_score(ty, x, y, p)
-		_ss += Time.get_ticks_usec() - _e
-		_e = Time.get_ticks_usec()
-		sc += _pack_score(ty, x, y, p) + _kin_score(kin, x, y) + sim.rng.randf() * 0.8
-		_ps += Time.get_ticks_usec() - _e
+		var sc := _site_score(ty, x, y, p) + _pack_score(ty, x, y, p) + _kin_score(kin, x, y) + sim.rng.randf() * 0.8
 		# spots kept for large buildings: only large ones go there, and they like them
 		var near_res := _near_reserved(p, x, y)
 		if near_res == 0 and large:
@@ -298,8 +288,6 @@ func _ai_sites(p: Sim.Player, ty: String) -> Array:
 			continue
 		scored.append([sc, x, y])
 	scored.sort_custom(func(a, b): return a[0] > b[0])
-	if Time.get_ticks_usec() - _a > 20000:
-		print("SITES %s: cands %d (%d ms), kin %d ms, site_score %d ms, pack+kin %d ms, freelist %d" % [ty, cands.size(), (_b - _a) / 1000, (_c - _b) / 1000, _ss / 1000, _ps / 1000, _free_tiles(p, lists[0]).size()])
 	return scored.slice(0, 6)
 
 
@@ -506,11 +494,30 @@ func _ai_build(p: Sim.Player, ty: String) -> String:
 	return "nosite"
 
 
+## (build 71) A rival sets the metal settings as a player would: at war its good metal goes to weapons
+## and armor (tools use the poorest first, the tool smiths leave steel and some iron for the weapon
+## smiths); at peace its tools take the best metal and nothing is kept back.
+func _ai_metals(p: Sim.Player) -> void:
+	var war := false
+	for q in sim.players:
+		if q.id != p.id and q.alive and Diplomacy.at_war(sim, p.id, q.id):
+			war = true
+			break
+	if war or p.crowded:
+		p.metal_order["tools"] = [1, 2, 3]
+		p.metal_order["weapons"] = [3, 2, 1]
+		p.metal_keep["tools"] = {"steel": 4, "iron": 3}
+	else:
+		p.metal_order["tools"] = [3, 2, 1]
+		p.metal_keep.erase("tools")
+
+
 func ai_think(p: Sim.Player) -> void:
 	_free_pid = -1
 	_searches = 0
 	_plan_town(p)
 	_ai_priorities(p)
+	_ai_metals(p)
 	_ai_steam_rails(p)
 	var isl := sim.naval.island(p)
 	if p.crowded or isl:
@@ -599,6 +606,8 @@ func ai_think(p: Sim.Player) -> void:
 		["hunter", 1], ["tannery", 1 if mins > 8 and S.hides > 2 else 0],
 		["armorer", 1 if mins > 9 and (war or p.pers == "balanced") else 0],
 		["bronze_armorer", 1 if mins > 9 and (war or p.pers == "balanced") and c.call("armorer") == 0 and c.call("bronze_foundry") > 0 else 0],
+		# scrap back into metal once some has piled up (build 71)
+		["scrap_forge", 1 if float(S.get("scrap", 0.0)) >= 6.0 and mins > 10 else 0],
 		["saltworks", 1 if mins > 8 else 0], ["smokehouse", 1 if mins > 8 and c.call("saltworks") > 0 and c.call("fisher") > 0 else 0],
 		["hop_farm", 1 if mins > 8 else 0], ["brewery", 1 if mins > 8 and c.call("hop_farm") > 0 else 0],
 		["pig_farm", 1 if mins > 9 and pop > 40 else 0],

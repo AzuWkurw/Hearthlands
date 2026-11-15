@@ -206,5 +206,24 @@ func _init() -> void:
 	while sim.time < t1 + 120.0 and float(me.stock.get("bronze", 0.0)) < br0 + 1.0:
 		sim.tick(Sim.TICK)
 	check(float(me.stock.get("bronze", 0.0)) >= br0 + 1.0, "a scrap forge at work: bronze scrap back to bronze (%s)" % sf.msg)
+	# 13. build 71: soldiers drawn in their metal, smiths upgraded in place, rivals' settings, the metals chain
+	me.arm_n = [0, 1, 2, 5]
+	check(ar.main_metal(me) == SimArms.STEEL and MapView._soldier_id(3, SimArms.STEEL) == "unit_soldier_e3_steel" and MapView._soldier_id(3, SimArms.IRON) == "unit_soldier_e3" and MapView._soldier_id(0, SimArms.STEEL) == "unit_soldier_e0", "most soldiers carry steel: drawn in steel (%s)" % MapView._soldier_id(3, ar.main_metal(me)))
+	check(Tex.frames("unit_soldier_e3_steel") == Tex.frames("unit_soldier_e3"), "with the frames of the usual picture")
+	var bs_at := spot(sim, "bronze_smith", me.hq.x - 3, me.hq.y + 8)
+	var bsm := sim.add_bld("bronze_smith", bs_at.x, bs_at.y, me, true, 0)
+	me.techs.erase("iron_working")
+	check(sim.upgrades_of(bsm).is_empty(), "a bronze smith cannot become a toolsmith before Iron working")
+	me.techs["iron_working"] = true
+	check(sim.upgrades_of(bsm) == ["toolsmith"] and sim.upgrade(bsm, "toolsmith") == "", "with it, he is upgraded in place")
+	var rv := sim.players[1]
+	Diplomacy.set_relation(sim, 1, 2, Diplomacy.WAR)
+	sim.ai._ai_metals(rv)
+	check(rv.metal_order.get("tools", []) == [1, 2, 3] and int((rv.metal_keep.get("tools", {}) as Dictionary).get("steel", 0)) > 0, "a rival at war keeps its steel for arms: tools take bronze first")
+	Diplomacy.set_relation(sim, 1, 2, Diplomacy.PEACE)
+	sim.ai._ai_metals(rv)
+	check(rv.metal_order.get("tools", []) == [3, 2, 1] and not rv.metal_keep.has("tools"), "at peace, the best metal for tools again")
+	var ml := UiBottlenecks.metal_lines(sim, me)
+	check(ml.size() >= 1 and String(ml[0][0]).contains(" → "), "the bottleneck finder shows the metal chains: %s" % (String(ml[0][0]).left(120) if ml.size() > 0 else ""))
 	print("ARMS TEST: %s" % ("PASS" if ok else "FAIL"))
 	quit()

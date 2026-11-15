@@ -4,9 +4,9 @@ extends RefCounted
 ## (or FIX with --fix, for a fix release of the last build),
 ## updates DATE and copies the version into project.godot and the Windows export settings.
 
-const NUMBER := "0.65.0"
-const BUILD := 70
-const FIX := 1          # a fix release of the same build: 43.1, 43.2... (0: none)
+const NUMBER := "0.66.0"
+const BUILD := 71
+const FIX := 0          # a fix release of the same build: 43.1, 43.2... (0: none)
 const DATE := "2026-11-15"
 
 

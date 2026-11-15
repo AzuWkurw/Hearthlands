@@ -282,6 +282,15 @@ func fit_arms(p) -> void:
 		p.arm_n = keep
 
 
+## The metal most of the realm's soldiers carry (ties: the better), or the age's metal with none counted.
+func main_metal(p) -> int:
+	var best_t := 0
+	for t in [STEEL, IRON, BRONZE]:
+		if int(p.arm_n[t]) > 0 and (best_t == 0 or int(p.arm_n[t]) > int(p.arm_n[best_t])):
+			best_t = t
+	return best_t if best_t > 0 else default_tier(p)
+
+
 ## "30 iron, 8 bronze" (best first), the metals coloured when bb.
 func arms_text(p, bb := false) -> String:
 	var parts := []

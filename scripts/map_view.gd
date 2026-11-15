@@ -1313,7 +1313,7 @@ func _draw() -> void:
 			_draw_boat(pos, dx < 0, pc, t.t0, t.res if not t.delivered else "")
 			continue
 		if t.kind == "soldier":
-			_sprite(_soldier_id(t.n if t.n >= 0 else float(sim.players[t.p - 1].age)), pos, 0.5, step % 4, dx < 0, pc.lightened(0.2))
+			_sprite(_soldier_id(t.n if t.n >= 0 else float(sim.players[t.p - 1].age), _metal_of(t.p)), pos, 0.5, step % 4, dx < 0, pc.lightened(0.2))
 			continue
 		if t.kind == "porter" and not t.legs.is_empty() and _leg_donkey:
 			# road carriers: a donkey takes this load along a busy stretch
@@ -1389,14 +1389,14 @@ func _draw() -> void:
 			var sgn := 1.0 if left else -1.0
 			var tt := sim.time * 3.0 if animate else 0.0
 			var ak := Sim.mix_newest(a.amix)
-			var aid := _soldier_id(ak if ak >= 0 else a.era)
+			var aid := _soldier_id(ak if ak >= 0 else a.era, _metal_of(a.p))
 			var did := aid
 			var dcol := col
 			var ndef := 0
 			if tgt != null:
 				# the defenders' best answer to the attackers' strongest kind
 				var dk: int = sim.military.best_counter(sim.military.mix_of(sim.military._defending(tgt)), maxi(0, ak))
-				did = _soldier_id(dk if dk >= 0 else sim.military.defender_era(tgt))
+				did = _soldier_id(dk if dk >= 0 else sim.military.defender_era(tgt), _metal_of(tgt.p))
 				dcol = sim.players[tgt.p - 1].color.lightened(0.2)
 				ndef = sim.military.own_def(sim.military._defending(tgt))
 				_track_losses(-tgt.id, ndef, at + Vector2(-0.3 * sgn, 0), did, dcol, not left)
@@ -1476,7 +1476,7 @@ func _draw() -> void:
 				var side2 := Vector2(-dir.y, dir.x) * (0.16 if i % 2 == 1 else -0.16) * (0.0 if i == 0 else 1.0)
 				var off := -dir * 0.36 * ((i + 1) / 2) + side2
 				var fr := (4 + int(sim.time * 8.0 + i) % 2) if charging and animate else (int(walked * 5.0 + i) % 4 if animate else 0)
-				_sprite(_soldier_id(kinds[i]), pos2 + off, 0.5, fr, left, col)
+				_sprite(_soldier_id(kinds[i], _metal_of(a.p)), pos2 + off, 0.5, fr, left, col)
 			# the column's banner, carried at its head, waving
 			var bp := pos2 + Vector2(0.12 * (-1.0 if left else 1.0), -0.02)
 			var top := bp + Vector2(0, -0.95)
@@ -3378,8 +3378,27 @@ func _tex_top(tex: Texture2D) -> float:
 
 
 ## The soldier picture for soldiers of average age era (legionary ... rifleman).
-static func _soldier_id(era: float) -> String:
-	return "unit_soldier_e%d" % clampi(roundi(era), 0, Sim.KINDS - 1)
+static func _soldier_id(era: float, metal := 0) -> String:
+	var k := clampi(roundi(era), 0, Sim.KINDS - 1)
+	# (build 71) arms and helmets of the metal most of the realm's soldiers carry (bronze warriors
+	# are bronze anyway; iron is the usual picture)
+	if k >= 1 and (metal == SimArms.BRONZE or metal == SimArms.STEEL) and _metal_pics.get("%d%d" % [k, metal], true):
+		var id := "unit_soldier_e%d_%s" % [k, SimArms.NAMES[metal]]
+		if not _metal_pics.has("%d%d" % [k, metal]):
+			_metal_pics["%d%d" % [k, metal]] = ResourceLoader.exists("res://textures/%s.png" % id) or FileAccess.file_exists(Tex.USER_DIR + "/" + id + ".png")
+		if _metal_pics["%d%d" % [k, metal]]:
+			return id
+	return "unit_soldier_e%d" % k
+
+
+static var _metal_pics := {}
+
+
+## The metal realm pid's soldiers are drawn with.
+func _metal_of(pid: int) -> int:
+	if pid < 1 or pid > sim.players.size():
+		return 0
+	return sim.arms.main_metal(sim.players[pid - 1])
 
 
 # ---------------------------------------------------------------- townsfolk

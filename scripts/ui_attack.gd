@@ -115,6 +115,7 @@ func open(t: Sim.Bld) -> String:
 		return ""
 	var dm: Array = sim.military.mix_of(sim.military._defending(t))
 	body.add_child(main._label(tr("Defenders: %d (%s)") % [sim.defenders(t), Sim.mix_text(dm)], 14, Main.DIM))
+	body.add_child(_arms_line(sim, t))
 	if t.archers > 0 or t.sally:
 		var extra := []
 		if t.archers > 0:
@@ -180,6 +181,7 @@ func _open_sea(t: Sim.Bld, sea: Array) -> void:
 	body.add_child(main._label(tr("Land on %s's coast: attack the %s") % [sim.players[t.p - 1].name, String(t.def.name)], 22, Main.BRASS))
 	var dm: Array = sim.military.mix_of(sim.military._defending(t))
 	body.add_child(main._label(tr("Defenders: %d (%s)") % [sim.defenders(t), Sim.mix_text(dm)], 14, Main.DIM))
+	body.add_child(_arms_line(sim, t))
 	body.add_child(main._label(general_words(), 13, Color("e8c860")))
 	body.add_child(main._button(tr("Sea and supplies guide"), func(): main.sea_guide_ui.open()))
 	var me_w := sim.human()
@@ -294,3 +296,14 @@ func general_words() -> String:
 	if sim.time < me.general_back:
 		return tr("A new general will be ready in %d s.") % ceili(me.general_back - sim.time)
 	return tr("Your general (level %d, +%d%% a duel) leads this column if it has %d soldiers or more.") % [lvl, roundi(lvl * SimNavy.GEN_DUEL * 100.0), SimNavy.GENERAL_MIN]
+
+
+## Both sides' arms by metal (build 71): "Arms: yours 8 steel, 4 iron; theirs 12 bronze".
+func _arms_line(sim: Sim, t: Sim.Bld) -> RichTextLabel:
+	var l := main._rich()
+	l.fit_content = true
+	l.custom_minimum_size = Vector2(560, 0)
+	var mine := sim.arms.arms_text(sim.human(), true)
+	var theirs := sim.arms.arms_text(sim.players[t.p - 1], true)
+	l.text = tr("[color=#9a9c88]Arms:[/color] yours %s; theirs %s [color=#9a9c88](steel trains faster and wears out less; bronze arms only bronze warriors)[/color]") % [mine if mine != "" else "none yet", theirs if theirs != "" else "not known"]
+	return l

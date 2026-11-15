@@ -1,5 +1,15 @@
 # Changelog
 
+## Build 71 (v0.66.0, 2026-11-15)
+
+Build 71: soldiers show their arms; smiths upgraded in place; rivals use the metal settings; the metals chain.
+- Soldiers on the map are drawn with the metal most of their realm's soldiers carry: bronze helmets and blades, the usual iron, or bright steel (bronze warriors are bronze anyway).
+- The attack window shows both sides' arms by metal ("yours 8 steel, 4 iron; theirs 12 bronze").
+- Smiths upgraded in place: once Iron working is known, a bronze smith can be upgraded to a toolsmith and a bronze weaponsmith to a weaponsmith (Upgrade in its panel), and a bronze armorer to an armorer with Chainmail, instead of pulling them down. Rivals do it too.
+- Rivals use the metal settings: at war their tools use bronze first and the tool smiths leave steel and iron for the weapon smiths; at peace tools take the best metal. They build a scrap forge once scrap piles up.
+- The bottleneck finder (N) ends with the metal chains: each step from the mines to the smiths, how many work, and where a chain is held up ("Bronze foundry 2 (0 working, needs charcoal)").
+- Fix: a leftover line from build 67's speed work printed to the console while rivals looked for building spots.
+
 ## Build 70.1 (v0.65.0, 2026-11-15)
 
 Build 70.1: farm crops can be changed again.

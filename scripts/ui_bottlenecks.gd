@@ -203,3 +203,91 @@ func refresh() -> void:
 				main.view.chain_res = good
 				win.visible = false))
 		list.add_child(row)
+	# (build 71) the metals: each step from the ore to the tools, weapons and armor
+	var ml := metal_lines(sim, p)
+	if not ml.is_empty():
+		list.add_child(HSeparator.new())
+		list.add_child(main._label(tr("Metals, from the ore to tools, weapons and armor"), 16, Main.BRASS))
+		for e in ml:
+			var row2 := HBoxContainer.new()
+			var l2 := main._rich()
+			l2.fit_content = true
+			l2.custom_minimum_size = Vector2(560, 0)
+			l2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			l2.text = String(e[0])
+			row2.add_child(l2)
+			var gb: Sim.Bld = e[1]
+			if gb != null:
+				var gid := gb.id
+				row2.add_child(main._button(tr("Go"), func():
+					var bb: Sim.Bld = main.sim.by_id.get(gid)
+					if bb != null:
+						main.view.center_on(Vector2(bb.x, bb.y))
+						main.view.sel_id = bb.id
+						main._refresh_sel()))
+			list.add_child(row2)
+
+
+## The metal chains, a line each: [text, a building to go to (the one holding it up, or null)].
+## Each step says how many of that building there are and how many work; the first step of a chain
+## where none work (while there are some) is marked as what holds the chain up.
+const METAL_CHAINS := [
+	["Bronze", ["copper_mine", "tin_mine", "charcoal_burner", "bronze_foundry"], ["bronze_smith", "bronze_weaponsmith", "bronze_armorer"]],
+	["Iron", ["iron_mine", "coal_mine", "iron_smelter"], ["toolsmith", "weaponsmith", "armorer", "gunsmith"]],
+	["Steel", ["steelworks", "steel_mill"], ["machine_works", "plate_armorer"]],
+	["Scrap", [], ["scrap_forge"]],
+]
+
+
+static func metal_lines(sim: Sim, p: Sim.Player) -> Array:
+	var out := []
+	var by_ty := {}
+	for b: Sim.Bld in sim.realm_blds(p):
+		if b.dead:
+			continue
+		if not by_ty.has(b.ty):
+			by_ty[b.ty] = []
+		(by_ty[b.ty] as Array).append(b)
+	for ch in METAL_CHAINS:
+		var parts := []
+		var stuck: Sim.Bld = null
+		var any := false
+		for ty: String in (ch[1] as Array) + (ch[2] as Array):
+			if not GameData.bld.has(ty):
+				continue
+			var list0: Array = by_ty.get(ty, [])
+			if list0.is_empty():
+				continue
+			any = true
+			var working := 0
+			var why := {}
+			var first_idle: Sim.Bld = null
+			for b: Sim.Bld in list0:
+				if b.state != "ready":
+					continue
+				if b.working or b.msg == "Working":
+					working += 1
+				else:
+					why[b.msg] = int(why.get(b.msg, 0)) + 1
+					if first_idle == null:
+						first_idle = b
+			var nm := String(GameData.bld[ty].name)
+			var txt := "%s %d" % [nm, list0.size()]
+			if working < list0.size():
+				var top := ""
+				var topn := 0
+				for k in why:
+					if int(why[k]) > topn:
+						topn = int(why[k]); top = String(k)
+				txt += " (%d working%s)" % [working, (", " + top.to_lower()) if top != "" else ""]
+			if working == 0 and stuck == null and first_idle != null:
+				stuck = first_idle
+				txt = "[color=#f0b060]%s[/color]" % txt
+			parts.append(txt)
+		if not any:
+			continue
+		var line := "[b]%s:[/b] %s" % [String(ch[0]), " → ".join(parts)]
+		if stuck != null:
+			line += "  [color=#f0b060](held up here)[/color]"
+		out.append([line, stuck])
+	return out

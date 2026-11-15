@@ -108,10 +108,14 @@ static func frames(id: String) -> int:
 	if _frames.has(id):
 		return _frames[id]
 	var n := 1
-	if ANIM.has(id):
+	# (build 71) a soldier in bronze or steel has the frames of his usual picture
+	var key := id
+	if not ANIM.has(id) and (id.ends_with("_bronze") or id.ends_with("_steel")):
+		key = id.rsplit("_", true, 1)[0]
+	if ANIM.has(key):
 		var t := get_tex(id)
-		var want: int = ANIM[id][0]
-		var aspect: float = ANIM[id][1]
+		var want: int = ANIM[key][0]
+		var aspect: float = ANIM[key][1]
 		if float(t.get_width()) / maxf(1.0, t.get_height()) >= want * aspect * 0.7:
 			n = want
 	_frames[id] = n

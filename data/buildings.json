@@ -962,7 +962,10 @@
   },
   "trade": "metal",
   "makes_tools": 2,
-  "tier": 1
+  "tier": 1,
+  "upgrade_to": [
+   "toolsmith"
+  ]
  },
  "weaponsmith": {
   "name": "Weaponsmith",
@@ -1049,7 +1052,10 @@
    ]
   },
   "trade": "metal",
-  "tier": 1
+  "tier": 1,
+  "upgrade_to": [
+   "weaponsmith"
+  ]
  },
  "scrap_forge": {
   "name": "Scrap forge",
@@ -1204,7 +1210,10 @@
   },
   "tech": "bronze_armour",
   "trade": "metal",
-  "tier": 1
+  "tier": 1,
+  "upgrade_to": [
+   "armorer"
+  ]
  },
  "tannery": {
   "name": "Tannery",

@@ -10,7 +10,7 @@ economy you do.
 ## Download
 
 The ready-made Windows game is on the [Releases page](../../releases/latest): download the
-`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.65.0 build 70.1** (see
+`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.66.0 build 71** (see
 `CHANGELOG.md`). Every build is a release of its own, made by GitHub Actions
 (`.github/workflows/release.yml`) when a new version reaches `main`; older builds up to 50 are also
 on the [`downloads` branch](../../tree/downloads).
@@ -32,7 +32,7 @@ What is in the game now:
 
 The full plan is in the [roadmap](https://claude.ai/artifact/YVAWwJGUN4FRBYtpz3zgQh).
 
-Done (builds 43 to 70):
+Done (builds 43 to 71):
 
 | Build | What came in |
 |---|---|
@@ -69,6 +69,7 @@ Done (builds 43 to 70):
 | 69 | Faster carriers on big maps (store search without copying the map), tools wanted worked out once per moment; F3 shows the busiest realms |
 | 70 | Scrap metal (worn tools and weapons back to the stores, a scrap forge melts them into bars); armor of bronze, iron or steel plate (bronze armorer, armorer, plate armorer) with the metal settings |
 | 70.1 | Fix: farm crops could not be changed (the info box rebuilt its buttons every third of a second, losing clicks and closing lists) |
+| 71 | Soldiers drawn in their arms' metal, both sides' arms in the attack window; bronze smiths upgraded in place; rivals use the metal settings and build scrap forges; the metal chains in the bottleneck finder |
 
 Later: a story campaign through the ages, multiplayer, scripted scenarios, a chronicle at the end of a
 game, more animations, music for each age, and quality-of-life features (a production chain overlay,
@@ -1016,6 +1017,12 @@ Scrap and armor (build 70): a worn-out tool and a soldier's worn weapon go back 
 Armor comes in bronze (bronze armorer), iron (armorer) and steel plate (plate armorer, with the steam
 engine): a soldier who takes armor counts as 0.7 of a veteran in bronze, 1 in iron and 1.35 in steel. The
 production targets' metal settings cover armor too.
+
+Build 71: soldiers on the map are drawn in the metal most of their realm's soldiers carry (bronze, iron or
+steel helmets and blades), and the attack window shows both sides' arms by metal. Bronze smiths,
+weaponsmiths and armorers can be **upgraded in place** to their iron trades once the study is known.
+Rivals use the metal settings (at war their tools take bronze first and steel is kept for arms). The
+bottleneck finder (N) ends with each metal chain, from the mines to the smiths, and where it is held up.
 
 ## The Bronze Age
 
