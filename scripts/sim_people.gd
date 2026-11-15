@@ -103,6 +103,16 @@ func staffing(p: Sim.Player) -> void:
 	var isc := p.scout - p.scout_out
 	var mine := sim.realm_blds(p)
 	p.tool_wait = {}
+	# worn-out tools wait for new ones too (build 66)
+	var tqf = sim.get_feature("tool_quality") if bool(sim.opts.tools) else null
+	if tqf != null and not tqf.held.is_empty():
+		for b: Sim.Bld in mine:
+			if b.worker > 0:
+				var h = tqf.held.get(b.id)
+				if h != null and float(h[0]) < 0.0:
+					var t := sim.tool_of(b)
+					if t != "":
+						p.tool_wait[t] = int(p.tool_wait.get(t, 0)) + 1
 	# builders and workers go to high-priority buildings first, then normal, then low; paused get none.
 	# The buildings are put in that order once; when every priority is normal the list stays as it is.
 	var ordered: Array = mine
@@ -218,8 +228,26 @@ func _release_worker(p: Sim.Player, b: Sim.Bld) -> void:
 		var key := spec_key(b)
 		if not p.spec.has(key):
 			p.spec[key] = []
+		# he keeps his tool (build 66): kept beside him in spec_tool
+		var tl := _spec_tools(p, key)
 		(p.spec[key] as Array).append(b.wxp)
+		tl.append(sim.arms.pack(b))
 	b.wxp = 0.0
+	b.tool_q = 0
+
+
+## The tools of a trade's idle specialists, one for each in p.spec[key] (made up for older saves: the
+## metal of the age, new).
+func _spec_tools(p: Sim.Player, key: String) -> Array:
+	var pool: Array = p.spec.get(key, [])
+	if not p.spec_tool.has(key):
+		p.spec_tool[key] = []
+	var tl: Array = p.spec_tool[key]
+	while tl.size() < pool.size():
+		tl.push_front(float(sim.arms.default_tier(p)))
+	while tl.size() > pool.size():
+		tl.pop_front()
+	return tl
 
 
 ## Building b gets a worker: the most experienced idle specialist of its trade if there is one,
@@ -231,10 +259,15 @@ func _hire_worker(p: Sim.Player, b: Sim.Bld) -> void:
 		# a newcomer: he takes his trade's tool from the stores, unless good tool care lets him make do
 		var tool := sim.tool_of(b)
 		var took := ""
+		b.tool_q = 0
 		if tool != "" and float(p.stock.get(tool, 0.0)) >= 1.0 and sim.rng.randf() >= sim.mod(p, "tool_save"):
 			sim.take(p, tool, 1.0, sim.idx(b.x, b.y))
 			sim.used(p, tool, 1.0)
 			took = tool
+			sim.arms.give_tool(b, sim.arms.take_best(p, tool))
+		elif tool != "":
+			# good tool care: he makes do with an old one of the age's metal
+			sim.arms.give_tool(b, sim.arms.default_tier(p))
 		for f: Feature in sim.features:
 			f.on_hire(p, b, took)
 		return
@@ -243,6 +276,12 @@ func _hire_worker(p: Sim.Player, b: Sim.Bld) -> void:
 		if float(pool[i]) > float(pool[best]):
 			best = i
 	b.wxp = float(pool[best])
+	var tl := _spec_tools(p, spec_key(b))
+	if sim.tool_of(b) != "":
+		sim.arms.unpack(b, float(tl[best]))
+	else:
+		b.tool_q = 0
+	tl.remove_at(best)
 	pool.remove_at(best)
 	for f: Feature in sim.features:
 		f.on_hire(p, b, "")
@@ -262,7 +301,11 @@ func _trim_specialists(p: Sim.Player, cls: String, idle_n: int) -> void:
 	all.sort_custom(func(a, c): return a[0] < c[0])
 	for n in extra:
 		var pool: Array = p.spec[all[n][1]]
-		pool.erase(all[n][0])
+		var tl := _spec_tools(p, String(all[n][1]))
+		var i := pool.find(all[n][0])
+		if i >= 0:
+			pool.remove_at(i)
+			tl.remove_at(i)
 
 
 ## How many workers of each trade a realm has, at work and idle, with their levels.

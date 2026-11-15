@@ -136,6 +136,7 @@ func _ensure_lift() -> void:
 	if key == _lift_key and _lift.size() == (sim.w + 1) * (sim.h + 1):
 		return
 	_lift_key = key
+	_retire(_chunk_mesh.values()); _retire(_scn_mesh.values()); _retire([_map_mesh])
 	_chunk_mesh = {}
 	_scn_mesh = {}
 	_map_mesh = null
@@ -431,7 +432,21 @@ static func _make_shadow() -> Texture2D:
 	return ImageTexture.create_from_image(img)
 
 
+## Meshes and pictures just replaced are kept a few frames: a layer drawn before (or a recorded one)
+## may still name them until it draws again, and a freed one showed as "Parameter mesh is null" (build 66).
+var _grave: Array = []
+func _retire(objs: Array) -> void:
+	var f := Engine.get_frames_drawn()
+	for o in objs:
+		if o != null:
+			_grave.append([f, o])
+
+
 func _process(_delta: float) -> void:
+	if not _grave.is_empty() and Engine.get_frames_drawn() - int(_grave[0][0]) > 4:
+		var f := Engine.get_frames_drawn()
+		while not _grave.is_empty() and f - int(_grave[0][0]) > 4:
+			_grave.pop_front()
 	_ground.queue_redraw()
 	if _sway_mat != null:
 		var wnd := _wind()
@@ -613,7 +628,10 @@ func tiles_changed(tiles: PackedInt32Array) -> void:
 			var xx: int = x + d.x
 			var yy: int = y + d.y
 			if xx >= 0 and yy >= 0 and xx < sim.w and yy < sim.h:
-				_scn_mesh.erase((yy / MapChunks.CH) * 1000 + xx / MapChunks.CH)
+				var sk := (yy / MapChunks.CH) * 1000 + xx / MapChunks.CH
+				if _scn_mesh.has(sk):
+					_retire([_scn_mesh[sk]])
+					_scn_mesh.erase(sk)
 
 
 ## The map point under screen position pos (in tiles, not rounded), on the ground.
@@ -2792,6 +2810,7 @@ func _draw_fields(_x0: int, _x1: int, _y0: int, _y1: int) -> void:
 	sig += "|%d" % h
 	if sig != _field_sig or _field_mesh == null:
 		_field_sig = sig
+		_retire([_field_mesh])
 		_field_mesh = _make_field_mesh()
 	if _white == null:
 		var wi := Image.create(1, 1, false, Image.FORMAT_RGBA8)
@@ -3505,6 +3524,7 @@ func _make_scenery_atlas() -> void:
 	_scn_shadow_uv = Rect2(Vector2(sat) / Vector2(img.get_size()), Vector2(sh.get_size()) / Vector2(img.get_size()))
 	img.fix_alpha_edges()
 	img.generate_mipmaps()
+	_retire([_scn_atlas]); _retire(_scn_mesh.values())
 	_scn_atlas = ImageTexture.create_from_image(img)
 	_scn_mesh = {}
 
@@ -3620,6 +3640,7 @@ func _draw_scenery(x0: int, x1: int, y0: int, y1: int) -> void:
 		_make_scenery_atlas()
 	if _scn_ver != chunks.ver:
 		_scn_ver = chunks.ver
+		_retire(_scn_mesh.values())
 		_scn_mesh = {}
 	var CHN := MapChunks.CH
 	var deadline := Time.get_ticks_usec() + 2000

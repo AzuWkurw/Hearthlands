@@ -208,6 +208,14 @@ const BLUNT_DUEL := 0.12
 const BOW_WEAR := 0.04
 
 
+## How likely realm pid's weapons wear out in a fight: by the metal it arms its soldiers with (build 66).
+func _wear(pid: int) -> float:
+	if pid < 1 or pid > sim.players.size():
+		return WEAPON_WEAR
+	var q: int = sim.players[pid - 1].arm_q
+	return WEAPON_WEAR * (SimArms.ARM_WEAR[q] if q > 0 else 1.0)
+
+
 func _blunt_of(b: Sim.Bld) -> int:
 	return sim.players[b.p - 1].blunt if b.ty == "hq" else b.blunt
 
@@ -234,6 +242,7 @@ func rearm_tick() -> void:
 		if p.blunt > 0 and float(p.stock.get("weapons", 0.0)) >= 1.0:
 			sim.take(p, "weapons", 1.0)
 			sim.used(p, "weapons", 1.0)
+			p.arm_q = sim.arms.take_best(p, "weapons")
 			p.blunt -= 1
 	for b: Sim.Bld in sim.mil_list():
 		if b.ty == "hq" or b.dead:
@@ -243,6 +252,7 @@ func rearm_tick() -> void:
 		if b.blunt > 0 and b.state == "ready" and float(p2.stock.get("weapons", 0.0)) >= 1.0:
 			sim.take(p2, "weapons", 1.0, sim.idx(b.x, b.y))
 			sim.used(p2, "weapons", 1.0)
+			p2.arm_q = sim.arms.take_best(p2, "weapons")
 			b.blunt -= 1
 
 ## Every second: soldiers in military buildings take up bows (one from the stores each) or put them
@@ -876,10 +886,10 @@ func _attack_tick(dt: float) -> void:
 			if a_blunt: dw += BLUNT_DUEL
 			if d_blunt: dw -= BLUNT_DUEL
 			# each fight may wear out the weapons of the two who fought
-			if not a_blunt and sim.rng.randf() < WEAPON_WEAR:
+			if not a_blunt and sim.rng.randf() < _wear(a.p):
 				a.blunt = mini(a.blunt + 1, a.n)
 				a_blunt = true
-			if not d_blunt and sim.rng.randf() < WEAPON_WEAR:
+			if not d_blunt and sim.rng.randf() < _wear(db2.p):
 				_add_blunt(db2, 1)
 			if sim.rng.randf() < dw:
 				# men-at-arms' armour turns half the blows that would fell them (not pikes or bullets)
@@ -1120,9 +1130,9 @@ func _field_battles(dt: float) -> void:
 			var bb := _picks_blunt(b.blunt, b.n)
 			if ab: aw -= BLUNT_DUEL
 			if bb: aw += BLUNT_DUEL
-			if not ab and sim.rng.randf() < WEAPON_WEAR:
+			if not ab and sim.rng.randf() < _wear(a.p):
 				a.blunt = mini(a.blunt + 1, a.n)
-			if not bb and sim.rng.randf() < WEAPON_WEAR:
+			if not bb and sim.rng.randf() < _wear(b.p):
 				b.blunt = mini(b.blunt + 1, b.n)
 			if sim.rng.randf() < aw:
 				if bk == 3 and ak < 4 and sim.rng.randf() < 0.5:

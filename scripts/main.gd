@@ -39,6 +39,7 @@ var paused := true
 var speed := 1.0
 var moving_id := 0         # a building being moved: placing one of its type builds its replacement
 var new_blds := {}         # building types research just unlocked: marked NEW until you pick one
+var show_locked := false   # the build groups also list what research will unlock (build 66)
 var has_played := false    # the game on the map has been played (so starting or loading another asks first)
 var _confirm_dlg: ConfirmationDialog
 var real_speed := 1.0      # how fast the game really ran over the last two seconds
@@ -510,9 +511,14 @@ func _ready() -> void:
 	sim.log_added.connect(func(_t, _c): log_dirty = true)
 	# an attack on your land: a short red glow at the screen's edges, at most once in 20 seconds
 	sim.log_added.connect(func(t, _c):
-		if "attacks your" in String(t) and Time.get_ticks_msec() - _flash_ms > 20000:
+		var attacked := "attacks your" in String(t) or String(t).begins_with("Sails off the coast")
+		if attacked and Time.get_ticks_msec() - _flash_ms > 20000:
 			_flash_ms = Time.get_ticks_msec()
-			view.flash = 1.0)
+			view.flash = 1.0
+		# (Settings: pause when attacked, so the answer can be planned)
+		if attacked and settings.pause_attacked and not paused and not sim.over:
+			_toggle_pause()
+			_show_hint("Paused: %s  (Space goes on)" % String(t).get_slice("!", 0), 5.0))
 	sound = Sound.new()
 	sound.name = "Sound"
 	add_child(sound)
@@ -1411,12 +1417,13 @@ func _rebuild_build_list() -> void:
 		var kb := _button("Soldier kinds\nwho beats whom", _open_soldier_kinds)
 		kb.custom_minimum_size = Vector2(176, 52)
 		kb.add_theme_font_size_override("font_size", 13)
-		kb.tooltip_text = "The six kinds of soldier, what each does and which beats which."
+		kb.tooltip_text = "The seven kinds of soldier, what each does and which beats which."
 		build_grid.add_child(kb)
 	# the road tools, Auto roads and the features' tools (scouts, geologists) are on the toolbar
 	var p0: Sim.Player = null if sim.players.is_empty() else sim.human()
 	_list_techs = p0.techs.size() if p0 != null else -1
 	var hidden := 0
+	var locked := []
 	for id in GameData.bld:
 		var d: Dictionary = GameData.bld[id]
 		if String(d.get("cat", "")) != cat or not sim.bld_enabled(id):
@@ -1424,6 +1431,7 @@ func _rebuild_build_list() -> void:
 		# buildings not yet unlocked by research stay hidden (the research window shows what's to come)
 		if p0 != null and d.has("tech") and not p0.techs.has(d.tech):
 			hidden += 1
+			locked.append(id)
 			continue
 		var b := Button.new()
 		b.focus_mode = Control.FOCUS_NONE
@@ -1445,10 +1453,40 @@ func _rebuild_build_list() -> void:
 		build_buttons[id] = b
 	_refresh_build()
 	if hidden > 0:
-		var note := _label(tr("%d more to unlock by research (R)") % hidden, 12, DIM)
-		note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		note.custom_minimum_size = Vector2(176, 0)
-		build_grid.add_child(note)
+		# what research will open, dimmed, each with its study: a click shows that study in the tree
+		var lb := _button(tr("Hide the %d to research") % hidden if show_locked else tr("%d more to research: show") % hidden, func():
+			show_locked = not show_locked
+			_rebuild_build_list()
+			toolbar._place_popup())
+		lb.custom_minimum_size = Vector2(176, 30)
+		lb.add_theme_font_size_override("font_size", 12)
+		lb.tooltip_text = "Buildings your realm has not studied yet, with the study that opens each (click one to see it in the research tree)."
+		build_grid.add_child(lb)
+		if show_locked:
+			locked.sort_custom(func(x, y): return _tech_age(String(GameData.bld[x].tech)) < _tech_age(String(GameData.bld[y].tech)))
+			for id in locked:
+				var d: Dictionary = GameData.bld[id]
+				var tid := String(d.tech)
+				var b := Button.new()
+				b.focus_mode = Control.FOCUS_NONE
+				b.text = tr("%s\nStudy: %s") % [String(d.name), GameData.tech_name(tid)]
+				b.icon = Tex.bld_era_tex(GameData.bld_tex_id(id), clampi(_tech_age(tid), 0, Sim.ERAS - 1))
+				b.expand_icon = true
+				b.add_theme_constant_override("icon_max_width", 40)
+				b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+				b.custom_minimum_size = Vector2(176, 52)
+				b.add_theme_font_size_override("font_size", 13)
+				b.modulate = Color(1, 1, 1, 0.55)
+				b.tooltip_text = tr("Opens with the study %s (%s age).\n\n") % [GameData.tech_name(tid), GameData.age_name(_tech_age(tid))] + _bld_tooltip(id)
+				b.pressed.connect(func():
+					toolbar.close_popup()
+					_open_tech()
+					research_ui._select(tid, true))
+				build_grid.add_child(b)
+
+
+func _tech_age(tid: String) -> int:
+	return int(GameData.techs.get(tid, {}).get("age", 0))
 
 
 func _bld_tooltip(id: String) -> String:

@@ -151,7 +151,14 @@ func _res_info(id: String) -> String:
 	if r.has("tool"):
 		var tr := String(r.tool)
 		var waiting := int(p.tool_wait.get(id, 0))
-		t += "Each new %s (%s) needs one; an idle specialist brings his own%s\n" % [GameData.trade_title(tr), GameData.trade_name(tr).to_lower(), (". [color=#f08a7a]%d building%s waiting for one[/color]" % [waiting, "s" if waiting != 1 else ""]) if waiting > 0 else ""]
+		t += "Each new %s (%s) needs one, and a new one when it wears out; an idle specialist keeps his%s\n" % [GameData.trade_title(tr), GameData.trade_name(tr).to_lower(), (". [color=#f08a7a]%d building%s waiting for one[/color]" % [waiting, "s" if waiting != 1 else ""]) if waiting > 0 else ""]
+		t += "Bronze tools work 10%% slower and last %d min of work, iron %d min, steel %d min and 15%% faster\n" % [roundi(SimArms.TOOL_LIFE[1] / 60.0), roundi(SimArms.TOOL_LIFE[2] / 60.0), roundi(SimArms.TOOL_LIFE[3] / 60.0)]
+	if r.has("tool") or id == "weapons":
+		var sp := main.sim.arms.split_text(p, id)
+		if sp != "":
+			t += "In store by metal: %s\n" % sp
+	if id == "weapons":
+		t += "Bronze arms make bronze warriors only; iron arms soldiers up to musketeers; riflemen need steel arms (machine works). Better arms train faster and wear out less in a fight\n"
 	var tg := main.sim.target_of(p, id)
 	t += "Production target: %s\n" % ("none (makes up to the store room)" if tg < 0 else "keep %d in store, then pause" % tg)
 	if costs.size() > 0:

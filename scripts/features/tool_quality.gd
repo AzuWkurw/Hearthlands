@@ -5,6 +5,8 @@ extends Feature
 ## tool every work cycle and it wears out: crude after 40 cycles, masterwork after 180. Then he takes a
 ## new one from the stores; if there is none, he works on with a worn-out tool, 25% slower.
 ## Better tools make work faster: crude -12%, standard +0%, fine +12%, masterwork +25%.
+## Build 66: a tool is also of a metal (SimArms): bronze lasts 0.6 as long as iron and works 10% slower,
+## steel lasts 1.6 times as long and works 15% faster.
 ## Only matters when new workers need tools (the difficulty option).
 
 const NAMES := ["crude", "standard", "fine", "masterwork"]
@@ -105,7 +107,7 @@ func on_hire(p: Sim.Player, b: Sim.Bld, took: String) -> void:
 		return
 	if took != "":
 		var q := float(_last.get("%d:%s" % [p.id, took], 1.0))
-		held[b.id] = [q, q_value(LIFE, q)]
+		held[b.id] = [q, q_value(LIFE, q) * SimArms.life_of(b.tool_q)]
 	elif not held.has(b.id):
 		# a specialist brings his own tool, or good tool care made one do: a standard one, half worn
 		held[b.id] = [1.0, LIFE[1] * 0.5]
@@ -125,7 +127,9 @@ func on_cycle(p: Sim.Player, b: Sim.Bld) -> void:
 			sim.take(p, tool, 1.0, sim.idx(b.x, b.y))
 			sim.used(p, tool, 1.0)
 			var q := float(_last.get("%d:%s" % [p.id, tool], 1.0))
-			h = [q, q_value(LIFE, q)]
+			# its metal (build 66): the best in store
+			sim.arms.give_tool(b, sim.arms.take_best(p, tool))
+			h = [q, q_value(LIFE, q) * SimArms.life_of(b.tool_q)]
 			if not p.ai and float(p.stock.get(tool, 0.0)) < 1.0:
 				sim.emit_log("The last %s in store went to the %s. Tools wear out: keep a toolsmith busy." % [GameData.res_name(tool).to_lower(), String(b.def.name).to_lower()], Color("e0b080"))
 		else:
@@ -154,12 +158,19 @@ func building_lines(b: Sim.Bld) -> PackedStringArray:
 		var h: Array = held[b.id]
 		var q := float(h[0])
 		var bonus := q_value(BONUS, q)
+		var metal: String = SimArms.NAMES[clampi(b.tool_q, 0, 3)]
 		if q < 0.0:
 			out.append("[color=#f0a090]Tool: worn-out %s, %d%% work. Needs a new one from the stores.[/color]" % [GameData.res_name(tool).to_lower(), roundi(WORN * 100.0)])
 		else:
-			out.append("Tool: %s %s, %d of %d cycles left (%+d%% work)" % [q_name(q), GameData.res_name(tool).to_lower(), ceili(float(h[1])), roundi(q_value(LIFE, q)), roundi(bonus * 100.0)])
+			var ms: float = SimArms.TOOL_SPEED[clampi(b.tool_q, 0, 3)]
+			out.append("Tool: %s %s%s, %d of %d cycles left (%+d%% work)" % [q_name(q), (metal + " ") if metal != "" else "", GameData.res_name(tool).to_lower(), ceili(float(h[1])),
+				roundi(q_value(LIFE, q) * SimArms.life_of(b.tool_q)), roundi(((1.0 + bonus) * ms - 1.0) * 100.0)])
 	if tool != "":
-		out.append("%s in store: %d, %s on average" % [GameData.res_name(tool), int(p.stock.get(tool, 0.0)), q_name(store_quality(p, tool))])
+		var sp: String = sim.arms.split_text(p, tool)
+		if int(p.stock.get(tool, 0.0)) <= 0:
+			out.append("%s in store: none" % GameData.res_name(tool))
+		else:
+			out.append("%s in store: %d, %s on average%s" % [GameData.res_name(tool), int(p.stock.get(tool, 0.0)), q_name(store_quality(p, tool)), (" (%s)" % sp) if sp != "" else ""])
 	return out
 
 
@@ -167,10 +178,13 @@ func panel_lines(p: Sim.Player) -> PackedStringArray:
 	if not _active():
 		return PackedStringArray()
 	var counts := [0, 0, 0, 0, 0]   # worn, crude, standard, fine, master
+	var metals := [0, 0, 0, 0]
 	for b: Sim.Bld in sim.realm_blds(p):
 		if b.staffed and held.has(b.id):
 			var q := float(held[b.id][0])
 			counts[0 if q < 0.0 else clampi(roundi(q), 0, 3) + 1] += 1
+			if q >= 0.0:
+				metals[clampi(b.tool_q, 0, 3)] += 1
 	var bits := []
 	for i in [4, 3, 2, 1]:
 		if counts[i] > 0:
@@ -179,7 +193,11 @@ func panel_lines(p: Sim.Player) -> PackedStringArray:
 		bits.append("[color=#f0a090]%d worn out[/color]" % counts[0])
 	if bits.is_empty():
 		return PackedStringArray()
-	return PackedStringArray(["Tools in use  " + ", ".join(bits)])
+	var mb := []
+	for t in [3, 2, 1]:
+		if metals[t] > 0:
+			mb.append("%d %s" % [metals[t], SimArms.NAMES[t]])
+	return PackedStringArray(["Tools in use  " + ", ".join(bits) + ("  (%s)" % ", ".join(mb) if not mb.is_empty() else "")])
 
 
 func save_state() -> Dictionary:

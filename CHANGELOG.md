@@ -1,5 +1,18 @@
 # Changelog
 
+## Build 66 (v0.61.0, 2026-11-15)
+
+Build 66: tools and weapons by metal; quality of life, speed and bugs.
+- Tools and weapons are bronze, iron or steel, by the smith that makes them. Bronze tools work 10% slower and last 0.6 as long as iron; steel tools work 15% faster and last 1.6 times as long. Workers take the best metal in store and specialists keep theirs; with tool quality on, the metal adds to the smith's craft (a fine steel axe is the best there is). Panels show each tool's metal and the metals in store.
+- Weapons: bronze arms make bronze warriors only, whatever the age; iron arms any soldier up to musketeers; riflemen need steel. Better arms train faster and wear out less often in a fight. The machine works now works steel (and makes the best tools and arms).
+- Fix: the first worker of every new building started without taking a tool from the stores (the builder's place carried over). Now he takes one, as every other new worker does.
+- Fix: a worker whose tool wore out never told the toolsmiths; now he counts as waiting for one (and shows in Problems).
+- Fix: "Parameter mesh is null" errors while drawing (a map piece's mesh was freed while still drawn).
+- The build groups end with "N more to research: show": the buildings research will open, each with its study; a click shows it in the research tree.
+- Settings: pause when a rival attacks you or its ships sail for your shore.
+- Faster on big maps: rivals look for building spots far less wastefully (about half the time they took), hunters look for game near them only (ten times faster), quick checks first when placing.
+- A test bench: a 60-minute game of nine computer realms on your Test map (448 x 448), printing where the time goes and how each realm grows.
+
 ## Build 65 (v0.60.0, 2026-11-15)
 
 Build 65: the Bronze Age.

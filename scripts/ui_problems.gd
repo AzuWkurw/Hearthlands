@@ -154,6 +154,9 @@ func _why(b: Sim.Bld) -> String:
 		return tr("no soldiers yet") if b.garrison <= 0 and b.walking <= 0 else ""
 	if not b.def.has("cycle"):
 		return ""
+	# (build 66) works on with a worn-out tool, slower, until the toolsmiths make a new one
+	if sim.arms.worn(b) and b.staffed:
+		return tr("worn-out %s: works slower until a new one is made") % GameData.res_name(sim.tool_of(b)).to_lower()
 	if b.working or b.msg == "" or b.msg == "Working" or b.msg == "The worker is on his way":
 		return ""
 	if b.fails >= 12 and b.def.has("act") and String(b.def.act) != "farm":

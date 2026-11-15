@@ -10,7 +10,7 @@ economy you do.
 ## Download
 
 The ready-made Windows game is on the [Releases page](../../releases/latest): download the
-`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.60.0 build 65** (see
+`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.61.0 build 66** (see
 `CHANGELOG.md`). Every build is a release of its own, made by GitHub Actions
 (`.github/workflows/release.yml`) when a new version reaches `main`; older builds up to 50 are also
 on the [`downloads` branch](../../tree/downloads).
@@ -62,6 +62,7 @@ Done (builds 43 to 57):
 | 63 | Hats for each age, music for the later ages, workers' voices, sandbox goals (24 goals in endless games); a fix for geologists' marks on sulfur and lead |
 | 64 | Steam and rails: steel, rails and locomotives; track, stations and trains; steam engines for old workshops (faster for coal, smoke near homes) |
 | 65 | The Bronze Age, first age of every game: tin, bronze foundries and smiths, mud-brick and thatch buildings, bronze warriors; Iron working opens the Roman age |
+| 66 | Tools and weapons by metal (bronze, iron, steel: speed, wear, which soldiers they arm); locked buildings shown with their study, pause when attacked; rivals and hunters much faster on big maps; fixes: first workers without tools, worn tools never replaced in time, mesh errors; a test bench on the Test map |
 
 Later: a story campaign through the ages, multiplayer, scripted scenarios, a chronicle at the end of a
 game, more animations, music for each age, and quality-of-life features (a production chain overlay,
@@ -123,6 +124,8 @@ Exporting needs Godot 4.3's export templates (in the editor: Editor > Manage Exp
 | Expedition | Select a harbour with a free ship: Send an expedition, then click a free coast across the water |
 | Garrison | Select one of your military buildings: set how many soldiers it wants (- / + / Full), tick the kinds that may serve there, and choose which kind stays home when it attacks |
 | Pause / speed | Space, and 1 to 5 for 1x, 2x, 4x, 8x, 16x |
+| Pause when attacked | Settings: "Pause when a rival attacks you or its ships sail for your shore" (build 66) stops the game the moment it happens; Space goes on |
+| Not studied yet | Each build group ends with "N more to research: show": the buildings research will open, dimmed, each with the study that opens it; click one to see that study in the research tree (build 66) |
 | Undo | Ctrl+Z takes back the last building placed, road laid or building demolished, within 10 seconds, with everything paid back |
 | Idle buildings | I goes to the next building with nobody working in it, then to the next stuck one, round and round |
 | Traffic map | F7, or the Traffic button: roads coloured free, busy or jammed over the last minutes; click a road to hear what goes on and what might help |
@@ -505,7 +508,7 @@ Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples,
 | Furrier | 3 planks, 1 stone | peasant (textiles and leather) | 2 hides | 2 fur coats | Bronze (start) |
 | Jeweller | 3 planks, 3 stone, 2 bricks | artisan (fine crafts) | 1 gold, 1 copper | 1 jewelry | Guilds |
 | Carpenter | 3 planks, 2 stone | artisan (woodwork) | 2 planks | 1 furniture | Guilds |
-| Machine works | 5 planks, 6 bricks, 3 iron | artisan (metalwork) | 1 iron, 1 coal | 3 tools, the kind most wanted, 1 weapons | Steam engine |
+| Machine works | 5 planks, 6 bricks, 3 iron | artisan (metalwork) | 1 steel, 1 coal | 3 tools, the kind most wanted, 1 weapons | Steam engine |
 | Textile mill | 5 planks, 6 bricks, 2 iron | peasant (textiles and leather) | 2 wool, 1 coal | 3 cloth, 1 clothes | Textile mills |
 | Chandler | 3 planks, 1 stone | artisan (fine crafts) | 1 beeswax | 2 candles | Monasteries |
 | Silk weaver | 3 planks, 2 stone | artisan (textiles and leather) | 2 silk cocoons | 1 silk | Dyeing |
@@ -960,6 +963,28 @@ order the buildings within it. The numbers are saved with the game.
   expeditions and lands on its enemies' coasts; rivals at war by the sea build naval yards and coastal
   forts, and warlords keep field depots near the front.
 
+## Tools and weapons by metal
+
+Build 66: tools and weapons are made of bronze, iron or steel, by the smith that makes them, and the
+better the metal the faster they work and the longer they last.
+
+| Metal | Made by | Tools work | Tools last | Weapons |
+|---|---|---|---|---|
+| Bronze | bronze smith, bronze weaponsmith | 10% slower | 0.6 as long as iron | arm bronze warriors only (any age); wear out 1.5 times as often in a fight; train 10% slower |
+| Iron | toolsmith, weaponsmith, gunsmith | at the usual pace | as long as before | arm any soldier up to musketeers |
+| Steel | machine works (now works steel and coal) | 15% faster | 1.6 times as long | needed for riflemen; wear out 0.6 as often; train 15% faster |
+
+- A new worker takes the best metal there is in store; idle specialists keep their tool. With tool
+  quality on (the smith's craft, crude to masterwork, and wear) the two add up: a fine steel axe is the
+  best there is. The building's panel shows the tool ("Tool: fine iron axes, 41 of 96 cycles left"), the
+  goods' panel how many of each metal are in store, and the people panel the tools in use.
+- The stores count goods by kind, so the realm keeps how many of each kind are of each metal from what
+  its smiths made; goods it did not make (from the start, the market, a gift) count as the metal of its
+  age, and losses take the poorest first.
+- A worker whose tool wore out now counts as waiting for one, so the toolsmiths make it; the Problems
+  window lists him.
+- Saves from before build 66 load with iron tools in every worker's hands.
+
 ## The Bronze Age
 
 Every game starts in the Bronze Age (build 65), before the Romans. Its buildings are mud brick under reed
@@ -1294,6 +1319,9 @@ tools/
                      (tests written before build 65 start their games in the Roman age:
                      HEARTHLANDS_START_AGE=1, read by Sim.new_game)
   check_data.py      checks data/*.json (and mods) for unknown goods, techs and sizes
+  testbench.gd       a long game of computer realms on a big map (default: the player's "Test" map,
+                     448 x 448 with 9 starts, in bench_maps/test.json): where the time goes, each realm's
+                     age, people, soldiers and tools, and realms that stop growing (-- mins=60)
   extract_strings.py collects interface text into data/lang_*.json for translating
   checksum_run.gd, checksum_diff.gd   prove a code move changed nothing / find what differs after a load
   reach_test.gd, transfer_test.gd, stretch_test.gd   closed-in spots, goods between stores, road carriers

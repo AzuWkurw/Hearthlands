@@ -202,8 +202,9 @@ func _pack_score(ty: String, x: int, y: int, p: Sim.Player) -> float:
 
 ## Spots looked at for a new building (each costs a full can_place), and how many good ones are enough
 ## to pick from.
-const SITE_TRIES := 300
-const SITE_CANDS := 40
+const SITE_TRIES := 200
+const SITE_WAIT := 40.0      # seconds before a workshop that found no spot is looked for again
+const SITE_CANDS := 20
 const MIL_TRIES := 220
 ## Spots that had no room for a building of some size are skipped for this long (game seconds): the
 ## rivals test thousands of spots a minute, and most of the free tiles in a grown town are scraps
@@ -224,7 +225,8 @@ func _bad_of(p: Sim.Player, size: String) -> Dictionary:
 ## Whether can_place failed for want of room (the plot, its entrance, a way in), which holds for
 ## every building of that size, rather than for something about the building type.
 static func _no_room(why: String) -> bool:
-	return why == "x" or why.begins_with("No road can") or why.ends_with("of the plot") or why.begins_with("Too close to the edge")
+	return why == "x" or why.begins_with("No road can") or why.ends_with("of the plot") or why.begins_with("Too close to the edge") \
+			or why == "Tile is occupied" or why == "A road is in the way" or why == "Trees in the way" or why == "Too steep, mines only"
 
 
 ## can_place for the rivals: remembers spots with no room, and skips them while they are remembered.
@@ -243,8 +245,10 @@ func _ai_sites(p: Sim.Player, ty: String) -> Array:
 	var cands := PackedInt32Array()
 	var bad := _bad_of(p, sim.size_of(ty))
 	if d.has("mine"):
+		# (only the surveyed tiles of its ore: the rest would fail anyway, after a costly check)
+		var ore_k := int(d.mine)
 		for i in lists[1]:
-			if not bad.has(i) and _try_spot(p, ty, i, bad):
+			if sim.ore[i] == ore_k and not bad.has(i) and sim.ore_known(p.id, i) and _try_spot(p, ty, i, bad):
 				cands.append(i)
 	else:
 		# spots are drawn from the free, buildable tiles only, so the search rarely comes back empty
@@ -294,7 +298,7 @@ func _plan_town(p: Sim.Player) -> void:
 			kept.append(i)
 	p.reserved = kept
 	var want := 2 if sim.time < 20 * 60.0 else 1
-	if p.reserved.size() >= want:
+	if p.reserved.size() >= want or sim.time < p.plan_t:
 		return
 	var list := _free_tiles(p, sim.owned(p.id)[0])
 	if list.is_empty():
@@ -314,6 +318,10 @@ func _plan_town(p: Sim.Player) -> void:
 			best_sc = sc; best = i
 	if best >= 0:
 		p.reserved.append(best)
+	else:
+		# no large spot anywhere: the land is full; look again in half a minute (build 66: this search
+		# every think was the biggest part of the rivals' building time)
+		p.plan_t = sim.time + 30.0
 
 
 ## How far (x, y) is from the nearest reserved spot if within r tiles (0: on it), or -1.
@@ -367,7 +375,7 @@ func _free_tiles(p: Sim.Player, land: PackedInt32Array) -> PackedInt32Array:
 	_free_pid = p.id
 	_free = PackedInt32Array()
 	for i in land:
-		if sim.bmap[i] == 0 and sim.plot[i] == 0 and sim.road[i] == 0 and sim.deco[i] == 0 and sim.ter[i] != Sim.WATER:
+		if sim.bmap[i] == 0 and sim.plot[i] == 0 and sim.road[i] == 0 and sim.deco[i] == 0 and sim.ter[i] != Sim.WATER and sim.ter[i] != Sim.MOUNT:
 			_free.append(i)
 	return _free
 
@@ -438,9 +446,16 @@ func _ai_build(p: Sim.Player, ty: String) -> String:
 		return "skip"
 	if d.has("tech") and not p.techs.has(d.tech):
 		return "skip"
+	# (build 66) a workshop that found no spot (no fish, no rocks near any free spot) is not looked for
+	# again for a while: on a big map these searches were most of the rivals' time
+	var waits: bool = not d.has("garrison") and not d.get("claim_only", false) and not ty in ["house", "apartments", "storehouse"]
+	if waits and float(p.site_wait.get(ty, 0.0)) > sim.time:
+		return "nosite"      # (as when it was looked for: a full realm still counts as full)
 	var sites := _ai_mil_sites(p, ty) if d.has("garrison") or d.get("claim_only", false) else _ai_sites(p, ty)
 	if sites.is_empty():
 		stats["no candidates"] = int(stats.get("no candidates", 0)) + 1
+		if waits:
+			p.site_wait[ty] = sim.time + SITE_WAIT
 	for s in sites:
 		var why := sim.place(ty, s[1], s[2], p)
 		if why == "":
@@ -478,6 +493,12 @@ func ai_think(p: Sim.Player) -> void:
 			var want := Sim.PRIO_HIGH if short else Sim.PRIO_NORMAL
 			if b.ty == "toolsmith" or b.ty == "bronze_smith":
 				want = Sim.PRIO_LOW if short and p.tool_wait.is_empty() and float(p.stock.get("weapons", 0.0)) < 2.0 else Sim.PRIO_NORMAL
+				# many workers waiting for tools: the smiths first (build 66)
+				if p.tool_wait.size() >= 3 or _tool_waiting(p) >= 6:
+					want = Sim.PRIO_HIGH
+			# iron tools now (build 66): the bronze smith only when the toolsmith cannot keep up
+			if b.ty == "bronze_smith" and p.techs.has("iron_working") and float(p.stock.get("iron", 0.0)) >= 2.0 and _tool_waiting(p) < 6:
+				want = Sim.PRIO_LOW
 			if b.prio != want and b.prio != Sim.PRIO_PAUSED:
 				b.prio = want
 		if b.state != "ready":
@@ -504,6 +525,8 @@ func ai_think(p: Sim.Player) -> void:
 	var c := func(t: String) -> int: return int(cnt.get(t, 0))
 	var houses: int = c.call("house")
 	var farms: int = c.call("farm")
+	# many workers waiting for tools (worn out or never had one): a second smith (build 66)
+	var tools_short := _tool_waiting(p) >= 6
 	var steps := [
 		["woodcutter", mini(6, 2 + (1 if S.planks < 8 else 0) + pop / 28)],
 		["sawmill", 1 + c.call("woodcutter") / 3],
@@ -521,7 +544,8 @@ func ai_think(p: Sim.Player) -> void:
 		["charcoal_burner", (1 if not p.techs.has("iron_working") or c.call("bronze_foundry") > 0 else 0) + (1 if c.call("brickworks") + c.call("copper_smelter") > 0 else 0)],
 		["copper_mine", 1 if not p.techs.has("iron_working") else 0], ["tin_mine", 1 if not p.techs.has("iron_working") else 0],
 		["bronze_foundry", 1 if c.call("copper_mine") > 0 and c.call("tin_mine") > 0 else 0],
-		["bronze_smith", 1 if c.call("bronze_foundry") > 0 and c.call("toolsmith") == 0 else 0],
+		["bronze_smith", (2 if tools_short else 1) if c.call("bronze_foundry") > 0 and c.call("toolsmith") == 0 else 0],
+		["bronze_foundry", 2 if tools_short and c.call("bronze_smith") >= 2 and c.call("toolsmith") == 0 else 0],
 		["bronze_weaponsmith", 1 if c.call("bronze_foundry") > 0 and c.call("weaponsmith") == 0 else 0],
 		["coal_mine", mini(4, 2 + int(mins / 10.0))], ["iron_mine", mini(3, 1 + int(mins / 12.0))], ["iron_smelter", 1], ["toolsmith", 1], ["school", mini(2, 1 + pop / 100)], ["weaponsmith", 1], ["barracks", 1],
 		["clay_pit", 1 if mins > 4 else 0], ["brickworks", 1 if mins > 4 and c.call("clay_pit") > 0 else 0],
@@ -731,6 +755,14 @@ func ai_think(p: Sim.Player) -> void:
 	elif nosite == 0:
 		p.crowded = false
 		p.crowded_t = 0.0
+
+
+## How many of realm p's workers wait for a tool (none yet, or theirs is worn out).
+func _tool_waiting(p: Sim.Player) -> int:
+	var n := 0
+	for k in p.tool_wait:
+		n += int(p.tool_wait[k])
+	return n
 
 
 ## Military buildings of realm p still waiting for their first soldier.

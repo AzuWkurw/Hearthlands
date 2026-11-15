@@ -897,7 +897,7 @@
    "iron": 1,
    "planks": 1
   },
-  "info": "Makes the tool each trade needs, whichever is wanted most: tools that buildings are waiting for first, then those below their production target.",
+  "info": "Makes the tool each trade needs, whichever is wanted most: tools that buildings are waiting for first, then those below their production target. Iron tools last twice as long as bronze.",
   "art": {
    "style": "workshop",
    "wall": "#5f7f5a",
@@ -921,7 +921,8 @@
   },
   "trade": "metal",
   "makes_tools": 2,
-  "tech": "iron_working"
+  "tech": "iron_working",
+  "tier": 2
  },
  "bronze_smith": {
   "name": "Bronze smith",
@@ -938,7 +939,7 @@
    "bronze": 1,
    "planks": 1
   },
-  "info": "Casts and hammers bronze into the tool each trade needs, whichever is wanted most.",
+  "info": "Casts and hammers bronze into the tool each trade needs, whichever is wanted most. Bronze tools work 10% slower than iron and wear out twice as fast.",
   "art": {
    "style": "workshop",
    "wall": "#a0784a",
@@ -960,7 +961,8 @@
    "sign_color": "#c8964a"
   },
   "trade": "metal",
-  "makes_tools": 2
+  "makes_tools": 2,
+  "tier": 1
  },
  "weaponsmith": {
   "name": "Weaponsmith",
@@ -980,7 +982,7 @@
   "out": {
    "weapons": 1
   },
-  "info": "Iron and coal into weapons.",
+  "info": "Iron and coal into weapons. Iron arms any soldier up to musketeers.",
   "art": {
    "style": "workshop",
    "wall": "#8c4a4a",
@@ -1003,7 +1005,8 @@
    ]
   },
   "trade": "metal",
-  "tech": "iron_working"
+  "tech": "iron_working",
+  "tier": 2
  },
  "bronze_weaponsmith": {
   "name": "Bronze weaponsmith",
@@ -1023,7 +1026,7 @@
   "out": {
    "weapons": 1
   },
-  "info": "Bronze spearheads, axes and swords for the barracks.",
+  "info": "Bronze spearheads, axes and swords for the barracks. Bronze arms make bronze warriors only, even in later ages, and wear out sooner in a fight.",
   "art": {
    "style": "workshop",
    "wall": "#9a5a3a",
@@ -1045,7 +1048,8 @@
     ]
    ]
   },
-  "trade": "metal"
+  "trade": "metal",
+  "tier": 1
  },
  "bowyer": {
   "name": "Bowyer",
@@ -2210,14 +2214,14 @@
   "worker": "artisan",
   "cycle": 16,
   "in": {
-   "iron": 1,
+   "steel": 1,
    "coal": 1
   },
   "out": {
    "weapons": 1
   },
   "tech": "steam_engine",
-  "info": "Steam-powered smithy: weapons and the tools most wanted.",
+  "info": "Steam-powered smithy working steel: steel weapons (riflemen need them) and the tools most wanted, the best there are.",
   "art": {
    "style": "workshop",
    "wall": "#6a6e78",
@@ -2243,7 +2247,8 @@
    ]
   },
   "trade": "metal",
-  "makes_tools": 3
+  "makes_tools": 3,
+  "tier": 3
  },
  "textile_mill": {
   "name": "Textile mill",
@@ -3398,7 +3403,8 @@
     0.844
    ]
   },
-  "trade": "metal"
+  "trade": "metal",
+  "tier": 2
  },
  "lead_mine": {
   "name": "Lead mine",

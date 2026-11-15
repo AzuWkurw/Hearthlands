@@ -146,6 +146,9 @@ func _fill_settings() -> void:
 		main.settings.goals = on
 		main.settings.save_file()
 		main.guide_ui.start()))
+	_set_row(g, "", _check("Pause when a rival attacks you or its ships sail for your shore", main.settings.pause_attacked, func(on):
+		main.settings.pause_attacked = on
+		main.settings.save_file()))
 	_set_row(g, "", _check("A word from the worker when you pick a building", main.settings.voices, func(on):
 		main.settings.voices = on
 		main.settings.save_file()))

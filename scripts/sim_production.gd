@@ -220,6 +220,8 @@ func arrived(p: Sim.Player, res: String, n: float) -> void:
 
 
 func deliver(b: Sim.Bld, p: Sim.Player, res: String, n: int) -> void:
+	if sim.arms.tiered(res) and n > 0 and not sim.is_store(b):
+		sim.arms.add(p, res, sim.arms.maker_tier(b.ty), n)
 	sim.made(p, res, n)
 	for f: Feature in sim.features:
 		f.on_made_at(b, p, res, n)
@@ -333,28 +335,36 @@ func finish_prod(b: Sim.Bld, p: Sim.Player) -> void:
 				if not p.ai: sim.emit_log("A peasant became an artisan.", Color("86ad5c"), Vector2i(b.x, b.y))
 			return
 		"soldier":
+			# the kind his arms allow (build 66): bronze arms make bronze warriors, rifles need steel
+			var tier := sim.arms.take_best(p, "weapons")
+			p.arm_q = tier
+			var kind := mini(clampi(p.age, 0, Sim.KINDS - 1), SimArms.ARM_KIND_MAX[tier])
 			if b.retrain:
 				b.retrain = false
 				var rm := sim.rmix_of(p)
-				for k in clampi(p.age, 0, Sim.KINDS - 1):
+				for k in kind:
 					if int(rm[k]) > 0:
 						rm[k] -= 1
-						rm[clampi(p.age, 0, Sim.KINDS - 1)] += 1
+						rm[kind] += 1
 						p.res_era = Sim.mix_avg(rm)
-						if not p.ai: sim.emit_log("A %s was retrained as a %s." % [Sim.soldier_name(k), Sim.soldier_name(p.age)], Color("86ad5c"), Vector2i(b.x, b.y))
+						if not p.ai: sim.emit_log("A %s was retrained as a %s." % [Sim.soldier_name(k), Sim.soldier_name(kind)], Color("86ad5c"), Vector2i(b.x, b.y))
 						break
 				return
 			if p.artisan > 0:
 				p.artisan -= 1
 				p.res_xp = Sim.mix_xp(p.res_xp, p.reserve, 0.0, 1)
 				var rm := sim.rmix_of(p)
-				rm[clampi(p.age, 0, Sim.KINDS - 1)] += 1
+				rm[kind] += 1
 				p.reserve += 1
 				p.res_era = Sim.mix_avg(rm)
 				var vet := false
 				if p.stock.get("armor", 0.0) >= 1.0:
 					sim.take(p, "armor", 1.0, sim.idx(b.x, b.y)); p.vets += 1.0; vet = true
-				if not p.ai: sim.emit_log("A new %s joins the headquarters." % ("veteran" if vet else "soldier"), Color("86ad5c"), Vector2i(p.hq.x, p.hq.y) if p.hq != null else Vector2i(-1, -1))
+				if not p.ai:
+					var arm_note := ""
+					if kind < clampi(p.age, 0, Sim.KINDS - 1):
+						arm_note = " (only %s arms in store: %s)" % [SimArms.NAMES[tier], "riflemen need steel" if p.age >= 6 and tier == SimArms.IRON else "a %s" % Sim.soldier_name(kind)]
+					sim.emit_log("A new %s%s joins the headquarters%s." % ["veteran " if vet else "", Sim.soldier_name(kind), arm_note], Color("86ad5c"), Vector2i(p.hq.x, p.hq.y) if p.hq != null else Vector2i(-1, -1))
 			return
 		"noble":
 			if p.artisan > 0:
@@ -424,6 +434,10 @@ func _finish_site(b: Sim.Bld, p: Sim.Player) -> void:
 			t.path = path
 			sim.trips.append(t)
 	b.builder = 0
+	# (build 66) the builder's place is not the worker's: the first worker is hired as any other, and
+	# so takes his tool from the stores (before, the builder's "staffed" carried over and the first
+	# worker of every new building started without one)
+	b.staffed = false
 	if b.queue_n > 0:
 		sim.queue_site(b, false)
 	if true:
@@ -541,6 +555,11 @@ func prod_tick(b: Sim.Bld, p: Sim.Player, _dt: float) -> void:
 	b.msg = "Working"
 	b.t_start = sim.time
 	b.rate_c = sim.rate(p, b)
+	# the worker's tool (build 66): its metal sets the pace, and it wears by this cycle; the barracks
+	# train faster with better arms
+	b.rate_c *= sim.arms.tool_cycle(b, p, cyc)
+	if String(d.get("train", "")) == "soldier":
+		b.rate_c *= SimArms.ARM_TRAIN[sim.arms.best(p, "weapons")]
 	# a steam engine (build 64): half a coal a cycle, and the cycle goes faster
 	if b.steam:
 		b.rate_c *= sim.railway.steam_cycle(b, p)

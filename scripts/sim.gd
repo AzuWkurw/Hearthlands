@@ -29,6 +29,7 @@ var sea := SimSea.new(self)
 var naval := SimNavy.new(self)
 var market := SimMarket.new(self)
 var railway := SimRail.new(self)      # steam engines and railways (build 64)
+var arms := SimArms.new(self)         # tools and weapons of bronze, iron or steel (build 66)
 var people := SimPeople.new(self)
 var production := SimProduction.new(self)
 
@@ -87,7 +88,7 @@ const LUX_TAX := 0.08          # more of the nobles' tax for each luxury they ha
 const BASIC := ["planks", "stone"]
 
 
-const SAVE_VERSION := 4    # 4: build 65, the Bronze Age (ages and soldier kinds one further on)
+const SAVE_VERSION := 5    # 4: build 65, the Bronze Age (ages and soldier kinds one further on); 5: build 66, tools of a metal
 
 
 const INF := 1e9                           # "unreachable" distance on the road network
@@ -230,6 +231,7 @@ class Bld:
 	var t_end := 0.0   # game time it will finish; the building sleeps until then
 	var prio := 1      # priority: 2 high, 1 normal, 0 low, -1 paused (see PRIO_NAMES)
 	var need_tool := "" # the tool this building waits for before it can take on a new worker
+	var tool_q := 0     # the metal of its worker's tool (SimArms: 0 none, 1 bronze, 2 iron, 3 steel)
 	var out_buf: Dictionary = {}           # finished goods waiting for a carrier
 	var work := Vector2i(-1, -1)           # moved work area centre, or (-1, -1) for the building itself
 	var path_ver := -1                     # road network version that `path` was traced on
@@ -308,6 +310,8 @@ class Player:
 	var away := 0      # peasants away from work (geologists out surveying)
 	var res_xp := 0.0  # average experience of the soldiers waiting at headquarters
 	var res_era := -1.0 # average age of the soldiers at headquarters (-1: from an older save, see _fix_eras)
+	var site_wait: Dictionary = {}  # a rival's building types that found no spot: not looked for until then (SimAI)
+	var plan_t := 0.0     # a rival's town plan found no large spot: it looks again from this time (SimAI._plan_town)
 	var rmix: Array = []  # the soldiers at headquarters by kind (legionaries ... riflemen)
 	var busy_porters := 0                  # porters out carrying goods
 	var segs := {}                         # road carriers mode: stretch of road (two flag tiles) -> when its carrier is free again
@@ -362,6 +366,9 @@ class Player:
 	var targets: Dictionary = {}
 	## Tools that buildings are waiting for right now: tool -> buildings that cannot hire a new worker.
 	var tool_wait: Dictionary = {}
+	var tq: Dictionary = {}        # tools and weapons by metal: res -> [_, bronze, iron, steel] (SimArms)
+	var spec_tool: Dictionary = {} # the tools idle specialists keep: like spec, metal + life left (SimArms.pack)
+	var arm_q := 0                 # the metal of the weapons last handed out (how fast they wear in a fight)
 	var crowded := false      # rivals only: their land is full, so they grow by taking land (attack more)
 	var crowded_t := 0.0      # game time it became crowded (0: it is not)
 	var swap_t := -999.0      # rivals only: when it last pulled down a house to make room for a key building
@@ -1366,6 +1373,18 @@ func can_place(ty: String, x: int, y: int, pid: int, door := -1) -> String:
 	if deco[i] == D_ROCK: return "Rocks in the way"
 	if deco[i] == D_CLAY: return "Clay in the way"
 	if road[i] != 0: return "A road is in the way"
+	# (build 66) the quick checks of the ground and research first: the rivals try hundreds of spots, and
+	# most fail here; the plot and the way in below cost far more
+	if d.has("tech") and not players[pid - 1].techs.has(d.tech):
+		return "Needs research: " + GameData.tech_name(d.tech)
+	var t := ter[i]
+	if d.has("mine"):
+		if t != MOUNT: return "Mines go on mountains"
+		if not ore_known(pid, i): return "Not surveyed: send a geologist here first"
+		if ore[i] != int(d.mine) or vein_left(i) == 0: return "No %s deposit here" % GameData.ORE_NAMES.get(int(d.mine), "ore")
+	else:
+		if t == WATER: return "Cannot build on water"
+		if t == MOUNT: return "Too steep, mines only"
 	if not places.is_empty():
 		var pb := Places.block(self, x, y)
 		if pb != "":
@@ -1392,19 +1411,10 @@ func can_place(ty: String, x: int, y: int, pid: int, door := -1) -> String:
 		if bmap[dt] != 0 or plot[dt] != 0: return "Another building blocks the entrance"
 		if ter[dt] == WATER: return "The entrance faces water"
 		if deco[dt] == D_ROCK or deco[dt] == D_CLAY: return "Rocks block the entrance"
-	if d.has("tech") and not players[pid - 1].techs.has(d.tech):
-		return "Needs research: " + GameData.tech_name(d.tech)
 	if not bld_enabled(ty):
 		return "Belongs to a game feature that is switched off"
-	# the ground and the site's own needs: quick to check, so before the search for a way in below
-	var t := ter[i]
-	if d.has("mine"):
-		if t != MOUNT: return "Mines go on mountains"
-		if not ore_known(pid, i): return "Not surveyed: send a geologist here first"
-		if ore[i] != int(d.mine) or vein_left(i) == 0: return "No %s deposit here" % GameData.ORE_NAMES.get(int(d.mine), "ore")
-	else:
-		if t == WATER: return "Cannot build on water"
-		if t == MOUNT: return "Too steep, mines only"
+	# the site's own needs: before the search for a way in below
+	if not d.has("mine"):
 		var sc := site_check(d, x, y, false)
 		if sc != "": return sc
 		if d.get("needs_noble", false) and players[pid - 1].noble < 1: return "Needs a noble in your realm"
@@ -2470,6 +2480,10 @@ func _secondly() -> void:
 		print("minute %d checksum %d" % [int(time) / 60, checksum()])
 	_rebuild_realm_lists()
 	railway.second()
+	if int(time) % 10 == 0:
+		for p in players:
+			if p.alive:
+				arms.trim(p)
 	Crops.grow(self)
 	if logistics.road_carriers_on():
 		for p in players:
@@ -2632,6 +2646,7 @@ func from_save(d: Dictionary) -> String:
 	GameData.ensure()
 	if int(d.get("version", 0)) < 4:
 		d = bronze_age_migrate(d)
+	var tools_unknown := int(d.get("version", 0)) < 5
 	seed_str = d.seed; foes = d.foes; strength = d.strength; map_size = d.map_size; mix = d.mix; research_victory = d.research_victory
 	opts = DEFAULT_OPTS.duplicate()
 	opts.merge(d.get("opts", {}), true)
@@ -2782,6 +2797,16 @@ func from_save(d: Dictionary) -> String:
 				_supply[b.id] = true
 	_rebuild_realm_lists()
 	_mil_dirty = true
+	if tools_unknown:
+		# saves from before build 66: the workers at work have new iron tools, specialists too
+		for b in blds:
+			if b.state == "ready" and b.worker > 0 and logistics.tool_of(b) != "":
+				arms.give_tool(b, SimArms.IRON)
+		for p in players:
+			for key in p.spec:
+				p.spec_tool[key] = []
+				for i in (p.spec[key] as Array).size():
+					(p.spec_tool[key] as Array).append(float(SimArms.IRON))
 	setup_features(opts.get("features", Features.default_ids()), true, d.get("feature_state", {}))
 	return ""
 

@@ -6,6 +6,10 @@ extends RefCounted
 ## frame then only moves and scales it with the camera (MapView, "the building layer").
 
 var rid: RID
+## The meshes (and their textures) a recording draws: the canvas item holds only their RIDs, so they are
+## kept here until it is cleared. Without this a mesh made for one recording (a chunk's grid) was freed
+## while still recorded, and every frame drew it as "Parameter mesh is null" (build 66).
+var _keep: Array = []
 
 
 func _init(p_rid: RID) -> void:
@@ -14,6 +18,7 @@ func _init(p_rid: RID) -> void:
 
 func clear() -> void:
 	RenderingServer.canvas_item_clear(rid)
+	_keep.clear()
 
 
 func draw_set_transform(pos: Vector2, rot := 0.0, scale := Vector2.ONE) -> void:
@@ -71,4 +76,7 @@ func draw_polygon(points: PackedVector2Array, colors: PackedColorArray, uvs := P
 
 func draw_mesh(mesh: Mesh, texture: Texture2D, transform := Transform2D(), modulate := Color.WHITE) -> void:
 	if mesh != null:
+		_keep.append(mesh)
+		if texture != null:
+			_keep.append(texture)
 		RenderingServer.canvas_item_add_mesh(rid, mesh.get_rid(), transform, modulate, texture.get_rid() if texture != null else RID())

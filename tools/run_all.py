@@ -70,6 +70,7 @@ TESTS = [
 	("sandbox goals",     "goals_test", [], False, False, [r"GOALS TEST: PASS"]),
 	("steam and rails",   "rail_test", [], False, False, [r"RAIL TEST: PASS"]),
 	("the Bronze Age",    "bronze_test", [], False, False, [r"BRONZE TEST: PASS"]),
+	("tools and arms by metal", "arms_test", [], False, False, [r"ARMS TEST: PASS"]),
 	("blueprints",        "bp_test", [], False, False, [r"BLUEPRINT TEST: PASS"]),
 	("toolbar tools",     "toolbar_tool_test", [], True, False, [r"tool clicks answered: 8 of 8"]),
 ]
@@ -77,7 +78,7 @@ TESTS = [
 
 # tests written for the Bronze Age itself; the older ones start their games in the Roman age, as
 # games did before build 65 (Sim.new_game reads HEARTHLANDS_START_AGE)
-BRONZE_AWARE = {"bronze_test", "save_test"}
+BRONZE_AWARE = {"bronze_test", "save_test", "arms_test"}
 
 
 def run(cmd, timeout, env=None):

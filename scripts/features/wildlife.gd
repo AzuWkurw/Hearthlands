@@ -31,6 +31,7 @@ func _init() -> void:
 
 
 func on_start(loaded: bool) -> void:
+	_dgrid = {}
 	if not loaded or rng.seed == 0:
 		rng.seed = (sim.seed_str + ":wildlife").hash()
 	_land = 0
@@ -139,7 +140,9 @@ func on_second() -> void:
 			to = _habitat_spot(String(a[0]), roundi(here.x), roundi(here.y), 7)
 		if to.x < 0:
 			continue
+		_g_del(a)
 		a[1] = here.x; a[2] = here.y; a[3] = to.x; a[4] = to.y
+		_g_add(a)
 		a[5] = sim.time
 		a[6] = sim.time + here.distance_to(to) / float(KINDS[a[0]].speed)
 	if _t % 30 == 0:
@@ -170,6 +173,7 @@ func _breed() -> void:
 			for m in die:
 				var gone: Array = list[rng.randi() % list.size()]
 				list.erase(gone)
+				_g_del(gone)
 				animals.erase(gone)
 			continue
 		var births := 0
@@ -189,6 +193,7 @@ func _breed() -> void:
 				at = _habitat_spot(k, -1, -1, 0)
 			if at.x >= 0:
 				animals.append([k, at.x, at.y, at.x, at.y, sim.time, sim.time])
+				_g_add(animals[-1])
 
 
 ## Game wanders into hunting grounds from the wild: now and then an animal turns up at the edge of a
@@ -207,6 +212,7 @@ func _wander_in() -> void:
 		var at := _habitat_spot(k, c.x, c.y, sim.work_radius(b) + 2)
 		if at.x >= 0:
 			animals.append([k, at.x, at.y, at.x, at.y, sim.time, sim.time])
+			_g_add(animals[-1])
 			count[k] = int(count.get(k, 0)) + 1
 
 
@@ -245,6 +251,7 @@ func _wolves() -> void:
 		if rng.randf() < 0.02:
 			var prey = _nearest_prey(wp, 2.0)
 			if prey != null:
+				_g_del(prey)
 				animals.erase(prey)
 				_prey_grid = {}
 	for k in scared.keys():
@@ -323,13 +330,47 @@ func _game_near(b: Sim.Bld):
 	return _nearest(Vector2(c.x, c.y), float(sim.work_radius(b)) + TRACK, GAME)
 
 
+## The animals by where they are heading, in cells of 8 tiles (build 66: a hunter with no game in
+## reach looked at every animal on the map). Made when first needed after a load, then kept up to date as
+## animals move, are born, die or are caught.
+var _dgrid := {}
+const DCELL := 3          # (8 tiles: x >> 3)
+
+
+func _g_key(a: Array) -> int:
+	return (maxi(0, int(a[3])) >> DCELL) * 4096 + (maxi(0, int(a[4])) >> DCELL)
+
+
+func _g_add(a: Array) -> void:
+	if _dgrid.has("made") and a[0] in GAME:
+		var k := _g_key(a)
+		if not _dgrid.has(k):
+			_dgrid[k] = []
+		(_dgrid[k] as Array).append(a)
+
+
+func _g_del(a: Array) -> void:
+	if _dgrid.has("made") and a[0] in GAME:
+		var cell: Array = _dgrid.get(_g_key(a), [])
+		cell.erase(a)
+
+
 ## True when any game is within the hunter's grounds (stops at the first one found).
 func _any_game(b: Sim.Bld) -> bool:
 	var c := sim.work_center(b)
 	var at := Vector2(c.x, c.y)
 	var r := float(sim.work_radius(b)) + TRACK
 	var r2 := r * r
-	for a in animals:
+	if _dgrid.is_empty():
+		_dgrid["made"] = true
+		for a2 in animals:
+			_g_add(a2)
+	var near := []
+	var reach := r + LEG + 1.0
+	for gy in range(maxi(0, int(at.y - reach)) >> DCELL, (maxi(0, int(at.y + reach)) >> DCELL) + 1):
+		for gx in range(maxi(0, int(at.x - reach)) >> DCELL, (maxi(0, int(at.x + reach)) >> DCELL) + 1):
+			near.append_array(_dgrid.get(gx * 4096 + gy, []))
+	for a in near:
 		# a quick test on where it is heading first (one move is at most LEG tiles): only animals near
 		# the grounds need the exact place
 		var dx := float(a[3]) - at.x
@@ -354,6 +395,7 @@ func on_cycle(_p: Sim.Player, b: Sim.Bld) -> void:
 	if b.ty == "hunter":
 		var g = _game_near(b)
 		if g != null:
+			_g_del(g)
 			animals.erase(g)
 
 
@@ -475,6 +517,7 @@ func save_state() -> Dictionary:
 
 func load_state(d: Dictionary) -> void:
 	animals = d.get("animals", [])
+	_dgrid = {}
 	scared = {}
 	for k in d.get("scared", {}):
 		scared[int(k)] = float(d.scared[k])
