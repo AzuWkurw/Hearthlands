@@ -27,6 +27,11 @@ const TOOL_LIFE := [1.0, 0.6, 1.0, 1.6]             # how long a tool lasts, aga
 const ARM_KIND_MAX := [6, 0, 5, 6]                  # the newest kind of soldier each metal can arm
 const ARM_TRAIN := [1.0, 0.9, 1.0, 1.15]            # training speed by the metal of the arms
 const ARM_WEAR := [1.0, 1.5, 1.0, 0.6]              # how often a weapon wears out in a fight, by metal
+## How the metals look in the panels (build 67): a colour for the name and an ingot badge; the tools and
+## weapons have a picture for each metal (textures/res_<good>_bronze.png and _steel.png; iron is the
+## usual picture).
+const COLORS := ["c8c8c0", "d9a25a", "b9bec8", "8cc8f2"]
+const PICTURED := ["axes", "pickaxes", "farm_tools", "knives", "saws", "tongs", "trowels", "shears", "chisels", "weapons"]
 
 var sim
 
@@ -109,6 +114,76 @@ func trim(p) -> void:
 			extra -= cut
 
 
+# ------------------------------------------------------------------ how they look
+## The picture of res made of that metal (the usual one for iron or goods with no metal pictures).
+static func icon_id(res: String, tier: int) -> String:
+	if (tier == BRONZE or tier == STEEL) and res in PICTURED:
+		return "res_%s_%s" % [res, NAMES[tier]]
+	return "res_" + res
+
+
+## The metal's name in its colour, for the panels (with its ingot badge when pic).
+static func tag(tier: int, pic := false) -> String:
+	if tier <= 0 or tier > STEEL:
+		return ""
+	var badge := "[img=14x14]res://textures/metal_%s.png[/img] " % NAMES[tier] if pic else ""
+	return "%s[color=#%s]%s[/color]" % [badge, COLORS[tier], NAMES[tier]]
+
+
+## split_text, with each metal in its colour.
+func split_bb(p, res: String) -> String:
+	var t := split_text(p, res)
+	for k in [STEEL, IRON, BRONZE]:
+		t = t.replace(" " + NAMES[k], " " + tag(k))
+	return t
+
+
+# ------------------------------------------------------------------ soldiers' arms
+## How many of the realm's soldiers carry arms of each metal (Player.arm_n: [_, bronze, iron, steel]),
+## for the panels: counted as they are armed and re-armed, and kept to the soldiers there are (losses
+## fall on each metal in proportion). Soldiers from before (a start, an older save) carry the age's metal.
+func armed(p, tier: int) -> void:
+	p.arm_n[clampi(tier, BRONZE, STEEL)] = int(p.arm_n[clampi(tier, BRONZE, STEEL)]) + 1
+
+
+## A soldier with a worn weapon takes a new one of that metal: his old one was of the poorest kind.
+func rearmed(p, tier: int) -> void:
+	for t in [BRONZE, IRON, STEEL]:
+		if int(p.arm_n[t]) > 0:
+			p.arm_n[t] = int(p.arm_n[t]) - 1
+			break
+	armed(p, tier)
+
+
+func fit_arms(p) -> void:
+	var n: int = sim.soldiers(p)
+	var have := int(p.arm_n[1]) + int(p.arm_n[2]) + int(p.arm_n[3])
+	if have < n:
+		var t := default_tier(p) if p.arm_q <= 0 else int(p.arm_q)
+		p.arm_n[t] = int(p.arm_n[t]) + n - have
+	elif have > n:
+		var keep := []
+		var kept := 0
+		for t in 4:
+			var k := int(floor(float(p.arm_n[t]) * n / have)) if t > 0 else 0
+			keep.append(k)
+			kept += k
+		for t in [STEEL, IRON, BRONZE]:
+			if kept < n and int(p.arm_n[t]) > int(keep[t]):
+				keep[t] = int(keep[t]) + 1
+				kept += 1
+		p.arm_n = keep
+
+
+## "30 iron, 8 bronze" (best first), the metals coloured when bb.
+func arms_text(p, bb := false) -> String:
+	var parts := []
+	for t in [STEEL, IRON, BRONZE]:
+		if int(p.arm_n[t]) > 0:
+			parts.append("%d %s" % [int(p.arm_n[t]), tag(t) if bb else NAMES[t]])
+	return ", ".join(parts)
+
+
 # ------------------------------------------------------------------ tools at work
 ## Building b's new worker takes a tool from the stores: which metal (it was taken already).
 func give_tool(b: Sim.Bld, tier: int) -> void:
@@ -155,12 +230,17 @@ func unpack(b: Sim.Bld, v: float) -> void:
 func split_text(p, res: String) -> String:
 	var a: Array = p.tq.get(res, [])
 	var n := int(floor(float(p.stock.get(res, 0.0)) + 0.001))
-	var parts := []
+	var by := [0, 0, 0, 0]
 	var counted := 0
 	for t in [STEEL, IRON, BRONZE]:
 		if a.size() > t and int(a[t]) > 0:
-			parts.append("%d %s" % [mini(int(a[t]), n - counted), NAMES[t]])
-			counted += mini(int(a[t]), n - counted)
+			var k := mini(int(a[t]), n - counted)
+			by[t] += k
+			counted += k
 	if counted < n:
-		parts.append("%d %s" % [n - counted, NAMES[default_tier(p)]])
+		by[default_tier(p)] += n - counted
+	var parts := []
+	for t in [STEEL, IRON, BRONZE]:
+		if by[t] > 0:
+			parts.append("%d %s" % [by[t], NAMES[t]])
 	return ", ".join(parts)

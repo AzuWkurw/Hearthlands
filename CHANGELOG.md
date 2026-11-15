@@ -1,5 +1,19 @@
 # Changelog
 
+## Build 67 (v0.62.0, 2026-11-15)
+
+Build 67: your slowdowns fixed; tools and weapons show their metal.
+- Slowdowns (from your 46-minute save: 9 realms, 1800 buildings): the map's fields were one picture for the whole map, made again whenever any field anywhere grew (a 65 ms hitch every second or so); now they are kept in small blocks, only those on screen are drawn and only a block whose field grew is made again. Map drawing hitches went from up to 80 ms to about 20 ms.
+- The realms' once-a-second work (workers, food, people, rivals' building) is spread over the tenths of the second, one realm at a time, instead of all at once: the tick with that work went from 54 ms typically (up to 290 ms) to about 21 ms (worst about 100 ms).
+- Fog of war: what your buildings see is kept and only the scouts and armies are added each second; the fog picture is no longer resized by the processor (9 ms to 2 ms each second).
+- Rivals planning a landing: a harbour on a lake learns at once that the sea is out of reach (the waters are told apart once per map), and the sea search itself is several times faster; one try every two minutes at most, nearest coasts first. A single 240 ms hitch is gone.
+- Rivals look for at most six workshop spots per turn (military buildings and houses are always looked for), and skip spots deep inside their land when looking where to push the border.
+- Tools and weapons have a picture for each metal (bronze golden brown, iron grey, steel blue-grey). The stores show the best metal you have, and their tooltip how many of each; metal names are coloured in the panels, and the building panel shows the worker's tool with its picture.
+- Your soldiers are counted by the metal of their arms: "Arms 2 steel, 4 iron, 2 bronze" in the people panel and the weapons' panel.
+- Fix: the axes' panel said bronze tools "last 0 min of work"; it now says how much faster and longer each metal works.
+- Fix: the stores' metal list could name a metal twice ("4 bronze, 2 bronze").
+- Fix: a loaded game could drift from the saved one (the realm temperatures of the second were not saved).
+
 ## Build 66 (v0.61.0, 2026-11-15)
 
 Build 66: tools and weapons by metal; quality of life, speed and bugs.

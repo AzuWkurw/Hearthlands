@@ -2785,8 +2785,6 @@ func _draw_building(b: Sim.Bld, labels: Array, detail: bool, part := 0) -> void:
 ## Farm fields: ploughed soil with furrows, and rows of plants that grow taller as the field grows,
 ## turn the crop's colour when ripe and sway in the wind (their tips are marked for the map shader).
 ## All fields make one mesh, made again only when a field is sown, grows a stage or is harvested.
-var _field_mesh: ArrayMesh
-var _field_sig := ""
 var _white: Texture2D
 
 ## [how tall when grown (tiles), how wide a plant, plants per row, ripe colour, colour of the tips]
@@ -2799,37 +2797,87 @@ const CROP_LOOK := {
 	"hops": [0.36, 0.11, 4, Color("4f8a36"), Color("b6d070")],
 }
 
-func _draw_fields(_x0: int, _x1: int, _y0: int, _y1: int) -> void:
-	if sim.fields.is_empty():
-		return
-	var sig := "%d|%s|%d" % [sim.fields.size(), str(raised), chunks.ver]
-	var h := 0
+## Fields are drawn in blocks of FB x FB tiles (build 66.1): only the blocks on screen, and a block's
+## mesh is made again only when one of its own fields changes. (One mesh for every field on the map was
+## made again whenever any field anywhere grew a step: on a big map, a 65 ms hitch every second or so.)
+const FB := 16
+var _fblk := {}            # block -> [signature, mesh]
+var _fidx := {}            # block -> its fields' tiles, sorted
+var _fidx_n := -1
+var _fidx_t := 0
+var _fbase := ""
+
+
+func _field_index() -> void:
+	_fidx = {}
 	for i in sim.fields:
-		var f: Array = sim.fields[i]
-		h = (h * 31 + i * 7 + int(float(f[2]) / Crops.GROW * 8.0) + String(f[1]).length()) % 1000000007
-	sig += "|%d" % h
-	if sig != _field_sig or _field_mesh == null:
-		_field_sig = sig
-		_retire([_field_mesh])
-		_field_mesh = _make_field_mesh()
+		var k: int = (int(i) / sim.w) / FB * 4096 + (int(i) % sim.w) / FB
+		if not _fidx.has(k):
+			_fidx[k] = PackedInt32Array()
+		(_fidx[k] as PackedInt32Array).append(int(i))
+	for k in _fidx:
+		(_fidx[k] as PackedInt32Array).sort()
+	for k in _fblk.keys():
+		if not _fidx.has(k):
+			_retire([_fblk[k][1]])
+			_fblk.erase(k)
+	_fidx_n = sim.fields.size()
+	_fidx_t = Time.get_ticks_msec()
+
+
+func _draw_fields(x0: int, x1: int, y0: int, y1: int) -> void:
+	if sim.fields.is_empty():
+		if not _fblk.is_empty():
+			for k in _fblk:
+				_retire([_fblk[k][1]])
+			_fblk = {}
+		return
+	var base := "%s|%d|%d" % [str(raised), chunks.ver, sim.w]
+	if base != _fbase:
+		_fbase = base
+		for k in _fblk:
+			_retire([_fblk[k][1]])
+		_fblk = {}
+		_fidx_n = -1
+	# fields sown or gone: look again (a field sown elsewhere as one is gone shows within half a second)
+	if sim.fields.size() != _fidx_n or Time.get_ticks_msec() - _fidx_t > 500:
+		_field_index()
 	if _white == null:
 		var wi := Image.create(1, 1, false, Image.FORMAT_RGBA8)
 		wi.fill(Color.WHITE)
 		_white = ImageTexture.create_from_image(wi)
-	if _field_mesh != null:
-		_cv.draw_mesh(_field_mesh, _white)
+	for by in range(maxi(0, y0 / FB), (y1 + 2) / FB + 1):
+		for bx in range(maxi(0, x0 / FB), x1 / FB + 1):
+			var k := by * 4096 + bx
+			if not _fidx.has(k):
+				continue
+			var tiles: PackedInt32Array = _fidx[k]
+			var h := tiles.size()
+			for i in tiles:
+				var f = sim.fields.get(i)
+				if f == null:
+					continue
+				h = (h * 31 + i * 7 + int(float(f[2]) / Crops.GROW * 8.0) + String(f[1]).length()) % 1000000007
+			var blk: Array = _fblk.get(k, [])
+			if blk.is_empty() or int(blk[0]) != h:
+				if not blk.is_empty():
+					_retire([blk[1]])
+				blk = [h, _make_field_mesh(tiles)]
+				_fblk[k] = blk
+			if blk[1] != null:
+				_cv.draw_mesh(blk[1], _white)
 
 
-func _make_field_mesh() -> ArrayMesh:
+func _make_field_mesh(keys: PackedInt32Array) -> ArrayMesh:
 	var v := PackedVector2Array()
 	var c := PackedColorArray()
 	var soil := Color("6e4c2e")
 	var soil_dark := Color("4f3420")
 	var soil_light := Color("85603c")
 	var green := Color("5c8c36")
-	var keys: Array = sim.fields.keys()
-	keys.sort()
 	for i in keys:
+		if not sim.fields.has(i):
+			continue
 		var x: int = i % sim.w
 		var y: int = i / sim.w
 		var f: Array = sim.fields[i]

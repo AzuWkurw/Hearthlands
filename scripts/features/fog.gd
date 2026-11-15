@@ -17,8 +17,11 @@ var explored := PackedByteArray()  # your realm: 1 where the land has been seen
 var vis := PackedByteArray()       # your realm: 1 where it is seen right now (worked out every second)
 var seen: Dictionary = {}          # tile -> [building type, realm id, under construction] last seen there
 var walks: Array = []              # scouts out: [realm id, path (tiles), t0, t_turn, t_home]
-var tex: ImageTexture              # the fog picture, 4 pixels a tile, for the map and the minimap
+var tex: CanvasTexture             # the fog picture, a pixel a tile, smoothed, for the map and the minimap
+var _img_tex: ImageTexture
 var _img_dirty := true
+var _bsig := ""                    # what _bvis was worked out from
+var _bvis := PackedByteArray()      # what your land and buildings see (without scouts and columns)
 var _sig := ""                     # what the sight was last worked out from; unchanged means nothing to do
 # On big maps whole-map loops in script are slow, so the work below is done again only for rows of the
 # map that changed (the engine compares a row at once):
@@ -52,6 +55,7 @@ func on_start(loaded: bool) -> void:
 	_own_last = PackedByteArray()
 	_img_exp = PackedByteArray()
 	_sig = ""
+	_bsig = ""
 	# scouts counted as out with no walk to show for it (the feature was off for a while) are home
 	for p: Sim.Player in sim.players:
 		if not walks.any(func(wk): return int(wk[0]) == p.id):
@@ -72,13 +76,17 @@ func explored_at(i: int) -> bool:
 	return i >= 0 and i < explored.size() and explored[i] == 1
 
 
-func _reveal(cx: int, cy: int, r: int) -> void:
+func _reveal(cx: int, cy: int, r: int, into: PackedByteArray = vis) -> void:
 	var w := sim.w
 	var r2 := r * r + r
 	for y in range(maxi(0, cy - r), mini(sim.h - 1, cy + r) + 1):
 		for x in range(maxi(0, cx - r), mini(w - 1, cx + r) + 1):
 			if (x - cx) * (x - cx) + (y - cy) * (y - cy) <= r2:
-				vis[y * w + x] = 1
+				var i := y * w + x
+				into[i] = 1
+				if explored[i] == 0:
+					explored[i] = 1
+					_img_dirty = true
 
 
 ## Where a scout out exploring is now, in tiles: along his path, then back along it.
@@ -122,33 +130,43 @@ func _update_sight() -> void:
 		_remember_rivals(p)
 		return
 	_sig = sig
-	var before := vis.duplicate()
+	var before := vis
 	var n := sim.w * sim.h
 	var w := sim.w
-	if _own_last.size() != n or _own_vis.size() != n:
-		_own_vis = PackedByteArray()
-		_own_vis.resize(n)
-		_own_last = PackedByteArray()
-		_own_last.resize(n)
-		_own_last.fill(255)
-	var own_moved := false
-	for y in sim.h:
-		if _row_differs(sim.owner, _own_last, y, w):
-			own_moved = true
-			for i in range(y * w, y * w + w):
-				_own_vis[i] = 1 if sim.owner[i] == p.id else 0
-	if own_moved:
-		_own_last = sim.owner.duplicate()
-	vis = _own_vis.duplicate()
-	for b: Sim.Bld in sim.realm_blds(p):
-		var r := BLD_SIGHT
-		if b.ty == "hq":
-			r = HQ_SIGHT
-		elif b.def.has("vision"):
-			r = int(b.def.vision) if (b.state == "ready" and b.staffed) else BLD_SIGHT
-		elif b.def.has("radius") and b.state == "ready":
-			r = int(b.def.radius) + 2
-		_reveal(b.x, b.y, r)
+	# (build 66.1) what the land and buildings see changes only with them: worked out again only then;
+	# scouts and columns on the march are added on top each second
+	var bsig := "%d:%d:%d:%d" % [sim.territory_version, mine.size(), ready, towers]
+	if bsig != _bsig or _bvis.size() != n:
+		_bsig = bsig
+		if _own_last.size() != n or _own_vis.size() != n:
+			_own_vis = PackedByteArray()
+			_own_vis.resize(n)
+			_own_last = PackedByteArray()
+			_own_last.resize(n)
+			_own_last.fill(255)
+		var own_moved := false
+		for y in sim.h:
+			if _row_differs(sim.owner, _own_last, y, w):
+				own_moved = true
+				for i2 in range(y * w, y * w + w):
+					var o := 1 if sim.owner[i2] == p.id else 0
+					_own_vis[i2] = o
+					if o == 1 and explored[i2] == 0:
+						explored[i2] = 1
+						_img_dirty = true
+		if own_moved:
+			_own_last = sim.owner.duplicate()
+		_bvis = _own_vis.duplicate()
+		for b: Sim.Bld in mine:
+			var r := BLD_SIGHT
+			if b.ty == "hq":
+				r = HQ_SIGHT
+			elif b.def.has("vision"):
+				r = int(b.def.vision) if (b.state == "ready" and b.staffed) else BLD_SIGHT
+			elif b.def.has("radius") and b.state == "ready":
+				r = int(b.def.radius) + 2
+			_reveal(b.x, b.y, r, _bvis)
+	vis = _bvis.duplicate()
 	for wk in walks:
 		if int(wk[0]) == p.id:
 			var at := walk_pos(wk)
@@ -157,11 +175,6 @@ func _update_sight() -> void:
 		var cp: Vector2 = sim.military.column_pos(a)
 		_reveal(roundi(cp.x), roundi(cp.y), SCOUT_SIGHT)
 	if vis != before:
-		for y in sim.h:
-			if before.size() != n or _row_differs(vis, before, y, w):
-				for i in range(y * w, y * w + w):
-					if vis[i] == 1:
-						explored[i] = 1
 		_img_dirty = true
 	_remember_rivals(p)
 
@@ -220,13 +233,16 @@ func _make_image() -> void:
 	_img_data = data
 	_img_exp = explored.duplicate()
 	_img_vis = vis.duplicate()
-	# four pixels a tile, smoothed, so the edge of sight is soft
+	# one pixel a tile, smoothed by the graphics card so the edge of sight is soft (build 66.1: it was
+	# made four times as big on the processor, a stall of up to a tenth of a second each second)
 	var img := Image.create_from_data(w, h, false, Image.FORMAT_RGBA8, data)
-	img.resize(w * 4, h * 4, Image.INTERPOLATE_BILINEAR)
-	if tex == null or tex.get_width() != img.get_width():
-		tex = ImageTexture.create_from_image(img)
+	if _img_tex == null or _img_tex.get_width() != img.get_width():
+		_img_tex = ImageTexture.create_from_image(img)
+		tex = CanvasTexture.new()
+		tex.diffuse_texture = _img_tex
+		tex.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	else:
-		tex.update(img)
+		_img_tex.update(img)
 
 
 # ---------------------------------------------------------------- scouting
@@ -326,6 +342,7 @@ func load_state(d: Dictionary) -> void:
 	_own_last = PackedByteArray()
 	_img_exp = PackedByteArray()
 	_sig = ""
+	_bsig = ""
 	seen = {}
 	for k in d.get("seen", {}):
 		seen[int(k)] = d.seen[k]

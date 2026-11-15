@@ -60,7 +60,7 @@ func _init() -> void:
 	var h: Array = tqf.held[wc.id]
 	check(wc.tool_q == SimArms.STEEL and float(h[1]) > tqf.q_value(tqf.LIFE, float(h[0])) * 1.2, "worn out with a steel axe in store: he takes it, and it lasts longer (%d cycles)" % roundi(float(h[1])))
 	var lines: PackedStringArray = tqf.building_lines(wc)
-	check(" ".join(lines).contains("steel axes"), "the panel says so: %s" % (lines[0] if lines.size() > 0 else ""))
+	check(" ".join(lines).contains("steel[/color] axes") and " ".join(lines).contains("res_axes_steel.png"), "the panel says so: %s" % (lines[0] if lines.size() > 0 else ""))
 	# 4. smiths make tools of their metal
 	check(ar.maker_tier("bronze_smith") == 1 and ar.maker_tier("toolsmith") == 2 and ar.maker_tier("machine_works") == 3, "bronze smith, toolsmith, machine works: bronze, iron, steel")
 	check(GameData.bld.machine_works["in"].has("steel"), "the machine works works steel")
@@ -123,5 +123,16 @@ func _init() -> void:
 	var s3 := Sim.new()
 	s3.from_save(d)
 	check(s3.by_id[wc.id].tool_q == SimArms.IRON, "an older save: workers have iron tools")
+	# 10. soldiers' arms by metal (build 67): counted as armed, kept to the soldiers there are
+	me.arm_n = [0, 0, 0, 0]
+	ar.fit_arms(me)
+	var ns := sim.soldiers(me)
+	check(int(me.arm_n[1]) + int(me.arm_n[2]) + int(me.arm_n[3]) == ns, "every soldier is counted with his arms' metal (%s of %d)" % [ar.arms_text(me), ns])
+	me.arm_n = [0, 2, 0, ns]
+	ar.fit_arms(me)
+	check(int(me.arm_n[1]) + int(me.arm_n[2]) + int(me.arm_n[3]) == ns and int(me.arm_n[3]) >= int(me.arm_n[1]), "losses fall on each metal in proportion (%s)" % ar.arms_text(me))
+	ar.rearmed(me, SimArms.STEEL)
+	check(int(me.arm_n[3]) >= 1 and SimArms.icon_id("axes", SimArms.STEEL) == "res_axes_steel" and SimArms.icon_id("axes", SimArms.IRON) == "res_axes" and SimArms.icon_id("bread", SimArms.STEEL) == "res_bread", "pictures by metal for tools and weapons only")
+	check(ResourceLoader.exists("res://textures/res_weapons_bronze.png") and ResourceLoader.exists("res://textures/metal_steel.png"), "the metal pictures are there")
 	print("ARMS TEST: %s" % ("PASS" if ok else "FAIL"))
 	quit()

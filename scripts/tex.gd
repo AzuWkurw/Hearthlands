@@ -151,6 +151,11 @@ static func all_ids() -> Array:
 		out.append("ore_%d" % o)
 	for r in GameData.resources:
 		out.append("res_" + String(r.id))
+	for r in SimArms.PICTURED:
+		out.append(SimArms.icon_id(r, SimArms.BRONZE))
+		out.append(SimArms.icon_id(r, SimArms.STEEL))
+	for m in ["bronze", "iron", "steel"]:
+		out.append("metal_" + m)
 	for b in GameData.bld:
 		out.append(GameData.bld_tex_id(b))
 		for e in Sim.ERAS:

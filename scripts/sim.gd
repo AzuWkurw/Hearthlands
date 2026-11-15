@@ -369,6 +369,7 @@ class Player:
 	var tq: Dictionary = {}        # tools and weapons by metal: res -> [_, bronze, iron, steel] (SimArms)
 	var spec_tool: Dictionary = {} # the tools idle specialists keep: like spec, metal + life left (SimArms.pack)
 	var arm_q := 0                 # the metal of the weapons last handed out (how fast they wear in a fight)
+	var arm_n: Array = [0, 0, 0, 0]  # soldiers by the metal of their arms (SimArms.fit_arms), for the panels
 	var crowded := false      # rivals only: their land is full, so they grow by taking land (attack more)
 	var crowded_t := 0.0      # game time it became crowded (0: it is not)
 	var swap_t := -999.0      # rivals only: when it last pulled down a house to make room for a key building
@@ -669,6 +670,7 @@ var perf: Dictionary = {}          # microseconds spent in each part of the simu
 
 
 var _acc1 := 0.0
+var _sec_n := 0           # ticks since the last whole second (the realms' turns within it: _player_second)
 
 
 var _ticks := 0                     # counts ticks, so work can be spread over several of them
@@ -737,7 +739,7 @@ func new_game(p_seed: String, p_foes: int, p_strength: int, p_mix: bool, p_size 
 	_avail = {}; _avail_at = {}
 	players.clear(); blds.clear(); by_id.clear(); trips.clear(); attacks.clear(); navy.clear(); naval.fx.clear(); naval._comp = PackedInt32Array(); prices.clear(); price_hist.clear(); logs.clear()
 	rel = {}; rel_since = {}; proposals = []; standing = []; _prop_id = 0
-	time = 0.0; over = false; _bid = 0; _acc1 = 0.0; _owned_dirty = true
+	time = 0.0; over = false; _bid = 0; _acc1 = 0.0; _sec_n = 0; _owned_dirty = true
 	_alloc_path_buffers()
 	rng.seed = seed_str.hash()
 	var names := AI_NAMES.duplicate()
@@ -2364,7 +2366,16 @@ func tick(dt: float) -> void:
 	_acc1 += dt
 	if _acc1 >= 1.0:
 		_acc1 -= 1.0
+		_sec_n = 0
 		_secondly()
+	else:
+		_sec_n += 1
+	# each realm's once-a-second work in its own tenth of the second (build 66.1): all of it in one tick
+	# made the game stutter once a second on a big map (a tick of 150 to 300 ms)
+	if _sec_n < 10:
+		for p in players:
+			if p.alive and p.id % 10 == _sec_n and not over:
+				_player_second(p)
 
 
 ## For finding where two runs of the same game part ways: a number that changes with any change to the
@@ -2484,6 +2495,7 @@ func _secondly() -> void:
 		for p in players:
 			if p.alive:
 				arms.trim(p)
+				arms.fit_arms(p)
 	Crops.grow(self)
 	if logistics.road_carriers_on():
 		for p in players:
@@ -2508,82 +2520,84 @@ func _secondly() -> void:
 	market.on_second()
 	if not over:
 		_check_alliance_end()
-	for p in players:
-		if not p.alive:
-			continue
-		var t0 := Time.get_ticks_usec()
-		staffing(p)
-		_pf("workers", t0)
-		if creative(p):
-			# creative mode: every good is kept at least half full (production still runs to the top)
-			for r in GameData.resources:
-				var half := floorf(capacity(p, r.id) * 0.5)
-				if float(p.stock.get(r.id, 0.0)) < half:
-					give(p, r.id, half - float(p.stock.get(r.id, 0.0)))
-		t0 = Time.get_ticks_usec()
-		var rt := (p.peasant * 0.004 + p.artisan * 0.005 + p.noble * 0.008 + (soldiers(p) + p.scout) * 0.004 + p.kids.size() * 0.002) * maxf(0.4, 1.0 + mod(p, "food"))
-		for f: Feature in features:
-			rt *= f.food_factor(p)
-		p.hunger += rt
-		while p.hunger >= 1.0:
-			var v := take_food(p)
-			if v <= 0.0:
-				p.starve = mini(30, p.starve + 10)
-				p.hunger -= 1.0
-			else:
-				p.hunger -= v
-		if p.starve > 0:
-			p.starve -= 1
-			p.die_t += 1
-			if p.die_t % 10 == 0 and p.peasant < 10 and p.artisan > 2:
-				p.artisan -= 1; p.peasant += 1
-				if not p.ai: emit_log("Hunger sends an artisan back to the fields.", Color("e08a6a"))
-			if p.die_t >= 12 and p.peasant > 4:
-				p.peasant -= 1; p.die_t = 0
-				if not p.ai: emit_log("A peasant starved.", Color("e08a6a"))
+
+
+## A realm's once-a-second work: workers, food, people, taxes, research, and a rival's diplomacy,
+## building and attacks. Each realm has its own tenth of the second for it (p.id % 10).
+func _player_second(p: Player) -> void:
+	var t0 := Time.get_ticks_usec()
+	staffing(p)
+	_pf("workers", t0)
+	if creative(p):
+		# creative mode: every good is kept at least half full (production still runs to the top)
+		for r in GameData.resources:
+			var half := floorf(capacity(p, r.id) * 0.5)
+			if float(p.stock.get(r.id, 0.0)) < half:
+				give(p, r.id, half - float(p.stock.get(r.id, 0.0)))
+	t0 = Time.get_ticks_usec()
+	var rt := (p.peasant * 0.004 + p.artisan * 0.005 + p.noble * 0.008 + (soldiers(p) + p.scout) * 0.004 + p.kids.size() * 0.002) * maxf(0.4, 1.0 + mod(p, "food"))
+	for f: Feature in features:
+		rt *= f.food_factor(p)
+	p.hunger += rt
+	while p.hunger >= 1.0:
+		var v := take_food(p)
+		if v <= 0.0:
+			p.starve = mini(30, p.starve + 10)
+			p.hunger -= 1.0
 		else:
-			p.die_t = 0
-		p.imm_t += 1
-		if p.imm_t >= 8.0 / (1.0 + mod(p, "immigration")) and p.starve == 0 and time >= p.gates_until and pop_total(p) + p.kids.size() / 2 < housing(p) and food_total(p) >= 8.0 + pop_total(p) * 0.2:
-			p.peasant += 1; p.imm_t = 0
-		people.families(p)
-		update_needs(p)
-		_pf("people", t0)
+			p.hunger -= v
+	if p.starve > 0:
+		p.starve -= 1
+		p.die_t += 1
+		if p.die_t % 10 == 0 and p.peasant < 10 and p.artisan > 2:
+			p.artisan -= 1; p.peasant += 1
+			if not p.ai: emit_log("Hunger sends an artisan back to the fields.", Color("e08a6a"))
+		if p.die_t >= 12 and p.peasant > 4:
+			p.peasant -= 1; p.die_t = 0
+			if not p.ai: emit_log("A peasant starved.", Color("e08a6a"))
+	else:
+		p.die_t = 0
+	p.imm_t += 1
+	if p.imm_t >= 8.0 / (1.0 + mod(p, "immigration")) and p.starve == 0 and time >= p.gates_until and pop_total(p) + p.kids.size() / 2 < housing(p) and food_total(p) >= 8.0 + pop_total(p) * 0.2:
+		p.peasant += 1; p.imm_t = 0
+	people.families(p)
+	update_needs(p)
+	_pf("people", t0)
+	t0 = Time.get_ticks_usec()
+	var ctf = get_feature("contentment")
+	var qtax: float = ctf.QUARTER_TAX * ctf.quarter_share(p) if ctf != null else 0.0
+	p.tax += p.noble * (0.4 + 0.8 * float(p.sat.noble)) * (1.0 + mod(p, "tax") + LUX_TAX * p.lux + qtax) / 60.0
+	if p.tax >= 1.0:
+		give(p, "gold", floorf(p.tax)); p.tax -= floorf(p.tax)
+	if mil_fill(p):
+		recompute_territory()
+	_pf("garrisons", t0)
+	t0 = Time.get_ticks_usec()
+	_research_tick(p)
+	_reno_tick(p)
+	_pf("research", t0)
+	t0 = Time.get_ticks_usec()
+	if over:
+		return
+	if p.ai:
+		p.dip_t -= 1.0
+		if p.dip_t <= 0.0:
+			p.dip_t = rng.randf_range(20.0, 30.0)
+			Diplomacy.ai_tick(self, p)
+	_pf("diplomacy", t0)
+	t0 = Time.get_ticks_usec()
+	if p.ai:
+		p.think_t -= 1.0
+		if p.think_t <= 0.0:
+			p.think_t = p.think * rng.randf_range(0.8, 1.2)
+			ai_think(p)
+		_pf("ai building", t0)
 		t0 = Time.get_ticks_usec()
-		var ctf = get_feature("contentment")
-		var qtax: float = ctf.QUARTER_TAX * ctf.quarter_share(p) if ctf != null else 0.0
-		p.tax += p.noble * (0.4 + 0.8 * float(p.sat.noble)) * (1.0 + mod(p, "tax") + LUX_TAX * p.lux + qtax) / 60.0
-		if p.tax >= 1.0:
-			give(p, "gold", floorf(p.tax)); p.tax -= floorf(p.tax)
-		if mil_fill(p):
-			recompute_territory()
-		_pf("garrisons", t0)
-		t0 = Time.get_ticks_usec()
-		_research_tick(p)
-		_reno_tick(p)
-		_pf("research", t0)
-		t0 = Time.get_ticks_usec()
-		if over:
-			return
-		if p.ai:
-			p.dip_t -= 1.0
-			if p.dip_t <= 0.0:
-				p.dip_t = rng.randf_range(20.0, 30.0)
-				Diplomacy.ai_tick(self, p)
-		_pf("diplomacy", t0)
-		t0 = Time.get_ticks_usec()
-		if p.ai:
-			p.think_t -= 1.0
-			if p.think_t <= 0.0:
-				p.think_t = p.think * rng.randf_range(0.8, 1.2)
-				ai_think(p)
-			_pf("ai building", t0)
-			t0 = Time.get_ticks_usec()
-			p.attack_t -= 1.0
-			if p.attack_t <= 0.0 and time > p.grace and time >= float(opts.peace_min) * 60.0:
-				p.attack_t = (25.0 + (10 - p.skill) * 8.0 + rng.randf() * 20.0) * (0.5 if p.crowded else 1.0)
-				ai_attack(p)
-			_pf("ai attacks", t0)
+		p.attack_t -= 1.0
+		if p.attack_t <= 0.0 and time > p.grace and time >= float(opts.peace_min) * 60.0:
+			p.attack_t = (25.0 + (10 - p.skill) * 8.0 + rng.randf() * 20.0) * (0.5 if p.crowded else 1.0)
+			ai_attack(p)
+		_pf("ai attacks", t0)
 
 
 # ================================================================ save / load
@@ -2629,7 +2643,7 @@ func to_save() -> Dictionary:
 		"rng_seed": rng.seed, "rng_state": rng.state, "players": pl, "blds": bl, "trips": tr, "attacks": at,
 		"vein": vein, "vein_amt": vein_amt, "vein_tiles": vein_tiles, "pave": pave, "rail": rail, "fields": fields, "places": places, "map_biome": map_biome,
 		"rel": rel, "rel_since": rel_since, "proposals": proposals, "standing": standing, "prop_id": _prop_id,
-		"mission": mission, "mission_done": mission_done, "ticks": _ticks,
+		"mission": mission, "mission_done": mission_done, "ticks": _ticks, "sec_n": _sec_n,
 		"coming": _coming, "coming_tick": _coming_tick, "navy": navy, "prices": prices, "price_hist": price_hist,
 	}
 
@@ -2661,6 +2675,7 @@ func from_save(d: Dictionary) -> String:
 	# the tick count decides which ticks hand out work (every 2nd, 3rd...): a loaded game must go on in
 	# the same rhythm (saves from before build 34 did not keep it; the time gives it closely enough)
 	_ticks = int(d.get("ticks", roundi(time / TICK)))
+	_sec_n = int(d.get("sec_n", 10))
 	# goods on their way to the stores, as counted (SimProduction.coming): kept so the game goes on the same
 	_coming = d.get("coming", {}).duplicate(true)
 	_coming_tick = int(d.get("coming_tick", -1000))

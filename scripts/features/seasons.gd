@@ -89,7 +89,9 @@ func on_start(loaded: bool) -> void:
 	_make_textures()
 	for k in 4:
 		_snow[k] = _snow_target(k)
-	_update_realm_temps()
+	# a loaded game keeps the temperatures of its last whole second (saved), so it goes on the same
+	if not loaded or _realm_t.is_empty():
+		_update_realm_temps()
 
 
 # ---------------------------------------------------------------- climate
@@ -691,7 +693,7 @@ func draw_overlay(view: CanvasItem, to_tile: Callable) -> void:
 # ---------------------------------------------------------------- saving
 
 func save_state() -> Dictionary:
-	return {"weather": weather, "until": weather_until, "rng": rng.state, "seed": rng.seed, "season": last_season, "paved": _paved, "year": year_kind}
+	return {"weather": weather, "until": weather_until, "rng": rng.state, "seed": rng.seed, "season": last_season, "paved": _paved, "year": year_kind, "realm_t": _realm_t}
 
 
 func load_state(d: Dictionary) -> void:
@@ -705,6 +707,12 @@ func load_state(d: Dictionary) -> void:
 	var pv: Dictionary = d.get("paved", {})
 	for k in pv:
 		_paved[int(k)] = float(pv[k])
+	# the temperatures of the last whole second (each realm's turn within the second uses them)
+	_realm_t = {}
+	if d.has("realm_t"):
+		var rt: Dictionary = d.realm_t
+		for k in rt:
+			_realm_t[int(k)] = float(rt[k])
 
 
 ## Whether a storm (or a blizzard) blows at tile (x, y): ships and boats stay in harbour (build 55).

@@ -10,7 +10,7 @@ economy you do.
 ## Download
 
 The ready-made Windows game is on the [Releases page](../../releases/latest): download the
-`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.61.0 build 66** (see
+`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.62.0 build 67** (see
 `CHANGELOG.md`). Every build is a release of its own, made by GitHub Actions
 (`.github/workflows/release.yml`) when a new version reaches `main`; older builds up to 50 are also
 on the [`downloads` branch](../../tree/downloads).
@@ -63,6 +63,7 @@ Done (builds 43 to 57):
 | 64 | Steam and rails: steel, rails and locomotives; track, stations and trains; steam engines for old workshops (faster for coal, smoke near homes) |
 | 65 | The Bronze Age, first age of every game: tin, bronze foundries and smiths, mud-brick and thatch buildings, bronze warriors; Iron working opens the Roman age |
 | 66 | Tools and weapons by metal (bronze, iron, steel: speed, wear, which soldiers they arm); locked buildings shown with their study, pause when attacked; rivals and hunters much faster on big maps; fixes: first workers without tools, worn tools never replaced in time, mesh errors; a test bench on the Test map |
+| 67 | Slowdowns on big maps fixed (fields drawn in blocks, realms take turns within the second, faster fog and sea checks); tools and weapons pictured by metal, metals coloured, soldiers counted by their arms; fixes: tool info, metal list, loaded games drifting |
 
 Later: a story campaign through the ages, multiplayer, scripted scenarios, a chronicle at the end of a
 game, more animations, music for each age, and quality-of-life features (a production chain overlay,
@@ -984,6 +985,16 @@ better the metal the faster they work and the longer they last.
 - A worker whose tool wore out now counts as waiting for one, so the toolsmiths make it; the Problems
   window lists him.
 - Saves from before build 66 load with iron tools in every worker's hands.
+
+How it looks (build 67): each tool and the weapons have a picture for each metal: bronze is golden
+brown, iron the usual grey, steel bright blue-grey (`textures/res_<good>_bronze.png`, `_steel.png`; iron is
+the usual `res_<good>.png`, and all can be replaced like any texture). The stores show the picture of the
+best metal you have of each, and their tooltip the count of each metal ("Axes: 3 steel, 4 iron"). Metal
+names are coloured in the panels, with an ingot badge (`metal_bronze.png`, `metal_iron.png`,
+`metal_steel.png`) where the metals are explained; the building's panel shows its worker's tool with its
+picture. Soldiers are counted by the metal of their arms ("Arms 2 steel, 4 iron, 2 bronze" in the people
+panel and the weapons' panel): counted as the barracks arm them and as they re-arm, and losses fall on
+each metal in proportion.
 
 ## The Bronze Age
 

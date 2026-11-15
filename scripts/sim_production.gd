@@ -356,6 +356,7 @@ func finish_prod(b: Sim.Bld, p: Sim.Player) -> void:
 				var rm := sim.rmix_of(p)
 				rm[kind] += 1
 				p.reserve += 1
+				sim.arms.armed(p, tier)
 				p.res_era = Sim.mix_avg(rm)
 				var vet := false
 				if p.stock.get("armor", 0.0) >= 1.0:

@@ -163,14 +163,14 @@ func building_lines(b: Sim.Bld) -> PackedStringArray:
 			out.append("[color=#f0a090]Tool: worn-out %s, %d%% work. Needs a new one from the stores.[/color]" % [GameData.res_name(tool).to_lower(), roundi(WORN * 100.0)])
 		else:
 			var ms: float = SimArms.TOOL_SPEED[clampi(b.tool_q, 0, 3)]
-			out.append("Tool: %s %s%s, %d of %d cycles left (%+d%% work)" % [q_name(q), (metal + " ") if metal != "" else "", GameData.res_name(tool).to_lower(), ceili(float(h[1])),
+			out.append("Tool: [img=16x16]%s[/img] %s %s%s, %d of %d cycles left (%+d%% work)" % ["res://textures/%s.png" % SimArms.icon_id(tool, b.tool_q), q_name(q), (SimArms.tag(b.tool_q) + " ") if metal != "" else "", GameData.res_name(tool).to_lower(), ceili(float(h[1])),
 				roundi(q_value(LIFE, q) * SimArms.life_of(b.tool_q)), roundi(((1.0 + bonus) * ms - 1.0) * 100.0)])
 	if tool != "":
 		var sp: String = sim.arms.split_text(p, tool)
 		if int(p.stock.get(tool, 0.0)) <= 0:
 			out.append("%s in store: none" % GameData.res_name(tool))
 		else:
-			out.append("%s in store: %d, %s on average%s" % [GameData.res_name(tool), int(p.stock.get(tool, 0.0)), q_name(store_quality(p, tool)), (" (%s)" % sp) if sp != "" else ""])
+			out.append("%s in store: %d, %s on average%s" % [GameData.res_name(tool), int(p.stock.get(tool, 0.0)), q_name(store_quality(p, tool)), (" (%s)" % sim.arms.split_bb(p, tool)) if sp != "" else ""])
 	return out
 
 
@@ -196,7 +196,7 @@ func panel_lines(p: Sim.Player) -> PackedStringArray:
 	var mb := []
 	for t in [3, 2, 1]:
 		if metals[t] > 0:
-			mb.append("%d %s" % [metals[t], SimArms.NAMES[t]])
+			mb.append("%d %s" % [metals[t], SimArms.tag(t)])
 	return PackedStringArray(["Tools in use  " + ", ".join(bits) + ("  (%s)" % ", ".join(mb) if not mb.is_empty() else "")])
 
 

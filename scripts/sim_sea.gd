@@ -48,6 +48,53 @@ func _moorings(x: int, y: int) -> PackedInt32Array:
 	return out
 
 
+## The body of water each water tile belongs to (8-connected, as ships sail), worked out once for a
+## map (build 66.1): a harbour on a lake can then be told at once that the sea is out of reach, instead
+## of searching all the lake's water each time.
+var _wb := PackedInt32Array()
+var _wb_key := 0
+
+func water_body(i: int) -> int:
+	if _wb.size() != sim.w * sim.h:
+		_wb_check()
+	return _wb[i] if i >= 0 and i < _wb.size() else 0
+
+
+## Worked out again if the land has changed (the map editor); one quick hash per sea route asked for.
+func _wb_check() -> void:
+	var key: int = hash(sim.ter)
+	if _wb.size() != sim.w * sim.h or _wb_key != key:
+		_wb_key = key
+		_wb = PackedInt32Array()
+		_wb.resize(sim.w * sim.h)
+		_wb.fill(0)
+		var next := 0
+		for s0 in sim.w * sim.h:
+			if sim.ter[s0] != Sim.WATER or _wb[s0] != 0:
+				continue
+			next += 1
+			_wb[s0] = next
+			var q := PackedInt32Array([s0])
+			var head := 0
+			while head < q.size():
+				var cur := q[head]
+				head += 1
+				var cx := cur % sim.w
+				var cy := cur / sim.w
+				for dy in range(-1, 2):
+					var ny := cy + dy
+					if ny < 0 or ny >= sim.h:
+						continue
+					for dx in range(-1, 2):
+						var nx := cx + dx
+						if nx < 0 or nx >= sim.w:
+							continue
+						var ni := ny * sim.w + nx
+						if _wb[ni] == 0 and sim.ter[ni] == Sim.WATER:
+							_wb[ni] = next
+							q.append(ni)
+
+
 ## The way over water from near (ax, ay) to near (bx, by), or empty if the seas are not joined.
 ## Breadth-first over water tiles, eight directions, so ships cut corners like boats do.
 func water_path(ax: int, ay: int, bx: int, by: int) -> PackedInt32Array:
@@ -55,34 +102,52 @@ func water_path(ax: int, ay: int, bx: int, by: int) -> PackedInt32Array:
 	var goals := _moorings(bx, by)
 	if starts.is_empty() or goals.is_empty():
 		return PackedInt32Array()
+	# not on the same water: no way at all (found at once)
+	_wb_check()
+	var gb := {}
+	for g in goals:
+		gb[water_body(g)] = true
+	var same := false
+	for s1 in starts:
+		if gb.has(water_body(s1)):
+			same = true
+	if not same:
+		return PackedInt32Array()
 	var goal := {}
 	for g in goals:
 		goal[g] = true
-	var came := {}
-	var q := []
+	# arrays rather than dictionaries (build 66.1): the same search, several times faster on big seas
+	var came := PackedInt32Array()
+	came.resize(sim.w * sim.h)
+	came.fill(-2)
+	var q := PackedInt32Array()
 	for s in starts:
 		came[s] = -1
 		q.append(s)
 	var head := 0
 	var found := -1
+	var w: int = sim.w
+	var h: int = sim.h
 	while head < q.size() and head < 60000:
 		var cur: int = q[head]
 		head += 1
 		if goal.has(cur):
 			found = cur
 			break
-		var cx := cur % sim.w
-		var cy := cur / sim.w
+		var cx := cur % w
+		var cy := cur / w
 		for dy in range(-1, 2):
+			var ny := cy + dy
+			if ny < 0 or ny >= h:
+				continue
 			for dx in range(-1, 2):
 				if dx == 0 and dy == 0:
 					continue
 				var nx := cx + dx
-				var ny := cy + dy
-				if not sim.inb(nx, ny):
+				if nx < 0 or nx >= w:
 					continue
-				var ni := ny * sim.w + nx
-				if came.has(ni) or sim.ter[ni] != Sim.WATER:
+				var ni := ny * w + nx
+				if came[ni] != -2 or sim.ter[ni] != Sim.WATER:
 					continue
 				came[ni] = cur
 				q.append(ni)
@@ -378,6 +443,10 @@ func fleets_meet_ships() -> void:
 func ai_expedition(p: Sim.Player) -> void:
 	if free_ships(p) < 1 or p.reserve < 2:
 		return
+	# (build 66.1) after one that could not sail (no sea way from a lake harbour: a search over the
+	# whole water, a third of a second on a big map), the next try waits two minutes
+	if float(p.site_wait.get("@expedition", 0.0)) > sim.time:
+		return
 	var hs := harbours(p)
 	if hs.is_empty():
 		return
@@ -385,8 +454,10 @@ func ai_expedition(p: Sim.Player) -> void:
 	if float(h.inv.get("planks", 0.0)) < EXPEDITION.planks or float(h.inv.get("stone", 0.0)) < EXPEDITION.stone:
 		return
 	var best := -1
-	var bd := 1e9
-	# coast tiles nobody holds, sampled over the map
+	# coast tiles nobody holds, sampled over the map; the nearest that a fleet can land on. (build 66.1:
+	# the costly landing check only for the nearest first, not for every nearer one found: a think on a
+	# big map could take a third of a second here)
+	var cands := []
 	for k in 400:
 		var i := sim.rng.randi() % (sim.w * sim.h)
 		var x := i % sim.w
@@ -394,10 +465,16 @@ func ai_expedition(p: Sim.Player) -> void:
 		if sim.owner[i] != 0 or (sim.ter[i] != Sim.BEACH and sim.ter[i] != Sim.GRASS):
 			continue
 		var d := Vector2(x - h.x, y - h.y).length()
-		if d < bd and d > 10.0 and landing_ok(x, y, p.id) == "":
-			bd = d; best = i
+		if d > 10.0:
+			cands.append([d, k, i])
+	cands.sort_custom(func(a, b): return a[0] < b[0] or (a[0] == b[0] and a[1] < b[1]))
+	for c in cands.slice(0, 40):
+		if landing_ok(int(c[2]) % sim.w, int(c[2]) / sim.w, p.id) == "":
+			best = int(c[2])
+			break
 	if best >= 0:
-		expedition(p, h, best % sim.w, best / sim.w)
+		if expedition(p, h, best % sim.w, best / sim.w) != "":
+			p.site_wait["@expedition"] = sim.time + 120.0
 
 
 # ---------------------------------------------------------------- river boats (build 55)

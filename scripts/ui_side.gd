@@ -30,6 +30,8 @@ func _refresh_folk() -> void:
 	if p.noble > 0 and lux_n > 0 and (p.lux > 0 or p.age >= 3):
 		t += "Luxuries  [b]%d[/b] of %d%s\n" % [p.lux, lux_n, ("  [color=#8fc070](noble tax +%d%%)[/color]" % roundi(p.lux * Sim.LUX_TAX * 100)) if p.lux > 0 else "  [color=#9a9c88](spices, silk, porcelain, coffee)[/color]"]
 	t += "Soldiers  [b]%d[/b] (%d in HQ, %d veterans): %s\n" % [main.sim.soldiers(p), p.reserve, int(p.vets), Sim.mix_text(main.sim.soldier_mix(p))]
+	if main.sim.soldiers(p) > 0 and main.sim.arms.arms_text(p) != "":
+		t += "  Arms  %s\n" % main.sim.arms.arms_text(p, true)
 	var worn := p.blunt
 	for wb: Sim.Bld in main.sim.realm_blds(p):
 		worn += wb.blunt
@@ -152,12 +154,14 @@ func _res_info(id: String) -> String:
 		var tr := String(r.tool)
 		var waiting := int(p.tool_wait.get(id, 0))
 		t += "Each new %s (%s) needs one, and a new one when it wears out; an idle specialist keeps his%s\n" % [GameData.trade_title(tr), GameData.trade_name(tr).to_lower(), (". [color=#f08a7a]%d building%s waiting for one[/color]" % [waiting, "s" if waiting != 1 else ""]) if waiting > 0 else ""]
-		t += "Bronze tools work 10%% slower and last %d min of work, iron %d min, steel %d min and 15%% faster\n" % [roundi(SimArms.TOOL_LIFE[1] / 60.0), roundi(SimArms.TOOL_LIFE[2] / 60.0), roundi(SimArms.TOOL_LIFE[3] / 60.0)]
+		t += "%s tools work %d%% slower and wear out in %d%% of the time of %s ones; %s tools work %d%% faster and last %d%% longer\n" % [SimArms.tag(1, true), roundi((1.0 - SimArms.TOOL_SPEED[1]) * 100), roundi(SimArms.TOOL_LIFE[1] * 100), SimArms.tag(2, true), SimArms.tag(3, true), roundi((SimArms.TOOL_SPEED[3] - 1.0) * 100), roundi((SimArms.TOOL_LIFE[3] - 1.0) * 100)]
 	if r.has("tool") or id == "weapons":
-		var sp := main.sim.arms.split_text(p, id)
+		var sp := main.sim.arms.split_bb(p, id)
 		if sp != "":
 			t += "In store by metal: %s\n" % sp
 	if id == "weapons":
+		if main.sim.soldiers(p) > 0:
+			t += "Your soldiers' arms: %s\n" % main.sim.arms.arms_text(p, true)
 		t += "Bronze arms make bronze warriors only; iron arms soldiers up to musketeers; riflemen need steel arms (machine works). Better arms train faster and wear out less in a fight\n"
 	var tg := main.sim.target_of(p, id)
 	t += "Production target: %s\n" % ("none (makes up to the store room)" if tg < 0 else "keep %d in store, then pause" % tg)

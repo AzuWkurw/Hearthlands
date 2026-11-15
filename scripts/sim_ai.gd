@@ -203,7 +203,9 @@ func _pack_score(ty: String, x: int, y: int, p: Sim.Player) -> float:
 ## Spots looked at for a new building (each costs a full can_place), and how many good ones are enough
 ## to pick from.
 const SITE_TRIES := 200
-const SITE_WAIT := 40.0      # seconds before a workshop that found no spot is looked for again
+const SITE_WAIT := 40.0
+const SEARCH_MAX := 6        # searches for a building spot in one think
+var _searches := 0      # seconds before a workshop that found no spot is looked for again
 const SITE_CANDS := 20
 const MIL_TRIES := 220
 ## Spots that had no room for a building of some size are skipped for this long (game seconds): the
@@ -241,6 +243,7 @@ func _try_spot(p: Sim.Player, ty: String, i: int, bad: Dictionary) -> bool:
 
 func _ai_sites(p: Sim.Player, ty: String) -> Array:
 	var d: Dictionary = GameData.bld[ty]
+	var _a := Time.get_ticks_usec()
 	var lists := sim.owned(p.id)
 	var cands := PackedInt32Array()
 	var bad := _bad_of(p, sim.size_of(ty))
@@ -271,13 +274,22 @@ func _ai_sites(p: Sim.Player, ty: String) -> Array:
 				tries += 1
 				if _try_spot(p, ty, i, bad):
 					cands.append(i)
+	var _b := Time.get_ticks_usec()
 	var scored := []
 	var large := sim.size_of(ty) == "large"
 	var kin := _kin(p, ty)
+	var _c := Time.get_ticks_usec()
+	var _ss := 0
+	var _ps := 0
 	for i in cands:
 		var x := i % sim.w
 		var y := i / sim.w
-		var sc := _site_score(ty, x, y, p) + _pack_score(ty, x, y, p) + _kin_score(kin, x, y) + sim.rng.randf() * 0.8
+		var _e := Time.get_ticks_usec()
+		var sc := _site_score(ty, x, y, p)
+		_ss += Time.get_ticks_usec() - _e
+		_e = Time.get_ticks_usec()
+		sc += _pack_score(ty, x, y, p) + _kin_score(kin, x, y) + sim.rng.randf() * 0.8
+		_ps += Time.get_ticks_usec() - _e
 		# spots kept for large buildings: only large ones go there, and they like them
 		var near_res := _near_reserved(p, x, y)
 		if near_res == 0 and large:
@@ -286,6 +298,8 @@ func _ai_sites(p: Sim.Player, ty: String) -> Array:
 			continue
 		scored.append([sc, x, y])
 	scored.sort_custom(func(a, b): return a[0] > b[0])
+	if Time.get_ticks_usec() - _a > 20000:
+		print("SITES %s: cands %d (%d ms), kin %d ms, site_score %d ms, pack+kin %d ms, freelist %d" % [ty, cands.size(), (_b - _a) / 1000, (_c - _b) / 1000, _ss / 1000, _ps / 1000, _free_tiles(p, lists[0]).size()])
 	return scored.slice(0, 6)
 
 
@@ -380,6 +394,21 @@ func _free_tiles(p: Sim.Player, land: PackedInt32Array) -> PackedInt32Array:
 	return _free
 
 
+## Whether any of 16 points around (x, y) at distance r (and r/2) is land nobody holds.
+func _free_ring(x: int, y: int, r: int) -> bool:
+	for k in 16:
+		var a := TAU * k / 16.0
+		var rr := float(r) if k % 2 == 0 else r * 0.6
+		var xx := x + roundi(cos(a) * rr)
+		var yy := y + roundi(sin(a) * rr)
+		if xx < 0 or yy < 0 or xx >= sim.w or yy >= sim.h:
+			continue
+		var j := yy * sim.w + xx
+		if sim.owner[j] == 0 and sim.ter[j] != Sim.WATER:
+			return true
+	return false
+
+
 func _ai_mil_sites(p: Sim.Player, ty: String) -> Array:
 	var d: Dictionary = GameData.bld[ty]
 	var list: PackedInt32Array = sim.owned(p.id)[0]
@@ -409,6 +438,10 @@ func _ai_mil_sites(p: Sim.Player, ty: String) -> Array:
 		tries += 1
 		var x := i % sim.w
 		var y := i / sim.w
+		# (build 67) deep inside the realm (no free land anywhere on the edge of its reach) it can claim
+		# nothing: skip the costly checks (in a big realm most spots are such)
+		if not _free_ring(x, y, r):
+			continue
 		if _near_reserved(p, x, y) >= 0 or not _try_spot(p, ty, i, bad):
 			continue
 		var gain := 0.0
@@ -451,6 +484,13 @@ func _ai_build(p: Sim.Player, ty: String) -> String:
 	var waits: bool = not d.has("garrison") and not d.get("claim_only", false) and not ty in ["house", "apartments", "storehouse"]
 	if waits and float(p.site_wait.get(ty, 0.0)) > sim.time:
 		return "nosite"      # (as when it was looked for: a full realm still counts as full)
+	# (build 66.1) at most SEARCH_MAX searches for a spot in one think: the rest wait for the next one, so
+	# no single think holds the game up (on a big map one could take a quarter of a second)
+	# (military buildings and houses are always looked for: they make room and push the border out)
+	if waits:
+		if _searches >= SEARCH_MAX:
+			return "skip"
+		_searches += 1
 	var sites := _ai_mil_sites(p, ty) if d.has("garrison") or d.get("claim_only", false) else _ai_sites(p, ty)
 	if sites.is_empty():
 		stats["no candidates"] = int(stats.get("no candidates", 0)) + 1
@@ -468,6 +508,7 @@ func _ai_build(p: Sim.Player, ty: String) -> String:
 
 func ai_think(p: Sim.Player) -> void:
 	_free_pid = -1
+	_searches = 0
 	_plan_town(p)
 	_ai_priorities(p)
 	_ai_steam_rails(p)

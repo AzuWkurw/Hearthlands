@@ -2184,6 +2184,16 @@ func _refresh_all() -> void:
 		var full := v > 0 and float(p.stock.get(id, 0.0)) + sim.coming(p, id) >= sim.capacity(p, id) - 0.5
 		l.modulate = Color(1, 1, 1, 0.45) if v == 0 else (Color(1.0, 0.68, 0.32) if full else Color.WHITE)
 		var row := l.get_parent() as Control
+		# tools and weapons: the picture of the best metal in store, and each metal's count (build 67)
+		if v > 0 and SimArms.PICTURED.has(id):
+			var tid := SimArms.icon_id(id, sim.arms.best(p, id))
+			var ic: TextureRect = stock_icons[id]
+			if ic.get_meta("tid", "") != tid:
+				ic.set_meta("tid", tid)
+				ic.texture = Tex.get_tex(tid)
+			var tip := "%s: %s" % [GameData.res_name(id), sim.arms.split_text(p, id)]
+			if row.tooltip_text != tip:
+				row.tooltip_text = tip
 		if not row.visible and v >= 1 and res_shown(id):
 			row.visible = true      # a good you had never seen arrived (trade, plunder, an event)
 	_refresh_folk()
