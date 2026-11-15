@@ -1531,6 +1531,9 @@ func _draw_selection_and_tools() -> void:
 		if sel.def.has("carriers"):
 			_cv.draw_arc(Vector2(sel.x + 0.5, sel.y + 0.5), float(sel.def.carriers.range), 0, TAU, 64, Color(0.6, 0.9, 1.0, 0.5), 0.07)
 	_unlift()
+	# the build queue's numbers over its sites (build 62)
+	for qb: Sim.Bld in sim.build_queue(1):
+		_tool_labels.append([Vector2(qb.x + 0.5, qb.y - 0.9), "#%d" % qb.queue_n, Color("8fe0ff")])
 	if sel_tile >= 0:
 		var q := tile_quad(sel_tile % w, sel_tile / w)
 		q.append(q[0])

@@ -1859,6 +1859,15 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.keycode == KEY_E and not setup.visible:
 		log_ui.toggle()
 		return
+	if event.keycode == KEY_Q and event.shift_pressed and not setup.visible and not editor_ui.open:
+		var qb := sim.bld_at(view.ghost.x, view.ghost.y) if sim.inb(view.ghost.x, view.ghost.y) else null
+		if qb != null and qb.p == 1 and qb.state == "build":
+			var n := sim.queue_site(qb, qb.queue_n == 0)
+			_show_hint(tr("Site #%d in the build queue.") % n if n > 0 else tr("The site left the build queue."), 2.5)
+			view.queue_redraw()
+		else:
+			_show_hint(tr("Point at one of your building sites and press Shift+Q to queue it."), 2.5)
+		return
 	if event.keycode == KEY_Q and not setup.visible and not editor_ui.open:
 		# copy: place another of the building under the mouse
 		var cb := sim.bld_at(view.ghost.x, view.ghost.y)

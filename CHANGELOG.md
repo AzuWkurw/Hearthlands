@@ -1,5 +1,12 @@
 # Changelog
 
+## Build 62 (v0.57.0, 2026-11-15)
+
+Build 62: guilds, a build queue, copying settings.
+- Guilds: with the Guilds tech, three or more working buildings of one trade within 8 tiles of each other form a guild and work 10% faster (15% with five or more). A building's info says whether it is in a guild, or how many more it needs.
+- The build queue: a building site's info has "Add to the build queue" (or point at a site and press Shift+Q). Queued sites are built one after another, in the order you queued them, before any other site; the rest of the queue waits its turn. Their numbers show over them on the map, and a waiting site says so.
+- Copy settings: a building's info has "Copy settings to all N": every other building of its kind gets the same priority, inputs to keep, crop (farms), or soldiers wanted and archers (military buildings).
+
 ## Build 61 (v0.56.0, 2026-11-15)
 
 Build 61: trade worth doing, standing orders, the realms graph.

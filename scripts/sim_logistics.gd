@@ -1232,15 +1232,33 @@ func _dispatch_supply() -> void:
 	if sim._supply.is_empty():
 		return
 	var buckets := [[], [], []]
+	# the build queue (build 62): of each realm's queued sites only the first gets materials; it goes
+	# before every other site of the realm, and the rest of the queue waits until it is finished
+	var head := {}
+	for id in sim.queued:
+		var qb: Sim.Bld = sim.by_id.get(id)
+		if qb != null and qb.queue_n > 0 and qb.state == "build" and not qb.dead:
+			var h0: Sim.Bld = head.get(qb.p)
+			if h0 == null or qb.queue_n < h0.queue_n or (qb.queue_n == h0.queue_n and qb.id < h0.id):
+				head[qb.p] = qb
+	var first := []
 	for id in sim._supply:
 		var b: Sim.Bld = sim.by_id.get(id)
 		if b == null or b.need.is_empty() or (b.state != "build" and b.reno_to < 0):
 			continue
 		if b.prio == Sim.PRIO_PAUSED:
 			continue
+		if b.queue_n > 0 and b.state == "build":
+			if head.get(b.p) == b:
+				first.append(b)
+			continue
 		buckets[Sim.PRIO_HIGH - b.prio].append(b)
-	for list: Array in buckets:
-		list.sort_custom(func(a, c): return a.id < c.id)
+	first.sort_custom(func(a, c): return a.id < c.id)
+	buckets.push_front(first)
+	for li in buckets.size():
+		var list: Array = buckets[li]
+		if li > 0:
+			list.sort_custom(func(a, c): return a.id < c.id)
 		for b: Sim.Bld in list:
 			var p := sim.players[b.p - 1]
 			if porters_free(p) <= 0 and (_stations[b.p - 1] as Array).is_empty() and not road_carriers_on():
@@ -1969,6 +1987,10 @@ func status(b: Sim.Bld) -> String:
 				return "Waiting for materials (on the way) %d%%" % roundi(b.prog * 100)
 			if not miss.is_empty():
 				return "Waiting for materials: no %s in store" % " or ".join(miss)
+			if b.queue_n > 0:
+				var q: Array = sim.build_queue(b.p)
+				if not q.is_empty() and q[0] != b:
+					return "Waiting for its turn in the build queue (#%d)" % b.queue_n
 			return "Waiting for materials (no free carrier) %d%%" % roundi(b.prog * 100)
 		if not b.staffed:
 			return "Waiting for a builder (no idle peasants)"

@@ -424,6 +424,8 @@ func _finish_site(b: Sim.Bld, p: Sim.Player) -> void:
 			t.path = path
 			sim.trips.append(t)
 	b.builder = 0
+	if b.queue_n > 0:
+		sim.queue_site(b, false)
 	if true:
 		b.state = "ready"; b.prog = 0.0; b.msg = ""
 		sim._after_building_change(b)

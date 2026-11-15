@@ -60,7 +60,41 @@ func rate(p: Sim.Player, b: Sim.Bld) -> float:
 	if String(b.def.get("worker", "")) == "artisan":
 		r *= 1.0 + 0.25 * float(p.sat.artisan)
 		bonus += sim.mod(p, "speed:worker:artisan")
+	bonus += guild_bonus(p, b)
 	return r * (1.0 + bonus) * (1.0 + Sim.LEVEL_BONUS * (Sim.level(b.wxp, Sim.WORKER_XP) - 1))
+
+
+## Guilds (build 62): with the Guilds tech, GUILD_MIN or more working buildings of one trade within
+## GUILD_R tiles of each other form a guild: each works GUILD_BONUS faster, GUILD_BIG with GUILD_LARGE or
+## more. Farms, mines and the like count too; homes, stores and soldiers have no trade.
+const GUILD_R := 8
+const GUILD_MIN := 3
+const GUILD_LARGE := 5
+const GUILD_BONUS := 0.1
+const GUILD_BIG := 0.15
+
+
+## How many working buildings of b's trade stand within GUILD_R tiles of it, b counted (0 without a trade).
+func guild_size(p: Sim.Player, b: Sim.Bld) -> int:
+	var tr := GameData.trade(b.ty)
+	if tr == "" or String(b.def.get("worker", "")) == "":
+		return 0
+	var n := 0
+	for o: Sim.Bld in sim.realm_blds(p):
+		if o.dead or o.state != "ready" or not o.staffed:
+			continue
+		if absi(o.x - b.x) > GUILD_R or absi(o.y - b.y) > GUILD_R:
+			continue
+		if (o.x - b.x) * (o.x - b.x) + (o.y - b.y) * (o.y - b.y) <= GUILD_R * GUILD_R and GameData.trade(o.ty) == tr:
+			n += 1
+	return n
+
+
+func guild_bonus(p: Sim.Player, b: Sim.Bld) -> float:
+	if not p.techs.has("guilds"):
+		return 0.0
+	var n := guild_size(p, b)
+	return GUILD_BIG if n >= GUILD_LARGE else (GUILD_BONUS if n >= GUILD_MIN else 0.0)
 
 
 func staffing(p: Sim.Player) -> void:

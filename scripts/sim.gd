@@ -251,6 +251,7 @@ class Bld:
 	var walking := 0   # soldiers on their way here from a store to join the garrison
 	var inv: Dictionary = {}   # a store's goods (res -> amount); the realm's stock is their total
 	var policy := 0            # a store: 0 normal, 1 gather here (others send it goods), 2 send away (takes nothing new)
+	var queue_n := 0   # a building site's place in the build queue (build 62; 0: not queued)
 	var keep := 0      # a workshop: how many work cycles of inputs it keeps (0: the usual two)
 	var in_next := 0.0 # its inputs were all there: carriers look again at this time (SimLogistics)
 	var inbuf: Dictionary = {}     # goods carried here for its work (res -> count), used as it works
@@ -622,6 +623,7 @@ var _net_dirty: Array = []         # per realm: network needs rebuilding
 
 
 var _pending: Dictionary = {}      # ids of buildings with goods waiting for a carrier
+var queued: Dictionary = {}       # ids of sites in a build queue (build 62; worked out again from Bld.queue_n on loading)
 var _supply: Dictionary = {}       # ids of construction sites still waiting for materials to be sent
 var _reno: Dictionary = {}         # ids of buildings being renovated
 var reno_queue: Dictionary = {}    # realm id -> ids of buildings waiting their turn to be renovated
@@ -706,7 +708,7 @@ func new_game(p_seed: String, p_foes: int, p_strength: int, p_mix: bool, p_size 
 	fields = {}
 	_ff_dirty = true
 	changed_tiles = PackedInt32Array()
-	_pending = {}; _supply = {}; _reno = {}; reno_queue = {}; _mil_dirty = true; _tick_dirty = true
+	_pending = {}; _supply = {}; queued = {}; _reno = {}; reno_queue = {}; _mil_dirty = true; _tick_dirty = true
 	owner = PackedByteArray(); owner.resize(w * h)
 	road = PackedByteArray(); road.resize(w * h)
 	bmap = PackedInt32Array(); bmap.resize(w * h)
@@ -2020,6 +2022,41 @@ func staffing(p: Player) -> void:
 
 
 ## Whether building b has a priority to set: construction sites and buildings with a worker.
+## The build queue (build 62): site b goes to the end of its realm's queue, or leaves it. Returns its place.
+func queue_site(b: Bld, on: bool) -> int:
+	if not on or b.state != "build":
+		if b.queue_n > 0:
+			var was := b.queue_n
+			b.queue_n = 0
+			queued.erase(b.id)
+			for id in queued:
+				var o: Bld = by_id.get(id)
+				if o != null and o.p == b.p and o.queue_n > was:
+					o.queue_n -= 1
+		return 0
+	if b.queue_n > 0:
+		return b.queue_n
+	var n := 0
+	for id in queued:
+		var o: Bld = by_id.get(id)
+		if o != null and o.p == b.p and o.queue_n > 0 and not o.dead and o.state == "build":
+			n = maxi(n, o.queue_n)
+	b.queue_n = n + 1
+	queued[b.id] = true
+	return b.queue_n
+
+
+## Realm pid's queued sites in their order.
+func build_queue(pid: int) -> Array:
+	var out := []
+	for id in queued:
+		var o: Bld = by_id.get(id)
+		if o != null and o.p == pid and o.queue_n > 0 and not o.dead and o.state == "build":
+			out.append(o)
+	out.sort_custom(func(a, c): return a.queue_n < c.queue_n)
+	return out
+
+
 func has_priority(b: Bld) -> bool:
 	return b.state == "build" or b.def.has("worker")
 
@@ -2561,7 +2598,10 @@ func from_save(d: Dictionary) -> String:
 	_reset_nets()
 	_pending = {}
 	_supply = {}
+	queued = {}
 	for b in blds:
+		if b.queue_n > 0 and not b.dead:
+			queued[b.id] = true
 		b.path_ver = -1
 		if not b.out_buf.is_empty():
 			_pending[b.id] = true

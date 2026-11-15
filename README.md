@@ -10,7 +10,7 @@ economy you do.
 ## Download
 
 The ready-made Windows game is on the [Releases page](../../releases/latest): download the
-`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.56.0 build 61** (see
+`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.57.0 build 62** (see
 `CHANGELOG.md`). Every build is a release of its own, made by GitHub Actions
 (`.github/workflows/release.yml`) when a new version reaches `main`; older builds up to 50 are also
 on the [`downloads` branch](../../tree/downloads).
@@ -58,6 +58,7 @@ Done (builds 43 to 57):
 | 59 | The coast defended: a warning while a landing is at sea, peasants with pitchforks by the headquarters, walls against soldiers just ashore, warships meeting fleets further out; wild animals capped by the map size; a faster late game; the guide explains research and age gates |
 | 60 | Town quarters (homes near a tavern, chapel and market: more content, more tax); rivals that plan their towns round such a centre, buy what their workshops lack and use river boats |
 | 61 | Lots of 50 at the market; standing orders (sell or buy every few minutes, keeping a reserve); the realms graph (V) with gold and wealth |
+| 62 | Guilds (workplaces of one trade together work faster), the build queue (Shift+Q: sites built one after another), copy a building's settings to all of its kind |
 
 Later: a story campaign through the ages, multiplayer, scripted scenarios, a chronicle at the end of a
 game, more animations, music for each age, and quality-of-life features (a production chain overlay,
@@ -928,6 +929,15 @@ order the buildings within it. The numbers are saved with the game.
 - **Rivals at sea:** a rival with no way to reach anyone by land builds a harbour and ships early, sends
   expeditions and lands on its enemies' coasts; rivals at war by the sea build naval yards and coastal
   forts, and warlords keep field depots near the front.
+
+## Guilds, the build queue and copying settings
+
+- **Guilds** (with the Guilds tech): 3 or more working buildings of one trade within 8 tiles of each other
+  work 10% faster, 15% with 5 or more. The building's info shows its guild.
+- **Build queue**: "Add to the build queue" in a site's info, or Shift+Q over a site. Queued sites get their
+  materials one after another, in order, before any other site; the numbers show on the map.
+- **Copy settings to all**: priority, inputs to keep, crop, soldiers wanted and archers go to every other
+  building of the same kind.
 
 ## Standing orders at the market
 

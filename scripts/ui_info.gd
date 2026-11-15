@@ -145,6 +145,18 @@ func _refresh_sel() -> void:
 			t += "[color=#e0b060]Its vein has run dry: demolish it to get back 40%% of its cost.[/color]\n"
 	if b.p == 1 and main.sim.has_priority(b):
 		t += "Priority: [b]%s[/b]. %s\n" % [Sim.PRIO_NAMES[b.prio], Main.PRIO_HELP[b.prio]]
+	# its guild (build 62)
+	if b.p == 1 and b.state == "ready" and GameData.trade(b.ty) != "" and String(b.def.get("worker", "")) != "":
+		var me := main.sim.human()
+		var gn: int = main.sim.people.guild_size(me, b)
+		var tn := GameData.trade_name(GameData.trade(b.ty)).to_lower()
+		if not me.techs.has("guilds"):
+			if gn >= SimPeople.GUILD_MIN:
+				t += tr("[color=#9a9c88]%d %s workplaces stand together: study Guilds and they form a guild (work +%d%%).[/color]\n") % [gn, tn, roundi(SimPeople.GUILD_BONUS * 100)]
+		elif gn >= SimPeople.GUILD_MIN:
+			t += tr("[color=#e8c870]Guild of %s:[/color] %d workplaces within %d tiles, work +%d%%%s\n") % [tn, gn, SimPeople.GUILD_R, roundi(main.sim.people.guild_bonus(me, b) * 100), "" if gn >= SimPeople.GUILD_LARGE else tr(" (+%d%% with %d)") % [roundi(SimPeople.GUILD_BIG * 100), SimPeople.GUILD_LARGE]]
+		else:
+			t += tr("[color=#9a9c88]No guild: %d of %d %s workplaces within %d tiles.[/color]\n") % [gn, SimPeople.GUILD_MIN, tn, SimPeople.GUILD_R]
 	main.sel_label.text = t
 	if b.p == 1 and b.ty != "hq" and b.def.has("garrison") and b.state == "ready":
 		_garrison_ui(b)
@@ -235,6 +247,27 @@ func _refresh_sel() -> void:
 			_refresh_sel())
 		xb.tooltip_text = tr("When on, up to 3 free warships sail with each landing you send, to fight off enemy warships and coastal guns on the way. When off, they all stay to guard your harbours.")
 		main.sel_actions.add_child(xb)
+	# a building site: the build queue (build 62)
+	if b.p == 1 and b.state == "build":
+		var qn := b.queue_n
+		var qb := main._button(tr("In the build queue: #%d (leave it)") % qn if qn > 0 else tr("Add to the build queue"), func():
+			var bb: Sim.Bld = main.sim.by_id.get(main.view.sel_id)
+			if bb:
+				var n := main.sim.queue_site(bb, bb.queue_n == 0)
+				main._show_hint(tr("Site #%d in the build queue: the carriers bring its materials once those before it are done.") % n if n > 0 else tr("The site left the build queue."), 3.5)
+				_refresh_sel())
+		qb.tooltip_text = tr("Queued sites are built one after another, in the order you queued them, before any other site (Shift+Q queues the site under the mouse). Sites not queued are built as before.")
+		main.sel_actions.add_child(qb)
+	# copy this building's settings to all of its kind (build 62)
+	if b.p == 1 and b.state == "ready" and b.ty != "hq" and _same_kind(b) > 0:
+		var cb := main._button(tr("Copy settings to all %d") % _same_kind(b), func():
+			var bb: Sim.Bld = main.sim.by_id.get(main.view.sel_id)
+			if bb:
+				var n := copy_settings(main.sim, bb)
+				main._show_hint(tr("Priority, inputs kept and crop copied to %d other %s.") % [n, String(bb.def.name).to_lower()] if not main.sim.is_mil(bb) else tr("Priority, soldiers wanted and archers copied to %d others.") % n, 3.5)
+				_refresh_sel())
+		cb.tooltip_text = tr("Give every other building of this kind the same priority, inputs to keep, crop (farms) or soldiers wanted and archers (military buildings).")
+		main.sel_actions.add_child(cb)
 	# a building site: ring a bell when it is finished
 	if b.p == 1 and (b.state == "build" or b.reno_to >= 0):
 		var wb := main._button(tr("Bell when done: %s") % ("on" if main.watch.has(b.id) else "off"), func():
@@ -314,6 +347,35 @@ func _refresh_sel() -> void:
 
 
 ## Changes the selected building's priority (also bound to Page Up / Page Down and P).
+## How many other ready buildings of b's kind the realm has.
+func _same_kind(b: Sim.Bld) -> int:
+	var n := 0
+	for o: Sim.Bld in main.sim.realm_blds(main.sim.players[b.p - 1]):
+		if o != b and o.ty == b.ty and not o.dead and o.state == "ready":
+			n += 1
+	return n
+
+
+## Copies building b's settings to every other ready building of its kind. Returns how many.
+static func copy_settings(sim: Sim, b: Sim.Bld) -> int:
+	var n := 0
+	for o: Sim.Bld in sim.realm_blds(sim.players[b.p - 1]):
+		if o == b or o.ty != b.ty or o.dead or o.state != "ready":
+			continue
+		if o.prio != b.prio:
+			sim.set_priority(o, b.prio)
+		o.keep = b.keep
+		o.crop = b.crop
+		o.rotate = b.rotate
+		o.want_n = b.want_n
+		o.want_kinds = b.want_kinds.duplicate()
+		o.keep_kind = b.keep_kind
+		o.archer_want = b.archer_want
+		o.sally = b.sally
+		n += 1
+	return n
+
+
 func _set_prio(pr: int) -> void:
 	var b: Sim.Bld = main.sim.by_id.get(main.view.sel_id)
 	if b == null or b.p != 1 or not main.sim.has_priority(b):
