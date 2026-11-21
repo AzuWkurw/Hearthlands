@@ -1,5 +1,17 @@
 # Changelog
 
+## Build 77 (v0.72.0, 2026-11-21)
+
+Build 77: realm laws, spectator mode, an end-of-game chronicle, factory smoke and health, mission events and a longer campaign, rebindable keys, and Polish in place of German.
+- Realm laws (F8): taxes, food rations, conscription, the working day and road tolls. Each option pleases some classes of people and displeases others; a law can be changed again only after a while. Rivals choose theirs by their character.
+- Spectator mode (new-game screen): the computer plays every realm, yours too, with no fog of war. Move anywhere, click any building to see how it does, and compare the realms on the Realms board in the side panel. The game ends when one realm is left.
+- The chronicle: when a game ends, read the story of it, from the first buildings to captures, falls and the last realm standing.
+- Factory smoke and health (Industrial age): smelters, steelworks, mills and steam workshops fill nearby homes with smoke, and homes want clean water. Parks take away half the smoke near them, waterworks pipe clean water. Poor health slows work, brings fevers and dysentery, and below half kills; artisans and nobles want clean water (nobles a park too). Rivals build parks and waterworks as well.
+- Mission events: missions can say "when this happens, do that" along the way. The campaign has eleven chapters now, from the Bronze Age to the railways, and later chapters start in a later age.
+- Rebindable keys: every shortcut is in Settings > Keys, in groups. A key another shortcut has is swapped with it, each key can be put back on its own, and the hints and tooltips name the keys you chose. While spectating, the keys that give orders do nothing, wherever they are.
+- Polish replaces German, chosen on the new-game screen or in Settings: the whole interface and the game's messages, with Polish plural forms. Saves and the event log stay English underneath.
+- Every test runs before each release is built.
+
 ## Build 76 (v0.71.0, 2026-11-21)
 
 Build 76: a smoother screen in huge late games, trees that stay put, trade carts that take real roads.

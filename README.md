@@ -10,7 +10,7 @@ economy you do.
 ## Download
 
 The ready-made Windows game is on the [Releases page](../../releases/latest): download the
-`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.71.0 build 76** (see
+`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.72.0 build 77** (see
 `CHANGELOG.md`). Every build is a release of its own, made by GitHub Actions
 (`.github/workflows/release.yml`) when a new version reaches `main`; older builds up to 50 are also
 on the [`downloads` branch](../../tree/downloads).
@@ -32,7 +32,7 @@ What is in the game now:
 
 The full plan is in the [roadmap](https://claude.ai/artifact/YVAWwJGUN4FRBYtpz3zgQh).
 
-Done (builds 43 to 76):
+Done (builds 43 to 77):
 
 | Build | What came in |
 |---|---|
@@ -76,9 +76,10 @@ Done (builds 43 to 76):
 | 75 | More speed in huge late games: carriers' routes mended instead of searched again, battles a third cheaper, rivals' road-reach maps 3 to 4 times faster |
 | 75.1 | Wording: references to other games removed from the game, README and change log |
 | 76 | Smoother screen in huge late games (each moment done in parts across frames); trees no longer vanish when zoomed out; trade carts go round mountains and cross water by boat; faster guild counts; fix for repeatable studies' message |
+| 77 | Realm laws; spectator mode; an end-of-game chronicle; factory smoke, health, parks and waterworks; mission events and an eleven-chapter campaign; rebindable keys; Polish in place of German |
 
-Later: a story campaign through the ages (beyond today's eight chapters), multiplayer, scripted
-scenarios, a chronicle at the end of a game, more animations, and rebindable keys.
+Later: a story campaign through the ages (beyond today's eleven chapters), multiplayer, scripted
+scenarios and more animations.
 
 ## Run it
 
