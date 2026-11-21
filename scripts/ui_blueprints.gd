@@ -317,7 +317,7 @@ func _save_pending() -> void:
 	_pending.cat = bps.cats[maxi(0, save_cat.selected)]
 	bps.add(_pending)
 	_tab = bps.cats.find(_pending.cat)
-	main._show_hint(tr("Blueprint \"%s\" saved in %s. Open Blueprints (U) to place it.") % [String(_pending.name), tr(_pending.cat)], 4.0)
+	main._show_hint(main.keys.keyed("Blueprint \"%s\" saved in %s. Open Blueprints (U) to place it.") % [String(_pending.name), tr(_pending.cat)], 4.0)
 	_pending = {}
 	save_win.visible = false
 

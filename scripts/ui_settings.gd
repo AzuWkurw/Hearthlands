@@ -55,6 +55,7 @@ func _check(text: String, on: bool, toggled: Callable) -> CheckBox:
 
 ## Builds the Settings window's contents from the current settings (again after every change).
 func _fill_settings() -> void:
+	main.refresh_key_texts()   # keys or the language may have changed
 	# keep the scroll position, so clicking a key far down the list does not jump back to the top
 	var sc := _scroller()
 	if sc != null:
@@ -240,7 +241,7 @@ func set_body_feature_rows(g: GridContainer) -> void:
 		var cb := _check(label, String(e.id) in on_ids, func(on):
 			_set_feature(String(e.id), on)
 			_refill())
-		cb.tooltip_text = String(e.info)
+		cb.tooltip_text = main.keys.keyed(String(e.info))
 		cb.disabled = not missing.is_empty()
 		_set_row(g, "", cb)
 	var row := HBoxContainer.new()

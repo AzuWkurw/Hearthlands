@@ -54,6 +54,7 @@ func build() -> void:
 
 	var bg := _group(row, "BUILD")
 	sites_btn = _btn("Sites", _sites_icon(), "Sites (B): show building places on the map.\nA small house: room for a small building; a bigger house: medium; a castle: large; a mine sign: a mine (where a geologist found ore).\nClose up only: zoom in to see them.", toggle_sites)
+	main.key_text(sites_btn, "tooltip_text")
 	bg.add_child(sites_btn)
 	for c in GameData.CATEGORIES:
 		var id := String(c[0])

@@ -353,6 +353,7 @@ func add_feature_window(f: Feature, title: String, size_px: Vector2i) -> Window:
 	# keys pressed while the window has focus still reach the game's shortcuts
 	w.window_input.connect(func(e): if e is InputEventKey: _unhandled_input(e))
 	add_child(w)
+	key_text(w, "title")
 	_feature_entry(f).nodes.append(w)
 	return w
 
@@ -414,10 +415,11 @@ func _sel_drag(e: InputEvent) -> void:
 
 
 ## A keyboard shortcut. It is listed in Settings, Keys, as `what` (or the feature's title), and the
-## player can give it another key there; keycode is its default key.
-func add_feature_key(f: Feature, keycode: int, pressed: Callable, what: String = "") -> void:
+## player can give it another key there; keycode is its default key. A window title or text that names
+## the key in brackets ("Statistics (F2)") shows the player's key when passed to key_text.
+func add_feature_key(f: Feature, keycode: int, pressed: Callable, what: String = "") -> String:
 	_feature_entry(f).keys[keycode] = pressed
-	keys.add_feature(f.id, keycode, what if what != "" else String(f.title))
+	return keys.add_feature(f.id, keycode, what if what != "" else String(f.title))
 
 
 ## Removes every feature's interface and builds it again for the features now switched on.
@@ -528,7 +530,7 @@ func _ready() -> void:
 		# (Settings: pause when attacked, so the answer can be planned)
 		if attacked and settings.pause_attacked and not paused and not sim.over:
 			_toggle_pause()
-			_show_hint("Paused: %s  (Space goes on)" % String(t).get_slice("!", 0), 5.0))
+			_show_hint(keys.keyed("Paused: %s  (Space goes on)", ["pause"]) % String(t).get_slice("!", 0), 5.0))
 	sound = Sound.new()
 	sound.name = "Sound"
 	add_child(sound)
@@ -754,6 +756,7 @@ func _build_ui() -> void:
 		var b := _button(tr("%dx") % s, _set_speed.bind(float(s)))
 		if s == 16:
 			b.tooltip_text = "16 times as fast (key 5), for long games when the computer keeps up"
+			key_text(b, "tooltip_text", ["speed5"])
 		b.toggle_mode = true
 		speed_btns[s] = b
 		tb.add_child(b)
@@ -765,27 +768,35 @@ func _build_ui() -> void:
 	tb.add_child(_button("Events", func(): log_ui.toggle()))
 	problems_btn = _button("Problems", func(): problems_ui.toggle())
 	problems_btn.tooltip_text = "Your buildings that cannot work, and why (O)"
+	key_text(problems_btn, "tooltip_text")
 	tb.add_child(problems_btn)
 	var wkb := _button("Buildings", func(): workers_ui.toggle())
 	wkb.tooltip_text = "How many buildings of each kind you have, their workers, and limits and priorities for each kind (J)"
+	key_text(wkb, "tooltip_text")
 	tb.add_child(wkb)
 	var cpb := _button("Transport", func(): carry_prio_ui.toggle())
 	cpb.tooltip_text = "Transport priorities: which goods the carriers take first, in numbers (K)"
+	key_text(cpb, "tooltip_text")
 	tb.add_child(cpb)
 	var wpb := _button("Workers", func(): work_prio_ui.toggle())
 	wpb.tooltip_text = "Worker priorities: which kinds of building get workers first, in numbers (L)"
+	key_text(wpb, "tooltip_text")
 	tb.add_child(wpb)
 	var nkb := _button("Bottlenecks", func(): neck_ui.toggle())
 	nkb.tooltip_text = "What holds your economy back, biggest first (N)"
+	key_text(nkb, "tooltip_text")
 	tb.add_child(nkb)
 	var mkb := _button("Market", func(): market_ui.toggle())
 	mkb.tooltip_text = "Market prices: what each good is worth now, and selling and buying at your market (M)"
+	key_text(mkb, "tooltip_text")
 	tb.add_child(mkb)
 	var bpb := _button("Blueprints", func(): blueprints_ui.toggle())
 	bpb.tooltip_text = "Blueprints: groups of buildings and roads you copied, to place again with one click (U)"
+	key_text(bpb, "tooltip_text")
 	tb.add_child(bpb)
 	var trb := _button("Traffic", func(): traffic_ui.toggle())
 	trb.tooltip_text = "Colour your roads by how busy they are (F7)"
+	key_text(trb, "tooltip_text")
 	tb.add_child(trb)
 	tb.add_child(_button("New game", func(): setup.visible = true; paused = true))
 
@@ -860,7 +871,9 @@ func _build_ui() -> void:
 	scroll.add_child(col)
 
 	var st := _section(col, "Stores")
-	st.add_child(_button("Production targets (T)", _open_targets))
+	var tgb := _button("Production targets (T)", _open_targets)
+	st.add_child(tgb)
+	key_text(tgb, "text")
 	var stn := _label("All your stores together. Each store keeps its own goods: click one to see what it holds.", 12, DIM)
 	stn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	stn.custom_minimum_size = Vector2(SIDE_W - 40, 0)
@@ -943,7 +956,9 @@ func _build_ui() -> void:
 	research_label = _rich(); rs.add_child(research_label)
 	research_bar = ProgressBar.new(); research_bar.custom_minimum_size = Vector2(0, 16); research_bar.show_percentage = false
 	rs.add_child(research_bar)
-	rs.add_child(_button("Open research tree (R)", _open_tech))
+	var rtb := _button("Open research tree (R)", _open_tech)
+	rs.add_child(rtb)
+	key_text(rtb, "text")
 
 	# building menus, road tools, demolish and scouts are on the toolbar along the bottom of the map
 	toolbar.build()
@@ -1033,6 +1048,7 @@ func _build_ui() -> void:
 	var help := _label("Start with woodcutters, a sawmill and a quarry. Add houses, then food: fishers, hunters, farms with a mill, well and bakery. Guard huts and towers push your border out and need a soldier each. Mines go on mountain deposits and need food. Every game starts in the Bronze Age: copper and tin ore with charcoal make bronze at a bronze foundry, for a bronze smith (tools) and a bronze weaponsmith; study Iron working to enter the Roman age, then smelt iron for a toolsmith: every trade's new workers need their own tool (axes, pickaxes, farm tools...), while a returning specialist brings his own. Set production targets (T) to keep stocks where you want them. Weapons let barracks train soldiers. Armor makes veterans. Goods are carried along roads to the nearest store: build storehouses near busy areas, mule stations and cart yards for faster transport, and pave busy roads. Each store tier adds room for every good. Scriptoriums, libraries and universities produce research; open the research tree to pick what to study next, from the Bronze Age to the Industrial Revolution. Beer, clothes, jewelry and furniture keep artisans and nobles content, which speeds up workshops and raises gold tax.\n\nDrag to pan, wheel to zoom, right click or Esc cancels. Hold Shift to place several. Pick buildings from the toolbar along the bottom; a building's entrance (the flag) faces south and R turns it while placing; then lay its road from the flag (or switch on Auto roads). Click an enemy military building in range of yours to attack: a window asks how many soldiers march, and which kinds. Space pauses, 1 to 4 set speed, R opens research, T production targets, G diplomacy, F3 shows performance, F5 quick saves and F9 quick loads.", 13, DIM)
 	help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	help.custom_minimum_size = Vector2(SIDE_W - 40, 0)
+	key_text(help, "text", ["turn", "pause", "speed1", "speed4", "targets", "diplomacy", "perf", "quicksave", "quickload"])
 	hp.add_child(help)
 
 	_build_setup()
@@ -1870,7 +1886,7 @@ func _jump_idle() -> void:
 	view.center_on(Vector2(b.x + 0.5, b.y + 0.5))
 	view.sel_id = b.id
 	_refresh_sel()
-	_show_hint(tr("%d of %d: %s (I for the next)") % [(_idle_i - 1) % list.size() + 1, list.size(), String(e[1]) if String(e[1]).contains(":") else String(b.def.name) + ": " + String(e[1])], 3.0)
+	_show_hint(keys.keyed("%d of %d: %s (I for the next)", ["idle"]) % [(_idle_i - 1) % list.size() + 1, list.size(), String(e[1]) if String(e[1]).contains(":") else String(b.def.name) + ": " + String(e[1])], 3.0)
 
 
 func _show_achievements() -> void:
@@ -1906,6 +1922,32 @@ func key_for(id: String) -> int:
 ## The name of action id's key, for hints ("Shift+Q").
 func key_name(id: String) -> String:
 	return keys.key_name(id)
+
+
+var _key_texts := []   # [node, property, English text, action ids]: text that names keys (key_text)
+
+## Makes the text in node's property (a tooltip, a label, a window title) name the player's own keys,
+## now and whenever keys or the language change. ids as in Keys.keyed. While none of its keys moved
+## the English text stays, so it goes on translating itself when the language changes.
+func key_text(node: Object, prop: String, ids: Array = []) -> void:
+	var e := [node, prop, String(node.get(prop)), ids]
+	if _key_texts.size() > 300:
+		_key_texts = _key_texts.filter(func(x): return is_instance_valid(x[0]))
+	_key_texts.append(e)
+	_apply_key_text(e)
+
+
+func refresh_key_texts() -> void:
+	for e in _key_texts.duplicate():
+		if is_instance_valid(e[0]):
+			_apply_key_text(e)
+		else:
+			_key_texts.erase(e)
+
+
+func _apply_key_text(e: Array) -> void:
+	var t := keys.keyed(String(e[2]), e[3])
+	(e[0] as Object).set(e[1], String(e[2]) if t == tr(String(e[2])) else t)
 
 
 func _input(event: InputEvent) -> void:
@@ -1967,7 +2009,7 @@ func _unhandled_input(event: InputEvent) -> void:
 					_show_hint(tr("Site #%d in the build queue.") % n if n > 0 else tr("The site left the build queue."), 2.5)
 					view.queue_redraw()
 				else:
-					_show_hint(tr("Point at one of your building sites and press %s to queue it.") % key_name("queue_site"), 2.5)
+					_show_hint(keys.keyed("Point at one of your building sites and press Shift+Q to queue it.", ["queue_site"]), 2.5)
 			return
 		"copy":
 			if not menu and not ed:
@@ -1977,7 +2019,7 @@ func _unhandled_input(event: InputEvent) -> void:
 					if view.place_type != cb.ty:
 						_pick_build(cb.ty)
 					view.door = cb.door if sim.door_ok(cb.ty, cb.door) else view.door
-					_show_hint(tr("Placing another %s (%s copies the building under the mouse).") % [String(cb.def.name).to_lower(), key_name("copy")], 2.5)
+					_show_hint(keys.keyed("Placing another %s (Q copies the building under the mouse).", ["copy"]) % String(cb.def.name).to_lower(), 2.5)
 			return
 		"problems":
 			if not menu: problems_ui.toggle()
@@ -2013,7 +2055,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			settings.step_scale(1 if act == "ui_bigger" else -1)
 			settings.apply_scale(get_window())
 			settings.save_file()
-			_show_hint(tr("Interface size %d%% (%s and %s; Auto in Settings)") % [roundi(settings.scale_now() * 100.0), key_name("ui_bigger"), key_name("ui_smaller")], 2.5)
+			var pct := roundi(settings.scale_now() * 100.0)
+			if keys.is_default("ui_bigger") and keys.is_default("ui_smaller"):
+				_show_hint(tr("Interface size %d%% (Ctrl and + or -; Auto in Settings)") % pct, 2.5)
+			else:
+				_show_hint(tr("Interface size %d%% (%s and %s; Auto in Settings)") % [pct, key_name("ui_bigger"), key_name("ui_smaller")], 2.5)
 			return
 		"sea_guide":
 			if not menu: sea_guide_ui.open()
@@ -2169,7 +2215,7 @@ func _process(delta: float) -> void:
 				(speed_btns[k] as Button).modulate = Color.WHITE
 			if b != null:
 				b.modulate = Color(1.0, 0.7, 0.45) if behind else Color.WHITE
-				b.tooltip_text = (tr("Chosen %dx, but the computer only keeps up with %.1fx right now (a big late game). The game runs at that speed.") % [int(speed), real_speed]) if behind else ("16 times as fast (key 5), for long games when the computer keeps up" if int(speed) == 16 else "")
+				b.tooltip_text = (tr("Chosen %dx, but the computer only keeps up with %.1fx right now (a big late game). The game runs at that speed.") % [int(speed), real_speed]) if behind else (keys.keyed("16 times as fast (key 5), for long games when the computer keeps up", ["speed5"]) if int(speed) == 16 else "")
 	# (build 76) once per change: the minimap clears the flag only once a second, and until then the
 	# whole map was baked again every frame (after loading, or a very busy moment)
 	if sim.map_ver != _map_marked:

@@ -31,7 +31,9 @@ func build() -> void:
 	legend.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var v := VBoxContainer.new()
 	legend.add_child(v)
-	v.add_child(main._label("TRAFFIC (F7)", 14, Main.BRASS))
+	var tl := main._label("TRAFFIC (F7)", 14, Main.BRASS)
+	v.add_child(tl)
+	main.key_text(tl, "text")
 	for row in [["bad", "jammed: goods waiting"], ["warn", "busy"], ["good", "free"]]:
 		var h := HBoxContainer.new()
 		var sw := ColorRect.new()

@@ -318,11 +318,11 @@ func _paint_tab() -> void:
 	body.add_child(ur)
 	var ub := main._button(tr("Undo (%d)") % _undo.size(), undo)
 	ub.disabled = _undo.is_empty()
-	ub.tooltip_text = "Ctrl+Z"
+	ub.tooltip_text = main.key_name("undo")
 	ur.add_child(ub)
 	var rb := main._button(tr("Redo (%d)") % _redo.size(), redo)
 	rb.disabled = _redo.is_empty()
-	rb.tooltip_text = "Ctrl+Y"
+	rb.tooltip_text = main.key_name("redo")
 	ur.add_child(rb)
 	body.add_child(main._label("Tool", 14, Main.BRASS))
 	var tf := HFlowContainer.new()
@@ -441,7 +441,9 @@ func _paint_tab() -> void:
 		show_climate = on
 		_sync_view())
 	body.add_child(cc)
-	body.add_child(_wrap("Left button paints, the middle button or a drag with the wheel moves the map. Ctrl+Z undoes a stroke, Ctrl+Y does it again."))
+	var hl := _wrap("Left button paints, the middle button or a drag with the wheel moves the map. Ctrl+Z undoes a stroke, Ctrl+Y does it again.")
+	body.add_child(hl)
+	main.key_text(hl, "text", ["undo", "redo"])
 
 
 func _map_tab() -> void:

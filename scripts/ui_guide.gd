@@ -90,7 +90,7 @@ func _goals() -> void:
 		var prog := "" if int(gp[1]) <= 1 else " (%d of %d)" % [mini(int(gp[0]), int(gp[1])), int(gp[1])]
 		lines.append("[color=#e8c870]▶[/color] [b]%s[/b][color=#b8b8a8]%s[/color]" % [tr(String(g.text)), prog])
 		if String(g.get("tip", "")) != "":
-			lines.append("[color=#b8b8a8]%s[/color]" % tr(String(g.tip)))
+			lines.append("[color=#b8b8a8]%s[/color]" % main.keys.keyed(String(g.tip)))
 		if me.goal_i + 1 < SandboxGoals.LIST.size():
 			lines.append("[color=#6a6c60]○ %s[/color]" % tr(String(SandboxGoals.LIST[me.goal_i + 1].text)))
 	else:
@@ -180,12 +180,12 @@ func refresh() -> void:
 		l.custom_minimum_size = Vector2(320, 0)
 		l.add_theme_font_size_override("normal_font_size", 13)
 		if done[k]:
-			l.text = "[color=#86ad5c]✔[/color] [color=#9a9c88]%s[/color]" % tr(STEPS[k][0])
+			l.text = "[color=#86ad5c]✔[/color] [color=#9a9c88]%s[/color]" % main.keys.keyed(STEPS[k][0])
 		elif not tip_given:
 			tip_given = true
-			l.text = "[color=#e8c870]▶[/color] [b]%s[/b]\n[color=#b8b8a8]%s[/color]" % [tr(STEPS[k][0]), tr(STEPS[k][2])]
+			l.text = "[color=#e8c870]▶[/color] [b]%s[/b]\n[color=#b8b8a8]%s[/color]" % [main.keys.keyed(STEPS[k][0]), main.keys.keyed(STEPS[k][2])]
 		else:
-			l.text = "[color=#6a6c60]○[/color] %s" % tr(STEPS[k][0])
+			l.text = "[color=#6a6c60]○[/color] %s" % main.keys.keyed(STEPS[k][0])
 		list.add_child(l)
 	if all:
 		main._show_hint("First steps done! Your town is on its way. (The guide closes.)", 5.0)

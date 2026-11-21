@@ -70,6 +70,16 @@ func _init() -> void:
 	check(ks.key_for("sites") == KEY_B and ks.key_for("copy") == KEY_Q, "sites back on B, copy back on Q")
 	check(ks.saved.size() == 2, "only changed keys are saved (%s)" % [ks.saved])
 
+	# texts that name keys show the player's keys
+	var ks4 := Keys.new(Settings.new())
+	check(ks4.keyed("Problems (O), research (R)") == "Problems (O), research (R)", "texts unchanged while keys are on their defaults")
+	ks4.set_key("sites", KEY_Q)
+	check(ks4.keyed("Copy (Q) or sites (B)") == "Copy (B) or sites (Q)", "two swapped keys in one text: %s" % ks4.keyed("Copy (Q) or sites (B)"))
+	ks4.set_key("pause", KEY_MASK_CTRL | KEY_P)
+	check(ks4.keyed("Space pauses, A Space station", ["pause"]) == "Ctrl+P pauses, A Ctrl+P station" and ks4.keyed("Space pauses") == "Space pauses", "a key as a word only for the actions named; brackets only otherwise")
+	ks4.set_key("idle", KEY_X)
+	check(ks4.keyed("%d of %d: %s (I for the next)") == "%d of %d: %s (X for the next)" and ks4.keyed("I think (Idle)") == "I think (Idle)", "(I for the next) follows the key, other I's do not")
+
 	# 3. saved with the settings and read back
 	st.save_file()
 	var st2 := Settings.new()
@@ -112,6 +122,14 @@ func _init() -> void:
 		feat_win.visible = false
 		press(main, KEY_F2)
 		check(not feat_win.visible, "F2 no longer does")
+	main.keys.set_key("problems", KEY_F12)
+	main.refresh_key_texts()
+	check(main.problems_btn.tooltip_text.ends_with("(F12)"), "the Problems button names F12: %s" % main.problems_btn.tooltip_text)
+	main.keys.reset_key("problems")
+	main.refresh_key_texts()
+	check(main.problems_btn.tooltip_text == "Your buildings that cannot work, and why (O)", "and O again after the reset")
+	if feat_win != null:
+		check(feat_win.title == "Statistics (F11)", "the Statistics window's title names F11: %s" % feat_win.title)
 	main.keys.set_key("events", KEY_X)
 	var was: bool = main.log_ui.win != null and main.log_ui.win.visible
 	press(main, KEY_X)

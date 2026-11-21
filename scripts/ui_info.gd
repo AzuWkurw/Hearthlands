@@ -302,7 +302,7 @@ func _refresh_sel() -> void:
 				var n := main.sim.queue_site(bb, bb.queue_n == 0)
 				main._show_hint(tr("Site #%d in the build queue: the carriers bring its materials once those before it are done.") % n if n > 0 else tr("The site left the build queue."), 3.5)
 				_refresh_sel())
-		qb.tooltip_text = tr("Queued sites are built one after another, in the order you queued them, before any other site (Shift+Q queues the site under the mouse). Sites not queued are built as before.")
+		qb.tooltip_text = main.keys.keyed("Queued sites are built one after another, in the order you queued them, before any other site (Shift+Q queues the site under the mouse). Sites not queued are built as before.", ["queue_site"])
 		main.sel_actions.add_child(qb)
 	# copy this building's settings to all of its kind (build 62)
 	if b.p == 1 and b.state == "ready" and b.ty != "hq" and _same_kind(b) > 0:

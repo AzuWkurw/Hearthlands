@@ -178,6 +178,31 @@ static func usable(k: int) -> bool:
 	return code != KEY_NONE and not (code in RESERVED) and not (code in MODIFIERS)
 
 
+## Text that names keys, translated and with the player's own keys in it: each action's default key is
+## replaced by the key it has now. With ids, only those actions, wherever their key stands as a word of
+## its own ("Space pauses, R opens research"). Without, every action, but only where its key stands in
+## brackets ("(O)", "(I for the next)"), so letters in ordinary words are left alone. The translation is
+## looked up for the English text as written, so translations keep working when keys move.
+func keyed(text: String, ids: Array = []) -> String:
+	var out := tr(text)
+	var loose := not ids.is_empty()
+	var swaps := []
+	for a in actions():
+		var id := String(a[0])
+		if (loose and not (id in ids)) or is_default(id):
+			continue
+		var n := name_of(int(a[2])).replace("+", "\\+").replace(".", "\\.")
+		var re := RegEx.new()
+		re.compile(("(?<![A-Za-z0-9+])%s(?![A-Za-z0-9+])" if loose else "(?<=\\()%s(?=[)\\s,])") % n)
+		swaps.append([re, name_of(key_for(id))])
+	# through placeholders, so two swapped keys do not turn into each other again
+	for i in swaps.size():
+		out = (swaps[i][0] as RegEx).sub(out, "\u0001%d\u0001" % i, true)
+	for i in swaps.size():
+		out = out.replace("\u0001%d\u0001" % i, String(swaps[i][1]))
+	return out
+
+
 ## Gives action id the key k. The action that had k gets id's old key. Returns a line for the player
 ## saying what else changed, or "" when nothing else did.
 func set_key(id: String, k: int) -> String:
