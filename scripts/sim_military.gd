@@ -46,25 +46,46 @@ func compute_owner(without: int) -> PackedByteArray:
 				if sim.inb(b.x + dx, b.y + dy) and own[sim.idx(b.x + dx, b.y + dy)] == 0:
 					own[sim.idx(b.x + dx, b.y + dy)] = b.p
 		own[sim.idx(b.x, b.y)] = b.p
+	# (build 78) each disc row by row, over only the tiles inside it (the same tiles in the same order)
 	for b in mils:
-		var r := int(b.def.get("radius", 6))
-		var r2 := r * r
-		for y in range(maxi(0, b.y - r), mini(sim.h - 1, b.y + r) + 1):
-			for x in range(maxi(0, b.x - r), mini(sim.w - 1, b.x + r) + 1):
-				var dx := x - b.x
-				var dy := y - b.y
-				if dx * dx + dy * dy <= r2 and own[y * sim.w + x] == 0:
-					own[y * sim.w + x] = b.p
+		_claim_disc(own, b.x, b.y, int(b.def.get("radius", 6)), b.p)
 	for b in stones:
-		var r := int(b.def.get("radius", 4))
-		var r2 := r * r
-		for y in range(maxi(0, b.y - r), mini(sim.h - 1, b.y + r) + 1):
-			for x in range(maxi(0, b.x - r), mini(sim.w - 1, b.x + r) + 1):
-				var dx := x - b.x
-				var dy := y - b.y
-				if dx * dx + dy * dy <= r2 and own[y * sim.w + x] == 0:
-					own[y * sim.w + x] = b.p
+		_claim_disc(own, b.x, b.y, int(b.def.get("radius", 4)), b.p)
 	return own
+
+
+## For each radius: how far a disc of that radius reaches sideways on each row (dy from -r to r), the
+## largest dx with dx * dx + dy * dy <= r * r.
+static var _disc_rows := {}
+
+static func disc_rows(r: int) -> PackedInt32Array:
+	var rows = _disc_rows.get(r)
+	if rows == null:
+		rows = PackedInt32Array()
+		for dy in range(-r, r + 1):
+			var dx := 0
+			while (dx + 1) * (dx + 1) + dy * dy <= r * r:
+				dx += 1
+			rows.append(dx)
+		_disc_rows[r] = rows
+	return rows
+
+
+## Gives the tiles nobody holds yet within r tiles of (cx, cy) to realm pid.
+func _claim_disc(own: PackedByteArray, cx: int, cy: int, r: int, pid: int) -> void:
+	var rows := disc_rows(r)
+	var W: int = sim.w
+	var y0 := maxi(0, cy - r)
+	var y1 := mini(sim.h - 1, cy + r)
+	for y in range(y0, y1 + 1):
+		var half := rows[y - cy + r]
+		var a := y * W
+		var i := a + maxi(0, cx - half)
+		var e := a + mini(W - 1, cx + half)
+		while i <= e:
+			if own[i] == 0:
+				own[i] = pid
+			i += 1
 
 
 ## What demolishing military building b would cost its realm: {"tiles": land lost,
@@ -1314,6 +1335,7 @@ func _capture(a: Sim.Attack, t: Sim.Bld, p: Sim.Player, op: Sim.Player) -> void:
 		plunder = t.inv.duplicate()
 		for k in plunder:
 			sim.logistics.store_add(t, op, k, -float(plunder[k]))
+	sim.logistics._set_ver += 1
 	t.p = p.id; t.garrison = 1; t.staffed = false; t.path = PackedInt32Array(); t.out_buf = {}
 	t.blunt = 0; t.archers = 0; t.archer_want = 0; t.sally = false
 	p.blunt = mini(p.blunt + a.blunt, p.reserve + a.n - 1)

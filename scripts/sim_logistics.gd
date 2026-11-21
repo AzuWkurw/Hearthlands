@@ -739,6 +739,9 @@ func _path_to_net_inner(sx: int, sy: int, pid: int, door := -1, doors: Array = [
 ## a store and stay there; goods needed are fetched from a store that has them.
 
 var _store_ver := 0
+## (build 78) Changes only when a building comes, goes, changes hands or changes kind (not when one is
+## finished): the lists that hold buildings by kind whatever their state are kept until it changes.
+var _set_ver := 0
 var _stores_at := -1
 var _stores := {}          # realm id -> its finished stores, by id
 
@@ -994,8 +997,8 @@ func _tools_coming(p: Sim.Player) -> Dictionary:
 		all[q.id] = {}
 	# (build 74) the toolsmiths are kept in a list until a building comes, goes or changes: on a big
 	# map going over every building for them took most of the time
-	if _tsm_at != _store_ver:
-		_tsm_at = _store_ver
+	if _tsm_at != _set_ver:
+		_tsm_at = _set_ver
 		_tsm = []
 		for b: Sim.Bld in sim.blds:
 			if b.def.has("makes_tools"):
@@ -1284,16 +1287,30 @@ func _chain_trip(p: Sim.Player, t: Sim.Trip, path: PackedInt32Array, forward: bo
 	return true
 
 
+var _pb_set := -1                  # (build 78) _set_ver when _pb was made: while it holds, so do the lists
+var _pb_gen := 0                   # counts the times _pb was made anew
+var _carriers_b: Array = []        # the buildings with carriers (mule stations, cart yards), in Sim.blds order
+
 func _rebuild_realm_lists() -> void:
 	_pb_sv = _store_ver
-	_pb = []
+	if _pb_set != _set_ver or _pb.size() != sim.players.size():
+		# (build 78) only when a building came, went or changed hands or kind: otherwise the lists are
+		# the same as they were (made once a second before, over every building)
+		_pb_set = _set_ver
+		_pb_gen += 1
+		_pb = []
+		_carriers_b = []
+		for p in sim.players:
+			_pb.append([])
+		for b in sim.blds:
+			_pb[b.p - 1].append(b)
+			if b.def.has("carriers"):
+				_carriers_b.append(b)
 	_stations = []
 	for p in sim.players:
-		_pb.append([])
 		_stations.append([])
-	for b in sim.blds:
-		_pb[b.p - 1].append(b)
-		if b.def.has("carriers") and b.state == "ready" and b.staffed and b.working:
+	for b: Sim.Bld in _carriers_b:
+		if b.state == "ready" and b.staffed and b.working:
 			_stations[b.p - 1].append(b)
 
 
@@ -1308,6 +1325,9 @@ func mil_list() -> Array:
 	if sim._mil_dirty:
 		_mil = []
 		_mil_cells = {}
+		_mil_by = []
+		for q in sim.players:
+			_mil_by.append([])
 		for b in sim.blds:
 			if sim.is_mil(b):
 				var ck := (b.x >> 4) * 4096 + (b.y >> 4)
@@ -1315,8 +1335,23 @@ func mil_list() -> Array:
 					_mil_cells[ck] = PackedInt32Array()
 				_mil_cells[ck].append(_mil.size())
 				_mil.append(b)
+				if b.p >= 1 and b.p <= _mil_by.size():
+					_mil_by[b.p - 1].append(b)
 		sim._mil_dirty = false
 	return _mil
+
+
+## (build 78) Realm pid's military buildings and headquarters, in mil_list's order (a building never
+## changes hands, so this is mil_list with the others left out).
+var _mil_by: Array = []
+
+func realm_mil(pid: int) -> Array:
+	if _mil_by.size() != sim.players.size():
+		sim._mil_dirty = true
+	mil_list()
+	if pid < 1 or pid > _mil_by.size():
+		return []
+	return _mil_by[pid - 1]
 
 
 ## (build 73) The military buildings within r tiles' box of (x, y), in mil_list's order: by 16-tile
@@ -1758,8 +1793,8 @@ var _inb_at := -1
 var _inb := {}             # realm id -> its buildings that use goods, by id
 
 func _input_blds(p: Sim.Player) -> Array:
-	if _inb_at != _store_ver:
-		_inb_at = _store_ver
+	if _inb_at != _set_ver:
+		_inb_at = _set_ver
 		_inb = {}
 		for b in sim.blds:
 			if not b.dead and b.def.has("in"):
@@ -1827,12 +1862,14 @@ func _dispatch_inputs_for(p: Sim.Player) -> void:
 	var hungry := _hungry(p)
 	_rank_memo_check(p)
 	var buckets := [[], [], [], []]
+	var now := sim.time
 	for b: Sim.Bld in _input_blds(p):
-		if b.dead or b.state != "ready" or not b.staffed or b.prio == Sim.PRIO_PAUSED or b.reno_to >= 0:
-			continue
 		# found stocked up (or with nothing to send) a moment ago: it sleeps until in_next, and is not
-		# even sorted into the rounds (build 59: most buildings sleep most of the time)
-		if sim.time < b.in_next:
+		# even sorted into the rounds (build 59: most buildings sleep most of the time; build 78: looked
+		# at first, as it leaves out the most)
+		if now < b.in_next:
+			continue
+		if b.dead or b.state != "ready" or not b.staffed or b.prio == Sim.PRIO_PAUSED or b.reno_to >= 0:
 			continue
 		if hungry and food_chain().has(b.ty):
 			buckets[0].append(b)

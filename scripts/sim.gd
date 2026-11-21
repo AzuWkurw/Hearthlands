@@ -999,6 +999,7 @@ func add_bld(ty: String, x: int, y: int, p: Player, instant: bool, door := -1) -
 	b.era = p.age
 	b.sera = float(p.age)   # (loading fills it in like this too, so a loaded game matches)
 	blds.append(b); by_id[b.id] = b
+	logistics._set_ver += 1
 	bmap[idx(x, y)] = b.id
 	if b.def.has("store"):
 		b.town = new_town_name(p)
@@ -1038,6 +1039,7 @@ func destroy(b: Bld, why := "") -> void:
 		if plot[t] == b.id:
 			plot[t] = 0
 	blds.erase(b)
+	logistics._set_ver += 1
 	_pending.erase(b.id)
 	_supply.erase(b.id)
 	_reno.erase(b.id)
@@ -1967,6 +1969,7 @@ func _reno_tick(p: Player) -> void:
 				b.upg = ""
 				_tick_dirty = true
 				logistics._store_ver += 1     # (build 74) its kind changed: the lists by kind are made again
+				logistics._set_ver += 1
 				logistics._bver[b.p] = int(logistics._bver.get(b.p, 0)) + 1
 				_rebuild_realm_lists()
 				recompute_territory()
@@ -3160,6 +3163,7 @@ func from_save(d: Dictionary) -> String:
 			p.stock[t] = float(p.stock.get(t, 0.0)) + 1.0
 	# saves from before build 31 had one realm-wide stock: it is all in the headquarters now
 	logistics._store_ver += 1
+	logistics._set_ver += 1
 	for p in players:
 		var any := false
 		for s: Bld in logistics.stores_of(p):
@@ -3311,6 +3315,9 @@ func realm_blds(p: Player) -> Array:
 
 func mil_list() -> Array:
 	return logistics.mil_list()
+
+func realm_mil(pid: int) -> Array:
+	return logistics.realm_mil(pid)
 
 func _dispatch() -> void:
 	logistics._dispatch()

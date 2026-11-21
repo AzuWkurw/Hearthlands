@@ -173,8 +173,8 @@ func _count_coming() -> void:
 		for k in wb.out_buf:
 			wc[k] = int(wc.get(k, 0)) + int(wb.out_buf[k])
 	var lg := sim.logistics
-	if _mk_at != lg._store_ver:
-		_mk_at = lg._store_ver
+	if _mk_at != lg._set_ver:
+		_mk_at = lg._set_ver
 		_mk = []
 		for b: Sim.Bld in sim.blds:
 			if b.def.has("out"):
