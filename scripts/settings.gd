@@ -48,6 +48,7 @@ var cb_colors := false                    # colours that stay apart for red-gree
 var details := true                       # grass tufts, reeds, foam, snow on peaks
 var raised := true                        # hills drawn raised (2.5D); off: a flat map
 var pause_attacked := false   # pause the game when a rival attacks you or sails for your shore (build 66)
+var store_folded := {}        # the stores list's groups folded away (build 72)
 var voices := true        # a word from the worker when you pick a building (build 63)
 var goals := true         # the sandbox goals in endless games (build 63)
 var guide := true                         # show the first-game guide in a new game
@@ -84,6 +85,8 @@ func load_file() -> void:
 	guide = bool(cf.get_value("game", "guide", guide))
 	voices = bool(cf.get_value("game", "voices", voices))
 	pause_attacked = bool(cf.get_value("game", "pause_attacked", pause_attacked))
+	var sf = cf.get_value("ui", "store_folded", {})
+	store_folded = sf if sf is Dictionary else {}
 	goals = bool(cf.get_value("game", "goals", goals))
 	raised = bool(cf.get_value("display", "raised", raised))
 	daynight = bool(cf.get_value("display", "daynight", daynight))
@@ -121,6 +124,7 @@ func save_file() -> void:
 	cf.set_value("game", "guide", guide)
 	cf.set_value("game", "voices", voices)
 	cf.set_value("game", "pause_attacked", pause_attacked)
+	cf.set_value("ui", "store_folded", store_folded)
 	cf.set_value("game", "goals", goals)
 	cf.set_value("display", "raised", raised)
 	cf.set_value("display", "daynight", daynight)

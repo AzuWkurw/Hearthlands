@@ -145,6 +145,21 @@ func refresh() -> void:
 		var bb5 := main._button(tr("Buy 50 (-%d)") % sim.market.buy_price(id, 50), func(): _do(sim.market.buy(me, id, 50)))
 		bb5.disabled = not has or float(me.stock.get("gold", 0.0)) < sim.market.buy_price(id, 50)
 		grid.add_child(bb5)
+		# tools, weapons and armor of a chosen metal, from merchants who come from afar (build 72)
+		if SimArms.PICTURED.has(id) and id != "scrap":
+			for k in 5:
+				grid.add_child(Control.new())
+			for t in [SimArms.BRONZE, SimArms.STEEL]:
+				var tt: int = t
+				var cost := sim.market.metal_price(id, 10, tt)
+				var mb := main._button(tr("Buy 10 %s (-%d)") % [SimArms.NAMES[tt], cost], func(): _do(sim.market.buy_metal(me, id, 10, tt)))
+				mb.icon = Tex.get_tex(SimArms.icon_id(id, tt))
+				mb.add_theme_constant_override("icon_max_width", 20)
+				mb.disabled = not has or float(me.stock.get("gold", 0.0)) < cost
+				mb.tooltip_text = tr("Merchants bring %s from afar: %s") % [GameData.res_name(id).to_lower(), tr("bronze, cheaper than the market's") if tt == SimArms.BRONZE else tr("steel, at two and a half times the price")]
+				grid.add_child(mb)
+			for k in 2:
+				grid.add_child(Control.new())
 	_refresh_routes()
 
 

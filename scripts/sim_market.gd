@@ -148,6 +148,37 @@ func buy(p: Sim.Player, res: String, n: int) -> String:
 	return ""
 
 
+## (build 72) Merchants bring tools, weapons and armor of a metal of your choice from afar: bronze
+## cheaper than the market price, steel dear (it is scarce before the machine works).
+const METAL_PRICE := [1.0, 0.7, 1.0, 2.5]
+
+
+func metal_price(res: String, n: int, tier: int) -> int:
+	return ceili(buy_price(res, n) * float(METAL_PRICE[clampi(tier, 0, 3)]))
+
+
+## Buys n of tool, weapons or armor res of that metal. "" when done, else why not.
+func buy_metal(p: Sim.Player, res: String, n: int, tier: int) -> String:
+	if not sim.arms.tiered(res) or res == "scrap":
+		return "Only tools, weapons and armor come in a metal"
+	if not traded(res):
+		return "This cannot be bought"
+	if not has_market(p):
+		return "You need a market to trade"
+	var cost := metal_price(res, n, tier)
+	if float(p.stock.get("gold", 0.0)) < cost:
+		return "Not enough gold (%d needed)" % cost
+	if sim.capacity(p, res) - float(p.stock.get(res, 0.0)) < n:
+		return "No room in your stores"
+	sim.take(p, "gold", float(cost))
+	sim.used(p, "gold", float(cost))
+	sim.give(p, res, float(n))
+	sim.made(p, res, float(n))
+	sim.arms.add(p, res, tier, n)
+	sim.prices[res] = clampf(factor(res) * (1.0 + PUSH * n), MIN_F, MAX_F)
+	return ""
+
+
 # ---------------------------------------------------------------- standing orders (build 61)
 ## A standing order: {"res", "sell": true to sell / false to buy, "n": how many each time, "every":
 ## minutes between, "keep": sell only while more than this stays in store / buy only up to this,

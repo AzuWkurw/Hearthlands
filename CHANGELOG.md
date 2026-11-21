@@ -1,5 +1,14 @@
 # Changelog
 
+## Build 72 (v0.67.0, 2026-11-21)
+
+Build 72: metal from the merchants; tools in the realms graph; ore view; stores in groups; mines warn before they run dry.
+- Market: tools, weapons and armor can be bought in a metal of your choice from merchants who come from afar: bronze at 0.7 of the price, steel at 2.5 times (a way through a shortage before the machine works runs).
+- Realms graph (V): tools made per minute, tools worn out per minute, and soldiers with steel, iron or bronze arms, for every realm.
+- Minimap: "Ore found" shows every ore tile your geologists found in its colour (coal, iron, copper, tin, gold...), brighter where more is left, dark where a vein is used up.
+- Stores list in groups (food, building, ore and metals, tools, arms, other goods): click a group's name to fold it away; the game remembers which are folded.
+- A mine warns when it has about five minutes of ore left, with how far and which way the nearest ore of its kind your geologists found lies (or to send a geologist out). Click the notice to go there.
+
 ## Build 71 (v0.66.0, 2026-11-15)
 
 Build 71: soldiers show their arms; smiths upgraded in place; rivals use the metal settings; the metals chain.

@@ -122,6 +122,8 @@ func on_cycle(p: Sim.Player, b: Sim.Bld) -> void:
 	var h: Array = held.get(b.id, [1.0, LIFE[1]])
 	h[1] = float(h[1]) - 1.0
 	if float(h[1]) <= 0.0:
+		if float(h[0]) >= 0.0:
+			p.tools_worn += 1         # (build 72) counted once, when it wears out
 		# worn out: fetch a new one, or carry on with the old one, slowly
 		if float(p.stock.get(tool, 0.0)) >= 1.0:
 			sim.take(p, tool, 1.0, sim.idx(b.x, b.y))

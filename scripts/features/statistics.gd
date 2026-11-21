@@ -136,6 +136,18 @@ func on_second() -> void:
 			if k != "research":
 				made_total += float(b.made[k])
 		b["made_total"] = made_total
+		# tools and arms by metal (build 72)
+		var tm := 0.0
+		for k in b.made:
+			if GameData.is_tool_res(String(k)):
+				tm += float(b.made[k])
+		b["tools_made"] = tm
+		var hp: Array = hist.get(p.id, [])
+		b["worn_cum"] = p.tools_worn
+		b["tools_worn"] = maxi(0, p.tools_worn - int((hp[hp.size() - 1] as Dictionary).get("worn_cum", p.tools_worn))) if hp.size() > 0 else 0
+		b["arms_b"] = int(p.arm_n[1])
+		b["arms_i"] = int(p.arm_n[2])
+		b["arms_s"] = int(p.arm_n[3])
 		if not hist.has(p.id):
 			hist[p.id] = []
 		(hist[p.id] as Array).append(b)
@@ -205,7 +217,7 @@ func build_ui(main: Main) -> void:
 	realms.name = "Realms"
 	tabs.add_child(realms)
 	realm_metric = OptionButton.new()
-	for t in ["Population", "Buildings", "Soldiers", "Goods made per minute", "Research points (total)", "Land (tiles)", "Techs studied", "Gold", "Wealth (goods and gold, in gold)"]:
+	for t in ["Population", "Buildings", "Soldiers", "Goods made per minute", "Research points (total)", "Land (tiles)", "Techs studied", "Gold", "Wealth (goods and gold, in gold)", "Tools made per minute", "Tools worn out per minute", "Soldiers with steel arms", "Soldiers with iron arms", "Soldiers with bronze arms"]:
 		realm_metric.add_item(t)
 	realm_metric.item_selected.connect(func(_i): refresh())
 	realms.add_child(realm_metric)
@@ -298,7 +310,7 @@ func refresh() -> void:
 			var net := (m - u) / maxf(1.0, last.size())
 			rows.append("%s: made [color=#86c55c]%.1f[/color], used [color=#e07a5f]%.1f[/color] per minute (%s), %d in store" % [r.name, m / maxf(1.0, last.size()), u / maxf(1.0, last.size()), ("[color=#86c55c]%+.1f[/color]" if net >= 0.0 else "[color=#e07a5f]%+.1f[/color]") % net, int(p.stock.get(r.id, 0.0))])
 	table.text = tr("[b]%s[/b]: green made, red used, per game minute.\n[b]Last 10 minutes[/b]\n%s") % [GameData.res_name(sel_good), "\n".join(rows) if rows.size() > 0 else "nothing counted yet"]
-	var key: String = ["pop", "bld", "sol", "made_total", "rp", "land", "techs", "gold", "wealth"][realm_metric.selected]
+	var key: String = ["pop", "bld", "sol", "made_total", "rp", "land", "techs", "gold", "wealth", "tools_made", "tools_worn", "arms_s", "arms_i", "arms_b"][realm_metric.selected]
 	var ser := []
 	var legend := []
 	for q: Sim.Player in sim.players:

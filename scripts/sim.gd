@@ -286,6 +286,7 @@ class Bld:
 	var town := ""                         # a store's town name (shown on the map and in messages)
 	var blunt := 0                         # soldiers here whose weapons are worn out (re-armed from the stores)
 	var dry_t := -1.0                      # a mine: game time its vein was found to have run dry (-1: not dry)
+	var dry_warn := false                  # a mine: told that its ore runs low (build 72)
 
 
 class Player:
@@ -370,6 +371,7 @@ class Player:
 	var spec_tool: Dictionary = {} # the tools idle specialists keep: like spec, metal + life left (SimArms.pack)
 	var arm_q := 0                 # the metal of the weapons last handed out (how fast they wear in a fight)
 	var arm_n: Array = [0, 0, 0, 0]  # soldiers by the metal of their arms (SimArms.fit_arms), for the panels
+	var tools_worn := 0               # tools worn out so far (build 72: the realms graph counts them a minute)
 	var metal_order: Dictionary = {}  # "tools"/"weapons" -> the metals in the order they are used (SimArms.ORDERS)
 	var metal_lim: Dictionary = {}    # "tools"/"weapons" -> [_, bronze, iron, steel]: most of each kind in store (-1 none)
 	var metal_keep: Dictionary = {}   # "tools"/"weapons" -> metal -> how much of it that group's smiths leave in store

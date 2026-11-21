@@ -33,6 +33,7 @@ func reset() -> void:
 	_t = 99.0
 	_base = null
 	_base_img = null
+	_ore_tiles = PackedInt32Array()
 
 
 func _process(delta: float) -> void:
@@ -51,6 +52,11 @@ func _process(delta: float) -> void:
 			_rebuild_owner()
 		if filter == "roads":
 			_rebuild_filter()
+		elif filter == "ore":
+			_ore_t += 1
+			if _ore_t >= 5:
+				_ore_t = 0
+				_rebuild_ore()
 	queue_redraw()
 
 
@@ -59,7 +65,39 @@ func set_filter(f: String) -> void:
 	_filter_tex = null
 	if f == "roads":
 		_rebuild_filter()
+	elif f == "ore":
+		_ore_tiles = PackedInt32Array()
+		_rebuild_ore()
 	queue_redraw()
+
+
+## (build 72) The prospecting view: every ore tile your geologists have found, in the ore's colour,
+## brighter where more is left in its vein; empty veins dark. Made again every five seconds.
+const ORE_COL := {1: Color("3a3a3a"), 2: Color("c0643c"), 3: Color("f0d040"), 4: Color("b0b0b8"), 5: Color("e08848"), 6: Color("e8e070"), 7: Color("8890a8"), 8: Color("d8d8e0")}
+var _ore_tiles := PackedInt32Array()
+var _ore_t := 0
+
+
+func _rebuild_ore() -> void:
+	if _ore_tiles.is_empty():
+		for i in sim.w * sim.h:
+			if sim.ore[i] != 0:
+				_ore_tiles.append(i)
+	var data := PackedByteArray()
+	data.resize(sim.w * sim.h * 4)
+	var me := sim.human()
+	for i in _ore_tiles:
+		if not sim.ore_known(me.id, i):
+			continue
+		var left := sim.vein_left(i)
+		var c: Color = ORE_COL.get(int(sim.ore[i]), Color.WHITE)
+		if int(sim.ore[i]) == 1:
+			c = Color("9a9aa0")     # coal: grey, to show on the dimmed map
+		var a := 70 if left <= 0 else clampi(140 + left, 150, 255)
+		if left <= 0:
+			c = c.darkened(0.6)
+		data[i * 4] = c.r8; data[i * 4 + 1] = c.g8; data[i * 4 + 2] = c.b8; data[i * 4 + 3] = a
+	_filter_tex = ImageTexture.create_from_image(Image.create_from_data(sim.w, sim.h, false, Image.FORMAT_RGBA8, data))
 
 
 func _rebuild_filter() -> void:
@@ -186,7 +224,7 @@ func _draw() -> void:
 		if filter == "land" and _own:
 			draw_texture_rect(_own, r, false)
 			draw_texture_rect(_own, r, false)
-		if filter == "roads" and _filter_tex != null:
+		if (filter == "roads" or filter == "ore") and _filter_tex != null:
 			draw_texture_rect(_filter_tex, r, false)
 		if filter.begins_with("good:"):
 			var res := filter.substr(5)

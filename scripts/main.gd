@@ -78,6 +78,9 @@ var stock_labels := {}
 
 
 var stock_icons := {}
+var store_groups := {}      # group name -> [its header button, its grid] (build 72)
+var store_folded := {}      # group name -> true when folded away
+const STORE_GROUPS := ["Food", "Building", "Ore and metals", "Tools", "Arms", "Other goods"]
 var metal_rows := {}         # tools and weapons: [_, bronze, iron, steel] rows (each [box, label]) shown when more than one metal is in store (build 68)
 
 
@@ -801,6 +804,8 @@ func _build_ui() -> void:
 	mf.add_item("Minimap: everything"); mf.set_item_metadata(0, "")
 	mf.add_item("Only roads"); mf.set_item_metadata(1, "roads")
 	mf.add_item("Only land and forts"); mf.set_item_metadata(2, "land")
+	mf.add_item("Ore found (coal, iron, copper, tin, gold...)"); mf.set_item_metadata(3, "ore")
+	mf.set_item_tooltip(3, "Every ore tile your geologists found, in its colour, brighter where more is left; dark where a vein is used up")
 	for r in GameData.resources:
 		var made := false
 		for bid in GameData.bld:
@@ -855,11 +860,32 @@ func _build_ui() -> void:
 	stn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	stn.custom_minimum_size = Vector2(SIDE_W - 40, 0)
 	st.add_child(stn)
-	var grid := GridContainer.new()
-	grid.columns = 4
-	grid.add_theme_constant_override("h_separation", 10)
-	st.add_child(grid)
+	# the goods in groups, each folding away with a click on its name (build 72)
+	store_groups = {}
+	store_folded = settings.store_folded.duplicate() if settings != null else {}
+	for g in STORE_GROUPS:
+		var head := Button.new()
+		head.flat = true
+		head.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		head.add_theme_font_size_override("font_size", 13)
+		head.add_theme_color_override("font_color", BRASS)
+		head.focus_mode = Control.FOCUS_NONE
+		st.add_child(head)
+		var gg := GridContainer.new()
+		gg.columns = 4
+		gg.add_theme_constant_override("h_separation", 10)
+		st.add_child(gg)
+		var gname: String = g
+		head.pressed.connect(func():
+			gg.visible = not gg.visible
+			store_folded[gname] = not gg.visible
+			settings.store_folded = store_folded
+			settings.save_file()
+			_refresh_groups())
+		gg.visible = not bool(store_folded.get(gname, false))
+		store_groups[gname] = [head, gg]
 	for r in GameData.resources:
+		var grid: GridContainer = store_groups[store_group_of(String(r.id))][1]
 		var hb := HBoxContainer.new()
 		hb.tooltip_text = String(r.name)
 		hb.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -2197,6 +2223,39 @@ func _process(delta: float) -> void:
 
 # ================================================================ refresh
 
+## Which group of the stores list good id goes in.
+static func store_group_of(id: String) -> String:
+	var r: Dictionary = GameData.res_by_id.get(id, {})
+	if r.has("tool"):
+		return "Tools"
+	if id in ["weapons", "armor", "scrap", "gunpowder", "ammunition", "saltpeter", "sulfur", "bows", "donkey"]:
+		return "Arms"
+	if bool(r.get("food", false)) or id in ["grain", "flour", "milk", "honey", "grapes", "hops", "coffee_beans", "peppercorns", "herbs"]:
+		return "Food"
+	if id.begins_with("ore_") or id in ["coal", "charcoal", "iron", "copper", "gold", "bronze", "lead", "steel", "kaolin"]:
+		return "Ore and metals"
+	if id in ["wood", "stone", "clay", "planks", "bricks", "sand", "glass", "water", "rails"]:
+		return "Building"
+	return "Other goods"
+
+
+## The group headers: how many kinds each holds now, ▸ when folded; a group with nothing shown hides.
+func _refresh_groups() -> void:
+	for g in store_groups:
+		var head: Button = store_groups[g][0]
+		var gg: GridContainer = store_groups[g][1]
+		var n := 0
+		for c in gg.get_children():
+			if (c as Control).visible:
+				n += 1
+		var txt := "%s %s (%d)" % ["▸" if not gg.visible else "▾", tr(g), n]
+		if head.text != txt:
+			head.text = txt
+		var any := n > 0
+		if head.visible != any:
+			head.visible = any
+
+
 ## Tools and weapons with more than one metal in store: an entry for each metal instead of one (build 68).
 func _metal_split(p: Sim.Player, id: String, row: Control) -> void:
 	var by := sim.arms.by_metal(p, id)
@@ -2252,6 +2311,7 @@ func _refresh_all() -> void:
 	choice_ui.check()
 	_refresh_build()
 	_dry_mines()
+	_refresh_groups()
 	# (build 70.1) not while the player is using the info box: rebuilding its buttons every 0.3 s lost
 	# clicks, and closed a crop list (or any list) before a choice was made in it
 	if not _sel_busy():
@@ -2576,9 +2636,75 @@ func _set_want(b: Sim.Bld, n: int) -> void:
 
 ## Your mines whose vein has run dry: a warning first, then (if the option is on) they are demolished
 ## DRY_MINE_WAIT seconds later, giving back 40% of their cost.
+## (build 72) The ore a mine can still reach (the veins within its reach), and how many minutes that
+## lasts at its pace.
+func mine_left(b: Sim.Bld) -> Array:
+	var kind := int(b.def.mine)
+	var seen := {}
+	var left := 0
+	for dy in range(-2, 3):
+		for dx in range(-2, 3):
+			var x := b.x + dx
+			var y := b.y + dy
+			if x < 0 or y < 0 or x >= sim.w or y >= sim.h:
+				continue
+			var i := sim.idx(x, y)
+			if sim.ore[i] != kind:
+				continue
+			var v := sim.vein[i]
+			if v != 0 and seen.has(v):
+				continue
+			seen[v] = true
+			left += sim.vein_left(i)
+	var cyc := maxf(1.0, float(b.def.get("cycle", 20)))
+	return [left, left * cyc / 60.0]
+
+
+## The nearest ore of that kind your geologists found, out of mine b's reach and not used up.
+func _ore_near(b: Sim.Bld) -> Vector2i:
+	var kind := int(b.def.mine)
+	var best := Vector2i(-1, -1)
+	var bd := 1 << 30
+	for i in sim.w * sim.h:
+		if sim.ore[i] != kind:
+			continue
+		var x := i % sim.w
+		var y := i / sim.w
+		var d := absi(x - b.x) + absi(y - b.y)
+		if d <= 4 or d >= bd or not sim.ore_known(1, i) or sim.vein_left(i) <= 0:
+			continue
+		bd = d
+		best = Vector2i(x, y)
+	return best
+
+
+var _mine_chk := 0.0
+
+
 func _dry_mines() -> void:
 	if sim.players.is_empty() or sim.over:
 		return
+	# a warning a few minutes before a mine runs dry, with where to dig next (build 72)
+	if sim.time - _mine_chk >= 5.0 or sim.time < _mine_chk:
+		_mine_chk = sim.time
+		for b: Sim.Bld in sim.realm_blds(sim.human()):
+			if b.dead or not b.def.has("mine") or b.state != "ready" or b.dry_warn or b.msg == "Deposit exhausted":
+				continue
+			var ml := mine_left(b)
+			if float(ml[1]) > 5.0:
+				continue
+			b.dry_warn = true
+			var ore_name: String = GameData.ORE_NAMES.get(int(b.def.mine), "ore")
+			var nxt := _ore_near(b)
+			var where := ""
+			if nxt.x >= 0:
+				var dx := nxt.x - b.x
+				var dy := nxt.y - b.y
+				var dirs := ("north" if dy < -abs(dx) / 2 else ("south" if dy > abs(dx) / 2 else "")) + ("west" if dx < -abs(dy) / 2 else ("east" if dx > abs(dy) / 2 else ""))
+				where = " The nearest %s found is %d tiles %s." % [ore_name, absi(dx) + absi(dy), dirs if dirs != "" else "away"]
+			else:
+				where = " No more %s has been found: send a geologist out." % ore_name
+			sim.emit_log("Your %s has about %d minutes of %s left (%d to dig).%s" % [String(b.def.name).to_lower(), maxi(1, roundi(float(ml[1]))), ore_name, int(ml[0]), where], Color("e0b060"), nxt if nxt.x >= 0 else Vector2i(b.x, b.y))
 	for b: Sim.Bld in sim.blds.duplicate():
 		if b.p != 1 or not b.def.has("mine") or b.state != "ready":
 			continue

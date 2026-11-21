@@ -225,5 +225,21 @@ func _init() -> void:
 	check(rv.metal_order.get("tools", []) == [3, 2, 1] and not rv.metal_keep.has("tools"), "at peace, the best metal for tools again")
 	var ml := UiBottlenecks.metal_lines(sim, me)
 	check(ml.size() >= 1 and String(ml[0][0]).contains(" → "), "the bottleneck finder shows the metal chains: %s" % (String(ml[0][0]).left(120) if ml.size() > 0 else ""))
+	# 14. build 72: steel from the merchants, tools worn counted, the stores' groups
+	var mk_at := spot(sim, "market", me.hq.x + 9, me.hq.y + 2)
+	sim.add_bld("market", mk_at.x, mk_at.y, me, true, 0)
+	for i in 12: sim.tick(Sim.TICK)
+	sim.give(me, "gold", 400.0)
+	var st0 := int(sim.arms.by_metal(me, "axes")[3])
+	var g0 := float(me.stock.get("gold", 0.0))
+	var why := sim.market.buy_metal(me, "axes", 10, SimArms.STEEL)
+	check(why == "" and int(sim.arms.by_metal(me, "axes")[3]) == st0 + 10, "10 steel axes bought from the merchants (%s)" % why)
+	check(g0 - float(me.stock.get("gold", 0.0)) >= sim.market.buy_price("axes", 10) * 2.0, "steel costs far more than the market price (%d against %d)" % [int(g0 - float(me.stock.get("gold", 0.0))), sim.market.buy_price("axes", 10)])
+	check(sim.market.buy_metal(me, "bread", 10, SimArms.STEEL) != "", "only tools, weapons and armor come in a metal")
+	var tw := me.tools_worn
+	tqf.held[wc.id] = [1.0, 0.5]
+	tqf.on_cycle(me, wc)
+	check(me.tools_worn == tw + 1, "a worn-out tool is counted for the realms graph")
+	check(Main.store_group_of("axes") == "Tools" and Main.store_group_of("bread") == "Food" and Main.store_group_of("ore_iron") == "Ore and metals" and Main.store_group_of("armor") == "Arms" and Main.store_group_of("planks") == "Building", "the stores list in groups")
 	print("ARMS TEST: %s" % ("PASS" if ok else "FAIL"))
 	quit()

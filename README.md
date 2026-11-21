@@ -10,7 +10,7 @@ economy you do.
 ## Download
 
 The ready-made Windows game is on the [Releases page](../../releases/latest): download the
-`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.66.0 build 71** (see
+`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.67.0 build 72** (see
 `CHANGELOG.md`). Every build is a release of its own, made by GitHub Actions
 (`.github/workflows/release.yml`) when a new version reaches `main`; older builds up to 50 are also
 on the [`downloads` branch](../../tree/downloads).
@@ -32,7 +32,7 @@ What is in the game now:
 
 The full plan is in the [roadmap](https://claude.ai/artifact/YVAWwJGUN4FRBYtpz3zgQh).
 
-Done (builds 43 to 71):
+Done (builds 43 to 72):
 
 | Build | What came in |
 |---|---|
@@ -70,6 +70,7 @@ Done (builds 43 to 71):
 | 70 | Scrap metal (worn tools and weapons back to the stores, a scrap forge melts them into bars); armor of bronze, iron or steel plate (bronze armorer, armorer, plate armorer) with the metal settings |
 | 70.1 | Fix: farm crops could not be changed (the info box rebuilt its buttons every third of a second, losing clicks and closing lists) |
 | 71 | Soldiers drawn in their arms' metal, both sides' arms in the attack window; bronze smiths upgraded in place; rivals use the metal settings and build scrap forges; the metal chains in the bottleneck finder |
+| 72 | Metal from the merchants (bronze cheap, steel dear); tools and arms in the realms graph; the minimap's Ore found view; the stores list in groups; mines warn before they run dry |
 
 Later: a story campaign through the ages, multiplayer, scripted scenarios, a chronicle at the end of a
 game, more animations, music for each age, and quality-of-life features (a production chain overlay,
@@ -1023,6 +1024,12 @@ steel helmets and blades), and the attack window shows both sides' arms by metal
 weaponsmiths and armorers can be **upgraded in place** to their iron trades once the study is known.
 Rivals use the metal settings (at war their tools take bronze first and steel is kept for arms). The
 bottleneck finder (N) ends with each metal chain, from the mines to the smiths, and where it is held up.
+
+Build 72: the **market** sells tools, weapons and armor in a metal of your choice (bronze at 0.7 of the
+price, steel at 2.5 times); the **realms graph** (V) shows tools made and worn out per minute and soldiers
+by the metal of their arms; the minimap's **Ore found** view shows every ore tile your geologists found and
+how much is left; the **stores list** is in groups that fold away; and a **mine warns** about five minutes
+before it runs dry, saying where the nearest ore of its kind lies.
 
 ## The Bronze Age
 
