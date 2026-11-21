@@ -926,36 +926,72 @@ func _ai_needs_store(p: Sim.Player) -> bool:
 	return far >= 6
 
 
-## Enemy forts (at war) close to realm p's military buildings: worth a catapult each, a few at most.
-func _siege_targets(p: Sim.Player) -> int:
+## Enemy forts (at war) close to realm p's military buildings: worth a catapult each, a few at most
+## (counted up to `most`: the rivals never want more catapults than that).
+func _siege_targets(p: Sim.Player, most := 3) -> int:
 	var n := 0
-	var mine: Array = []
-	for b: Sim.Bld in sim.mil_list():
-		if b.p == p.id and b.state == "ready":
-			mine.append(b)
+	# (build 78) realm p's ready military buildings by 16-tile cell, so each enemy fort looks only at
+	# those around it (before, every fort on the map against every one of p's: a tenth of a second)
+	var cells := {}
+	for b: Sim.Bld in sim.realm_mil(p.id):
+		if b.state == "ready":
+			var ck := (b.x >> 4) * 4096 + (b.y >> 4)
+			if not cells.has(ck):
+				cells[ck] = []
+			(cells[ck] as Array).append(b)
+	if cells.is_empty():
+		return 0
+	var war := {}
 	for t: Sim.Bld in sim.mil_list():
-		if t.p == p.id or t.state != "ready" or t.ty == "hq" or sim.own_def(t) < 3 or not Diplomacy.at_war(sim, p.id, t.p):
+		if t.p == p.id or t.state != "ready" or t.ty == "hq" or sim.own_def(t) < 3:
 			continue
-		for b: Sim.Bld in mine:
-			if absi(b.x - t.x) + absi(b.y - t.y) <= 14:
-				n += 1
-				break
+		if not war.has(t.p):
+			war[t.p] = Diplomacy.at_war(sim, p.id, t.p)
+		if not war[t.p]:
+			continue
+		var hit := false
+		for cy in range((t.y - 14) >> 4, ((t.y + 14) >> 4) + 1):
+			for cx in range((t.x - 14) >> 4, ((t.x + 14) >> 4) + 1):
+				var c = cells.get(cx * 4096 + cy)
+				if c == null:
+					continue
+				for b: Sim.Bld in c:
+					if absi(b.x - t.x) + absi(b.y - t.y) <= 14:
+						hit = true
+						break
+				if hit: break
+			if hit: break
+		if hit:
+			n += 1
+			if n >= most:
+				return n
 	return n
 
 
 ## What taking building `t` is worth besides the odds: the land it holds and the mines and workshops
 ## that would be lost with that land.
+var _av_by = null       # (build 78) per realm: its ready buildings that are not military, in Sim.blds order;
+                        # made once per ai_attack / _ai_landing (nothing changes while they choose)
+
 func _attack_value(t: Sim.Bld) -> float:
 	var r := int(t.def.get("radius", 6))
 	var v := 0.08 * (r - 6)
 	var n := 0
-	for b in sim.blds:
-		if b.p == t.p and b.state == "ready" and not sim.is_mil(b) and absi(b.x - t.x) <= r and absi(b.y - t.y) <= r:
+	if _av_by == null:
+		_av_by = {}
+		for b in sim.blds:
+			if b.state == "ready" and not sim.is_mil(b):
+				if not _av_by.has(b.p):
+					_av_by[b.p] = []
+				(_av_by[b.p] as Array).append(b)
+	for b: Sim.Bld in _av_by.get(t.p, []):
+		if absi(b.x - t.x) <= r and absi(b.y - t.y) <= r:
 			n += 3 if b.def.get("size", "") == "mine" else 1
 	return v + minf(1.0, n * 0.05)
 
 
 func ai_attack(p: Sim.Player) -> bool:
+	_av_by = null
 	# (build 73) the military buildings only, and only targets within reach of one of them: on a big
 	# map this looked at every building against every fort (the same choice, far quicker)
 	var srcs: Array[Sim.Bld] = []
@@ -1025,6 +1061,7 @@ func _ai_landing(p: Sim.Player) -> bool:
 		if String(k).begins_with("@land:") and float(p.site_wait[k]) <= sim.time:
 			p.site_wait.erase(k)
 	var n := mini(mini(p.reserve - 2, sim.sea.free_ships(p) * SimSea.LANDING_PER_SHIP), SimSea.LANDING_MAX)
+	_av_by = null
 	var cands := []
 	for t: Sim.Bld in sim.mil_list():
 		if t.p == p.id or t.state != "ready" or t.dead or not sim.players[t.p - 1].alive or not Diplomacy.at_war(sim, p.id, t.p):

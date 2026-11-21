@@ -373,7 +373,40 @@ const LEG := 11.0
 
 func _game_near(b: Sim.Bld):
 	var c := sim.work_center(b)
-	return _nearest(Vector2(c.x, c.y), float(sim.work_radius(b)) + TRACK, GAME)
+	var at := Vector2(c.x, c.y)
+	var r := float(sim.work_radius(b)) + TRACK
+	# (build 78) only the animals heading near the grounds (by the grid, as _any_game), not all of them:
+	# the same answer as _nearest over the whole list (the closest, the later in the list on a tie)
+	if _dgrid.is_empty():
+		_dgrid["made"] = true
+		for a2 in animals:
+			_g_add(a2)
+	var reach := r + LEG + 1.0
+	var best = null
+	var bd := r
+	var ties := []
+	for gy in range(maxi(0, int(at.y - reach)) >> DCELL, (maxi(0, int(at.y + reach)) >> DCELL) + 1):
+		for gx in range(maxi(0, int(at.x - reach)) >> DCELL, (maxi(0, int(at.x + reach)) >> DCELL) + 1):
+			for a: Array in _dgrid.get(gx * 4096 + gy, []):
+				var dx := float(a[3]) - at.x
+				var dy := float(a[4]) - at.y
+				if dx * dx + dy * dy > (r + LEG) * (r + LEG):
+					continue
+				var d := pos(a).distance_to(at)
+				if d < bd or (d == bd and best == null):
+					bd = d; best = a; ties = [a]
+				elif d == bd:
+					ties.append(a)
+	if ties.size() > 1:
+		# equally close: the one latest in the list
+		var at_i := -1
+		for t: Array in ties:
+			for i in range(animals.size() - 1, at_i, -1):
+				if is_same(animals[i], t):
+					if i > at_i:
+						at_i = i; best = t
+					break
+	return best
 
 
 ## The animals by where they are heading, in cells of 8 tiles (build 66: a hunter with no game in

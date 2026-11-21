@@ -1308,6 +1308,9 @@ func mil_list() -> Array:
 	if sim._mil_dirty:
 		_mil = []
 		_mil_cells = {}
+		_mil_by = []
+		for q in sim.players:
+			_mil_by.append([])
 		for b in sim.blds:
 			if sim.is_mil(b):
 				var ck := (b.x >> 4) * 4096 + (b.y >> 4)
@@ -1315,8 +1318,23 @@ func mil_list() -> Array:
 					_mil_cells[ck] = PackedInt32Array()
 				_mil_cells[ck].append(_mil.size())
 				_mil.append(b)
+				if b.p >= 1 and b.p <= _mil_by.size():
+					_mil_by[b.p - 1].append(b)
 		sim._mil_dirty = false
 	return _mil
+
+
+## (build 78) Realm pid's military buildings and headquarters, in mil_list's order (a building never
+## changes hands, so this is mil_list with the others left out).
+var _mil_by: Array = []
+
+func realm_mil(pid: int) -> Array:
+	if _mil_by.size() != sim.players.size():
+		sim._mil_dirty = true
+	mil_list()
+	if pid < 1 or pid > _mil_by.size():
+		return []
+	return _mil_by[pid - 1]
 
 
 ## (build 73) The military buildings within r tiles' box of (x, y), in mil_list's order: by 16-tile
@@ -1827,12 +1845,14 @@ func _dispatch_inputs_for(p: Sim.Player) -> void:
 	var hungry := _hungry(p)
 	_rank_memo_check(p)
 	var buckets := [[], [], [], []]
+	var now := sim.time
 	for b: Sim.Bld in _input_blds(p):
-		if b.dead or b.state != "ready" or not b.staffed or b.prio == Sim.PRIO_PAUSED or b.reno_to >= 0:
-			continue
 		# found stocked up (or with nothing to send) a moment ago: it sleeps until in_next, and is not
-		# even sorted into the rounds (build 59: most buildings sleep most of the time)
-		if sim.time < b.in_next:
+		# even sorted into the rounds (build 59: most buildings sleep most of the time; build 78: looked
+		# at first, as it leaves out the most)
+		if now < b.in_next:
+			continue
+		if b.dead or b.state != "ready" or not b.staffed or b.prio == Sim.PRIO_PAUSED or b.reno_to >= 0:
 			continue
 		if hungry and food_chain().has(b.ty):
 			buckets[0].append(b)

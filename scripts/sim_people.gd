@@ -26,9 +26,8 @@ func pop_total(p: Sim.Player) -> int:
 
 func soldiers(p: Sim.Player) -> int:
 	var c := p.reserve
-	for b in sim.mil_list():
-		if b.p == p.id:
-			c += b.garrison
+	for b in sim.realm_mil(p.id):
+		c += b.garrison
 	for a in sim.attacks:
 		if a.p == p.id:
 			c += a.n
@@ -583,8 +582,8 @@ func _walker_arrival(t: Sim.Trip, p: Sim.Player) -> void:
 func mil_fill(p: Sim.Player) -> bool:
 	var changed := false
 	var order: Array = []
-	for b: Sim.Bld in sim.mil_list():
-		if b.p == p.id and b.state == "ready" and b.def.has("garrison"):
+	for b: Sim.Bld in sim.realm_mil(p.id):
+		if b.state == "ready" and b.def.has("garrison"):
 			order.append(b)
 	if p.border_first:
 		# buildings near the border first (the list keeps its order within each group)

@@ -3312,6 +3312,9 @@ func realm_blds(p: Player) -> Array:
 func mil_list() -> Array:
 	return logistics.mil_list()
 
+func realm_mil(pid: int) -> Array:
+	return logistics.realm_mil(pid)
+
 func _dispatch() -> void:
 	logistics._dispatch()
 
