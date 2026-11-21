@@ -22,6 +22,7 @@ HAND = {
     "data/resources.json": "Every good: name, icon shape, colour, store room and info.",
     "data/techs.json": "The research tree: techs, ages, costs, what each unlocks or improves.",
     "data/trades.json": "The trades (woodland, mining, farming...): their names, tools and levels.",
+    "data/laws.json": "Realm laws: each law's options, what each does (tax, food, work, training, carriers, tolls, the four classes' contentment), the rivals' choice by personality, and the Polish text.",
     "data/needs.json": "What each class of people (peasants, artisans, nobles, soldiers) uses up to stay content.",
     "data/missions.json": "The missions: story, map or seed, rivals, options, time limit and goals.",
     "data/campaign.json": "The campaign: its chapters, their place on the campaign map, story before and after, what carries over, and the mission of each.",
