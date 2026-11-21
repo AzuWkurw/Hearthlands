@@ -454,6 +454,7 @@ Open **Settings** (top bar or F10). Everything there is remembered in `user://se
   limit** saves power.
 - **Ground details** (on by default): grass tufts, flowers, pebbles, reeds, shore foam and snow on high
   peaks. **Day and night** (off by default): a slow day, dark nights with lit windows; only the look changes.
+- **Soft shade towards the screen's corners** (on by default): the map darkens a little towards the corners.
 - **Raised ground** (on by default) draws hills standing up from the map (2.5D).
   Off gives the flat map of earlier builds.
 - **Language**: English or Polish (Polski), also offered on the new-game screen. Everything is translated,
@@ -893,7 +894,9 @@ Rules:
   picture, add `"smoke": [u, v]`, `"glow": [u, v]` or `"hub": [u, v]` to its `art` in `buildings.json`,
   as fractions of the picture's width and height (0.5, 0.5 is the middle).
 - The terrain textures blend softly at their edges by themselves; water is drawn half transparent in the
-  baked map so the water shader knows where to shimmer.
+  baked map so the water shader knows where to shimmer. The shader also lightens the shallow water along
+  the coast, sends a swell in towards the beach and darkens the wet sand at the water's edge, from how far
+  each tile lies from the shore, so custom water and sand textures get this too.
 - You can also replace the files in `textures/` inside the project itself, which changes the defaults for an
   exported build. `python3 tools/make_textures.py` regenerates any that are missing (`--force` redraws all).
 
@@ -1422,7 +1425,9 @@ scripts/
   version.gd     version and build number
   (saves: Sim.to_save / from_save, written compressed by main.gd)
 shaders/
-  ground.gdshader  makes water shimmer on the baked map
+  ground.gdshader  makes water shimmer on the baked map; shallows, swell and wet sand at the coast,
+                   light and shade on hills, season tints, cloud shadows
+  map_sway.gdshader  trees and crops sway in the wind; the fog of war's misty edge
 mods_examples/   an example script mod
 data/            resources, buildings, research tree, population needs, trades
 textures/        default textures (PNG)

@@ -44,6 +44,7 @@ var log_open := true
 var features := {}                        # feature id -> switched on; features not listed use their default
 var language := "en"                      # interface language (see I18n)
 var daynight := false                     # a slow day and night (only looks)
+var vignette := true                      # the map darkens softly towards the screen's corners
 var cb_colors := false                    # colours that stay apart for red-green colour blindness
 var details := true                       # grass tufts, reeds, foam, snow on peaks
 var raised := true                        # hills drawn raised (2.5D); off: a flat map
@@ -90,6 +91,7 @@ func load_file() -> void:
 	goals = bool(cf.get_value("game", "goals", goals))
 	raised = bool(cf.get_value("display", "raised", raised))
 	daynight = bool(cf.get_value("display", "daynight", daynight))
+	vignette = bool(cf.get_value("display", "vignette", vignette))
 	cb_colors = bool(cf.get_value("display", "cb_colors", cb_colors))
 	details = bool(cf.get_value("display", "details", details))
 	language = String(cf.get_value("display", "language", language))
@@ -128,6 +130,7 @@ func save_file() -> void:
 	cf.set_value("game", "goals", goals)
 	cf.set_value("display", "raised", raised)
 	cf.set_value("display", "daynight", daynight)
+	cf.set_value("display", "vignette", vignette)
 	cf.set_value("display", "details", details)
 	cf.set_value("display", "cb_colors", cb_colors)
 	cf.set_value("display", "language", language)

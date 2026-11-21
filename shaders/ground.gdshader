@@ -37,6 +37,12 @@ uniform vec4 green_col = vec4(0.0);
 uniform vec4 snow_amt = vec4(0.0);
 uniform vec4 ice_col = vec4(0.0);
 
+// The coast: how far each tile is from the shoreline, one pixel a tile, smoothed between tiles
+// (128 + 20 a tile: more out to sea, less inland; see MapView._make_coast_map). Gives the light
+// shallow water along the shore, the swell rolling in towards the beach and the dark wet sand.
+uniform sampler2D coast_map : filter_linear, repeat_disable;
+uniform bool use_coast = false;
+
 // Tiles along each side of a chunk (MapChunks.CH).
 uniform float chunk_tiles = 16.0;
 
@@ -113,14 +119,38 @@ void fragment() {
 			p.y = world.y + texture(lift_map, (p + 0.5) / (map_size + 1.0)).r * 4.0;
 		}
 	}
-	// hills, on land only (and nothing of it beyond the map edge)
+	// the coast: shallow water lighter and greener, the swell running in, wet sand at the water's edge
+	if (use_coast && on_map) {
+		// tiles from the shoreline: above 0 out at sea, below 0 inland
+		float sd = (texture(coast_map, p / map_size).r * 255.0 - 128.0) / 20.0;
+		if (water > 0.0) {
+			float shallow = 1.0 - smoothstep(0.25, 2.6, sd);
+			vec3 lagoon = c.rgb * vec3(0.8, 1.1, 1.04) + vec3(0.05, 0.12, 0.1);
+			c.rgb = mix(c.rgb, lagoon, shallow * 0.6 * water);
+			if (animate) {
+				// long low waves running in towards the shore, broken up along it so they come in sets
+				float wobble = noise(p * 0.7) * 2.4;
+				float crest = sin(sd * 4.2 + TIME * 1.1 + wobble);
+				float sets = smoothstep(0.35, 0.75, noise(p * 0.9 + vec2(TIME * 0.06, -TIME * 0.04)));
+				float reach = smoothstep(0.3, 0.75, sd) * (1.0 - smoothstep(1.4, 2.4, sd));
+				c.rgb += vec3(0.16, 0.2, 0.2) * smoothstep(0.82, 0.99, crest) * sets * reach * water;
+			}
+		} else if (sd > -0.75) {
+			// sand and earth the waves have just wetted: darker towards the water, the line moving with the wash
+			float wash = animate ? 0.5 + 0.5 * sin(TIME * 1.4 + p.x * 1.3 + p.y * 1.1) : 0.5;
+			float wet = smoothstep(-0.75, -0.2 + 0.15 * wash, sd);
+			c.rgb *= 1.0 - 0.16 * wet;
+		}
+	}
+	// hills, on land only (and nothing of it beyond the map edge): the slopes facing the sun warm,
+	// the slopes facing away in a cool blue shade rather than plain dark, as in late afternoon light
 	if (use_relief && on_map) {
 		float rv = texture(relief_map, p / map_size).r * 2.0 - 1.0;
 		float land = 1.0 - water;
 		if (rv > 0.0) {
-			c.rgb = mix(c.rgb, vec3(1.0, 1.0, 0.92), rv * 0.49 * land);
+			c.rgb = mix(c.rgb, vec3(1.0, 0.97, 0.84), rv * 0.49 * land);
 		} else {
-			c.rgb = mix(c.rgb, vec3(0.0), -rv * 0.647 * land);
+			c.rgb = mix(c.rgb, vec3(0.03, 0.05, 0.12), -rv * 0.647 * land);
 		}
 	}
 	// climates and seasons, on land (the ice on the taiga's water)
@@ -146,7 +176,8 @@ void fragment() {
 		vec2 cp = p * 0.055 - drift * TIME * 0.055;
 		float n = noise(cp) * 0.65 + noise(cp * 2.3 + 7.1) * 0.35;
 		float cover = smoothstep(0.78 - clouds * 0.45, 0.95 - clouds * 0.35, n);
-		c.rgb *= 1.0 - (0.07 + 0.15 * clouds) * cover;
+		// a little bluer than plain dark: the shade is lit by the open sky
+		c.rgb *= vec3(1.0) - (0.07 + 0.15 * clouds) * cover * vec3(1.0, 0.94, 0.8);
 	}
 	COLOR = vec4(c.rgb, 1.0);
 }

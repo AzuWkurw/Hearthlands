@@ -104,6 +104,7 @@ var _sway_mat: ShaderMaterial      # the map view's own shader (swaying trees an
 var _shadow: Texture2D             # a soft dark ellipse, laid under buildings, people and trees
 const SWAY_TREE := 254.0 / 255.0   # colour alphas the sway shader recognises (see map_sway.gdshader)
 const SWAY_CROP := 253.0 / 255.0
+const FOG_TAG := Color(0.2, 0.4, 0.6, 1.0)   # drawn with this colour, the fog of war gets a misty edge (map_sway.gdshader)
 const SUN := Vector2(0.16, 0.04)   # shadows fall a little to the right: the sun stands to the upper left
 var _origin := Vector2.ZERO
 var _folk_roads: Dictionary = {}   # house id -> [game time worked out, straight runs of road nearby: [from, to]]
@@ -349,6 +350,7 @@ func _ready() -> void:
 	_sway_mat.shader = load("res://shaders/map_sway.gdshader")
 	material = _sway_mat
 	_shadow = _make_shadow()
+	_make_vignette()
 	set_smooth(true)
 	refresh_textures()
 
@@ -466,6 +468,37 @@ func _process(_delta: float) -> void:
 			_clamp()
 
 
+## A soft darkening towards the corners of the map view, laid over the map (under the windows), which
+## draws the eye to the middle of the screen. A child drawn after the map, so it costs one picture a frame.
+var _vignette: TextureRect
+
+func _make_vignette() -> void:
+	var g := Gradient.new()
+	g.offsets = PackedFloat32Array([0.0, 0.5, 0.78, 1.0])
+	g.colors = PackedColorArray([Color(0.02, 0.03, 0.05, 0.0), Color(0.02, 0.03, 0.05, 0.0), Color(0.02, 0.03, 0.05, 0.12), Color(0.02, 0.03, 0.05, 0.34)])
+	var gt := GradientTexture2D.new()
+	gt.gradient = g
+	gt.width = 256
+	gt.height = 256
+	gt.fill = GradientTexture2D.FILL_RADIAL
+	gt.fill_from = Vector2(0.5, 0.5)
+	gt.fill_to = Vector2(1.0, 1.0)
+	_vignette = TextureRect.new()
+	_vignette.texture = gt
+	_vignette.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_vignette.stretch_mode = TextureRect.STRETCH_SCALE
+	_vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_vignette.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	_vignette.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(_vignette)
+
+
+## The vignette on or off (Settings).
+func set_vignette(on: bool) -> void:
+	if _vignette != null:
+		_vignette.visible = on
+
+
 func set_animate(on: bool) -> void:
 	animate = on
 	_ground_mat.set_shader_parameter("animate", on)
@@ -573,7 +606,55 @@ func _make_variation() -> void:
 	var img := Image.create_from_data(w, h, false, Image.FORMAT_RGBA8, data)
 	img.resize(w * 4, h * 4, Image.INTERPOLATE_BILINEAR)
 	_vary = ImageTexture.create_from_image(img)
+	_make_coast_map(depth)
 	_make_relief_map()
+
+
+## How far each tile is from the shoreline, for the ground shader: water tiles count up from 1 next to
+## land, land tiles count down from -1 next to water (to -3). Stored as 128 + 20 a tile, one pixel a
+## tile; the graphics card smooths between tiles, so the shoreline lies where the value crosses 128.
+## The shader uses it for the light shallow water along the coast, the swell rolling in to the beach
+## and the dark wet sand the waves leave behind. depth: each water tile's distance from land (up to 6).
+func _make_coast_map(depth: PackedByteArray) -> void:
+	var w := sim.w
+	var h := sim.h
+	var land := PackedByteArray()
+	land.resize(w * h)
+	var q := PackedInt32Array()
+	for i in w * h:
+		if sim.ter[i] == Sim.WATER:
+			q.append(i)
+		else:
+			land[i] = 255
+	var head := 0
+	while head < q.size():
+		var i := q[head]
+		head += 1
+		if land[i] >= 3:
+			continue
+		var x := i % w
+		var y := i / w
+		for d: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var xx := x + d.x
+			var yy := y + d.y
+			if xx >= 0 and yy >= 0 and xx < w and yy < h:
+				var j := yy * w + xx
+				if land[j] == 255:
+					land[j] = land[i] + 1
+					q.append(j)
+	var data := PackedByteArray()
+	data.resize(w * h)
+	for i in w * h:
+		var s := 0
+		if sim.ter[i] == Sim.WATER:
+			s = mini(int(depth[i]), 6)
+		else:
+			s = -mini(int(land[i]), 3)
+		data[i] = 128 + s * 20
+	var img := Image.create_from_data(w, h, false, Image.FORMAT_R8, data)
+	_ground_mat.set_shader_parameter("coast_map", ImageTexture.create_from_image(img))
+	_ground_mat.set_shader_parameter("map_size", Vector2(w, h))
+	_ground_mat.set_shader_parameter("use_coast", true)
 
 
 ## The hills' light and shade, one pixel a tile, for the ground shader: the slope towards the light
