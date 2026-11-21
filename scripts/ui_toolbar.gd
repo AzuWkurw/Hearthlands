@@ -54,6 +54,7 @@ func build() -> void:
 
 	var bg := _group(row, "BUILD")
 	sites_btn = _btn("Sites", _sites_icon(), "Sites (B): show building places on the map.\nA small house: room for a small building; a bigger house: medium; a castle: large; a mine sign: a mine (where a geologist found ore).\nClose up only: zoom in to see them.", toggle_sites)
+	main.key_text(sites_btn, "tooltip_text")
 	bg.add_child(sites_btn)
 	for c in GameData.CATEGORIES:
 		var id := String(c[0])
@@ -246,7 +247,7 @@ func _on_auto() -> void:
 	main.settings.auto_roads = auto_btn.button_pressed
 	main.view.auto_roads = main.settings.auto_roads
 	main.settings.save_file()
-	main._show_hint(tr("Auto roads %s.") % ("on: new buildings get their road at once" if main.settings.auto_roads else "off: you lay each new building's road yourself"), 2.5)
+	main._show_hint(tr("Auto roads %s." % ("on: new buildings get their road at once" if main.settings.auto_roads else "off: you lay each new building's road yourself")), 2.5)
 
 
 ## The panel sits above its group's button, kept inside the map area.

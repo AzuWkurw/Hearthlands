@@ -882,6 +882,7 @@ func _attack_tick(dt: float) -> void:
 		_arrows(a, p, t, 0.0)
 		if a.n <= 0:
 			sim.attacks.remove_at(k)
+			Chronicle.note(sim, sim.players[t.p - 1], "repelled", {"o": a.p})
 			if a.p == 1 or t.p == 1:
 				sim.emit_log("The attack on %s was beaten back." % String(t.def.name), Color("86ad5c") if t.p == 1 else Color("e08a6a"), Vector2i(t.x, t.y))
 			continue
@@ -951,11 +952,13 @@ func _attack_tick(dt: float) -> void:
 			# a rival sees the attack going badly and calls the rest back
 			_retreat(a, p)
 			sim.attacks.remove_at(k)
+			Chronicle.note(sim, sim.players[t.p - 1], "repelled", {"o": a.p})
 			if t.p == 1:
 				sim.emit_log("%s's attack on your %s falls back." % [p.name, String(t.def.name)], Color("86ad5c"), Vector2i(t.x, t.y))
 			continue
 		if a.n <= 0:
 			sim.attacks.remove_at(k)
+			Chronicle.note(sim, sim.players[t.p - 1], "repelled", {"o": a.p})
 			if a.p == 1 or t.p == 1:
 				sim.emit_log("The attack on %s was beaten back." % String(t.def.name), Color("86ad5c") if t.p == 1 else Color("e08a6a"), Vector2i(t.x, t.y))
 			continue
@@ -1206,6 +1209,7 @@ func _fall(a: Sim.Attack, p: Sim.Player, k: int) -> void:
 func _field_end(won: Sim.Attack, lost: Sim.Attack) -> void:
 	won.field = 0
 	lost.field = 0
+	Chronicle.note(sim, sim.players[won.p - 1], "field_won", {"o": lost.p})
 	if won.p == 1 or lost.p == 1:
 		var t: Sim.Bld = sim.by_id.get(won.tgt)
 		var where := String(t.def.name).to_lower() if t != null else "their target"
@@ -1344,14 +1348,19 @@ func _capture(a: Sim.Attack, t: Sim.Bld, p: Sim.Player, op: Sim.Player) -> void:
 	Sim.mix_add(sim.rmix_of(p), a.amix)
 	p.reserve += rest
 	p.res_era = Sim.mix_avg(p.rmix)
-	if p.id == 1 or op.id == 1:
+	Chronicle.note(sim, p, "capture", {"o": op.id, "b": t.ty})
+	if sim.spectating():
+		sim.emit_log("%s captured a %s from %s." % [p.name, String(t.def.name), op.name], Color("d8aa4a"), Vector2i(t.x, t.y))
+	elif p.id == 1 or op.id == 1:
 		sim.emit_log("%s captured a %s%s" % [p.name, String(t.def.name), " from you!" if op.id == 1 else " from %s." % op.name], Color("e0603a") if op.id == 1 else Color("d8aa4a"), Vector2i(t.x, t.y))
 	recompute_territory()
 
 
 func eliminate(op: Sim.Player, by: Sim.Player) -> void:
 	op.alive = false
-	sim.emit_log("%s %s been defeated by %s!" % [op.name, "have" if op.id == 1 else "has", by.name], Color("e0603a") if op.id == 1 else Color("d8aa4a"))
+	Chronicle.note(sim, op, "fall", {"by": by.id})
+	var you := op.id == 1 and not sim.spectating()
+	sim.emit_log("%s %s been defeated by %s!" % [op.name, "have" if you else "has", by.name], Color("e0603a") if you else Color("d8aa4a"))
 	for b in sim.blds.duplicate():
 		if b.p == op.id:
 			b.garrison = 0
@@ -1371,6 +1380,8 @@ func eliminate(op: Sim.Player, by: Sim.Player) -> void:
 
 
 func _check_alliance_end() -> void:
+	if sim.spectating():
+		return
 	var allied := 0
 	var alive := 0
 	for p in sim.players:
@@ -1384,6 +1395,15 @@ func _check_alliance_end() -> void:
 
 func _check_end() -> void:
 	if sim.over:
+		return
+	# spectator mode (build 77): the game ends when one realm is left standing
+	if sim.spectating():
+		var left: Array = sim.players.filter(func(q): return q.alive)
+		if left.size() <= 1:
+			sim.over = true
+			if left.size() == 1:
+				sim.emit_log("%s is the last realm standing." % (left[0] as Sim.Player).name, Color("d8aa4a"))
+			sim.ended.emit(true)
 		return
 	if not sim.players[0].alive:
 		sim.over = true

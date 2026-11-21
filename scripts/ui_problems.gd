@@ -110,7 +110,7 @@ func problems() -> Array:
 			var k := -a.uid
 			seen[k] = true
 			if not since.has(k): since[k] = now
-			out.append([1e9, tr("%s attacks your %s (%d soldiers)") % [sim.players[a.p - 1].name, String(t.def.name), a.n], Main.col("bad"), Vector2i(t.x, t.y), t.id, k])
+			out.append([1e9, tr("%s attacks your %s (%d soldiers)" % [sim.players[a.p - 1].name, String(t.def.name), a.n]), Main.col("bad"), Vector2i(t.x, t.y), t.id, k])
 	for b: Sim.Bld in sim.realm_blds(sim.human()):
 		if b.dead or b.ty == "hq":
 			continue
@@ -156,7 +156,7 @@ func _why(b: Sim.Bld) -> String:
 		return ""
 	# (build 66) works on with a worn-out tool, slower, until the toolsmiths make a new one
 	if sim.arms.worn(b) and b.staffed:
-		return tr("worn-out %s: works slower until a new one is made") % GameData.res_name(sim.tool_of(b)).to_lower()
+		return tr("worn-out %s: works slower until a new one is made" % GameData.res_name(sim.tool_of(b)).to_lower())
 	if b.working or b.msg == "" or b.msg == "Working" or b.msg == "The worker is on his way":
 		return ""
 	if b.fails >= 12 and b.def.has("act") and String(b.def.act) != "farm":
@@ -180,10 +180,10 @@ func refresh() -> void:
 		if not (show_hidden and is_hidden(int(p[5]), String(p[1]))):
 			alerts.append([p[3], p[2]])
 	main.minimap.alerts = alerts
-	main.problems_btn.text = tr("Problems (%d)") % count
+	main.problems_btn.text = tr("Problems (%d)" % count)
 	if not box.visible:
 		return
-	title.text = tr("PROBLEMS (%d)") % count
+	title.text = tr("PROBLEMS (%d)" % count)
 	for c in list.get_children():
 		c.queue_free()
 	for c in foot_row.get_children():
@@ -195,7 +195,7 @@ func refresh() -> void:
 			show_hidden = false
 			refresh()))
 	if hidden_now > 0:
-		var sh := main._button(tr("Show hidden (%d)") % hidden_now, func():
+		var sh := main._button(tr("Show hidden (%d)" % hidden_now), func():
 			show_hidden = not show_hidden
 			refresh())
 		sh.toggle_mode = true
@@ -242,4 +242,4 @@ func refresh() -> void:
 			row.add_child(xb)
 		list.add_child(row)
 	if ps.size() > 12:
-		list.add_child(main._label(tr("and %d more") % (ps.size() - 12), 12, Main.DIM))
+		list.add_child(main._label(tr("and %d more" % (ps.size() - 12)), 12, Main.DIM))

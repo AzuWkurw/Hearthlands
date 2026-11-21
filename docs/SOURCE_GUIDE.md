@@ -239,6 +239,20 @@ Maps (`WorldGen.load_map`, `save_map`, `from_map`) are JSON with the map arrays 
 compressed and the start places; `new_game(..., p_map)` plays one instead of generating a world. The
 editor (`ui_editor.gd`) saves them to `user://maps`.
 
+**Mission events** (build 77, `mission_script.gd`): a mission's `"rules"` list, each
+`{"id", "when": {...}, "do": [{...}, ...]}`. `MissionScript.check` runs from `_mission_check` once a game
+second, after the goals: a rule whose `when` holds (`holds`) runs its actions (`run`) once, or again every
+so many minutes for `"every"`. `MissionScript.WHEN` and `DO` list every kind with its fields (the editor's
+Events section is built from them). `"who"`: 0 you, 1..8 a rival, -1 any/every rival. What fired and when
+is `sim.script_fired` (saved); `Player.script_war` lets a rival sent to war by an event attack during the
+mission's peace. A goal with `"hidden": true` is not shown or counted until a `show_goal` action. Messages
+go to the log and to `Sim.story`, which `ui_story.gd` shows in a window. Events use no randomness, so a
+game with events stays deterministic; `tools/script_test.gd` checks every kind, saving and loading, and
+that the shipped missions' events are well formed (`MissionScript.problems`).
+A mission's `opts.start_age` (1 to 5) starts every realm in that age with all earlier studies known
+(`Sim.learn_ages`); `tools/chapters_test.gd` starts every chapter and mission and plays five minutes of each
+(`-- only=b9 mins=100` plays one chapter for longer).
+
 ### 3.8 The rival AI (`sim_ai.gd`)
 
 Every few seconds each rival runs `ai_think(p)`:
@@ -295,18 +309,28 @@ usually just data edits. After changing buildings, goods or techs, run `tools/re
 ## 4. The interface
 
 - **`main.gd`**: builds the whole interface in code (`_build_ui`), runs the game loop (`_process`),
-  handles keys (`_unhandled_input`; keys the player changed in Settings are mapped back to the default
-  keys first, `_translate_key`), placing buildings and roads (`_on_tile`, `_use_tool`), and the new-game
+  handles keys (`_unhandled_input` asks `keys.gd` which action a key does, then acts on the action, so
+  every shortcut can be moved in Settings; a new shortcut goes into `Keys.ACTIONS`, a feature's into
+  `main.add_feature_key`), placing buildings and roads (`_on_tile`, `_use_tool`), and the new-game
   screen. The rest is split out into `ui_*.gd` helpers, each a small class that holds a reference to
   `main`: `ui_info` (the building info box, `_refresh_sel`), `ui_side` (the side panel), `ui_research`,
   `ui_settings`, `ui_saves` (with map pictures), `ui_diplomacy`, `ui_demolish`, `ui_targets`,
   `ui_textures`, `ui_log`, `ui_toolbar`, `ui_guide` (the first-game checklist, or a mission's goals),
   `ui_problems` (what is stuck and why), `ui_attack` (the attack window), `ui_chain` (a good's production
-  chain), `ui_editor` (the map editor) and `ui_missions` (the mission list).
-- **Languages** (`i18n.gd`): `data/lang_<code>.json` maps English text to a translation and is loaded as a
-  Godot translation, so labels and buttons whose text is a key show translated; text with numbers goes
-  through `tr("... %d ...")`. `tools/extract_strings.py` collects new text into the files. German is
-  included. Messages from the simulation (event log, building info) are still English.
+  chain), `ui_editor` (the map editor), `ui_missions` (the mission list) and `ui_spectate` (spectator mode).
+- **Spectator mode** (`opts.spectate`, build 77): `Sim.new_game` makes every realm an AI one, the first
+  too, and leaves the fog of war out. `sim.human()` is still the first realm, so the simulation runs
+  exactly as it would with a player; the game ends when one realm is left (`SimMilitary._check_end`).
+  `ui_spectate.gd` hides the toolbar and the windows that give orders (`Main.play_btns`), blocks the
+  order keys and the info box's controls, and shows a Realms board at the top of the side panel.
+- **Languages** (`i18n.gd`): `data/lang_<code>.json` maps English text to a translation. The simulation
+  always writes English (logic and sounds match its messages); text is translated only when shown, by a
+  Godot `Translation` (`I18n.Table`) that also understands text built from keys: keys with `%s`/`%d` are
+  templates (`"%s is finished."` translates "Sawmill is finished."), names are found in lower case too,
+  counts take the language's forms (a value `"name|one|few|many"`, e.g. `"deski|deska|deski|desek"`),
+  and lines with markup or several sentences are translated piece by piece. Write `tr("... %d" % n)`, not
+  `tr("...") % n`, so the inserted values are translated as well. `tools/extract_strings.py --missing`
+  lists text without a translation; `tools/lang_test.gd` checks it. Polish is included.
 - **`map_view.gd`** draws the world each frame in tile units (one tile = 1.0, scaled by `zoom`). With
   raised ground (2.5D, on by default) every tile corner is lifted by the height there (`_lift`,
   `lift_at`); the ground is drawn as grid meshes through those corners (`_chunk_grid`, and
@@ -359,6 +383,7 @@ There are about 75 scripts. The ones to know:
 | `door_test.gd`, `walk_test.gd`, `site_test.gd`, `full_test.gd` | roads and entrances, walking people, construction supply, full stores |
 | `garrison_test.gd`, `field_test.gd`, `battle_test.gd`, `battle_forts.gd` | soldiers and fighting |
 | `research_test.gd`, `research_ai_test.gd`, `options_test.gd`, `oldsave_test.gd` | research, new-game options, old saves |
+| `spectate_test.gd`, `shot_spectate.gd` | spectator mode: every realm played by the computer, no fog, the watching interface |
 | `mission_test.gd`, `sea_test.gd`, `catapult_test.gd`, `claim_test.gd` | missions and maps, ships and colonies, catapults, boundary stones |
 | `ai_stuck.gd`, `econ_diag.gd`, `food_diag.gd`, `chain_diag.gd`, `route_diag.gd`, `war_check.gd`, `rival_check.gd` | finding out why rivals are stuck, hungry, short of iron, or not fighting |
 | `shot_*.gd` | screenshots of a feature (need a display: `xvfb-run -a -s "-screen 0 1920x1080x24" godot --rendering-driver opengl3 --script ...`) |
@@ -410,13 +435,17 @@ to `Bld`/`Player` (saved automatically) with a default that works for old saves.
 | road carriers | `SimLogistics.plan_chain`, `_chain_trip` |
 | ships and colonies | `SimSea.expedition`, `ship_arrival`, `sea_transfers` |
 | missions | `Sim._mission_check`, `goal_progress`, `data/missions.json`, `ui_missions.gd` |
+| mission events | `MissionScript.check`, `holds`, `run` (`mission_script.gd`), `ui_story.gd` |
 | maps and the editor | `WorldGen.load_map`, `save_map`, `from_map`, `ui_editor.gd` |
 | statistics and border replay | `features/statistics.gd` |
+| the end-of-game chronicle | `chronicle.gd` (`Chronicle.note`, `story`), `ui_chronicle.gd`, notes in `Player.chron` |
 | trade by cart, standing offers, rivals' words | `Diplomacy.send_cart`, `cart_arrival`, `standing_tick`, `say`, `_warn_first` |
 | bridges | `SimLogistics.bridge_landing`, `bridge_step`, `bridge_cost_ok` |
 | taverns, chapels, contentment | `features/contentment.gd` |
+| realm laws, contentment by class | `features/laws.gd`, `data/laws.json` |
 | archers and sallies | `SimMilitary.archers_tick`, `_arrows`, `_sally` |
 | spreading fires | `features/fires.gd` |
+| factory smoke, parks, waterworks, health | `features/factory_health.gd`, `data/health.json` |
 | campaign | `ui_campaign.gd`, `data/campaign.json` |
 | traffic map, undo, follow camera | `ui_traffic.gd`, `ui_undo.gd`, `MapView.follow` / `pick_mover` |
 | achievements, packs, town names | `achievements.gd`, `share_pack.gd`, `Sim.new_town_name` |
@@ -425,7 +454,9 @@ to `Bld`/`Player` (saved automatically) with a default that works for old saves.
 | translations | `i18n.gd`, `data/lang_*.json`, `tools/extract_strings.py` |
 | drawing buildings, people, carriers | `MapView._draw`, `_draw_building`, `_collect_folk` |
 | trees, peaks and boulders | `MapView._draw_scenery`, `_scenery_mesh` (pictures from `tools/make_scenery.py`) |
+| spectator mode | `Sim.spectating`, `opts.spectate`, `ui_spectate.gd` |
 | renderer and display settings | `settings.gd`, `ui_settings.gd`, `Main._probe_vulkan` |
+| keyboard shortcuts | `keys.gd` (actions, default keys, swapping), `ui_settings.gd` (`set_body_key_rows`) |
 
 ---
 

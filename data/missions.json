@@ -59,5 +59,68 @@
 			{"kind": "tech", "id": "watermills", "text": "Study watermills"},
 			{"kind": "tech", "id": "three_field", "text": "Study the three-field system"}
 		]
+	},
+	{
+		"id": "long_watch",
+		"name": "5. The Long Watch",
+		"story": "Two rivals have sworn to burn your town, by land and by sea. Build towers, arm your people and hold out until the relief army comes at minute 45.",
+		"seed": "long watch",
+		"foes": 2,
+		"strength": 5,
+		"opts": {"peace_min": 10, "start_goods": 1.5, "start_age": 1},
+		"minutes": 0,
+		"goals": [
+			{"kind": "build", "ty": "tower", "n": 2, "text": "Build two towers"},
+			{"kind": "soldiers", "n": 20, "text": "Have 20 soldiers"},
+			{"kind": "hold", "n": 45, "text": "Hold out for 45 minutes"}
+		],
+		"rules": [
+			{"id": "start", "when": {"kind": "start"}, "do": [{"kind": "message", "text": "Riders bring word: {1} and {2} are coming. The king's army will march to your aid, but it cannot be here before minute 45.", "title": "The long watch"}]},
+			{"id": "war", "when": {"kind": "time", "min": 10}, "do": [{"kind": "war", "who": -1}, {"kind": "message", "text": "Both rivals have declared war. The watch begins."}]},
+			{"id": "raids", "when": {"kind": "every", "min": 15, "every": 8}, "do": [{"kind": "attack", "who": 1}]},
+			{"id": "fleet", "when": {"kind": "every", "min": 20, "every": 10}, "do": [{"kind": "landing", "who": 2, "n": 8}]},
+			{"id": "half", "when": {"kind": "time", "min": 30}, "do": [{"kind": "message", "text": "A messenger gets through: the relief army is a quarter of an hour away. Hold on!"}, {"kind": "soldiers", "who": 0, "n": 4}]}
+		]
+	},
+	{
+		"id": "broken_alliance",
+		"name": "6. The Broken Alliance",
+		"story": "Your ally swears to stand by you against a common enemy. Allies change their minds.",
+		"seed": "broken alliance",
+		"foes": 2,
+		"strength": 5,
+		"opts": {"peace_min": 20, "start_goods": 1.3, "start_age": 2},
+		"minutes": 90,
+		"goals": [
+			{"kind": "soldiers", "n": 25, "text": "Have 25 soldiers"},
+			{"kind": "build", "ty": "guardhouse", "n": 2, "text": "Build two guardhouses"},
+			{"kind": "defeat", "n": 1, "text": "Defeat one rival realm", "hidden": true}
+		],
+		"rules": [
+			{"id": "start", "when": {"kind": "start"}, "do": [{"kind": "ally", "who": 1}, {"kind": "message", "text": "{1} is your sworn ally. Together you will stand against {2}, who wants both your lands.", "title": "Allies"}]},
+			{"id": "enemy", "when": {"kind": "time", "min": 20}, "do": [{"kind": "war", "who": 2}, {"kind": "message", "text": "{2} has declared war on you. {1} promises to march with you."}]},
+			{"id": "betrayal", "when": {"kind": "time", "min": 40}, "do": [{"kind": "peace", "who": 2}, {"kind": "war", "who": 1}, {"kind": "message", "text": "{1} has made a secret peace with {2} and turned on you! {2}'s envoys, ashamed, offer peace. Make {1} pay.", "title": "Betrayed"}, {"kind": "show_goal", "goal": 2}]},
+			{"id": "strike", "when": {"kind": "after", "rule": "betrayal", "min": 2}, "do": [{"kind": "attack", "who": 1}]}
+		]
+	},
+	{
+		"id": "bronze_rush",
+		"name": "7. The Bronze Rush",
+		"story": "A short race in the Bronze Age: be the first to melt bronze and arm your warriors with it.",
+		"seed": "bronze rush",
+		"foes": 2,
+		"strength": 4,
+		"opts": {"peace_min": 25, "start_goods": 1.2},
+		"minutes": 40,
+		"goals": [
+			{"kind": "stock", "res": "bronze", "n": 30, "text": "Store 30 bronze"},
+			{"kind": "build", "ty": "bronze_weaponsmith", "n": 1, "text": "Build a bronze weaponsmith"},
+			{"kind": "soldiers", "n": 15, "text": "Have 15 soldiers"}
+		],
+		"rules": [
+			{"id": "start", "when": {"kind": "start"}, "do": [{"kind": "message", "text": "Copper and tin, charcoal and a bronze foundry: the first realm with bronze blades will rule the hills.", "title": "The race"}]},
+			{"id": "rival", "when": {"kind": "build", "who": -1, "ty": "bronze_foundry", "n": 1}, "do": [{"kind": "message", "text": "A rival's bronze foundry is smoking already."}]},
+			{"id": "raid", "when": {"kind": "time", "min": 25}, "do": [{"kind": "attack", "who": 1}, {"kind": "message", "text": "{1} would rather take your bronze than make his own."}]}
+		]
 	}
 ]

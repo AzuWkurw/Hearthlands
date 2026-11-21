@@ -1,0 +1,29 @@
+{
+ "_about": "Factory smoke and health (the factory_health feature). From the age 'from_age' on (6: Industrial), working buildings listed under 'smog' (and every workshop with a steam engine, 'steam_smog') fill the air of homes within 'smog_radius' tiles with smoke, thinning with distance. Buildings under 'cleaners' take away that share of the smoke of homes within their radius. Buildings under 'water' give homes within their radius clean water while they work. 'needs' says which classes want clean water ('water') and a park ('park') near their homes in that age.",
+ "from_age": 6,
+ "smog_radius": 6,
+ "steam_smog": 0.8,
+ "smog": {
+  "steelworks": 1.5,
+  "machine_works": 1.0,
+  "textile_mill": 1.0,
+  "iron_smelter": 0.6,
+  "copper_smelter": 0.5,
+  "lead_smelter": 0.8,
+  "brickworks": 0.4,
+  "glassworks": 0.4,
+  "powder_mill": 0.6,
+  "cartridge_works": 0.4,
+  "coal_mine": 0.3
+ },
+ "cleaners": {
+  "park": {"radius": 7, "clean": 0.5}
+ },
+ "water": {
+  "waterworks": {"radius": 13}
+ },
+ "needs": {
+  "artisan": ["water"],
+  "noble": ["water", "park"]
+ }
+}

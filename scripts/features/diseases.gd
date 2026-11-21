@@ -104,8 +104,14 @@ func risks(p: Sim.Player) -> Dictionary:
 			if cl.biome_at(b.x, b.y) == cl.WETLAND:
 				n += 1
 		wet = float(n) / maxf(1.0, mine.size())
+	# factory smoke and clean water from waterworks (build 77)
+	var smog := 0.0
+	var fh = sim.get_feature("factory_health")
+	if fh != null and fh.active(p):
+		water = maxf(water, float(fh.water_share(p)))
+		smog = float(fh.air_of(p))
 	var out := {}
-	out["flu"] = [cold * 0.8 + unclad * 2.5 + crowd * 0.3, minf(0.65, bath * 0.3 + (0.0 if wear == null else float(wear.warm_share(p)) * 0.35))]
+	out["flu"] = [smog * 0.8 + cold * 0.8 + unclad * 2.5 + crowd * 0.3, minf(0.65, bath * 0.3 + (0.0 if wear == null else float(wear.warm_share(p)) * 0.35))]
 	out["dysentery"] = [(1.0 - water) * 0.8 + heat * 0.6 + hungry * 0.8 + crowd * 0.2, minf(0.75, water * 0.4 + bath * 0.35)]
 	out["marsh"] = [wet * 2.5 * (1.0 if t > 14.0 else 0.2), minf(0.7, bath * 0.3 + (0.3 if float(p.stock.get("medicine", 0.0)) >= 1.0 else 0.0))]
 	out["plague"] = [maxf(0.0, crowd - 0.95) * 10.0 + (0.3 if sim.time > 2400.0 else 0.0), minf(0.8, bath * 0.6)]

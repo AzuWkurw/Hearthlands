@@ -7,6 +7,7 @@ extends RefCounted
 var main: Main
 
 var ask_check: CheckBox
+var keys_open := false   # the list of keys is shown (Settings, Keys)
 
 
 func _init(p_owner: Main) -> void:
@@ -54,6 +55,12 @@ func _check(text: String, on: bool, toggled: Callable) -> CheckBox:
 
 ## Builds the Settings window's contents from the current settings (again after every change).
 func _fill_settings() -> void:
+	main.refresh_key_texts()   # keys or the language may have changed
+	# keep the scroll position, so clicking a key far down the list does not jump back to the top
+	var sc := _scroller()
+	if sc != null:
+		var at := sc.scroll_vertical
+		(func(): for i in 2: await main.get_tree().process_frame; sc.scroll_vertical = at).call_deferred()
 	for c in main.set_body.get_children():
 		main.set_body.remove_child(c)
 		c.queue_free()
@@ -73,13 +80,13 @@ func _fill_settings() -> void:
 	_set_row(g, "Language", _choice(langs.map(func(l): return l[1]), li, func(i):
 		main.settings.language = String(langs[i][0])
 		main.settings.save_file()
-		TranslationServer.set_locale(main.settings.language)
+		I18n.set_language(main.settings.language)
 		main._show_hint(tr("Some text changes when its window is next opened or refreshed."), 4.0)
 		_fill_settings.call_deferred()))
 	_set_row(g, "Renderer", _choice(Settings.RENDERERS.map(func(r): return r[1]), maxi(0, ids.find(running)), func(i):
 		_switch_renderer(String(ids[i]))))
 	var adapter := "%s, %s" % [RenderingServer.get_video_adapter_name(), RenderingServer.get_video_adapter_api_version()]
-	var note := main._label(tr("Now drawing with %s on %s.") % [Settings.renderer_name(running), adapter], 13, Main.DIM)
+	var note := main._label(tr("Now drawing with %s on %s." % [Settings.renderer_name(running), adapter]), 13, Main.DIM)
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	note.custom_minimum_size = Vector2(380, 0)
 	_set_row(g, "", note)
@@ -98,7 +105,7 @@ func _fill_settings() -> void:
 	rn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	rn.custom_minimum_size = Vector2(380, 0)
 	_set_row(g, "", rn)
-	_set_row(g, "Interface size", _choice(Settings.UI_SCALES.map(func(v): return tr("Auto (%d%%)") % roundi(main.settings.scale_now() * 100) if v == 0.0 and main.settings.ui_scale == 0.0 else (tr("Auto (fits the screen)") if v == 0.0 else "%d%%" % roundi(v * 100))), maxi(0, Settings.UI_SCALES.find(main.settings.ui_scale)), func(i):
+	_set_row(g, "Interface size", _choice(Settings.UI_SCALES.map(func(v): return tr("Auto (%d%%)" % roundi(main.settings.scale_now() * 100)) if v == 0.0 and main.settings.ui_scale == 0.0 else (tr("Auto (fits the screen)") if v == 0.0 else "%d%%" % roundi(v * 100))), maxi(0, Settings.UI_SCALES.find(main.settings.ui_scale)), func(i):
 		main.settings.ui_scale = Settings.UI_SCALES[i]
 		_apply_settings()))
 	_set_row(g, "Frame rate limit", _choice(Settings.FPS_LIMITS.map(func(v): return "No limit" if v == 0 else "%d fps" % v), maxi(0, Settings.FPS_LIMITS.find(main.settings.max_fps)), func(i):
@@ -136,7 +143,7 @@ func _fill_settings() -> void:
 		main.settings.ask_demolish = on
 		main.settings.save_file())
 	_set_row(g, "", ask_check)
-	_set_row(g, "", _check(tr("Demolish mines whose vein has run dry (warns %d s before)") % Main.DRY_MINE_WAIT, main.settings.demolish_dry_mines, func(on):
+	_set_row(g, "", _check(tr("Demolish mines whose vein has run dry (warns %d s before)" % Main.DRY_MINE_WAIT), main.settings.demolish_dry_mines, func(on):
 		main.settings.demolish_dry_mines = on
 		main.settings.save_file()))
 	_set_row(g, "", _check("Show the first-game guide (in the next new game)", main.settings.guide, func(on):
@@ -162,6 +169,15 @@ func _fill_settings() -> void:
 	row.add_child(main._button("Close (Esc)", func(): main.set_panel.visible = false))
 
 
+func _scroller() -> ScrollContainer:
+	var n: Node = main.set_body
+	while n != null:
+		if n is ScrollContainer:
+			return n
+		n = n.get_parent()
+	return null
+
+
 ## Applies display settings at once, saves them, and redraws the window to show the new choices.
 func _apply_settings() -> void:
 	main.settings.apply(main.get_window())
@@ -178,7 +194,7 @@ func _switch_renderer(id: String) -> void:
 			Settings.write_override(id)
 			main.settings.renderer = id
 			main.settings.save_file()
-			main._show_hint(tr("%s will be used from now on.") % Settings.renderer_name(id), 5.0)
+			main._show_hint(tr("%s will be used from now on." % Settings.renderer_name(id)), 5.0)
 		return
 	var extra := PackedStringArray()
 	if id == "gl_compatibility":
@@ -196,7 +212,7 @@ func _switch_renderer(id: String) -> void:
 	extra.append("rm=" + id)
 	if resume:
 		extra.append("resume")
-	main._show_hint(tr("Restarting with %s...") % Settings.renderer_name(id), 3.0)
+	main._show_hint(tr("Restarting with %s..." % Settings.renderer_name(id)), 3.0)
 	OS.set_restart_on_exit(true, Settings.restart_args(extra))
 	main.get_tree().quit()
 
@@ -225,7 +241,7 @@ func set_body_feature_rows(g: GridContainer) -> void:
 		var cb := _check(label, String(e.id) in on_ids, func(on):
 			_set_feature(String(e.id), on)
 			_refill())
-		cb.tooltip_text = String(e.info)
+		cb.tooltip_text = main.keys.keyed(String(e.info))
 		cb.disabled = not missing.is_empty()
 		_set_row(g, "", cb)
 	var row := HBoxContainer.new()
@@ -269,26 +285,73 @@ func set_body_sound_rows(g: GridContainer) -> void:
 		_set_row(g, String(row[0]), sl)
 
 
-## Keys: one row per action, with a button showing its key; click it, then press the new key.
+## Keys: one row per action, in groups, with a button showing its key; click it, then press the new
+## key. A key another action had is swapped with it; ↺ puts one action back on its default key.
 func set_body_key_rows(g: GridContainer) -> void:
-	var first := true
-	for a in Main.KEY_ACTIONS:
-		var id := String(a[0])
-		var waiting: bool = main.key_wait == id
-		var b := main._button("press a key... (Esc: keep)" if waiting else OS.get_keycode_string(main.key_for(id)), func():
-			main.key_wait = id
-			_fill_settings())
-		b.focus_mode = Control.FOCUS_NONE
-		b.custom_minimum_size = Vector2(110, 0)
-		b.tooltip_text = tr("Click, then press the key for: %s") % tr(String(a[1]))
-		var row := HBoxContainer.new()
-		row.add_child(b)
-		row.add_child(main._label(tr(String(a[1])), 13, Main.DIM))
-		_set_row(g, "Keys" if first else "", row)
-		first = false
+	var ks: Keys = main.keys
+	var moved := ks.actions().filter(func(a): return not ks.is_default(String(a[0]))).size()
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 10)
+	var toggle_btn := main._button(tr("Hide the keys") if keys_open else tr("Change keys (%d)") % ks.actions().size(), func():
+		keys_open = not keys_open
+		main.key_wait = ""
+		_fill_settings())
+	toggle_btn.focus_mode = Control.FOCUS_NONE
+	head.add_child(toggle_btn)
 	var reset := main._button("Default keys", func():
-		main.settings.keys = {}
+		ks.reset_all()
+		main.key_wait = ""
 		main.settings.save_file()
+		main._show_hint(tr("Every shortcut is back on its default key."), 3.0)
 		_fill_settings())
 	reset.focus_mode = Control.FOCUS_NONE
-	_set_row(g, "", reset)
+	reset.disabled = moved == 0
+	head.add_child(reset)
+	if moved > 0:
+		head.add_child(main._label(tr("%d changed") % moved, 13, Main.BRASS))
+	_set_row(g, "Keys", head)
+	if not keys_open:
+		return
+	var note := main._label("Click a key, then press the new one (Shift, Ctrl and Alt combinations work). Esc keeps the old key. A key another shortcut has is swapped with it. Arrow keys also move the map.", 13, Main.DIM)
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	note.custom_minimum_size = Vector2(380, 0)
+	_set_row(g, "", note)
+	for grp in Keys.GROUPS:
+		var rows := ks.actions().filter(func(a): return String(a[3]) == grp)
+		if rows.is_empty():
+			continue
+		_set_row(g, ks.group_title(grp), Control.new())
+		for a in rows:
+			_set_row(g, "", _key_row(ks, String(a[0])))
+
+
+## One shortcut: its key (click to change), what it does, and ↺ when it is not on its default key.
+func _key_row(ks: Keys, id: String) -> HBoxContainer:
+	var waiting: bool = main.key_wait == id
+	var changed := not ks.is_default(id)
+	var b := main._button(tr("press a key... (Esc: keep)") if waiting else ks.key_name(id), func():
+		main.key_wait = "" if main.key_wait == id else id
+		_fill_settings())
+	b.focus_mode = Control.FOCUS_NONE
+	b.custom_minimum_size = Vector2(130, 0)
+	b.tooltip_text = tr("Click, then press the key for: %s") % tr(ks.title(id))
+	if changed:
+		b.add_theme_color_override("font_color", Main.BRASS)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	row.add_child(b)
+	var l := main._label(tr(ks.title(id)), 13, Main.DIM)
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(l)
+	if changed:
+		var back := main._button("↺", func():
+			var msg := ks.reset_key(id)
+			main.key_wait = ""
+			main.settings.save_file()
+			if msg != "":
+				main._show_hint(msg, 5.0)
+			_fill_settings())
+		back.focus_mode = Control.FOCUS_NONE
+		back.tooltip_text = tr("Back to %s") % Keys.name_of(ks.default_key(id))
+		row.add_child(back)
+	return row

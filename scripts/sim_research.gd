@@ -288,6 +288,8 @@ func complete_tech(p: Sim.Player, id: String) -> void:
 	if p.research == id:
 		p.research = ""
 	_start_next(p)
+	if p.age > old_age:
+		Chronicle.note(sim, p, "age", {"age": p.age})
 	var t: Dictionary = GameData.techs[id]
 	if not p.ai:
 		# what it brings: its effects, the buildings and seeds it unlocks
@@ -311,7 +313,10 @@ func complete_tech(p: Sim.Player, id: String) -> void:
 	sim.tech_done.emit(p.id, id)
 	if t.get("final", false) and sim.research_victory and not sim.over:
 		sim.over = true
-		if p.id == 1 or Diplomacy.relation(sim, p.id, 1) == Diplomacy.ALLY:
+		if sim.spectating():
+			sim.emit_log("%s reached the Industrial Revolution first." % p.name, Color("d8aa4a"))
+			sim.ended.emit(true)
+		elif p.id == 1 or Diplomacy.relation(sim, p.id, 1) == Diplomacy.ALLY:
 			sim.emit_log("Your realm leads the world into the Industrial Revolution!" if p.id == 1 else "Your ally %s reached the Industrial Revolution. Shared victory!" % p.name, Color("d8aa4a"))
 			sim.ended.emit(true)
 		else:

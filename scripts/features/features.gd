@@ -14,6 +14,8 @@ const BUILT_IN := [
 	"res://scripts/features/wildlife.gd",
 	"res://scripts/features/contentment.gd",
 	"res://scripts/features/fires.gd",
+	"res://scripts/features/laws.gd",
+	"res://scripts/features/factory_health.gd",
 ]
 const MOD_DIR := "user://mods"
 

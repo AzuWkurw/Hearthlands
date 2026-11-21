@@ -26,7 +26,7 @@ func _on_diplomacy_changed() -> void:
 
 func _update_dip_button() -> void:
 	var n := main.sim.proposals.size()
-	main.dip_btn.text = tr("Diplomacy (%d)") % n if n > 0 else "Diplomacy"
+	main.dip_btn.text = tr("Diplomacy (%d)" % n) if n > 0 else "Diplomacy"
 
 
 func _build_diplomacy_panel() -> void:
@@ -118,7 +118,7 @@ func _fill_diplomacy() -> void:
 		var row := HBoxContainer.new()
 		var l := main._rich()
 		l.custom_minimum_size = Vector2(430, 0)
-		l.text = tr("[color=#%s]■[/color] [b]%s[/b] [color=#9a9c88]%s, level %d[/color]\n%s · thinks of you: %s (%d) · army %d vs your %d") % [q.color.to_html(false), q.name, q.pers, q.skill, Diplomacy.NAMES[rel], Diplomacy.mood(op), roundi(op), roundi(Diplomacy.strength(main.sim, q)), roundi(my_str)]
+		l.text = tr("[color=#%s]■[/color] [b]%s[/b] [color=#9a9c88]%s, level %d[/color]\n%s · thinks of you: %s (%d) · army %d vs your %d" % [q.color.to_html(false), q.name, q.pers, q.skill, Diplomacy.NAMES[rel], Diplomacy.mood(op), roundi(op), roundi(Diplomacy.strength(main.sim, q)), roundi(my_str)])
 		if rel == Diplomacy.PEACE and Diplomacy.borders(main.sim, 1, q.id):
 			l.text += tr("\n[color=#e0b060]Your borders touch: their patience wears thin over time. A gift or a trade wins it back; at war they will march.[/color]") if q.pers != "builder" else tr("\n[color=#9a9c88]Your borders touch, but builders are patient neighbours.[/color]")
 		row.add_child(l)
@@ -167,8 +167,8 @@ func _fill_diplomacy() -> void:
 	for so in main.sim.standing:
 		var q2 := main.sim.players[int(so.to) - 1]
 		var row3 := HBoxContainer.new()
-		var w := "" if (so.want as Dictionary).is_empty() else tr(" for %s") % Diplomacy.goods_text(so.want)
-		var l3 := main._label(tr("To %s: %s%s, every %d min, next in %d s (made %d so far)") % [q2.name, Diplomacy.goods_text(so.give), w, int(float(so.every) / 60.0), maxi(0, int(float(so.next) - main.sim.time)), int(so.done)], 14)
+		var w := "" if (so.want as Dictionary).is_empty() else tr(" for %s" % Diplomacy.goods_text(so.want))
+		var l3 := main._label(tr("To %s: %s%s, every %d min, next in %d s (made %d so far)" % [q2.name, Diplomacy.goods_text(so.give), w, int(float(so.every) / 60.0), maxi(0, int(float(so.next) - main.sim.time)), int(so.done)]), 14)
 		l3.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row3.add_child(l3)
 		row3.add_child(main._button("Stop", func():
@@ -200,9 +200,9 @@ func _update_hint() -> void:
 	var b := Diplomacy.market(main.sim, q, true)
 	var way := ""
 	if a != null and b != null:
-		way = tr(" Carts take about %d s each way.") % int(maxf(4.0, Vector2(a.x - b.x, a.y - b.y).length() / Diplomacy.CART_SPEED))
+		way = tr(" Carts take about %d s each way." % int(maxf(4.0, Vector2(a.x - b.x, a.y - b.y).length() / Diplomacy.CART_SPEED)))
 	if why == "":
-		trade_hint.text = tr("%s would accept.") % q.name + way
+		trade_hint.text = tr("%s would accept." % q.name) + way
 		trade_hint.add_theme_color_override("font_color", Color("86ad5c"))
 	else:
 		trade_hint.text = why + way
@@ -246,10 +246,10 @@ func _trade_quote() -> void:
 	var q := main.sim.players[int(parts[0]) - 1]
 	var n := Diplomacy.fair_amount(main.sim, q, 1, parts[1], parts[3])
 	if n <= 0:
-		main.trade_result.text = tr("%s would not give any %s for that.") % [q.name, GameData.res_name(parts[3]).to_lower()]
+		main.trade_result.text = tr("%s would not give any %s for that." % [q.name, GameData.res_name(parts[3]).to_lower()])
 	else:
 		trade_want_n.value = n
-		main.trade_result.text = tr("%s would give up to %d %s for %s.") % [q.name, n, GameData.res_name(parts[3]).to_lower(), Diplomacy.goods_text(parts[1])]
+		main.trade_result.text = tr("%s would give up to %d %s for %s." % [q.name, n, GameData.res_name(parts[3]).to_lower(), Diplomacy.goods_text(parts[1])])
 
 
 func _trade_offer() -> void:
@@ -263,7 +263,7 @@ func _trade_offer() -> void:
 	if trade_repeat.button_pressed and (r == "" or r == "pending"):
 		Diplomacy.add_standing(main.sim, q.id, parts[1], parts[2], 300.0)
 	if r == "":
-		main.trade_result.text = tr("%s accepted. Their opinion of you is now %d.") % [q.name, roundi(Diplomacy.opinion(q, 1))]
+		main.trade_result.text = tr("%s accepted. Their opinion of you is now %d." % [q.name, roundi(Diplomacy.opinion(q, 1))])
 	else:
 		main.trade_result.text = r
 	_fill_diplomacy()

@@ -57,8 +57,8 @@ func _earn(id: String) -> void:
 	_save()
 	for a in LIST:
 		if a[0] == id:
-			main._show_hint(tr("Achievement: %s! (%s)") % [tr(a[1]), tr(a[2])], 5.0)
-			main.sim.emit_log(tr("Achievement earned: %s (%s).") % [tr(a[1]), tr(a[2])], Color("e8c870"))
+			main._show_hint(tr("Achievement: %s! (%s)" % [tr(a[1]), tr(a[2])]), 5.0)
+			main.sim.emit_log("Achievement earned: %s (%s)." % [a[1], a[2]], Color("e8c870"))
 	if main.sound != null:
 		main.sound.play("good", 0.9)
 

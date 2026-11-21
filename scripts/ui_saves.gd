@@ -27,7 +27,9 @@ func _build_save_panel() -> void:
 		if n == "": n = "save-" + Time.get_datetime_string_from_system().replace(":", "-")
 		_save_game(n)
 		_fill_saves()))
-	v.add_child(main._label("The game also autosaves every 5 minutes of play. F5 quick saves, F9 quick loads.", 13, Main.DIM))
+	var asl := main._label("The game also autosaves every 5 minutes of play. F5 quick saves, F9 quick loads.", 13, Main.DIM)
+	v.add_child(asl)
+	main.key_text(asl, "text", ["quicksave", "quickload"])
 	var sc := ScrollContainer.new(); sc.custom_minimum_size = Vector2(620, 360); v.add_child(sc)
 	main.save_list = VBoxContainer.new(); main.save_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL; sc.add_child(main.save_list)
 	main.save_panel.visible = false
@@ -55,7 +57,7 @@ func _save_game(slot: String, quiet := false) -> void:
 		_roll_autosaves()
 	var f := FileAccess.open_compressed(path, FileAccess.WRITE, FileAccess.COMPRESSION_ZSTD)
 	if f == null:
-		main._show_hint(tr("Could not save: %s") % error_string(FileAccess.get_open_error()), 4.0)
+		main._show_hint(tr("Could not save: %s" % error_string(FileAccess.get_open_error())), 4.0)
 		return
 	var data := main.sim.to_save()
 	data["meta"] = {"name": slot, "saved": Time.get_datetime_string_from_system(false, true), "game_time": main.sim.time,
@@ -63,7 +65,7 @@ func _save_game(slot: String, quiet := false) -> void:
 	f.store_var(data)
 	f.close()
 	if not quiet:
-		main._show_hint(tr("Saved \"%s\".") % slot, 3.0)
+		main._show_hint(tr("Saved \"%s\"." % slot), 3.0)
 
 
 ## Rolling autosaves (build 56): the last three are kept. Before a new autosave, the one before last
@@ -93,7 +95,7 @@ func _read_save(path: String):
 func _load_game(slot: String) -> void:
 	var path := Main.SAVE_DIR + "/" + _safe_name(slot) + ".save"
 	if not FileAccess.file_exists(path):
-		main._show_hint(tr("No save called \"%s\" yet.") % slot, 3.0)
+		main._show_hint(tr("No save called \"%s\" yet." % slot), 3.0)
 		return
 	var d = _read_save(path)
 	if d == null:
@@ -116,7 +118,7 @@ func _load_game(slot: String) -> void:
 	main.save_panel.visible = false
 	main.paused = false
 	main.btn_pause.text = "Pause"
-	main._show_hint(tr("Loaded \"%s\".") % slot, 3.0)
+	main._show_hint(tr("Loaded \"%s\"." % slot), 3.0)
 
 
 func _fill_saves() -> void:
@@ -159,11 +161,11 @@ func _fill_saves() -> void:
 		row.add_child(l)
 		row.add_child(main._button("Load", func():
 			if main.game_running():
-				main.confirm(tr("Load \"%s\"? The game you are playing ends; anything not saved is lost.") % String(meta.get("name", base)), "Load", _load_game.bind(base))
+				main.confirm(tr("Load \"%s\"? The game you are playing ends; anything not saved is lost." % String(meta.get("name", base))), "Load", _load_game.bind(base))
 			else:
 				_load_game(base)))
 		row.add_child(main._button("Delete", func():
-			main.confirm(tr("Delete the save \"%s\"? This can't be undone.") % String(meta.get("name", base)), "Delete", func():
+			main.confirm(tr("Delete the save \"%s\"? This can't be undone." % String(meta.get("name", base))), "Delete", func():
 				DirAccess.remove_absolute(Main.SAVE_DIR + "/" + fn)
 				_fill_saves())))
 		main.save_list.add_child(row)

@@ -178,8 +178,8 @@ func load_state(d: Dictionary) -> void:
 func build_ui(main: Main) -> void:
 	main.add_feature_button(self, "Statistics", open)
 	main.add_feature_button(self, "Realms", open_realms)
-	main.add_feature_key(self, KEY_F2, open)
-	main.add_feature_key(self, KEY_V, open_realms)
+	main.add_feature_key(self, KEY_F2, open, "Statistics window")
+	main.add_feature_key(self, KEY_V, open_realms, "Realms graph")
 	win = main.add_feature_window(self, "Statistics (F2)", Vector2i(760, 520))
 	var tabs := TabContainer.new()
 	tabs.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -309,7 +309,7 @@ func refresh() -> void:
 		if m > 0.0 or u > 0.0:
 			var net := (m - u) / maxf(1.0, last.size())
 			rows.append("%s: made [color=#86c55c]%.1f[/color], used [color=#e07a5f]%.1f[/color] per minute (%s), %d in store" % [r.name, m / maxf(1.0, last.size()), u / maxf(1.0, last.size()), ("[color=#86c55c]%+.1f[/color]" if net >= 0.0 else "[color=#e07a5f]%+.1f[/color]") % net, int(p.stock.get(r.id, 0.0))])
-	table.text = tr("[b]%s[/b]: green made, red used, per game minute.\n[b]Last 10 minutes[/b]\n%s") % [GameData.res_name(sel_good), "\n".join(rows) if rows.size() > 0 else "nothing counted yet"]
+	table.text = tr("[b]%s[/b]: green made, red used, per game minute.\n[b]Last 10 minutes[/b]\n%s" % [GameData.res_name(sel_good), "\n".join(rows) if rows.size() > 0 else "nothing counted yet"])
 	var key: String = ["pop", "bld", "sol", "made_total", "rp", "land", "techs", "gold", "wealth", "tools_made", "tools_worn", "arms_s", "arms_i", "arms_b"][realm_metric.selected]
 	var ser := []
 	var legend := []

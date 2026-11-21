@@ -111,7 +111,7 @@ func _draw_map() -> void:
 	map.draw_rect(Rect2(Vector2.ZERO, sz), Color("cdbb8e"))
 	map.draw_rect(Rect2(Vector2(6, 6), sz - Vector2(12, 12)), Color("7a6640"), false, 2.0)
 	var font := map.get_theme_default_font()
-	map.draw_string(font, Vector2(20, 30), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color("3a2410"))
+	map.draw_string(font, Vector2(20, 30), map.tr(title), HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color("3a2410"))
 	# the road from chapter to chapter, dashed
 	for k in range(1, chapters.size()):
 		var a := _node_pos(k - 1)
@@ -130,7 +130,7 @@ func _draw_map() -> void:
 		var mark := "✔" if is_done(k) else str(k + 1)
 		map.draw_string(font, p + Vector2(-6, 6), mark, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color("1b1e15"))
 		var nm := String(chapters[k].mission.get("name", "")).get_slice(": ", 1)
-		map.draw_string(font, p + Vector2(-90, 34), nm, HORIZONTAL_ALIGNMENT_CENTER, 180, 12, Color("3a2410"))
+		map.draw_string(font, p + Vector2(-90, 34), map.tr(nm), HORIZONTAL_ALIGNMENT_CENTER, 180, 12, Color("3a2410"))
 
 
 func _map_input(ev: InputEvent) -> void:
@@ -149,14 +149,20 @@ func _fill() -> void:
 	var ch: Dictionary = chapters[sel]
 	var ms: Dictionary = ch.mission
 	detail.add_child(main._label(String(ms.get("name", "")), 19, Main.BRASS))
-	var intro := main._label(String(ch.get("intro", "")), 14)
+	var intro := main._label(tr(String(ch.get("intro", ""))), 14)
 	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	intro.custom_minimum_size = Vector2(800, 0)
 	detail.add_child(intro)
 	var lines := []
-	lines.append("New in this chapter: " + String(ch.get("new", "")))
+	lines.append(tr("New in this chapter: %s") % tr(String(ch.get("new", ""))))
+	var hidden := false
 	for g in ms.get("goals", []):
-		lines.append("  •  " + String(g.get("text", "")))
+		if g.get("hidden", false):
+			hidden = true
+		else:
+			lines.append("  •  " + tr(String(g.get("text", ""))))
+	if hidden:
+		lines.append("  •  " + tr("...and more, as the story unfolds"))
 	var mins := int(ms.get("minutes", 0))
 	lines.append("%d rival%s, strength %d%s" % [int(ms.get("foes", 1)), "s" if int(ms.get("foes", 1)) > 1 else "", int(ms.get("strength", 5)), (", within %d minutes" % mins) if mins > 0 else ""])
 	var bonus := _bonus_for(sel)

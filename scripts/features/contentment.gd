@@ -150,9 +150,21 @@ func on_second() -> void:
 		var dis = sim.get_feature("diseases")
 		if dis != null:
 			m -= 0.15 * maxf(0.0, float(dis.sick_share(p)) - 0.1)
+		# the Industrial age's wants: clean water and parks near the homes (build 77)
+		var fh = sim.get_feature("factory_health")
+		if fh != null:
+			m -= float(fh.mood_loss(p))
 		if in_festival(p):
 			m += 0.2
+		# realm laws (build 77): the classes' contentment changes, weighted by their numbers; the
+		# peasants' own contentment decides whether they leave
+		var lw = sim.get_feature("laws")
+		var mp := m
+		if lw != null:
+			mp += float(lw.class_delta(p, "peasant"))
+			m += float(lw.mood_shift(p))
 		m = clampf(m, 0.0, 1.0)
+		mp = clampf(mp, 0.0, 1.0)
 		mood_of[p.id] = m
 		# a festival, when a tavern serves a good part of the town and there is beer and bread to spare
 		if float(cv[0]) >= FEST_COVER and not in_festival(p) and sim.time >= float(next_fest.get(p.id, 600.0)) \
@@ -174,7 +186,7 @@ func on_second() -> void:
 			elif Diplomacy.relation(sim, 1, p.id) != Diplomacy.WAR and sim.players[0].alive:
 				sim.emit_log("%s holds a festival: its people work faster for a while." % p.name, p.color.lightened(0.35))
 		# unhappy for long: idle peasants leave, one a minute
-		if m < LOW:
+		if mp < LOW:
 			if not low_since.has(p.id):
 				low_since[p.id] = sim.time
 			elif sim.time - float(low_since[p.id]) >= 180.0 and _t % 60 == 0 and p.peasant - p.used_peasant - p.away > 0 and p.peasant > 4:

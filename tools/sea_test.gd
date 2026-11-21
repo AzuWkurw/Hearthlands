@@ -8,7 +8,8 @@ func _init() -> void:
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("seed="): seed = a.substr(5)
 	var sim := Sim.new()
-	sim.new_game(seed, 2, 3, false, 0, false, {"peace_min": 60})
+	# (realm laws off: the test's harbour spot on the bay map depends on how the first two minutes go)
+	sim.new_game(seed, 2, 3, false, 0, false, {"peace_min": 60, "features": Features.default_ids().filter(func(f): return f != "laws")})
 	var me := sim.human()
 	me.ai = true
 	while sim.time < 120.0: sim.tick(Sim.TICK)

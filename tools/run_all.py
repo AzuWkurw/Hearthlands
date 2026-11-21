@@ -17,6 +17,7 @@ GODOT = os.environ.get("GODOT", "godot")
 # name, script, extra args, needs a window, quick?, patterns that must appear (regex)
 TESTS = [
 	("data files",        None, [], False, True, []),
+	("languages",         "lang_test", [], False, True, [r"LANG TEST: PASS"]),
 	("save and load",     "save_test", [], False, True, [r"match after load: true", r"match after 5 more minutes: true", r"checksum match after 5 more minutes: true"]),
 	("goods in stores",   "stores_test", ["mins=8"], False, True, [r"stock = sum of stores all game: yes"]),
 	("entrances",         "door_test", [], False, True, [r"door test: \d+ ok, 0 bad"]),
@@ -27,10 +28,14 @@ TESTS = [
 	("field battles",     "field_test", [], False, False, [r"first side wins"]),
 	("research",          "research_test", [], False, False, [r"load: '' reps"]),
 	("new-game options",  "options_test", [], False, False, [r"all research: techs 169 of 170", r"creative stores"]),
+	("spectator mode",    "spectate_test", [], False, False, [r"spectate test: ok"]),
+	("spectator screen",  "shot_spectate", [], True, False, [r"SPECTATE UI: PASS"]),
 	("reachable spots",   "reach_test", [], False, True, [r"reach test: \d+ ok, 0 bad"]),
 	("store transfers",   "transfer_test", [], False, False, [r"transfer test: ok"]),
 	("road carriers",     "stretch_test", [], False, False, [r"stretch test: ok"]),
 	("missions and maps", "mission_test", [], False, False, [r"mission test: ok"]),
+	("mission events",    "script_test", [], False, False, [r"SCRIPT TEST: PASS"]),
+	("campaign chapters", "chapters_test", [], False, False, [r"chapters test: ok"]),
 	("ships and harbours", "sea_test", ["seed=bay"], False, False, [r"sea test: ok"]),
 	("catapults",         "catapult_test", [], False, True, [r"catapult test: ok"]),
 	("boundary stones",   "claim_test", [], False, True, [r"claim test: ok"]),
@@ -38,6 +43,7 @@ TESTS = [
 	("choices and allies", "choice_test", [], False, False, [r"choice test: ok"]),
 	("luxuries",          "luxury_test", [], False, False, [r"luxury test: ok"]),
 	("wonders",           "wonder_test", [], False, False, [r"wonder test: ok"]),
+	("chronicle",         "chronicle_test", [], False, True, [r"chronicle test: ok"]),
 	("station upgrade",   "station_upgrade_test", [], False, True, [r"STATION UPGRADE TEST: PASS"]),
 	("sea war",           "sea_war_test", [], False, True, [r"SEA WAR TEST: PASS"]),
 	("navy",              "navy_test", [], False, True, [r"NAVY TEST: PASS"]),
@@ -60,6 +66,7 @@ TESTS = [
 	("ruins and bandits", "places_test", [], False, True, [r"PLACES TEST: PASS"]),
 	("sound and music",   "sound_test", [], True, True, [r"SOUND TEST: PASS"]),
 	("campaign",          "campaign_test", [], True, False, [r"campaign test: ok"]),
+	("realm laws",        "laws_test", [], False, True, [r"LAWS TEST: PASS"]),
 	("spreading fires",   "fire_test", [], False, True, [r"fire test: ok"]),
 	("small touches",     "touches_test", [], True, False, [r"touches test: ok"]),
 	("fog after loading", "fogsave_test", [], True, False, [r"after 3 s: (\d+)"]),
@@ -72,13 +79,15 @@ TESTS = [
 	("the Bronze Age",    "bronze_test", [], False, False, [r"BRONZE TEST: PASS"]),
 	("tools and arms by metal", "arms_test", [], False, False, [r"ARMS TEST: PASS"]),
 	("blueprints",        "bp_test", [], False, False, [r"BLUEPRINT TEST: PASS"]),
+	("factory smoke",     "health_test", [], False, True, [r"HEALTH TEST: PASS"]),
 	("toolbar tools",     "toolbar_tool_test", [], True, False, [r"tool clicks answered: 8 of 8"]),
+	("rebindable keys",   "keys_test", [], False, True, [r"KEYS TEST: PASS"]),
 ]
 
 
 # tests written for the Bronze Age itself; the older ones start their games in the Roman age, as
 # games did before build 65 (Sim.new_game reads HEARTHLANDS_START_AGE)
-BRONZE_AWARE = {"bronze_test", "save_test", "arms_test"}
+BRONZE_AWARE = {"bronze_test", "save_test", "arms_test", "script_test", "chapters_test"}
 
 
 def run(cmd, timeout, env=None):

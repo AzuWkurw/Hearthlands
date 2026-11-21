@@ -38,14 +38,14 @@ class ChainCanvas extends Control:
 			draw_polyline(pts, c, 3.0 if c.r > 0.7 and c.g < 0.5 else 2.0, true)
 			draw_colored_polygon(PackedVector2Array([p1, p1 + Vector2(-9, -5), p1 + Vector2(-9, 5)]), c)
 			if String(l[3]) != "":
-				draw_string(font, Vector2(mid - 40, (p0.y + p1.y) / 2.0 - 6), String(l[3]), HORIZONTAL_ALIGNMENT_CENTER, 80, 12, c)
+				draw_string(font, Vector2(mid - 40, (p0.y + p1.y) / 2.0 - 6), tr(String(l[3])), HORIZONTAL_ALIGNMENT_CENTER, 80, 12, c)
 		for n in nodes:
 			var r: Rect2 = n[0]
 			draw_rect(r, Color(0.1, 0.11, 0.08))
 			draw_rect(r, n[4], false, 2.0)
-			draw_string(font, r.position + Vector2(10, 21), String(n[1]), HORIZONTAL_ALIGNMENT_LEFT, r.size.x - 16, 14, Color("e7e3d0"))
-			draw_string(font, r.position + Vector2(10, 40), String(n[2]), HORIZONTAL_ALIGNMENT_LEFT, r.size.x - 16, 12, n[4])
-			draw_string(font, r.position + Vector2(10, 56), String(n[3]), HORIZONTAL_ALIGNMENT_LEFT, r.size.x - 16, 12, Color("a3a28b"))
+			draw_string(font, r.position + Vector2(10, 21), tr(String(n[1])), HORIZONTAL_ALIGNMENT_LEFT, r.size.x - 16, 14, Color("e7e3d0"))
+			draw_string(font, r.position + Vector2(10, 40), tr(String(n[2])), HORIZONTAL_ALIGNMENT_LEFT, r.size.x - 16, 12, n[4])
+			draw_string(font, r.position + Vector2(10, 56), tr(String(n[3])), HORIZONTAL_ALIGNMENT_LEFT, r.size.x - 16, 12, Color("a3a28b"))
 
 
 func _init(p_owner: Main) -> void:
@@ -119,7 +119,7 @@ func open(res: String) -> void:
 		c.queue_free()
 	var head := HBoxContainer.new()
 	body.add_child(head)
-	var tl := main._label(tr("Production chain: %s") % GameData.res_name(res), 22, Main.BRASS)
+	var tl := main._label(tr("Production chain: %s" % GameData.res_name(res)), 22, Main.BRASS)
 	tl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(tl)
 	head.add_child(main._button(tr("Show on map"), func():
@@ -201,11 +201,11 @@ func _layout() -> void:
 			var l3 := ""
 			if res != "":
 				var can := _full(ty, res, "out")
-				l2 = tr("%s: made %.1f, can %.1f") % [GameData.res_name(res).to_lower(), float(made.get(res, 0.0)), can] if not made.is_empty() else tr("%s: can make %.1f") % [GameData.res_name(res).to_lower(), can]
+				l2 = tr("%s: made %.1f, can %.1f" % [GameData.res_name(res).to_lower(), float(made.get(res, 0.0)), can]) if not made.is_empty() else tr("%s: can make %.1f" % [GameData.res_name(res).to_lower(), can])
 			else:
 				var need := _full(ty, good, "in")
-				l2 = tr("use %.1f %s at full speed") % [need, GameData.res_name(good).to_lower()]
-			l3 = tr("you have %d") % n if n > 0 else tr("you have none")
+				l2 = tr("use %.1f %s at full speed" % [need, GameData.res_name(good).to_lower()])
+			l3 = tr("you have %d" % n) if n > 0 else tr("you have none")
 			index[ty] = nodes.size()
 			nodes.append([Rect2(x0, y0 + ri * (H + gy), W, H), "%s × %d" % [String(GameData.bld[ty].name), n], l2, l3, Color("86ad5c")])
 	# links: from each input maker to the buildings that use that input; red where short
@@ -232,7 +232,7 @@ func _layout() -> void:
 				if ratio < worst and demand > 0.01:
 					worst = ratio
 					var mk: Dictionary = GameData.bld[maker]
-					worst_txt = tr("Weakest link: %s supply only %d%% of what the %s need. Build another %s, or check its inputs and workers.") % [GameData.res_name(res).to_lower(), roundi(ratio * 100.0), String(GameData.bld[user].name).to_lower(), String(mk.name).to_lower()]
+					worst_txt = tr("Weakest link: %s supply only %d%% of what the %s need. Build another %s, or check its inputs and workers." % [GameData.res_name(res).to_lower(), roundi(ratio * 100.0), String(GameData.bld[user].name).to_lower(), String(mk.name).to_lower()])
 				if ratio < 0.9:
 					nodes[index[maker]][4] = col
 	canvas.nodes = nodes

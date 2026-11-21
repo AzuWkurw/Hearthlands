@@ -101,7 +101,7 @@ func refresh() -> void:
 		for i in ids:
 			lv.add_child(_row(i))
 		if cat != "Other":
-			var rm := main._button(tr("Remove the category \"%s\" (its blueprints go to Other)") % tr(cat), func():
+			var rm := main._button(tr("Remove the category \"%s\" (its blueprints go to Other)" % tr(cat)), func():
 				bps.remove_cat(cat)
 				refresh())
 			rm.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
@@ -136,7 +136,7 @@ func _row(i: int) -> Control:
 	var cs := []
 	for k in c:
 		cs.append("%d %s" % [c[k], GameData.res_name(k).to_lower()])
-	var cl := main._label(tr("%d×%d tiles, %d road tiles. Costs %s.") % [int(bp.w), int(bp.h), (bp.roads as Array).size(), ", ".join(cs) if not cs.is_empty() else tr("nothing")], 12, Main.DIM)
+	var cl := main._label(tr("%d×%d tiles, %d road tiles. Costs %s." % [int(bp.w), int(bp.h), (bp.roads as Array).size(), ", ".join(cs) if not cs.is_empty() else tr("nothing")]), 12, Main.DIM)
 	cl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	mid.add_child(cl)
 	var right := VBoxContainer.new()
@@ -161,7 +161,7 @@ func _row(i: int) -> Control:
 	kb.tooltip_text = tr("Copy it as a code to share")
 	row2.add_child(kb)
 	row2.add_child(main._button(tr("Delete"), func():
-		main.confirm(tr("Delete the blueprint \"%s\"?") % String(bp.name), tr("Delete"), func(): bps.remove(i); refresh())))
+		main.confirm(tr("Delete the blueprint \"%s\"?" % String(bp.name)), tr("Delete"), func(): bps.remove(i); refresh())))
 	return pc
 
 
@@ -181,7 +181,7 @@ func _from_code() -> void:
 	bps.add(bp)
 	_tab = bps.cats.find(bp.cat)
 	refresh()
-	main._show_hint(tr("Blueprint \"%s\" added.") % String(bp.name), 3.0)
+	main._show_hint(tr("Blueprint \"%s\" added." % String(bp.name)), 3.0)
 
 
 # ---------------------------------------------------------------- copying and placing
@@ -202,7 +202,7 @@ func start_place(i: int) -> void:
 	main._cancel_place()
 	main.view.place_type = "@bp_place"
 	main.view.blueprint = bps.list[i]
-	main._show_hint(tr("Placing \"%s\": click where it should go (Esc cancels). Hold Shift to place it again.") % String(bps.list[i].name), 4.0)
+	main._show_hint(tr("Placing \"%s\": click where it should go (Esc cancels). Hold Shift to place it again." % String(bps.list[i].name)), 4.0)
 
 
 ## A click with the copy tool (see Main._use_tool).
@@ -302,7 +302,7 @@ func ask_save(bp: Dictionary) -> void:
 		save_cat.add_item(tr(bps.cats[k]))
 		if bps.cats[k] == guess:
 			save_cat.select(k)
-	save_info.text = tr("%s, and %d road tiles.") % [Blueprints.summary(bp), (bp.roads as Array).size()]
+	save_info.text = tr("%s, and %d road tiles." % [Blueprints.summary(bp), (bp.roads as Array).size()])
 	save_prev.bp = bp
 	save_prev.queue_redraw()
 	save_win.popup_centered()
@@ -317,7 +317,7 @@ func _save_pending() -> void:
 	_pending.cat = bps.cats[maxi(0, save_cat.selected)]
 	bps.add(_pending)
 	_tab = bps.cats.find(_pending.cat)
-	main._show_hint(tr("Blueprint \"%s\" saved in %s. Open Blueprints (U) to place it.") % [String(_pending.name), tr(_pending.cat)], 4.0)
+	main._show_hint(main.keys.keyed("Blueprint \"%s\" saved in %s. Open Blueprints (U) to place it.") % [String(_pending.name), tr(_pending.cat)], 4.0)
 	_pending = {}
 	save_win.visible = false
 
@@ -334,9 +334,9 @@ func place_click(t: Vector2i) -> void:
 	var nr := (obs.roads as PackedInt32Array).size()
 	if nt + nr > 0:
 		var parts := []
-		if nt > 0: parts.append(tr("%d trees") % nt if nt != 1 else tr("a tree"))
-		if nr > 0: parts.append(tr("%d road tiles") % nr if nr != 1 else tr("a road tile"))
-		main.confirm(tr("In the way of this blueprint: %s. Clear the way and build? (The wood of felled trees is lost; taking up roads can cut buildings off.)") % " and ".join(parts),
+		if nt > 0: parts.append(tr("%d trees" % nt) if nt != 1 else tr("a tree"))
+		if nr > 0: parts.append(tr("%d road tiles" % nr) if nr != 1 else tr("a road tile"))
+		main.confirm(tr("In the way of this blueprint: %s. Clear the way and build? (The wood of felled trees is lost; taking up roads can cut buildings off.)" % " and ").join(parts),
 			tr("Clear and build"), func():
 				Blueprints.clear(sim, 1, obs)
 				_do_place(bp, at))
@@ -356,9 +356,9 @@ func _do_place(bp: Dictionary, at: Vector2i) -> void:
 		if main.sound != null:
 			main.sound.play("place", 0.8)
 		sim.emit_log("Placing the blueprint %s: %d building sites." % [String(bp.name), placed], Main.DIM, at)
-	var msg := tr("%d of %d buildings placed.") % [placed, (bp.items as Array).size()]
+	var msg := tr("%d of %d buildings placed." % [placed, (bp.items as Array).size()])
 	for r in why:
-		msg += " " + tr("%d not: %s.") % [int(why[r]), tr(r)]
+		msg += " " + tr("%d not: %s." % [int(why[r]), tr(r)])
 	main._show_hint(msg, 5.0)
 	if not Input.is_key_pressed(KEY_SHIFT) and placed > 0:
 		main.view.place_type = ""

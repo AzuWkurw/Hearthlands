@@ -479,6 +479,8 @@ func _finish_site(b: Sim.Bld, p: Sim.Player) -> void:
 		b.state = "ready"; b.prog = 0.0; b.msg = ""
 		sim._after_building_change(b)
 		sim.building_done.emit(b.id)
+		if b.town != "" and b.ty != "hq":
+			Chronicle.note(sim, p, "town", {"name": b.town, "b": b.ty})
 		if sim.is_store(b):
 			sim._recount_stores(p)
 		if b.def.has("garrison"):
@@ -622,6 +624,7 @@ func work_progress(b: Sim.Bld) -> float:
 ## every wonder wins (when the research victory, the peaceful way to win, is on).
 func _wonder_done(b: Sim.Bld, p: Sim.Player) -> void:
 	sim._recompute_mods(p)
+	Chronicle.note(sim, p, "wonder", {"b": b.ty})
 	var n := sim.wonders_of(p).size()
 	var all := Sim.wonder_count()
 	if p.ai:
@@ -630,7 +633,10 @@ func _wonder_done(b: Sim.Bld, p: Sim.Player) -> void:
 		sim.emit_log("The %s stands: %d of %d wonders. %s" % [String(b.def.name), n, all, GameData.effect_text(b.def.wonder)], Color("d8aa4a"), Vector2i(b.x, b.y))
 	if n >= all and sim.research_victory and not sim.over:
 		sim.over = true
-		if p.id == 1 or Diplomacy.relation(sim, p.id, 1) == Diplomacy.ALLY:
+		if sim.spectating():
+			sim.emit_log("%s built every wonder of the ages first." % p.name, Color("d8aa4a"))
+			sim.ended.emit(true)
+		elif p.id == 1 or Diplomacy.relation(sim, p.id, 1) == Diplomacy.ALLY:
 			sim.emit_log("All the wonders of the ages stand in your realm! Victory." if p.id == 1 else "Your ally %s built every wonder. Shared victory!" % p.name, Color("d8aa4a"))
 			sim.ended.emit(true)
 		else:

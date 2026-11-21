@@ -26,7 +26,7 @@ What is in the game now:
 - Four classes of people with needs and contentment, seasons and weather, diseases, fires, wildlife,
   random events, ruins and bandit camps.
 - A map editor (painting, mirrored maps, rivers, starts, missions), missions and a campaign.
-- Music and positional sound; OpenGL or Vulkan; German and English.
+- Music and positional sound; OpenGL or Vulkan; English and Polish (chosen in the main menu or Settings).
 
 ## Roadmap
 
@@ -77,9 +77,8 @@ Done (builds 43 to 76):
 | 75.1 | Wording: references to other games removed from the game, README and change log |
 | 76 | Smoother screen in huge late games (each moment done in parts across frames); trees no longer vanish when zoomed out; trade carts go round mountains and cross water by boat; faster guild counts; fix for repeatable studies' message |
 
-Later: a story campaign through the ages, multiplayer, scripted scenarios, a chronicle at the end of a
-game, more animations, music for each age, and quality-of-life features (a production chain overlay,
-a build queue, rebindable keys, interface scale).
+Later: a story campaign through the ages (beyond today's eight chapters), multiplayer, scripted
+scenarios, a chronicle at the end of a game, more animations, and rebindable keys.
 
 ## Run it
 
@@ -168,6 +167,7 @@ Exporting needs Godot 4.3's export templates (in the editor: Editor > Manage Exp
 | Map editor: climate, ruins, bandit camps | Paint tab: Climate brushes (temperate, taiga, steppe, wetland; Show the climate), Places: Ruins, Bandit camp, Remove place |
 | Map editor: set up starts | Starts tab: per start a name, goods x0.5 to x2, extra soldiers; for rivals strength 1 to 10 and manner (builder, balanced, warlord) |
 | Map editor: write a mission | Mission tab: name, rivals, their strength, minutes, story, goals (build, people, soldiers, goods, study, land, trades, defeat rivals); Save the mission or Play it |
+| Map editor: mission events | Mission tab, Events: pick When (a minute, every few minutes, after another event, an age, a study, people, buildings, soldiers, land, goods, wonders, ships, war, a fallen rival, a goal reached), then one or more actions (Add this action), then Add the event. A goal set to Hidden shows only when an event shows it |
 | Map editor: fair starts | Check tab: open land, trees, rocks, clay, fish, mountain and each ore within 10, 15 or 20 tiles of every start; red where a start has less than half of the richest |
 | Landscape on the new-game screen | Landscape... next to Map size: shape and the five sliders, for a map from the seed |
 | Clear a bandit camp | Click the camp: soldiers from your military building with the most to spare (within reach) march out; whoever wins the duels takes the camp's gold and weapons |
@@ -190,8 +190,10 @@ Exporting needs Godot 4.3's export templates (in the editor: Editor > Manage Exp
 | Production targets | T, the button in Stores, or click a good and use − / + to set how many to keep |
 | Settings | Settings button or F10: renderer (OpenGL or Vulkan), display mode, resolution, interface size, VSync, frame-rate limit, animations, sound and volumes (music, effects, ambience), game features |
 | Production statistics | F2, or the Statistics button: goods made and used per minute, every realm's growth and a table of where you stand, and Borders: everyone's land minute by minute, to play back (land you have not seen stays dark until the game is over) |
+| Chronicle | When a game ends, Read the chronicle on the end screen: the story of your realm age by age (towns founded, ages reached, wonders, buildings taken and lost, attacks beaten back, fires, famines, realms that fell), how it ended and the realm at its height, then every realm's people and land over the whole game, with the border replay and the realm graphs a click away |
 | Event log | E, or the Events button. Drag its title to move it and its edges to resize it. Go on an event moves the camera to where it happened |
 | Climate | F4, or the Climate button: seasons, biomes, weather and their effects |
+| Laws | F8, or the Laws button: taxes, food rations, conscription, the working day and road tolls, what each does to every class, and the rivals' laws |
 | Random events | F6: switch single events on or off, and see your recent events |
 | Send scout | Toolbar: Scout, then click a spot on the map (needs an idle scout from a scout lodge) |
 | Send geologist | Toolbar: Geologist, then click a mountain in or near your land |
@@ -217,6 +219,11 @@ Exporting needs Godot 4.3's export templates (in the editor: Editor > Manage Exp
   by different amounts. Mines also eat. Without food, production halves and peasants starve.
 - **Hills.** Heights shade the map; carriers are slower on steep roads, marked yellow to red.
 - **Sandbox options.** Start with all research done, or play in creative mode (free, instant building, stores kept half full).
+- **Spectator mode** (new-game option). The computer plays every realm, yours too, with no fog of war.
+  Watch from anywhere: the Realms list at the top of the side panel compares every realm (age, people,
+  buildings, soldiers, land, studies) and a click on one takes the camera to its headquarters; click any
+  building to see how it is doing. Nothing you do changes the game, so it is also a way to test the
+  balance. The game ends when one realm is left standing (or one wins the peaceful victory).
 - **A living town.** Close up, townsfolk walk the roads, chat at their doors and play; porters carry crates and sacks, ox carts show their load. Further out the game draws less detail and smaller textures, so it stays fast.
 - **Battles in the open.** Columns of realms at war that meet on the march stop and fight: volleys while they close in, then duels with no walls. The winners march on.
 - **Dry mines** are demolished 30 s after a warning (40% of their cost back); switch it off in Settings.
@@ -312,15 +319,24 @@ Exporting needs Godot 4.3's export templates (in the editor: Editor > Manage Exp
   The save list shows a small picture of each map.
   Saves are complete: loading continues the game exactly where it was, including rival plans and armies on the march.
   They live in `user://saves` next to the texture folder.
-- **Missions.** The Missions button on the new-game screen: four games with goals (build, grow, arm,
-  study, conquer) and a deadline. The third plays on a hand-made map. Goals show in the box on the left.
+- **Missions.** The Missions button on the new-game screen: seven games with goals (build, grow, arm,
+  study, conquer, hold out) and often a deadline; the last three (a siege to hold out, a broken alliance,
+  a Bronze Age race) use events. The third plays on a hand-made map. Goals show in the box on the left.
   More can be added in `data/missions.json` (or a mod's).
+- **Mission events.** A mission can script what happens in it: "when this happens, do that". Starts: a
+  game minute (once or every few minutes), some minutes after another event, a realm reaching an age or
+  finishing a study, having so many people, buildings, soldiers, land, goods, wonders or ships, a rival at
+  war with you or fallen, a goal reached. Actions: a message in a window (`{1}` is the first rival's name),
+  a rival declaring war (even in the peace at the start), making peace or an alliance, attacking at once,
+  a rival's fleet landing soldiers on your coast (by land when it has no harbour), soldiers, goods or a
+  study for a realm, a hidden goal shown, more time, the mission won or lost. Written in the editor's
+  Mission tab, or as `"rules"` in `data/missions.json` (see `scripts/mission_script.gd`).
 - **Map editor.** The Map editor button on the new-game screen opens the map of the seed and size chosen
   there (with the landscape settings), empty. Five tabs: Paint (brush, fill, smooth, rivers with fords,
   copy and paste turned or mirrored; ground, trees, rocks, clay, ore and its amount, climate, animals,
   ruins and bandit camps; square or round brushes; mirrored painting for fair maps; undo and redo), Map
   (open, generate, name, save, play, export), Starts (move them, and set each one up), Mission (write a
-  mission with goals on this map) and Check (what lies around each start). Saved maps can be picked under
+  mission with goals and events on this map) and Check (what lies around each start). Saved maps can be picked under
   Map on the new-game screen; they are kept in the `maps` folder of the game's data folder.
 - **Ruins and bandit camps.** Hand-made maps can hold them. The first realm whose land reaches ruins finds
   planks, stone, gold and tools there. Nobody builds within 3 tiles of a bandit camp; every 90 seconds the
@@ -344,6 +360,15 @@ Exporting needs Godot 4.3's export templates (in the editor: Editor > Manage Exp
   content, and content people work up to 10% faster; hunger and sickness do the opposite. A tavern with
   beer and bread to spare holds a festival now and then (everyone 10% faster for 3 minutes). An unhappy
   realm loses idle peasants, one a minute.
+- **Realm laws.** Five laws (F8): taxes, food rations, conscription, the working day and road tolls, each
+  light, usual or harsh. The usual changes nothing; the others trade gold, food, work speed, soldiers or
+  carriers' speed against the contentment of the four classes. Each class's change moves the realm's
+  contentment by its share of the people; unhappy nobles pay less tax, unhappy artisans and peasants
+  work slower, unhappy soldiers train slower, and the peasants' own contentment decides whether they
+  leave. A law can be changed again two minutes after its last change. Rivals choose theirs by their
+  character (builders go easy, warlords tax hard and raise levies), ease them when their people grow
+  unhappy, cut rations when food runs short and raise levies in wartime. The laws are in
+  `data/laws.json`.
 - **Archers and sallies.** A bowyer makes bows from wood. Soldiers in a military building take them up
   to be archers: they shoot attackers from 6 tiles out but fight worse at the gate. A building set to
   march out sends its soldiers to meet an attack in the open.
@@ -373,8 +398,21 @@ Exporting needs Godot 4.3's export templates (in the editor: Editor > Manage Exp
 - **Spreading fires.** A fire (a random event, or a catapult's stone) grows and jumps to wooden
   neighbours within 3 tiles, and burns buildings down. Working wells within 10 tiles send a person with
   a bucket each, a fire station within 14 sends three. Stone and brick buildings don't catch.
-- **Campaign.** Eight chapters on a map, each a mission with a story before and after; a chapter opens
-  when the one before is won and can carry veteran soldiers or goods over. Best time and score are kept.
+- **Factory smoke and health.** From the Industrial age on, working smelters, steelworks, mills and every
+  workshop with a steam engine fill the homes within 6 tiles with smoke, and homes want clean water. A
+  **park** (Town planning) takes away half the smoke of the homes within 7 tiles; a **waterworks** (Public
+  health) burns coal to pipe clean water to the homes within 13 tiles. The realm's health falls with
+  smoke and foul water: work goes up to 15% slower, fevers and dysentery come more often, and below half
+  some people die of it. Artisans want clean water near home, nobles clean water and a park, or they
+  are less content. Each home's info says what it breathes; the People panel shows the realm's health.
+  Rivals build parks and waterworks too, keep new homes out of the smoke and smoky works away from
+  homes. Which buildings smoke, how much and how far is in `data/health.json` (mods can change it).
+- **Campaign.** Eleven chapters on a map, from the Bronze Age to the railways, each a mission with a
+  story before and after and events along the way: bread for the first winter, bronze and tin, a war for
+  reaching the Iron Age first, trade over a river, landings on the Iron Coast, a great hall, the guild
+  towns and their cathedral, gunpowder against a walled rival, warships among the islands, steam and
+  rails, and the crown. Later chapters start in a later age (missions can set `"start_age"`). A chapter
+  opens when the one before is won and can carry veteran soldiers or goods over. Best time and score are kept.
 - **Achievements.** Fifteen goals across all your games (a town of 200, a bridge, ten trades, a colony,
   winning without attacking...), kept between games and listed on the new-game screen.
 - **Rivals' words.** Rivals warn you before they go to war, thank you for trades, and a much stronger
@@ -417,11 +455,14 @@ Open **Settings** (top bar or F10). Everything there is remembered in `user://se
   peaks. **Day and night** (off by default): a slow day, dark nights with lit windows; only the look changes.
 - **Raised ground** (on by default) draws hills standing up from the map (2.5D).
   Off gives the flat map of earlier builds.
-- **Language**: English or German (Deutsch) for the interface. Messages from the game itself (the event
-  log and the building info) are still in English. Other languages: add `data/lang_<code>.json` (or put
+- **Language**: English or Polish (Polski), also offered on the new-game screen. Everything is translated,
+  the game's own messages too (event log, building info, notices); saves stay the same in every language. Other languages: add `data/lang_<code>.json` (or put
   it in the mods folder's `data`); `python3 tools/extract_strings.py` fills in the texts to translate.
-- **Keys**: click a key in the list, then press the new one (Esc keeps the old one). *Default keys* puts
-  them all back.
+- **Keys**: *Change keys* lists every shortcut (over 40, in groups: map, game, buildings, windows, and
+  the keys of game features such as Statistics). Click a key, then press the new one; Shift, Ctrl and
+  Alt combinations work, Esc keeps the old key, and Esc and Enter themselves cannot be taken. A key
+  another shortcut already has is swapped with it, and a hint says which. ↺ puts one shortcut back on
+  its default key, *Default keys* puts them all back. The keys are kept in the settings file.
 - **Show the first-game guide**: a short checklist for the first minutes of a new game, ticked off as you
   go. Closing it turns this off.
 - Command line (also for the exported game): `--rendering-method gl_compatibility` or `forward_plus` or
@@ -433,7 +474,7 @@ Logs, Stone, Clay, Water, Grain, Hops, Wool, Hides, Salt, Coal, Iron ore, Copper
 
 Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples, Vegetables, Cheese, Sausages, Honey.
 
-## Buildings (127 you can build)
+## Buildings (129 you can build)
 
 **Raw**
 
@@ -554,6 +595,8 @@ Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples,
 | Grand academy | 30 stone, 30 bricks, 16 paper, 16 gold | – | – | – | Rebirth of learning |
 | Observatory | 40 bricks, 16 glassware, 16 iron, 20 gold | – | – | – | Age of reason |
 | Exhibition palace | 40 iron, 30 glassware, 30 bricks, 24 gold | – | – | – | Dawn of industry |
+| Park | 2 planks, 2 stone | – | – | – | Town planning |
+| Waterworks | 4 planks, 5 stone | peasant (healing) | 1 coal | – | Public health |
 
 **Science**
 
@@ -1312,6 +1355,8 @@ A feature can override these hooks; the simulation calls them for every switched
 | `on_second()` | once per game second |
 | `speed_bonus(p, b)` | a building works out its speed; return extra speed (0.25 = 25% faster) |
 | `food_factor(p)` | a realm's people eat; return a multiplier |
+| `tax_factor(p)` | a realm's nobles pay tax; return a multiplier |
+| `carry_factor(p)` | a realm's carriers walk; return a multiplier |
 | `build_factor(p, b)` | a construction site goes up; return a multiplier |
 | `work_block(p, b)` | before a work cycle starts; return a reason to wait, or "" |
 | `on_cycle(p, b)` / `on_made_at(b, p, res, n)` / `on_hire(p, b, tool)` | a building finished a cycle / made goods / took on a worker |
@@ -1332,7 +1377,8 @@ while that feature is off. A feature can set `needs = ["other_id"]` to require a
 Built-in features: `statistics` (F2), `seasons` (seasons, biomes, weather and temperature, F4),
 `clothing` (summer and winter clothes; needs `seasons`), `diseases` (outbreaks, prevention and cures),
 `events` (random events, F6), `tool_quality` (tool quality and wear) and `fog` (fog of war, scouts and
-watch towers), `geology` (geologists; mines need surveyed ore) and `wildlife` (animals, hunting, wolves).
+watch towers), `geology` (geologists; mines need surveyed ore), `wildlife` (animals, hunting, wolves)
+and `laws` (realm laws, F8).
 
 `mods_examples/bountiful_harvest.gd` is a small example: every few minutes, farms work 25% faster for a minute.
 Copy it into the mods folder to try it.
@@ -1351,6 +1397,7 @@ scripts/
                  targets, textures, event log, toolbar, first-game guide (and mission goals), problems,
                  attack, production chain, map editor, missions, campaign, traffic map, undo
   achievements.gd, share_pack.gd   achievements; map and mission packs
+  chronicle.gd   the story of a game for the end screen (notes kept in Player.chron); ui_chronicle.gd shows it
   i18n.gd        interface languages (data/lang_*.json)
   line_chart.gd  the chart in the statistics window
   map_view.gd    world renderer
@@ -1363,7 +1410,7 @@ scripts/
   sim_logistics.gd   roads, the road network and carriers
   sim_research.gd    research
   sim_sea.gd     ships, harbours, expeditions and sea transport
-  features/      optional features (feature.gd base, features.gd list, statistics.gd, seasons.gd, clothing.gd, diseases.gd, events.gd, tool_quality.gd, fog.gd, geology.gd, wildlife.gd, contentment.gd, fires.gd)
+  features/      optional features (feature.gd base, features.gd list, statistics.gd, seasons.gd, clothing.gd, diseases.gd, events.gd, tool_quality.gd, fog.gd, geology.gd, wildlife.gd, contentment.gd, fires.gd, laws.gd, factory_health.gd)
   world_gen.gd   random maps
   game_data.gd   loads and merges the JSON data
   diplomacy.gd   relations, opinions, trade values and rival diplomacy
