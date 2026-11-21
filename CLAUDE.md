@@ -11,7 +11,9 @@ used globally without autoloads.
 
 Deeper docs: `docs/SOURCE_GUIDE.md` (system-by-system explanation and a "where things are" index; its
 header says build 32 but the architecture still holds), `docs/FILES.md` (every source file, regenerate
-with `python3 tools/file_list.py`), `README.md` (player docs, data-mod field tables, Feature hook table).
+with `python3 tools/file_list.py`), `README.md` (player docs, data-mod field tables, Feature hook table),
+`docs/SUGGESTIONS.md` (ideas for what to improve next). Repo skills live in `.claude/skills/`; use
+`hearthlands-localization` whenever player-facing text is added or translated.
 
 ## Commands
 
@@ -30,7 +32,8 @@ python3 tools/check_data.py [modsdir]    # validate data/*.json (prints "data ch
   each output must match; a new test must be added to its `TESTS` table. Any `SCRIPT ERROR` fails a test.
 - Tests not in `BRONZE_AWARE` in `run_all.py` run with `HEARTHLANDS_START_AGE=1` (start in the Roman age,
   as before build 65). Set it yourself when running such a test by hand.
-- Tests flagged as needing a window (and all `shot_*.gd` screenshot scripts) need a display:
+- Tests flagged as needing a window need a display; `run_all.py` wraps them in `xvfb-run` itself when it
+  is installed and skips them otherwise. To run one (or a `shot_*.gd` screenshot script) by hand:
   `xvfb-run -a -s "-screen 0 1920x1080x24" godot --rendering-driver opengl3 --script res://tools/X.gd`.
 - After **any** simulation change run `save_test` (must report three `true` matches). After touching goods,
   `stores_test`. For pure refactors, `checksum_run.gd` before and after must print identical numbers;
