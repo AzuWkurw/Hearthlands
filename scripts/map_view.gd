@@ -350,6 +350,7 @@ func _ready() -> void:
 	_sway_mat.shader = load("res://shaders/map_sway.gdshader")
 	material = _sway_mat
 	_shadow = _make_shadow()
+	_make_lights()
 	_make_vignette()
 	set_smooth(true)
 	refresh_textures()
@@ -452,6 +453,8 @@ func _process(_delta: float) -> void:
 		while not _grave.is_empty() and f - int(_grave[0][0]) > 4:
 			_grave.pop_front()
 	_ground.queue_redraw()
+	if _lights != null and (daynight or not _night_vis.is_empty()):
+		_lights.queue_redraw()
 	if _sway_mat != null:
 		var wnd := _wind()
 		_sway_mat.set_shader_parameter("animate", animate)
@@ -2092,9 +2095,12 @@ func night_amount() -> float:
 	return clampf(-cos(ph * TAU) * 1.6 - 0.45, 0.0, 1.0)
 
 
-## A dark blue veil over the map at night (orange around dusk and dawn), and the lit windows of homes and
-## workshops with people in them, and torches at military buildings.
+## A dark blue veil over the map at night (orange around dusk and dawn). The lights themselves (lit
+## windows of homes and workshops with people in them, torches at military buildings, and the warm pool
+## each throws on the ground round it) are drawn by _draw_lights on a layer of their own that adds its
+## light to what is below, so they brighten the night instead of being laid over it.
 func _draw_night(vis: Array, x0: int, y0: int, x1: int, y1: int) -> void:
+	_night_vis = []
 	var n := night_amount()
 	if n <= 0.0:
 		return
@@ -2102,24 +2108,56 @@ func _draw_night(vis: Array, x0: int, y0: int, x1: int, y1: int) -> void:
 	var dusk := sin(n * PI)
 	_cv.draw_rect(area, Color(1.0, 0.55, 0.25, 0.10 * dusk))
 	_cv.draw_rect(area, Color(0.04, 0.06, 0.17, 0.58 * n))
-	if _glow == null:
+	_night_vis = vis
+
+
+var _night_vis: Array = []         # the buildings on screen this frame, while it is night (for _draw_lights)
+var _lights: Control               # the night's lights, drawn adding light (see _draw_lights)
+
+
+func _make_lights() -> void:
+	_lights = Control.new()
+	_lights.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_lights.set_anchors_preset(Control.PRESET_FULL_RECT)
+	var m := CanvasItemMaterial.new()
+	m.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	_lights.material = m
+	_lights.draw.connect(_draw_lights)
+	add_child(_lights)
+
+
+func _draw_lights() -> void:
+	var n := night_amount()
+	if n <= 0.0 or _glow == null or _night_vis.is_empty() or sim == null:
 		return
-	for b: Sim.Bld in vis:
+	_lights.draw_set_transform(_base_origin, 0.0, Vector2(zoom, zoom))
+	var warm := Color(1.0, 0.62, 0.26)
+	for b: Sim.Bld in _night_vis:
 		if b.dead or b.state != "ready":
 			continue
-		var lit := b.def.has("housing") or b.def.has("residence") or b.ty == "hq" or (b.staffed and b.def.has("worker")) or sim.is_mil(b)
+		var mil := sim.is_mil(b)
+		var lit := b.def.has("housing") or b.def.has("residence") or b.ty == "hq" or (b.staffed and b.def.has("worker")) or mil
 		if not lit:
+			continue
+		# some houses go dark late at night
+		if b.def.has("housing") and _hash(b.id, int(sim.time / 30.0)) % 5 == 0 and n > 0.8:
 			continue
 		var art: Dictionary = b.def.get("art", {})
 		var sw := float(art.get("sw", 2.0))
-		var c := Vector2(b.x + 0.5, b.y + 0.55 - lift_at(b.x + 0.5, b.y + 0.9))
-		# each window flickers a little, and some houses go dark late at night
-		if b.def.has("housing") and _hash(b.id, int(sim.time / 30.0)) % 5 == 0 and n > 0.8:
-			continue
+		var lf := lift_at(b.x + 0.5, b.y + 0.9)
+		# each light flickers a little, torches more than windows
 		var fl := 0.85 + 0.15 * sin(sim.time * 3.0 + b.id * 1.7)
-		var r := 0.34 * sw if not sim.is_mil(b) else 0.5
-		_cv.draw_texture_rect(_glow, Rect2(c.x - r, c.y - r, r * 2.0, r * 2.0), false, Color(1.0, 0.78, 0.4, 0.75 * n * fl))
-		_cv.draw_circle(c + Vector2(0.06, 0.05), minf(0.08, 0.04 * sw), Color(1.0, 0.85, 0.45, 0.9 * n))
+		if mil:
+			fl = 0.75 + 0.15 * sin(sim.time * 7.0 + b.id) + 0.1 * sin(sim.time * 13.0 + b.id * 2.3)
+		# the pool of light on the ground in front of the door
+		var g := Vector2(b.x + 0.5, b.y + 1.0 - lf)
+		var pr := (0.9 + 0.35 * sw) * (1.15 if mil else 1.0)
+		_lights.draw_texture_rect(_glow, Rect2(g.x - pr, g.y - pr * 0.6, pr * 2.0, pr * 1.2), false, Color(warm.r, warm.g, warm.b, 0.32 * n * fl))
+		# the window (or the torch) itself
+		var c := Vector2(b.x + 0.5, b.y + 0.55 - lf)
+		var r := 0.3 * sw if not mil else 0.45
+		_lights.draw_texture_rect(_glow, Rect2(c.x - r, c.y - r, r * 2.0, r * 2.0), false, Color(1.0, 0.72, 0.36, 0.6 * n * fl))
+		_lights.draw_circle(c + Vector2(0.06, 0.05), minf(0.08, 0.04 * sw), Color(1.0, 0.82, 0.45, 0.85 * n))
 
 
 ## A moving part of a working building (see "anim" in buildings.json, written by tools/bld_variants.py):

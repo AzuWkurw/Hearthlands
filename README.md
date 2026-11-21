@@ -453,7 +453,8 @@ Open **Settings** (top bar or F10). Everything there is remembered in `user://se
 - **Interface size** scales everything, **VSync** waits for the screen (no tearing), and the **frame-rate
   limit** saves power.
 - **Ground details** (on by default): grass tufts, flowers, pebbles, reeds, shore foam and snow on high
-  peaks. **Day and night** (off by default): a slow day, dark nights with lit windows; only the look changes.
+  peaks. **Day and night** (off by default): a slow day, dark nights with lit windows and torches that throw warm light on the ground round them; only the look
+  changes.
 - **Soft shade towards the screen's corners** (on by default): the map darkens a little towards the corners.
 - **Raised ground** (on by default) draws hills standing up from the map (2.5D).
   Off gives the flat map of earlier builds.

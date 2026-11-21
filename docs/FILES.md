@@ -2,7 +2,7 @@
 
 Every source file with what it is for, grouped by part. Written by `tools/file_list.py` from the comment at the
 top of each file; run it again after adding files. For how the parts work together, read
-`docs/SOURCE_GUIDE.md`. Besides these 343 files there are 2204 pictures in `textures/` (made by
+`docs/SOURCE_GUIDE.md`. Besides these 344 files there are 2204 pictures in `textures/` (made by
 `tools/make_textures.py` and `tools/make_scenery.py`, or your own) and 79 sounds in `sounds/` (made by
 `tools/make_sounds.py`) and 10 pieces of music in `music/` (made by `tools/make_music.py`). Godot's
 `.import` files next to them are made by the editor.
@@ -54,7 +54,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 |---|---:|---|
 | `scripts/line_chart.gd` | 75 | A simple line chart: one line per series over the same time axis, newest on the right. Set `series` to [{"name": String, "color": Color, "values": Array of numbers}, ...] and `x_label`. |
 | `scripts/map_chunks.gd` | 551 | Bakes the parts of the map that rarely change (ground, roads, scenery, ore, territory) into large images of 16 x 16 tiles called chunks. Drawing a few dozen chunks each frame is far cheaper than drawing thousands of separate tiles. A chunk is baked again only when something inside it changes. Where two kinds of ground meet, the higher one (beach over water, grass over beach, mountain over grass) spills softly over the edge. Open water is baked half transparent: the ground shader uses that as a marker to make the water shimmer. |
-| `scripts/map_view.gd` | 3872 | Draws the world and turns mouse input into tile clicks. The ground, roads, scenery and borders come from pre-baked chunks (map_chunks.gd), drawn by a child layer whose shader makes the water shimmer. Everything that moves or changes often (buildings, carriers, soldiers, workers, smoke, selections, tool previews) is drawn every frame on top. Animations follow the game clock, so they freeze while the game is paused and speed up with it. |
+| `scripts/map_view.gd` | 3910 | Draws the world and turns mouse input into tile clicks. The ground, roads, scenery and borders come from pre-baked chunks (map_chunks.gd), drawn by a child layer whose shader makes the water shimmer. Everything that moves or changes often (buildings, carriers, soldiers, workers, smoke, selections, tool previews) is drawn every frame on top. Animations follow the game clock, so they freeze while the game is paused and speed up with it. |
 | `scripts/minimap.gd` | 279 | Whole-map overview: terrain, roads, territory, military buildings and the camera frame. Its images double as the far-zoom picture of the main map. |
 | `scripts/tech_tree_view.gd` | 612 | The tech tree drawn as a map: ages run left to right, each band is a branch of the realm, and lines run from what a tech needs to what it leads to. The places come from data/techs.json ("lane", "col", "row", worked out to cross as few lines as possible); techs added by a mod without them are put in an "Other" band. Repeatable studies sit in the Mastery band at the bottom. Drag (or the arrow keys) to move, the wheel to scroll, Ctrl + wheel or a pinch to zoom. |
 | `scripts/tex.gd` | 210 | Texture lookup with user overrides. For an id like "bld_sawmill" the game looks for, in order: 1. user://textures/bld_sawmill.png   (your custom texture, any size) 2. res://textures/bld_sawmill.png    (the default shipped with the project) 3. a magenta placeholder, so a missing file is obvious in game. |
@@ -132,7 +132,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 
 | File | Lines | What it is |
 |---|---:|---|
-| `shaders/ground.gdshader` | 183 | Draws the ground: the baked map pictures on the raised mesh, moving water and shore foam, drifting cloud shadows. |
+| `shaders/ground.gdshader` | 197 | Draws the ground: the baked map pictures on the raised mesh, moving water and shore foam, drifting cloud shadows. |
 | `shaders/map_sway.gdshader` | 91 | The map view's own shader: bends the tops of trees and crops in the wind (corners marked by their colour's alpha). |
 
 ## Tools: automatic tests
@@ -277,6 +277,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `tools/shot_fx.gd` | 45 | Screenshot of the work effects: a tree falling, a building just finished, a site being built. xvfb-run godot --rendering-driver opengl3 --script res://tools/shot_fx.gd -- out=/dir |
 | `tools/shot_garrison.gd` | 31 | Screenshot of the garrison settings: xvfb-run godot --rendering-driver opengl3 --script res://tools/shot_garrison.gd -- out=/dir |
 | `tools/shot_geo.gd` | 62 | Screenshots of geologists at work, their markers, surveyed ore shown while placing a mine, and wildlife. xvfb-run godot --rendering-driver opengl3 --script res://tools/shot_geo.gd -- out=/dir |
+| `tools/shot_gfx.gd` | 39 | Screenshots for judging the map's look: a town at night (with Day and night on) and a corner of the map, where it meets the dark beyond its edge. xvfb-run godot --rendering-driver opengl3 --script res://tools/shot_gfx.gd -- out=/dir [tag=now] |
 | `tools/shot_hide.gd` | 41 | Hiding problems in the Problems list. xvfb-run -a -s "-screen 0 1920x1080x24" godot --rendering-driver opengl3 --script res://tools/shot_hide.gd.gd -- out=/dir |
 | `tools/shot_hills.gd` | 34 | Screenshot of hilly land with roads (slope marks): xvfb-run godot --rendering-driver opengl3 --script res://tools/shot_hills.gd -- out=/dir |
 | `tools/shot_keys.gd` | 43 | The key list in Settings: xvfb-run -a -s "-screen 0 1920x1080x24" godot --rendering-driver opengl3 --script res://tools/shot_keys.gd -- out=/dir |
@@ -396,8 +397,8 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `.claude/skills/hearthlands-localization/SKILL.md` | 113 | (no description yet) |
 | `CHANGELOG.md` | 1062 | What changed in each build. |
 | `CLAUDE.md` | 106 | (no description yet) |
-| `README.md` | 1483 | How to play, the rules, controls, settings, modding and the project layout. |
-| `docs/FILES.md` | 406 | This list (written by tools/file_list.py). |
+| `README.md` | 1484 | How to play, the rules, controls, settings, modding and the project layout. |
+| `docs/FILES.md` | 407 | This list (written by tools/file_list.py). |
 | `docs/SOURCE_GUIDE.md` | 470 | A tour of the code for programmers: the parts, how a game tick runs, where things live. |
 | `docs/SUGGESTIONS.md` | 203 | Ideas and their status after each round of work. |
 | `export_presets.cfg` | 61 | Godot export settings for the Windows and Linux builds. |

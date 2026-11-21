@@ -84,7 +84,15 @@ float noise(vec2 p) {
 			mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
 }
 
+// The dark background beyond the map edge (MapView draws it the same colour).
+const vec3 VOID = vec3(0.051, 0.059, 0.047);
+
 void fragment() {
+	// The chunks along the right and bottom edges of the map reach past it, and their empty part (alpha
+	// 0) read as open water: the background there glittered with the water's glints. Leave it out.
+	if (flat_pos.x >= 0.0 && (flat_pos.x > map_size.x || flat_pos.y > map_size.y)) {
+		discard;
+	}
 	// COLOR arrives already holding the texture's colour times the colour the drawing asked for
 	// (white for chunks, dark for the background rectangle).
 	vec4 c = COLOR;
@@ -178,6 +186,12 @@ void fragment() {
 		float cover = smoothstep(0.78 - clouds * 0.45, 0.95 - clouds * 0.35, n);
 		// a little bluer than plain dark: the shade is lit by the open sky
 		c.rgb *= vec3(1.0) - (0.07 + 0.15 * clouds) * cover * vec3(1.0, 0.94, 0.8);
+	}
+	// the map's edge fades into the dark background over its last two tiles, instead of ending in a
+	// hard straight line
+	if (on_map) {
+		vec2 e2 = min(p, map_size - p);
+		c.rgb = mix(VOID, c.rgb, 0.35 + 0.65 * smoothstep(0.0, 2.0, min(e2.x, e2.y)));
 	}
 	COLOR = vec4(c.rgb, 1.0);
 }
