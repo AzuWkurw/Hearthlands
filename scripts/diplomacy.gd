@@ -1,7 +1,9 @@
 class_name Diplomacy
 extends RefCounted
 ## Relations between realms (war, peace or alliance), each rival's opinion of every other realm,
-## proposals (peace, alliance, trade and gifts) and how rival AIs decide on them.
+## proposals (peace, alliance, trade, gifts and surrender) and how rival AIs decide on them.
+## A realm losing a war badly can become another's vassal: it keeps its land, but pays tribute, fights
+## its overlord's wars and makes no treaties of its own, until it breaks free (Player.overlord).
 ## The state itself lives in Sim (rel, rel_since, proposals, and Player.opinion) so it is saved with the game.
 
 const WAR := 0
@@ -106,6 +108,20 @@ static func borders(sim: Sim, a: int, b: int) -> bool:
 
 
 static func declare_war(sim: Sim, a: int, b: int) -> void:
+	var pa := sim.players[a - 1]
+	var pb := sim.players[b - 1]
+	if pa.overlord == b:
+		# a vassal that takes up arms against its overlord breaks free
+		break_free(sim, a, true)
+		return
+	if pa.overlord != 0:
+		return    # a vassal goes to war only when its overlord does
+	if pb.overlord == a:
+		release(sim, b)
+	elif pb.overlord != 0:
+		# war on a vassal is war on its overlord, and so on all its vassals
+		b = pb.overlord
+		pb = sim.players[b - 1]
 	var was := relation(sim, a, b)
 	if was == WAR:
 		return
@@ -115,6 +131,7 @@ static func declare_war(sim: Sim, a: int, b: int) -> void:
 		if q.alive and q.id != a and q.id != b:
 			adjust(q, a, -15.0 if was == ALLY else -8.0)
 	drop_proposals(sim, a, b)
+	sync_vassals(sim)
 
 
 # ---------------------------------------------------------------- goods and value
@@ -349,7 +366,13 @@ static func ai_answer(sim: Sim, p: Sim.Player, kind: String, from: int, give: Di
 	var q := sim.players[from - 1]
 	var op := opinion(p, from)
 	var rel := relation(sim, p.id, from)
+	if p.overlord != 0 and kind in ["peace", "alliance", "vassal", "submit"] and p.overlord != from:
+		return "%s is a vassal of %s: its overlord speaks for it." % [p.name, sim.players[p.overlord - 1].name]
+	if q.overlord != 0 and kind in ["peace", "alliance", "vassal", "submit"]:
+		return "A vassal makes no treaties of its own."
 	match kind:
+		"vassal", "submit":
+			return surrender_answer(sim, p, kind, from)
 		"peace":
 			if rel != WAR:
 				return "You are not at war with %s." % p.name
@@ -386,9 +409,14 @@ static func execute(sim: Sim, kind: String, from: int, to: int, give: Dictionary
 	var a := sim.players[from - 1]
 	var b := sim.players[to - 1]
 	match kind:
+		"vassal":
+			make_vassal(sim, from, to)
+		"submit":
+			make_vassal(sim, to, from)
 		"peace":
 			set_relation(sim, from, to, PEACE)
 			adjust(a, to, 10.0); adjust(b, from, 10.0)
+			sync_vassals(sim)
 		"alliance":
 			set_relation(sim, from, to, ALLY)
 			adjust(a, to, 10.0); adjust(b, from, 10.0)
@@ -452,6 +480,12 @@ static func propose(sim: Sim, from: int, to: int, kind: String, give := {}, want
 			say(sim, sim.players[from - 1], "Send me %s, or there will be war between us." % goods_text(want))
 			sim.emit_log("%s demands tribute. Answer in Diplomacy." % who, Color("e0b060"))
 		"peace": sim.emit_log("%s offers peace. Answer in Diplomacy." % who, Color("8fc0ff"))
+		"vassal":
+			say(sim, sim.players[from - 1], "Enough. Spare my realm, and I will serve you as your vassal.")
+			sim.emit_log("%s offers to surrender and become your vassal. Answer in Diplomacy." % who, Color("8fc0ff"))
+		"submit":
+			say(sim, sim.players[from - 1], "Your armies are broken. Kneel, and keep your land as my vassal.")
+			sim.emit_log("%s demands your surrender. Answer in Diplomacy." % who, Color("e0b060"))
 		"alliance": sim.emit_log("%s proposes an alliance. Answer in Diplomacy." % who, Color("8fc0ff"))
 		_: sim.emit_log("%s offers %s for %s. Answer in Diplomacy." % [who, goods_text(give), goods_text(want)], Color("8fc0ff"))
 	sim.diplomacy_changed.emit()
@@ -473,6 +507,9 @@ static func accept(sim: Sim, id: int) -> String:
 				if relation(sim, pr.from, pr.to) != WAR: return "You are no longer at war."
 			"alliance":
 				if relation(sim, pr.from, pr.to) != PEACE: return "You are no longer at peace."
+			"vassal", "submit":
+				var why := surrender_check(sim, int(pr.from), int(pr.to))
+				if why != "": return why
 			"help":
 				# your ally asked you to join its war
 				var foe := int(pr.get("target", 0))
@@ -501,6 +538,9 @@ static func decline(sim: Sim, id: int) -> void:
 				# an ally left to fight alone remembers it
 				adjust(who, int(pr.to), -18.0)
 				say(sim, who, "So that is what your friendship is worth.")
+			elif String(pr.kind) == "submit":
+				adjust(who, int(pr.to), -8.0)
+				say(sim, who, "Then we finish this on the field.")
 			elif String(pr.kind) == "tribute":
 				adjust(who, int(pr.to), -20.0)
 				who.warned[int(pr.to)] = sim.time - 120.0
@@ -551,13 +591,22 @@ static func ai_tick(sim: Sim, p: Sim.Player) -> void:
 		for r in others:
 			if r.id != q.id and opinion(p, r.id) < -30.0 and r.opinion.get(q.id, 0.0) < -30.0:
 				o += 1.0
+		if p.overlord == q.id:
+			o += vassal_mood(sim, p, q)
 		p.opinion[q.id] = clampf(o, -100.0, 100.0)
 	if sim.time < 90.0:
+		return
+	if p.overlord != 0:
+		_ai_vassal(sim, p, others)
 		return
 	for i in range(others.size() - 1, 0, -1):
 		var j := sim.rng.randi() % (i + 1)
 		var t = others[i]; others[i] = others[j]; others[j] = t
 	for q in others:
+		if q.overlord == p.id:
+			continue    # its own vassals: they pay and fight for it
+		if q.overlord != 0:
+			continue    # another realm's vassal: its overlord is the one to deal with
 		if _ai_leave_alliance(sim, p, q):
 			return
 		var rel := relation(sim, p.id, q.id)
@@ -591,6 +640,8 @@ static func ai_tick(sim: Sim, p: Sim.Player) -> void:
 				declare_war(sim, p.id, q.id)
 				return
 		if rel == WAR:
+			if _ai_surrender(sim, p, q, ratio):
+				return
 			var score := op + (1.0 / maxf(0.2, ratio) - 1.0) * 25.0 + (-15.0 if p.pers == "warlord" else 5.0) + distance_bonus(sim, p.id, q.id) - (20.0 if p.crowded else 0.0)
 			if score > 4.0 and sim.rng.randf() < 0.25:
 				propose(sim, p.id, q.id, "peace")
@@ -690,3 +741,293 @@ static func _ai_offer_trade(sim: Sim, p: Sim.Player, q: Sim.Player) -> bool:
 		return false
 	var r := propose(sim, p.id, q.id, "trade", {surplus: m}, {need: 10})
 	return r == "pending" or r == ""
+
+
+# ---------------------------------------------------------------- vassals
+## How often a vassal pays tribute, and what: a share of what it has of each good, at most CAP of each.
+const TRIBUTE_EVERY := 120.0
+const TRIBUTE := {"gold": 0.2, "planks": 0.1, "stone": 0.1}
+const TRIBUTE_CAP := 30
+## A realm surrenders when its army is at most this share of the enemy's (by personality).
+const GIVE_UP := {"builder": 0.45, "balanced": 0.35, "warlord": 0.25}
+## A vassal stays at least this long before it may break free on its own.
+const VASSAL_MIN := 300.0
+
+
+## The realm that speaks for realm id: its overlord, or itself when it is free.
+static func head(sim: Sim, id: int) -> int:
+	var o := sim.players[id - 1].overlord
+	return o if o != 0 else id
+
+
+## The ids of realm id's vassals, in id order.
+static func vassals_of(sim: Sim, id: int) -> Array:
+	var out := []
+	for q in sim.players:
+		if q.alive and q.overlord == id:
+			out.append(q.id)
+	return out
+
+
+static func any_vassals(sim: Sim) -> bool:
+	for q in sim.players:
+		if q.overlord != 0:
+			return true
+	return false
+
+
+## Why realm v cannot become realm o's vassal now ("" when it can).
+static func surrender_check(sim: Sim, v: int, o: int) -> String:
+	var pv := sim.players[v - 1]
+	var po := sim.players[o - 1]
+	if not pv.alive or not po.alive:
+		return "That realm is gone."
+	if relation(sim, v, o) != WAR:
+		return "Only a realm at war can surrender."
+	if pv.overlord != 0 or po.overlord != 0:
+		return "A vassal cannot take or give a surrender."
+	return ""
+
+
+## Whether AI realm p takes a surrender: "vassal" (from offers to serve p) or "submit" (from wants p to serve it).
+static func surrender_answer(sim: Sim, p: Sim.Player, kind: String, from: int) -> String:
+	var q := sim.players[from - 1]
+	var why := surrender_check(sim, from if kind == "vassal" else p.id, p.id if kind == "vassal" else from)
+	if why != "":
+		return why
+	if kind == "vassal":
+		# tribute and a soldier on its side are worth more than a long siege, unless a warlord can see
+		# the end of the other realm already
+		var ratio := strength(sim, p) / maxf(1.0, strength(sim, q))
+		if p.pers == "warlord" and ratio > 4.0:
+			return "%s wants your land, not your service." % p.name
+		if opinion(p, from) < -80.0:
+			return "%s hates you too much to spare you." % p.name
+		return ""
+	# a demand to surrender: only when its own army is broken
+	var share := strength(sim, p) / maxf(1.0, strength(sim, q))
+	var line: float = GIVE_UP.get(p.pers, 0.35)
+	if since(sim, p.id, from) < 120.0:
+		return "%s will not give up a war that has only just begun." % p.name
+	if share > line:
+		return "%s will not surrender: its army is still %d against your %d." % [p.name, roundi(strength(sim, p)), roundi(strength(sim, q))]
+	return ""
+
+
+## Realm v becomes realm o's vassal: peace between them (they count as allies), tribute every few
+## minutes, and from now on it is at war with o's enemies and at peace with everyone else. Its own
+## vassals, if it had any, go free.
+static func make_vassal(sim: Sim, v: int, o: int) -> void:
+	var pv := sim.players[v - 1]
+	var po := sim.players[o - 1]
+	for x in vassals_of(sim, v):
+		var px := sim.players[x - 1]
+		px.overlord = 0
+		_set_rel(sim, x, v, PEACE)
+		_tell(sim, [x, v], "%s goes free: its overlord %s has surrendered." % [px.name, pv.name])
+	pv.overlord = o
+	pv.vassal_t = sim.time
+	pv.tribute_t = sim.time + TRIBUTE_EVERY
+	_set_rel(sim, v, o, ALLY)
+	drop_proposals(sim, v, o)
+	adjust(po, v, 20.0)
+	pv.opinion[o] = maxf(opinion(pv, o), 10.0)
+	Chronicle.note(sim, pv, "vassal", {"o": o})
+	if v == 1 and not sim.spectating():
+		sim.emit_log("You surrender to %s. Your realm keeps its land, but pays tribute and fights its wars." % po.name, Color("e0b060"))
+	elif o == 1 and not sim.spectating():
+		sim.emit_log("%s surrenders and becomes your vassal: it pays you tribute and fights your wars." % pv.name, Color("d8aa4a"))
+	else:
+		sim.emit_log("%s surrenders and becomes a vassal of %s." % [pv.name, po.name], Color("b0a8d0"))
+	sync_vassals(sim)
+	sim.diplomacy_changed.emit()
+
+
+## An overlord lets its vassal go: they stay at peace.
+static func release(sim: Sim, v: int) -> void:
+	var pv := sim.players[v - 1]
+	var o := pv.overlord
+	if o == 0:
+		return
+	pv.overlord = 0
+	_set_rel(sim, v, o, PEACE)
+	adjust(pv, o, 25.0)
+	Chronicle.note(sim, pv, "free", {"o": o})
+	_tell(sim, [v, o], "%s releases %s: it is a free realm again." % [sim.players[o - 1].name, pv.name])
+	sync_vassals(sim)
+	sim.diplomacy_changed.emit()
+
+
+## A vassal breaks free of its overlord: with war (rebel) or, quietly, at peace.
+static func break_free(sim: Sim, v: int, rebel: bool) -> void:
+	var pv := sim.players[v - 1]
+	var o := pv.overlord
+	if o == 0:
+		return
+	var po := sim.players[o - 1]
+	pv.overlord = 0
+	_set_rel(sim, v, o, WAR if rebel else PEACE)
+	adjust(po, v, -40.0 if rebel else -20.0)
+	Chronicle.note(sim, pv, "free", {"o": o, "rebel": rebel})
+	if rebel:
+		_tell(sim, [v, o], "%s rises against its overlord %s: war!" % [pv.name, po.name], Color("e0603a"))
+		if pv.ai and o == 1:
+			say(sim, pv, "No more tribute. Come and take it, if you can.")
+	else:
+		_tell(sim, [v, o], "%s stops paying tribute to %s and goes its own way." % [pv.name, po.name], Color("e0b060"))
+	sync_vassals(sim)
+	sim.diplomacy_changed.emit()
+
+
+## A realm fell: its vassals go free (at peace with the rest), and it is nobody's vassal any more.
+static func on_fallen(sim: Sim, id: int) -> void:
+	var p := sim.players[id - 1]
+	p.overlord = 0
+	for x in vassals_of(sim, id):
+		sim.players[x - 1].overlord = 0
+		Chronicle.note(sim, sim.players[x - 1], "free", {"o": id})
+		_tell(sim, [x], "%s is free: its overlord has fallen." % sim.players[x - 1].name)
+	sync_vassals(sim)
+
+
+## Vassals follow their overlords: a vassal is at war with exactly the realms its overlord is at war
+## with (and their vassals), at peace with everyone else, and allied with its overlord.
+static func sync_vassals(sim: Sim) -> void:
+	if not any_vassals(sim):
+		return
+	var n := sim.players.size()
+	var changed := false
+	for i in n:
+		var a := sim.players[i]
+		if not a.alive:
+			continue
+		for j in range(i + 1, n):
+			var b := sim.players[j]
+			if not b.alive or (a.overlord == 0 and b.overlord == 0):
+				continue
+			var ha := head(sim, a.id)
+			var hb := head(sim, b.id)
+			var now := relation(sim, a.id, b.id)
+			var want := now
+			if a.overlord == b.id or b.overlord == a.id:
+				want = ALLY
+			elif ha == hb:
+				want = PEACE if now == WAR else now
+			elif relation(sim, ha, hb) == WAR:
+				want = WAR
+			elif now == WAR or (now == ALLY and relation(sim, ha, hb) != ALLY):
+				want = PEACE
+			if want == now:
+				continue
+			_set_rel(sim, a.id, b.id, want)
+			changed = true
+			var v := a if a.overlord != 0 else b
+			var other := b if v == a else a
+			var lord := sim.players[v.overlord - 1]
+			if want == WAR:
+				_tell(sim, [a.id, b.id, lord.id], "%s joins its overlord %s in the war against %s." % [v.name, lord.name, other.name], Color("e0603a"))
+				drop_proposals(sim, a.id, b.id)
+			elif want == PEACE and now == WAR:
+				_tell(sim, [a.id, b.id, lord.id], "%s lays down its arms against %s, as its overlord %s has." % [v.name, other.name, lord.name])
+	if changed:
+		sim.diplomacy_changed.emit()
+
+
+## Every few seconds: vassals whose overlord is gone go free, vassals follow their overlord's wars,
+## and pay tribute when it is due.
+static func vassal_tick(sim: Sim) -> void:
+	if not any_vassals(sim):
+		return
+	for p in sim.players:
+		if p.overlord != 0 and (not p.alive or not sim.players[p.overlord - 1].alive):
+			p.overlord = 0
+	sync_vassals(sim)
+	for p in sim.players:
+		if p.alive and p.overlord != 0 and sim.time >= p.tribute_t:
+			p.tribute_t = sim.time + TRIBUTE_EVERY
+			pay_tribute(sim, p)
+
+
+## What vassal p would pay now.
+static func tribute_due(p: Sim.Player) -> Dictionary:
+	var out := {}
+	for k in TRIBUTE:
+		var n := mini(TRIBUTE_CAP, floori(float(p.stock.get(k, 0.0)) * float(TRIBUTE[k])))
+		if n > 0:
+			out[k] = n
+	return out
+
+
+## Vassal p sends its tribute to its overlord by cart. Paying wears on its goodwill a little.
+static func pay_tribute(sim: Sim, p: Sim.Player) -> void:
+	var lord := sim.players[p.overlord - 1]
+	var due := tribute_due(p)
+	for k in due:
+		var g := sim.take(p, k, float(due[k]))
+		send_cart(sim, p, lord, k, g)
+	adjust(p, lord.id, -2.0)
+	adjust(lord, p.id, 2.0)
+	if due.is_empty():
+		return
+	if p.id == 1 and not sim.spectating():
+		sim.emit_log("You send %s as tribute to your overlord %s." % [goods_text(due), lord.name], Color("e0b060"))
+	elif lord.id == 1 and not sim.spectating():
+		sim.emit_log("Your vassal %s sends %s as tribute." % [p.name, goods_text(due)], Color("d8aa4a"))
+
+
+## How a vassal's goodwill to its overlord drifts each diplomacy turn: a strong overlord is respected,
+## a weak one resented, and proud realms (warlords) chafe the most.
+static func vassal_mood(sim: Sim, p: Sim.Player, lord: Sim.Player) -> float:
+	var d: float = {"builder": -0.3, "balanced": -0.8, "warlord": -1.6}.get(p.pers, -0.8)
+	var ratio := strength(sim, lord) / maxf(1.0, strength(sim, p))
+	if ratio > 2.0:
+		d += 1.5
+	elif ratio < 1.0:
+		d -= 4.0 * (1.0 - ratio) + 1.0
+	return d
+
+
+## A rival that is a vassal: it trades, and it breaks free once its goodwill to its overlord is gone
+## (or once it is clearly the stronger), though not in its first minutes of service.
+static func _ai_vassal(sim: Sim, p: Sim.Player, others: Array) -> void:
+	var lord := sim.players[p.overlord - 1]
+	var op := opinion(p, lord.id)
+	var ratio := strength(sim, p) / maxf(1.0, strength(sim, lord))
+	if sim.time - p.vassal_t >= VASSAL_MIN and (op < -30.0 or (ratio > 1.3 and op < 20.0)) and sim.rng.randf() < 0.3:
+		# strong enough to fight for it: a rising; else it simply stops paying
+		break_free(sim, p.id, ratio > 0.9)
+		return
+	for q in others:
+		if relation(sim, p.id, q.id) != WAR and sim.rng.randf() < (0.3 if not q.ai else 0.15) and _ai_offer_trade(sim, p, q):
+			return
+
+
+## A rival losing a war badly offers to become the enemy's vassal; one winning it by far demands that
+## the enemy surrender. Each at most once in a while for each enemy.
+static func _ai_surrender(sim: Sim, p: Sim.Player, q: Sim.Player, ratio: float) -> bool:
+	if p.overlord != 0 or q.overlord != 0 or since(sim, p.id, q.id) < 180.0:
+		return false
+	var k := "surrender:%d" % q.id
+	if sim.time - float(p.warned.get(k, -1e9)) < 480.0:
+		return false
+	var line: float = GIVE_UP.get(p.pers, 0.35)
+	if ratio <= line and vassals_of(sim, p.id).is_empty() and sim.rng.randf() < 0.35:
+		p.warned[k] = sim.time
+		propose(sim, p.id, q.id, "vassal")
+		return true
+	if ratio >= 1.0 / line and sim.rng.randf() < (0.3 if p.pers == "warlord" else 0.15):
+		p.warned[k] = sim.time
+		propose(sim, p.id, q.id, "submit")
+		return true
+	return false
+
+
+## Changes a relation without the usual log line (the vassal code writes its own).
+static func _set_rel(sim: Sim, a: int, b: int, r: int) -> void:
+	sim.rel[key(a, b)] = r
+	sim.rel_since[key(a, b)] = sim.time
+
+
+## A log line about vassals: bright when it touches you, dim between rivals.
+static func _tell(sim: Sim, who: Array, text: String, col := Color("8fc0ff")) -> void:
+	sim.emit_log(text, col if (1 in who and not sim.spectating()) else Color("b0a8d0"))

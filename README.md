@@ -306,6 +306,16 @@ Exporting needs Godot 4.3's export templates (in the editor: Editor > Manage Exp
   garrisons help defend each other. Rivals make offers to you and treaties with each other. Once at least
   half the rivals are defeated, an alliance with everyone left is an allied victory, and an ally reaching
   the Industrial Revolution counts as a shared victory.
+- **Surrender and vassals.** A realm losing a war badly can surrender and become the winner's vassal.
+  It keeps its land, but every two minutes it sends a fifth of its gold and a tenth of its planks and
+  stone (at most 30 of each) by cart to its overlord, it is at war with exactly the realms its overlord
+  fights, and it makes no treaties of its own. War on a vassal is war on its overlord. At war, the
+  Diplomacy window offers Demand surrender (a realm whose army is broken agrees) and Surrender; rivals
+  offer and demand it too, of you and of each other. A vassal resents a weak overlord and tribute; once
+  its goodwill is gone (or it is clearly the stronger) it breaks free, with war if it can fight. You can
+  Release a vassal, or Break free from your overlord (war). Rivals that serve you count as beaten: when
+  every rival still standing is your vassal, you win. A vassal cannot win until it is free again, and
+  vassals go free when their overlord falls.
 - **Sound and music.** Four calm pieces (harp, lute, recorder, fiddle) play in turn with silence between
   them; a war theme takes over while your land is attacked or your soldiers fight, and short cues mark a
   new age, victory and defeat. Sounds of the world come from where they happen on screen (left or right,

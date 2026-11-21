@@ -364,6 +364,9 @@ class Player:
 	var attacks_made := 0   # attacks this realm launched
 	var colonies := 0       # harbours its expeditions founded
 	var warned := {}        # realm id -> when this rival last warned it before going to war
+	var overlord := 0       # the realm this one is a vassal of (0: free). See Diplomacy.make_vassal
+	var vassal_t := 0.0     # when it became a vassal
+	var tribute_t := 0.0    # a vassal pays its next tribute at this time
 	var blunt := 0          # soldiers at headquarters whose weapons are worn out
 	var inner_pct := 100    # military buildings away from the border hold this share of their soldiers
 	var border_first := true  # new soldiers go to buildings near the border first
@@ -2878,6 +2881,8 @@ func _secondly() -> void:
 		military.mark_borders()
 	if not standing.is_empty() and int(time) % 5 == 0:
 		Diplomacy.standing_tick(self)
+	if int(time) % 5 == 0:
+		Diplomacy.vassal_tick(self)
 
 
 

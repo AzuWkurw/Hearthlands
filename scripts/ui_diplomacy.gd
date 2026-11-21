@@ -35,7 +35,7 @@ func _build_diplomacy_panel() -> void:
 	var row := HBoxContainer.new(); v.add_child(row)
 	var tl := main._label("Diplomacy", 24, Main.BRASS); tl.size_flags_horizontal = Control.SIZE_EXPAND_FILL; row.add_child(tl)
 	row.add_child(main._button("Close", func(): main.dip_panel.visible = false))
-	var info := main._label("Every realm starts at war. Peace stops attacks both ways; allies also help defend each other's buildings nearby. Opinion rises with gifts, fair trades, peace and shared enemies, and falls when you attack or break a treaty. With at least half the rivals defeated, an alliance with all who remain is an allied victory.", 13, Main.DIM)
+	var info := main._label("Every realm starts at war. Peace stops attacks both ways; allies also help defend each other's buildings nearby. Opinion rises with gifts, fair trades, peace and shared enemies, and falls when you attack or break a treaty. With at least half the rivals defeated, an alliance with all who remain is an allied victory. A realm losing a war badly can surrender and become a vassal: it keeps its land, but pays tribute every two minutes, fights its overlord's wars and makes no treaties of its own, until it breaks free. Rivals that serve you count as defeated.", 13, Main.DIM)
 	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	info.custom_minimum_size = Vector2(760, 0)
 	v.add_child(info)
@@ -119,15 +119,42 @@ func _fill_diplomacy() -> void:
 		var l := main._rich()
 		l.custom_minimum_size = Vector2(430, 0)
 		l.text = tr("[color=#%s]■[/color] [b]%s[/b] [color=#9a9c88]%s, level %d[/color]\n%s · thinks of you: %s (%d) · army %d vs your %d" % [q.color.to_html(false), q.name, q.pers, q.skill, Diplomacy.NAMES[rel], Diplomacy.mood(op), roundi(op), roundi(Diplomacy.strength(main.sim, q)), roundi(my_str)])
+		if q.overlord == 1:
+			l.text += tr("\n[color=#d8aa4a]Your vassal: it pays you %s every two minutes and fights your wars.[/color]" % Diplomacy.goods_text(Diplomacy.tribute_due(q)))
+			if op < 0.0:
+				l.text += tr("\n[color=#e0b060]It resents serving you: a gift wins back its goodwill, or it may break free.[/color]")
+		elif me.overlord == q.id:
+			l.text += tr("\n[color=#e0b060]Your overlord: you pay it %s every two minutes and fight its wars.[/color]" % Diplomacy.goods_text(Diplomacy.tribute_due(me)))
+		elif q.overlord != 0:
+			l.text += tr("\n[color=#9a9c88]A vassal of %s, which speaks for it.[/color]" % main.sim.players[q.overlord - 1].name)
 		if rel == Diplomacy.PEACE and Diplomacy.borders(main.sim, 1, q.id):
 			l.text += tr("\n[color=#e0b060]Your borders touch: their patience wears thin over time. A gift or a trade wins it back; at war they will march.[/color]") if q.pers != "builder" else tr("\n[color=#9a9c88]Your borders touch, but builders are patient neighbours.[/color]")
 		row.add_child(l)
-		if rel == Diplomacy.WAR:
-			row.add_child(main._button("Offer peace", _dip_propose.bind(q.id, "peace")))
-		if rel == Diplomacy.PEACE:
-			row.add_child(main._button("Propose alliance", _dip_propose.bind(q.id, "alliance")))
+		if q.overlord == 1:
+			var rb := main._button("Release", _dip_release.bind(q.id))
+			rb.tooltip_text = "Let this realm go free. It stays at peace with you and thinks better of you."
+			row.add_child(rb)
+		elif me.overlord == q.id:
+			var fb := main._button("Break free", _dip_free.bind(q.id))
+			fb.tooltip_text = "Stop paying tribute: this means war with your overlord."
+			row.add_child(fb)
+		elif me.overlord == 0 and q.overlord == 0:
+			if rel == Diplomacy.WAR:
+				row.add_child(main._button("Offer peace", _dip_propose.bind(q.id, "peace")))
+				var db := main._button("Demand surrender", _dip_propose.bind(q.id, "submit"))
+				db.tooltip_text = "Ask this realm to become your vassal. A realm whose army is broken may agree."
+				row.add_child(db)
+				var sb := main._button("Surrender", _dip_propose.bind(q.id, "vassal"))
+				sb.tooltip_text = "Offer to become this realm's vassal: you keep your land, but pay tribute and fight its wars."
+				row.add_child(sb)
+			if rel == Diplomacy.PEACE:
+				row.add_child(main._button("Propose alliance", _dip_propose.bind(q.id, "alliance")))
 		if rel != Diplomacy.WAR:
-			row.add_child(main._button("Declare war", _dip_war.bind(q.id)))
+			if me.overlord == 0 and q.overlord != 1:
+				var wb := main._button("Declare war", _dip_war.bind(q.id))
+				if q.overlord != 0:
+					wb.tooltip_text = tr("War on a vassal is war on its overlord, %s." % main.sim.players[q.overlord - 1].name)
+				row.add_child(wb)
 			main.trade_who.add_item(q.name)
 			main.trade_who.set_item_metadata(main.trade_who.item_count - 1, q.id)
 			if keep_who != null and int(keep_who) == q.id:
@@ -143,12 +170,15 @@ func _fill_diplomacy() -> void:
 		var text := ""
 		match String(pr.kind):
 			"peace": text = "%s offers peace." % who.name
+			"vassal": text = "%s offers to surrender and become your vassal: it keeps its land, pays you tribute and fights your wars." % who.name
+			"submit": text = "%s demands your surrender: you would keep your land, but pay it tribute and fight its wars (refuse, and the war goes on)." % who.name
 			"alliance": text = "%s proposes an alliance." % who.name
 			"tribute": text = "%s demands %s as tribute (refuse, and war may follow)." % [who.name, Diplomacy.goods_text(pr.want)]
 			"help": text = "Your ally %s asks you to join its war against %s (refuse, and it trusts you less)." % [who.name, main.sim.players[int(pr.get("target", 1)) - 1].name]
 			_: text = "%s offers %s for your %s." % [who.name, Diplomacy.goods_text(pr.give), Diplomacy.goods_text(pr.want)]
 		var row2 := HBoxContainer.new()
-		var l2 := main._label(text + "  (%d s left)" % maxi(0, int(Diplomacy.PROPOSAL_LIFE - (main.sim.time - float(pr.t)))), 14)
+		# (the offer and the time left are translated apart: long offers are not found inside the joined text)
+		var l2 := main._label(tr(text) + tr("  (%d s left)" % maxi(0, int(Diplomacy.PROPOSAL_LIFE - (main.sim.time - float(pr.t))))), 14)
 		l2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row2.add_child(l2)
 		row2.add_child(main._button("Accept", _dip_accept.bind(int(pr.id))))
@@ -158,7 +188,11 @@ func _fill_diplomacy() -> void:
 	for a in main.sim.players:
 		for b in main.sim.players:
 			if a.ai and b.ai and a.alive and b.alive and a.id < b.id and Diplomacy.relation(main.sim, a.id, b.id) != Diplomacy.WAR:
-				web.append("%s and %s: %s" % [a.name, b.name, Diplomacy.NAMES[Diplomacy.relation(main.sim, a.id, b.id)].to_lower()])
+				if a.overlord == b.id or b.overlord == a.id:
+					var vv := a if a.overlord == b.id else b
+					web.append(tr("%s is a vassal of %s" % [vv.name, main.sim.players[vv.overlord - 1].name]))
+				else:
+					web.append("%s and %s: %s" % [a.name, b.name, Diplomacy.NAMES[Diplomacy.relation(main.sim, a.id, b.id)].to_lower()])
 	dip_web.text = "\n".join(web) if web.size() > 0 else "[color=#9a9c88]All rivals are at war with each other.[/color]"
 	for c in standing_box.get_children():
 		c.queue_free()
@@ -213,6 +247,16 @@ func _dip_propose(who: int, kind: String) -> void:
 	var r := Diplomacy.propose(main.sim, 1, who, kind)
 	var q := main.sim.players[who - 1]
 	main.trade_result.text = ("%s accepted." % q.name) if r == "" else r
+	_fill_diplomacy()
+
+
+func _dip_release(who: int) -> void:
+	Diplomacy.release(main.sim, who)
+	_fill_diplomacy()
+
+
+func _dip_free(_who: int) -> void:
+	Diplomacy.break_free(main.sim, 1, true)
 	_fill_diplomacy()
 
 

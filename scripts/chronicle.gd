@@ -293,6 +293,20 @@ func _chapter(sim: Sim, part: Array, entered: bool, age: int) -> PackedStringArr
 				lines.append(tr("In minute %d your soldiers took the headquarters of %s, and that realm was no more.") % [_min(float(e.t)), _realm(sim, int(e.p))])
 			else:
 				lines.append(tr("In minute %d %s fell to %s.") % [_min(float(e.t)), _realm(sim, int(e.p)), _realm(sim, int(e.by))])
+	# surrenders and vassals breaking free
+	for e in part:
+		if e.k == "vassal":
+			if int(e.p) == 1:
+				lines.append(tr("In minute %d your realm surrendered to %s and became its vassal.") % [_min(float(e.t)), _realm(sim, int(e.o))])
+			elif int(e.o) == 1:
+				lines.append(tr("In minute %d %s surrendered to you and became your vassal.") % [_min(float(e.t)), _realm(sim, int(e.p))])
+			else:
+				lines.append(tr("In minute %d %s became a vassal of %s.") % [_min(float(e.t)), _realm(sim, int(e.p)), _realm(sim, int(e.o))])
+		elif e.k == "free":
+			if int(e.p) == 1:
+				lines.append(tr("In minute %d your realm was free of %s again.") % [_min(float(e.t)), _realm(sim, int(e.o))])
+			elif int(e.o) == 1:
+				lines.append(tr("In minute %d %s was no longer your vassal.") % [_min(float(e.t)), _realm(sim, int(e.p))])
 	return lines
 
 
