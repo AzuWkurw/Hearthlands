@@ -2,7 +2,7 @@
 
 Every source file with what it is for, grouped by part. Written by `tools/file_list.py` from the comment at the
 top of each file; run it again after adding files. For how the parts work together, read
-`docs/SOURCE_GUIDE.md`. Besides these 315 files there are 2204 pictures in `textures/` (made by
+`docs/SOURCE_GUIDE.md`. Besides these 343 files there are 2204 pictures in `textures/` (made by
 `tools/make_textures.py` and `tools/make_scenery.py`, or your own) and 79 sounds in `sounds/` (made by
 `tools/make_sounds.py`) and 10 pieces of music in `music/` (made by `tools/make_music.py`). Godot's
 `.import` files next to them are made by the editor.
@@ -119,7 +119,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `data/buildings.json` | 3810 | Every building: name, group, size, cost, build time, worker, inputs and outputs, work cycle, garrison, store room, art style and info text. |
 | `data/campaign.json` | 1371 | The campaign: its chapters, their place on the campaign map, story before and after, what carries over, and the mission of each. |
 | `data/health.json` | 29 | Factory smoke and health (Industrial age): which buildings smoke, how far, what parks and waterworks reach, and what each class wants. |
-| `data/lang_pl.json` | 3360 | Polish translation of the interface and game messages. |
+| `data/lang_pl.json` | 3404 | Polish translation of the interface and game messages. |
 | `data/laws.json` | 85 | Realm laws: each law's options, what each does (tax, food, work, training, carriers, tolls, the four classes' contentment), the rivals' choice by personality, and the Polish text. |
 | `data/map_iron_coast.json` | 1 | The hand-made map of the Iron Coast mission (made by tools/make_mission_map.gd). |
 | `data/missions.json` | 126 | The missions: story, map or seed, rivals, options, time limit and goals. |
@@ -174,7 +174,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `tools/goals_test.gd` | 58 | Build 63: sandbox goals (a chain of goals in endless games, gold for each), the hats of each age, the music for the later ages and the workers' voices. godot --headless --script res://tools/goals_test.gd |
 | `tools/guild_test.gd` | 102 | Build 62: guilds (workplaces of one trade close together, with the Guilds tech, work faster), the build queue (queued sites get their materials one after another, before other sites), and copying a building's settings to all of its kind. godot --headless --script res://tools/guild_test.gd |
 | `tools/health_test.gd` | 139 | Build 77: factory smoke and health in the Industrial age. Smoke from a steam engine reaches the house beside it, a park takes half of it away, a waterworks brings clean water, health and contentment follow, nothing changes before the Industrial age, rivals plan parks and waterworks, saved and loaded games go on the same, and a save made without the feature keeps it off. godot --headless --script res://tools/health_test.gd |
-| `tools/keys_test.gd` | 184 | Rebindable keys (keys.gd): swapping on a clash, Shift and Ctrl combinations, reset, saving, cleaning up clashing keys from older settings files, keys of game features, and the keys working in a game. godot --headless --script res://tools/keys_test.gd |
+| `tools/keys_test.gd` | 187 | Rebindable keys (keys.gd): swapping on a clash, Shift and Ctrl combinations, reset, saving, cleaning up clashing keys from older settings files, keys of game features, and the keys working in a game. godot --headless --script res://tools/keys_test.gd |
 | `tools/lang_test.gd` | 62 | Languages: English and Polish are offered; in Polish the interface, text built from templates (the event log, the building info), names in lower case, counts with their Polish forms and text of several lines with markup are all translated; switching back gives English again; the simulation keeps writing English to the log whatever the language; a whole played minute of log, info box and side panel translates without errors, and quickly. godot --headless --script res://tools/lang_test.gd |
 | `tools/laws_test.gd` | 90 | Realm laws: godot --headless --script res://tools/laws_test.gd Usual laws change nothing; each option moves what it should; laws wait between changes; rivals pick laws by personality; laws and tolls survive a save and load. |
 | `tools/load_saves_test.gd` | 34 | Loads every save in the saves folder (user://saves) and plays each on for a minute: old saves must still load. godot --headless --script res://tools/load_saves_test.gd |
@@ -366,10 +366,38 @@ top of each file; run it again after adding files. For how the parts work togeth
 
 | File | Lines | What it is |
 |---|---:|---|
+| `.claude/skills/README.md` | 23 | (no description yet) |
+| `.claude/skills/godot-best-practices/SKILL.md` | 426 | (no description yet) |
+| `.claude/skills/godot-best-practices/assets/templates/autoload-manager.gd.md` | 327 | (no description yet) |
+| `.claude/skills/godot-best-practices/assets/templates/base-script.gd.md` | 186 | (no description yet) |
+| `.claude/skills/godot-best-practices/assets/templates/state-machine.gd.md` | 292 | (no description yet) |
+| `.claude/skills/godot-best-practices/references/architecture/node-communication.md` | 285 | (no description yet) |
+| `.claude/skills/godot-best-practices/references/architecture/project-structure.md` | 273 | (no description yet) |
+| `.claude/skills/godot-best-practices/references/architecture/scene-composition.md` | 275 | (no description yet) |
+| `.claude/skills/godot-best-practices/references/gdscript/coroutines-await.md` | 328 | (no description yet) |
+| `.claude/skills/godot-best-practices/references/gdscript/type-system.md` | 352 | (no description yet) |
+| `.claude/skills/godot-best-practices/references/patterns/input-handling.md` | 444 | (no description yet) |
+| `.claude/skills/godot-best-practices/references/patterns/object-pooling.md` | 371 | (no description yet) |
+| `.claude/skills/godot-best-practices/references/patterns/save-load-system.md` | 474 | (no description yet) |
+| `.claude/skills/godot-best-practices/references/patterns/state-machine.md` | 430 | (no description yet) |
+| `.claude/skills/godot-gdscript-patterns/SKILL.md` | 78 | (no description yet) |
+| `.claude/skills/godot-gdscript-patterns/references/advanced-patterns.md` | 247 | (no description yet) |
+| `.claude/skills/godot-gdscript-patterns/references/details.md` | 495 | (no description yet) |
+| `.claude/skills/godot/SKILL.md` | 823 | (no description yet) |
+| `.claude/skills/godot/assets/templates/attribute_template.gd` | 109 | Base attribute system for managing numeric values with min/max constraints.  Usage: 1. Attach to character/object as child node 2. Set value_max and value_start in Inspector 3. Connect to signals in parent script 4. Call add()/subtract() to modify value  Example: var health = $HealthAttribute health.attribute_changed.connect(_on_health_changed) health.subtract(10.0)  # Take 10 damage |
+| `.claude/skills/godot/assets/templates/component_template.gd` | 76 | A reusable component template following Godot best practices.  Usage: 1. Attach as child node to the object that needs this functionality 2. Export variables appear in Inspector for easy configuration 3. Use signals for loose coupling with parent/other systems |
+| `.claude/skills/godot/assets/templates/interaction_template.gd` | 108 | Base class for interaction components following the component pattern.  Usage: 1. Create subclass extending InteractionTemplate 2. Override _perform_interaction() with custom logic 3. Attach as child to BaseInteractable object 4. Set interaction_text and other exports in Inspector  Example subclass: extends InteractionTemplate class_name DoorInteraction  @export var door_id: String @export var requires_key: bool = false  func _perform_interaction(player) -> void: if requires_key and not player.has_key(door_id): return get_parent().open() |
+| `.claude/skills/godot/references/architecture-patterns.md` | 608 | (no description yet) |
+| `.claude/skills/godot/references/common-pitfalls.md` | 538 | (no description yet) |
+| `.claude/skills/godot/references/file-formats.md` | 491 | (no description yet) |
+| `.claude/skills/godot/references/godot4-physics-api.md` | 302 | (no description yet) |
+| `.claude/skills/godot/scripts/validate_tres.py` | 145 | Validates Godot .tres (resource) files for common syntax errors. |
+| `.claude/skills/godot/scripts/validate_tscn.py` | 170 | Validates Godot .tscn (scene) files for common structural errors. |
+| `.claude/skills/hearthlands-localization/SKILL.md` | 113 | (no description yet) |
 | `CHANGELOG.md` | 1050 | What changed in each build. |
 | `CLAUDE.md` | 101 | (no description yet) |
 | `README.md` | 1477 | How to play, the rules, controls, settings, modding and the project layout. |
-| `docs/FILES.md` | 354 | This list (written by tools/file_list.py). |
+| `docs/FILES.md` | 378 | This list (written by tools/file_list.py). |
 | `docs/SOURCE_GUIDE.md` | 470 | A tour of the code for programmers: the parts, how a game tick runs, where things live. |
 | `docs/SUGGESTIONS.md` | 203 | Ideas and their status after each round of work. |
 | `export_presets.cfg` | 61 | Godot export settings for the Windows and Linux builds. |
