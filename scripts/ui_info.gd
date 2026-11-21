@@ -42,7 +42,7 @@ func _refresh_sel() -> void:
 		return
 	var d := b.def
 	var owner := main.sim.players[b.p - 1]
-	var t := "[b]%s[/b]%s%s\n%s\n" % [("Steam " + String(d.name).to_lower()) if b.steam else String(d.name), (" of " + b.town) if b.town != "" else "", "" if b.p == 1 else " (" + owner.name + ")", main.sim.status(b)]
+	var t := "[b]%s[/b]%s%s\n%s\n" % [("Steam " + String(d.name).to_lower()) if b.steam else String(d.name), (" " + tr("of %s" % b.town)) if b.town != "" else "", "" if b.p == 1 else " (" + owner.name + ")", main.sim.status(b)]
 	if b.state == "build" and b.mat_total > 0:
 		t += "Materials: %s\n[color=#9a9c88]Carriers bring them from the stores as the site needs them; nothing is set aside before.[/color]\n" % main.sim.materials_text(b)
 	# people walking here (a builder, the worker, soldiers), with how long until they arrive
@@ -54,7 +54,13 @@ func _refresh_sel() -> void:
 		coming.sort()
 		t += "On the way: %s%s\n" % [", ".join(coming.slice(0, 4)), " and %d more" % (coming.size() - 4) if coming.size() > 4 else ""]
 	if b.reno_to >= 0 and b.mat_total > 0:
-		t += "Renovation materials: %s\n" % main.sim.materials_text(b).replace("/" , " of ")
+		var mats := []
+		for k in b.def.get("cost", {}):
+			var way := int(b.coming.get(k, 0))
+			var got := int(b.spent.get(k, 0)) + int(b.onsite.get(k, 0))
+			var nm := GameData.res_name(k).to_lower()
+			mats.append("%s: %d of %d (+%d on the way)" % [nm, got, int(b.def.cost[k]), way] if way > 0 else "%s: %d of %d" % [nm, got, int(b.def.cost[k])])
+		t += "Renovation materials: %s\n" % ", ".join(mats)
 	if b.era >= 0:
 		var my_age: int = owner.age
 		t += "Style: %s%s\n" % [GameData.age_name(b.era), (" [color=#9a9c88](its realm is in the %s age: it can be renovated)[/color]" % GameData.age_name(my_age)) if b.era < my_age and b.reno_to < 0 and b.state == "ready" and b.p == 1 else ""]

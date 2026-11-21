@@ -161,7 +161,8 @@ class Table extends Translation:
 		if key.contains("%") and spec_re.search(key) != null:
 			var lit := spec_re.sub(key.replace("%%", ""), "", true)
 			# a template needs some words of its own, or it would match anything
-			if _words.search(lit) != null:
+			# (two letters do when the key starts with them, "of %s", or it has a count: "%d of %d %s")
+			if _words.search(lit) != null or (_letters.search(lit) != null and (not key.begins_with("%") or key.contains("%d"))):
 				tpl.append([key, val, lit.length()])
 
 	## A key turned into a regular expression: each %s/%d/%f becomes a group.
