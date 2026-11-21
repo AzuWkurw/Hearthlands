@@ -87,16 +87,74 @@ func bridge_step(cur: int, ni: int, pid: int) -> bool:
 	return bridge_landing(cur, ni, pid) >= 0
 
 
-## New bridge tiles on path (water tiles not yet carrying a road of pid).
-func bridge_tiles(path: PackedInt32Array, pid: int) -> int:
+## New bridge tiles on path (water tiles not yet carrying a road of pid). Frozen water is left out (with
+## ice, the default): a road laid over it is an ice road, which needs no planks (build 78).
+func bridge_tiles(path: PackedInt32Array, pid: int, ice := true) -> int:
 	var n := 0
 	for i in path:
-		if sim.ter[i] == Sim.WATER and sim.road[i] != pid:
+		if sim.ter[i] == Sim.WATER and sim.road[i] != pid and not (ice and sim.icy(i)):
 			n += 1
 	return n
 
 
-func find_path(sx: int, sy: int, gx: int, gy: int, pid: int) -> PackedInt32Array:
+## New ice road tiles on path (frozen water not yet carrying a road of pid).
+func ice_tiles(path: PackedInt32Array, pid: int) -> int:
+	var n := 0
+	for i in path:
+		if sim.ter[i] == Sim.WATER and sim.road[i] != pid and sim.icy(i):
+			n += 1
+	return n
+
+
+## The ice breaks up: every ice road melts away (build 78). Returns how many of the player's tiles went.
+func melt_ice_roads(_mask: PackedByteArray) -> int:
+	var mine := 0
+	var hit := {}
+	for i in sim.pave.size():
+		if sim.pave[i] != 2:
+			continue
+		var rp := int(sim.road[i])
+		sim.pave[i] = 0
+		if sim.ter[i] != Sim.WATER:
+			continue
+		sim.road[i] = 0
+		sim.changed_tiles.append(i)
+		if rp != 0:
+			hit[rp] = true
+		if rp == 1:
+			mine += 1
+	var ids := hit.keys()
+	ids.sort()
+	for rp in ids:
+		net_dirty(int(rp))
+	for rp in ids:
+		_after_thaw(sim.players[int(rp) - 1])
+	return mine
+
+
+## Buildings cut off from the stores when their ice roads melted: a rival lays a road (a plank bridge
+## where it must) to each one it can, in id order; you are told how many to join up again.
+var thaw_cut := 0
+
+func _after_thaw(p: Sim.Player) -> void:
+	var cut := 0
+	for b: Sim.Bld in sim.realm_blds(p):
+		if b.dead or is_store(b) or sim.connected(b):
+			continue
+		if p.ai:
+			var path := _path_to_net(b.x, b.y, p.id, b.door)
+			if path.size() > 1 and bridge_cost_ok(path, p.id) == "":
+				lay_road(path, p.id)
+				net_dirty(p.id)
+				continue
+		cut += 1
+	if p.id == 1:
+		thaw_cut = cut
+
+
+## A road search. With ice (build 78), frozen water inside the realm is crossed like land, any way
+## round: an ice road.
+func find_path(sx: int, sy: int, gx: int, gy: int, pid: int, ice := true) -> PackedInt32Array:
 	sim._stamp += 1
 	var st := sim._stamp
 	var s := sim.idx(sx, sy)
@@ -132,18 +190,19 @@ func find_path(sx: int, sy: int, gx: int, gy: int, pid: int) -> PackedInt32Array
 			var ni := ny * sim.w + nx
 			if sim._closed[ni] == st:
 				continue
+			var on_ice := ice and sim.icy(ni)
 			if ni != g:
 				if sim.owner[ni] != pid or sim.deco[ni] == Sim.D_ROCK or sim.deco[ni] == Sim.D_CLAY or sim.bmap[ni] != 0 or sim.plot[ni] != 0:
 					continue
-				if sim.ter[ni] == Sim.WATER and not bridge_step(cur, ni, pid):
+				if sim.ter[ni] == Sim.WATER and not on_ice and not bridge_step(cur, ni, pid):
 					continue
-			# off a bridge only straight on
-			if sim.ter[cur] == Sim.WATER and sim._came[cur] >= 0 and cur - sim._came[cur] != ni - cur:
+			# off a bridge only straight on (ice roads go any way)
+			if sim.ter[cur] == Sim.WATER and not (ice and sim.icy(cur)) and sim._came[cur] >= 0 and cur - sim._came[cur] != ni - cur:
 				continue
 			# a road leaves or reaches a building only at its entrance
 			if (sim.bmap[cur] != 0 or sim.bmap[ni] != 0) and not sim.links(cur, ni):
 				continue
-			var tc := 0.35 if sim.road[ni] == pid else (4.0 if sim.deco[ni] == Sim.D_TREE else (2.5 if sim.ter[ni] == Sim.MOUNT else (3.0 if sim.ter[ni] == Sim.WATER else 1.0)))
+			var tc := 0.35 if sim.road[ni] == pid else (4.0 if sim.deco[ni] == Sim.D_TREE else (2.5 if sim.ter[ni] == Sim.MOUNT else ((1.2 if on_ice else 3.0) if sim.ter[ni] == Sim.WATER else 1.0)))
 			tc *= float(Sim.SLOPE_MUL[sim.slope_level(cur, ni)])
 			var ng := sim._gs[cur] + tc
 			if sim._seen[ni] != st or ng < sim._gs[ni]:
@@ -181,8 +240,8 @@ func take_ore(i: int, kind: int, keep := false) -> bool:
 
 
 ## "" when the realm has the planks for the new bridge tiles on path, else why not.
-func bridge_cost_ok(path: PackedInt32Array, pid: int) -> String:
-	var n := bridge_tiles(path, pid)
+func bridge_cost_ok(path: PackedInt32Array, pid: int, ice := true) -> String:
+	var n := bridge_tiles(path, pid, ice)
 	if n == 0 or sim.creative(sim.players[pid - 1]):
 		return ""
 	var need := n * BRIDGE_PLANKS
@@ -191,9 +250,9 @@ func bridge_cost_ok(path: PackedInt32Array, pid: int) -> String:
 	return ""
 
 
-func lay_road(path: PackedInt32Array, pid: int) -> void:
+func lay_road(path: PackedInt32Array, pid: int, ice := true) -> void:
 	var p := sim.players[pid - 1]
-	var nb := bridge_tiles(path, pid)
+	var nb := bridge_tiles(path, pid, ice)
 	last_bridge_planks = 0
 	if nb > 0 and not sim.creative(p):
 		take(p, "planks", float(nb * BRIDGE_PLANKS), path[0])
@@ -204,6 +263,9 @@ func lay_road(path: PackedInt32Array, pid: int) -> void:
 			continue
 		if sim.road[i] != pid:
 			last_laid.append(i)
+			# over frozen water: an ice road, gone at the thaw
+			if ice and sim.ter[i] == Sim.WATER and sim.icy(i):
+				sim.pave[i] = 2
 		sim.road[i] = pid
 		if sim.deco[i] == Sim.D_TREE:
 			sim.deco[i] = 0
@@ -331,7 +393,7 @@ func reach(pid: int) -> PackedByteArray:
 	var e = _reach.get(pid)
 	# (build 75) worked out again when this realm's roads, buildings or land change, or rocks or clay
 	# are dug away (before: whenever any building anywhere changed, and a quarry's work went unseen)
-	var key := [nv, int(_bver.get(pid, 0)), sim.territory_version, sim.rock_ver]
+	var key := [nv, int(_bver.get(pid, 0)), sim.territory_version, sim.rock_ver, not sim.ice.is_empty()]
 	if e != null and e[0] == key:
 		return e[2]
 	var r := PackedByteArray()
@@ -383,9 +445,9 @@ func reach(pid: int) -> PackedByteArray:
 				continue
 			if cb != 0 and not sim.links(cur, ni):
 				continue
-			if ter[ni] == Sim.WATER:
+			if ter[ni] == Sim.WATER and not sim.icy(ni):
 				# along a bridge that is there, or from the shore over water a bridge could cross: the
-				# far shore can be reached
+				# far shore can be reached (frozen water, build 78: like land, for an ice road)
 				if road[ni] == pid:
 					r[ni] = 1
 					q.append(ni)
@@ -436,7 +498,7 @@ func reach_avoiding(pid: int, start: int, blocked: PackedInt32Array) -> bool:
 			var ni := ny * w + nx
 			if _ra_seen[ni] == st:
 				continue
-			if sim.ter[ni] == Sim.WATER and sim.road[ni] != pid:
+			if sim.ter[ni] == Sim.WATER and sim.road[ni] != pid and not sim.icy(ni):
 				if sim.ter[cur] != Sim.WATER:
 					var land := bridge_landing(cur, ni, pid)
 					if land >= 0 and rr[land] == 1 and _ra_seen[land] != st:
@@ -708,12 +770,13 @@ func _path_to_net_inner(sx: int, sy: int, pid: int, door := -1, doors: Array = [
 					continue
 			elif sim.deco[ni] == Sim.D_ROCK or sim.deco[ni] == Sim.D_CLAY:
 				continue
-			elif sim.ter[ni] == Sim.WATER and not bridge_step(cur, ni, pid):
+			elif sim.ter[ni] == Sim.WATER and not sim.icy(ni) and not bridge_step(cur, ni, pid):
 				continue
-			if sim.ter[cur] == Sim.WATER and sim._came[cur] >= 0 and cur - sim._came[cur] != ni - cur:
+			# off a bridge only straight on (an ice road goes any way, build 78)
+			if sim.ter[cur] == Sim.WATER and not sim.icy(cur) and sim._came[cur] >= 0 and cur - sim._came[cur] != ni - cur:
 				continue
 			# a new road tile costs its walk plus the work of laying it; mountains, trees and bridges cost more
-			var tc := Sim.DIRT_COST if sim.road[ni] == pid else Sim.NEW_ROAD_COST + Sim.DIRT_COST + (3.0 if sim.deco[ni] == Sim.D_TREE else (1.5 if sim.ter[ni] == Sim.MOUNT else (4.0 if sim.ter[ni] == Sim.WATER else 0.0)))
+			var tc := Sim.DIRT_COST if sim.road[ni] == pid else Sim.NEW_ROAD_COST + Sim.DIRT_COST + (3.0 if sim.deco[ni] == Sim.D_TREE else (1.5 if sim.ter[ni] == Sim.MOUNT else ((0.5 if sim.icy(ni) else 4.0) if sim.ter[ni] == Sim.WATER else 0.0)))
 			# slopes slow the carriers for good, so new roads go round hills where they can
 			tc *= float(Sim.SLOPE_MUL[sim.slope_level(cur, ni)])
 			var ng := sim._gs[cur] + tc
@@ -2132,14 +2195,14 @@ func build_road(sx: int, sy: int, gx: int, gy: int, pid: int) -> String:
 		return "A road cannot end on the water: click the far shore and the road builds a bridge (straight across, up to %d tiles, %d planks a tile)." % [BRIDGE_MAX, BRIDGE_PLANKS]
 	if gb == null and (sim.deco[g] == Sim.D_ROCK or sim.deco[g] == Sim.D_CLAY):
 		return "A road cannot end there."
-	var path := find_path(sx, sy, gx, gy, pid)
+	var path := find_path(sx, sy, gx, gy, pid, true)
 	if path.is_empty():
 		var bw := _bridge_hint(s, g, pid)
 		return "There is no way through for a road." + (" " + bw if bw != "" else "")
-	var why := bridge_cost_ok(path, pid)
+	var why := bridge_cost_ok(path, pid, true)
 	if why != "":
 		return why
-	lay_road(path, pid)
+	lay_road(path, pid, true)
 	return ""
 
 

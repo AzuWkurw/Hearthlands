@@ -554,7 +554,11 @@ var shade := PackedByteArray()
 var height := PackedByteArray()     # 0 to 255 per tile, from the ground and the seed (see WorldGen.heights); not saved
 
 
-var pave := PackedByteArray()        # 1 where a road is paved with stone
+var pave := PackedByteArray()        # 1 where a road is paved with stone, 2 an ice road over a frozen river (build 78)
+## Frozen water (build 78): while the northern rivers are frozen, 1 on each water tile that bears the
+## weight of soldiers and carriers; empty the rest of the year (and with the seasons off). Set by the
+## seasons feature from its saved state, so it is not saved itself.
+var ice := PackedByteArray()
 
 
 var changed_tiles := PackedInt32Array()  # tiles whose look changed since the map view last checked
@@ -986,6 +990,11 @@ func idx(x: int, y: int) -> int:
 
 func inb(x: int, y: int) -> bool:
 	return x >= 0 and y >= 0 and x < w and y < h
+
+
+## Whether tile i is frozen river ice now, which soldiers and ice roads can cross (build 78).
+func icy(i: int) -> bool:
+	return not ice.is_empty() and ice[i] != 0
 
 
 # ================================================================ buildings
@@ -3237,8 +3246,8 @@ func ai_think(p: Player) -> void:
 func ai_attack(p: Player) -> bool:
 	return ai.ai_attack(p)
 
-func find_path(sx: int, sy: int, gx: int, gy: int, pid: int) -> PackedInt32Array:
-	return logistics.find_path(sx, sy, gx, gy, pid)
+func find_path(sx: int, sy: int, gx: int, gy: int, pid: int, ice := true) -> PackedInt32Array:
+	return logistics.find_path(sx, sy, gx, gy, pid, ice)
 
 func vein_left(i: int) -> int:
 	return logistics.vein_left(i)
@@ -3246,8 +3255,8 @@ func vein_left(i: int) -> int:
 func take_ore(i: int, kind: int, keep := false) -> bool:
 	return logistics.take_ore(i, kind, keep)
 
-func lay_road(path: PackedInt32Array, pid: int) -> void:
-	logistics.lay_road(path, pid)
+func lay_road(path: PackedInt32Array, pid: int, ice := true) -> void:
+	logistics.lay_road(path, pid, ice)
 
 func _territory_nets(before: PackedByteArray) -> void:
 	logistics._territory_nets(before)

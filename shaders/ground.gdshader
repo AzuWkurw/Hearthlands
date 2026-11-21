@@ -22,7 +22,7 @@ uniform vec2 map_size = vec2(1.0, 1.0);
 uniform sampler2D lift_map : filter_linear, repeat_disable;
 uniform bool raised = false;
 // Seasons and climates (the "Seasons, biomes and weather" feature): season_mask holds where each of the
-// four climates lies, one per channel, one pixel a tile; ice_mask the frozen taiga water. Each climate
+// four climates lies, one per channel, one pixel a tile; ice_mask the taiga water that freezes in winter. Each climate
 // gets its tint, the autumn and early-summer colours and its snow. Laid on here, not drawn over the map,
 // so it lines up with raised ground and blends the same with every renderer.
 uniform bool use_season = false;
@@ -36,6 +36,10 @@ uniform vec4 autumn_col = vec4(0.0);
 uniform vec4 green_col = vec4(0.0);
 uniform vec4 snow_amt = vec4(0.0);
 uniform vec4 ice_col = vec4(0.0);
+// The river ice (build 78): how near the thaw it is (0 hard winter ice .. 1 breaking up: grey, wet and
+// cracked), and how much snow lies on it (0..1).
+uniform float ice_thin = 0.0;
+uniform float ice_snow = 0.0;
 
 // Tiles along each side of a chunk (MapChunks.CH).
 uniform float chunk_tiles = 16.0;
@@ -78,20 +82,44 @@ float noise(vec2 p) {
 			mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
 }
 
+// Cracks in the ice: thin dark lines where smooth noise crosses its middle value.
+float cracks(vec2 p) {
+	float a = abs(noise(p) - 0.5);
+	float b = abs(noise(p * 2.1 + 13.7) - 0.5);
+	return 1.0 - smoothstep(0.0, 0.035, min(a, b * 1.3));
+}
+
 void fragment() {
 	// COLOR arrives already holding the texture's colour times the colour the drawing asked for
 	// (white for chunks, dark for the background rectangle).
 	vec4 c = COLOR;
 	// 1.0 for open water (alpha 0.5), fading to 0.0 on land (alpha 1.0) and along soft shorelines.
 	float water = clamp((1.0 - c.a) * 2.0, 0.0, 1.0);
+	// where on the flat map this pixel lies (raised ground is drawn lifted)
+	vec2 p = world;
+	bool on_map = flat_pos.x >= 0.0;
+	if (on_map) {
+		p = flat_pos;
+	} else if (raised && (use_relief || use_season)) {
+		for (int k = 0; k < 3; k++) {
+			p.y = world.y + texture(lift_map, (p + 0.5) / (map_size + 1.0)).r * 4.0;
+		}
+	}
+	// frozen water: no waves, no foam, no glints (bridges and ice roads keep their own look)
+	float ice = 0.0;
+	if (use_season && on_map && ice_col.a > 0.0) {
+		ice = ice_col.a * texture(ice_mask, p / map_size).r * water;
+	}
+	float still = 1.0 - clamp(ice * 1.6, 0.0, 1.0);
 	// the shore: where land and water meet, foam washes in and out
-	float shore = clamp(1.0 - abs(water * 2.0 - 1.0) * 1.6, 0.0, 1.0);
+	float shore = clamp(1.0 - abs(water * 2.0 - 1.0) * 1.6, 0.0, 1.0) * still;
 	if (animate && shore > 0.0) {
 		float wash = 0.5 + 0.5 * sin(TIME * 1.4 + world.x * 1.3 + world.y * 1.1);
 		float lace = noise(world * 7.0 + vec2(TIME * 0.4, 0.0));
 		c.rgb = mix(c.rgb, vec3(0.93, 0.96, 0.97), shore * wash * smoothstep(0.35, 0.75, lace) * 0.55);
 	}
-	if (animate && water > 0.0) {
+	if (animate && water * still > 0.0) {
+		water *= still;
 		float t = TIME;
 		// Wobble where the colour is read from, so the water surface seems to ripple.
 		vec2 wobble = vec2(sin(world.y * 3.0 + t * 1.3), cos(world.x * 2.6 + t * 1.1)) * 0.0022 * water;
@@ -103,16 +131,7 @@ void fragment() {
 		// A slow swell that brightens and darkens wide patches of water.
 		c.rgb *= 1.0 + 0.05 * sin(t * 0.9 + world.x * 0.7 + world.y * 0.5) * water;
 	}
-	// where on the flat map this pixel lies (raised ground is drawn lifted)
-	vec2 p = world;
-	bool on_map = flat_pos.x >= 0.0;
-	if (on_map) {
-		p = flat_pos;
-	} else if (raised && (use_relief || use_season)) {
-		for (int k = 0; k < 3; k++) {
-			p.y = world.y + texture(lift_map, (p + 0.5) / (map_size + 1.0)).r * 4.0;
-		}
-	}
+	water = clamp((1.0 - COLOR.a) * 2.0, 0.0, 1.0);
 	// hills, on land only (and nothing of it beyond the map edge)
 	if (use_relief && on_map) {
 		float rv = texture(relief_map, p / map_size).r * 2.0 - 1.0;
@@ -137,8 +156,28 @@ void fragment() {
 				c.rgb = mix(c.rgb, vec3(0.95, 0.97, 1.0), snow_amt[k] * mk);
 			}
 		}
-		if (ice_col.a > 0.0) {
-			c.rgb = mix(c.rgb, ice_col.rgb, ice_col.a * texture(ice_mask, p / map_size).r);
+		if (ice > 0.0) {
+			// the ice: pale blue-white, with clear dark patches where it froze smooth, white drifts of
+			// snow, a brighter rim along the shore, cracks, and glints of light that come and go
+			float big = noise(p * 0.9);
+			float fine = noise(p * 5.0 + 3.1);
+			vec3 col = ice_col.rgb * (0.9 + 0.12 * fine);
+			col = mix(col, vec3(0.55, 0.70, 0.80), smoothstep(0.55, 0.85, big) * 0.45 * (1.0 - ice_snow * 0.6));
+			float snowdrift = smoothstep(0.45, 0.75, noise(p * vec2(1.6, 3.2) + 41.0)) * (0.35 + 0.65 * ice_snow);
+			col = mix(col, vec3(0.97, 0.98, 1.0), snowdrift * 0.8);
+			col = mix(col, vec3(0.98, 0.99, 1.0), clamp(1.0 - abs(water * 2.0 - 1.0) * 1.6, 0.0, 1.0) * 0.5);
+			float cr = cracks(p * 2.4) * (0.35 + 0.65 * ice_thin) * (1.0 - snowdrift * 0.7);
+			col = mix(col, vec3(0.30, 0.42, 0.52), cr * 0.55);
+			// near the thaw: grey slush, and dark open water along the cracks and in patches
+			col = mix(col, vec3(0.55, 0.62, 0.66), ice_thin * 0.35);
+			float melt = smoothstep(0.62 - ice_thin * 0.25, 0.72 - ice_thin * 0.25, noise(p * 1.7 + 77.0)) * ice_thin;
+			float a = ice * (1.0 - melt * 0.85) * (1.0 - cr * ice_thin * 0.5);
+			if (animate) {
+				float tw = hash(floor(p * 8.0));
+				float glint = step(0.985, tw) * (0.5 + 0.5 * sin(TIME * 3.0 + tw * 60.0));
+				col += vec3(0.35) * glint * (1.0 - ice_thin) * (1.0 - snowdrift);
+			}
+			c.rgb = mix(c.rgb, col, a);
 		}
 	}
 	// cloud shadows: big soft patches drifting with the wind (more of them on a cloudy day)

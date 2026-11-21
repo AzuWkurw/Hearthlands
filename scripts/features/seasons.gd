@@ -70,6 +70,21 @@ var _realm_t: Dictionary = {}        # realm id -> temperature at its headquarte
 var _cache_season := -1
 var _cache: Array = [{}, {}, {}, {}]  # per biome: building type -> work bonus, worked out once a second
 
+## River ice (build 78). From a minute into winter to the first day of spring the narrow water of the
+## taiga (rivers, lake shores and bays: water within ICE_REACH tiles of land) freezes hard: soldiers
+## march over it and roads cross it without a bridge. At the thaw the ice roads melt away, and soldiers
+## still on the ice drown.
+const ICE_FROM := 0.80               # share of the year when the ice forms (0.75 is the first day of winter)
+const ICE_REACH := 3
+const ICE_WARN := 25.0               # seconds before the thaw when the ice is told to be thinning
+var ice_on := false                  # whether the rivers are frozen now (saved, so the thaw comes once)
+var ice_warned := false              # the thinning ice has been told this winter
+var _ice_known := false              # a loaded game had ice_on in its save
+var _freeze := PackedByteArray()     # 1 on each water tile that freezes in winter
+var _freeze_n := 0
+var _ice_vis := 0.0                  # how thick the ice looks now, eased (only for drawing)
+var _ice_t := 0.0
+
 
 func _init() -> void:
 	id = "seasons"
@@ -80,6 +95,13 @@ func _init() -> void:
 
 func on_start(loaded: bool) -> void:
 	_make_biomes()
+	_make_freeze()
+	# a new game, or a save from before the river ice: frozen or not as the time of year says
+	if not loaded or not _ice_known:
+		ice_on = frozen_now()
+		ice_warned = ice_on and thaw_in() <= ICE_WARN
+	sim.ice = _freeze.duplicate() if ice_on and _freeze_n > 0 else PackedByteArray()
+	_ice_vis = 1.0 if ice_on else 0.0
 	# a new game, or a save from before this feature existed
 	if not loaded or rng.seed == 0:
 		rng.seed = (sim.seed_str + ":weather").hash()
@@ -175,6 +197,98 @@ func _make_biomes() -> void:
 			biome[i] = k
 
 
+## Which water freezes: taiga water within ICE_REACH tiles of land (eight ways), so rivers and lakes
+## freeze from shore to shore while the open sea stays open past its coastal ice.
+func _make_freeze() -> void:
+	var w := sim.w
+	var n := w * sim.h
+	_freeze = PackedByteArray()
+	_freeze.resize(n)
+	_freeze_n = 0
+	var dist := PackedByteArray()
+	dist.resize(n)
+	dist.fill(255)
+	var q := PackedInt32Array()
+	for i in n:
+		if sim.ter[i] != Sim.WATER:
+			dist[i] = 0
+			q.append(i)
+	var head := 0
+	while head < q.size():
+		var cur := q[head]
+		head += 1
+		var dc := int(dist[cur])
+		if dc >= ICE_REACH:
+			continue
+		var cx := cur % w
+		var cy := cur / w
+		for dy in range(-1, 2):
+			for dx in range(-1, 2):
+				var nx := cx + dx
+				var ny := cy + dy
+				if nx < 0 or ny < 0 or nx >= w or ny >= sim.h:
+					continue
+				var ni := ny * w + nx
+				if dist[ni] == 255:
+					dist[ni] = dc + 1
+					q.append(ni)
+	for i in n:
+		if sim.ter[i] == Sim.WATER and dist[i] != 255 and biome[i] == TAIGA:
+			_freeze[i] = 1
+			_freeze_n += 1
+
+
+## Whether the time of year has the rivers frozen.
+func frozen_now() -> bool:
+	return phase() >= ICE_FROM
+
+
+## Seconds until the ice breaks up (the first day of spring), while it lies.
+func thaw_in() -> float:
+	return (1.0 - phase()) * YEAR
+
+
+## Seconds until the rivers freeze, while they are open.
+func freeze_in() -> float:
+	var ph := phase()
+	return ((ICE_FROM - ph) if ph < ICE_FROM else (1.0 + ICE_FROM - ph)) * YEAR
+
+
+## Whether water tile i freezes in winter.
+func freezes(i: int) -> bool:
+	return i >= 0 and i < _freeze.size() and _freeze[i] != 0
+
+
+## The river ice forms, thins and breaks up, once a second.
+func _ice_second() -> void:
+	var now := frozen_now()
+	if now and not ice_on:
+		ice_on = true
+		ice_warned = false
+		if _freeze_n > 0:
+			sim.ice = _freeze.duplicate()
+			sim.emit_log("The northern rivers have frozen hard: soldiers can march over the ice, and roads cross it without a bridge (ice roads melt in spring: keep planks for bridges).", Color("9fd0e8"))
+	elif ice_on and not now:
+		ice_on = false
+		var mask := sim.ice
+		sim.ice = PackedByteArray()
+		if not mask.is_empty():
+			sim.military.ice_breaks(mask)
+			var melted := sim.logistics.melt_ice_roads(mask)
+			if sim.logistics.thaw_cut > 0:
+				sim.emit_log("The river ice breaks up: your ice roads have melted, and %d buildings are cut off from the stores. Join them up again with roads and bridges." % sim.logistics.thaw_cut, Color("e0b060"))
+				sim.logistics.thaw_cut = 0
+			elif melted > 0:
+				sim.emit_log("The river ice breaks up: %d tiles of your ice roads have melted away." % melted, Color("9fd0e8"))
+			else:
+				sim.emit_log("The river ice breaks up.", Color("9fd0e8"))
+	elif ice_on and not ice_warned and thaw_in() <= ICE_WARN:
+		ice_warned = true
+		if not sim.ice.is_empty():
+			sim.emit_log("The river ice is thinning: it breaks up in %d seconds. Soldiers still on it then will drown." % roundi(thaw_in()), Color("e0b060"))
+			sim.military.ice_recall()
+
+
 func _water_near(x: int, y: int, r: int) -> int:
 	var c := 0
 	for yy in range(maxi(0, y - r), mini(sim.h - 1, y + r) + 1):
@@ -208,6 +322,7 @@ func on_second() -> void:
 		if s == 3 and not sim.players.is_empty() and not Crops.known(sim, sim.human(), "rye"):
 			line += " (Study Heavy plough for winter rye seed.)"
 		sim.emit_log(line, Color("9fd0e8"))
+	_ice_second()
 	var home := biome_of(sim.human()) if not sim.players.is_empty() else TEMPERATE
 	for k in 4:
 		if sim.time >= float(weather_until[k]):
@@ -440,6 +555,9 @@ func panel_lines(p: Sim.Player) -> PackedStringArray:
 		out.append("[color=#e0c070]%s[/color]" % year_text(p))
 	if snowy(p):
 		out.append("[color=#9fd0e8]Snow on the roads: carriers %d%% slower (paved roads stay clear)[/color]" % roundi((1.0 - carry_factor(p)) * 100.0))
+	if not sim.ice.is_empty():
+		var tl := int(thaw_in())
+		out.append("[color=#bfe4f4]Rivers frozen: armies cross the ice, roads cross it free; it breaks up in %d:%02d[/color]" % [tl / 60, tl % 60])
 	return out
 
 
@@ -463,7 +581,14 @@ func tile_lines(i: int) -> PackedStringArray:
 	if i < 0 or i >= biome.size():
 		return PackedStringArray()
 	var k: int = biome[i]
-	return PackedStringArray(["%s: %d°C, %s" % [String(BIOME_NAMES[k]), roundi(temp_at(i)), String(WEATHER[weather[k]].name).to_lower()]])
+	var out := PackedStringArray(["%s: %d°C, %s" % [String(BIOME_NAMES[k]), roundi(temp_at(i)), String(WEATHER[weather[k]].name).to_lower()]])
+	if sim.icy(i):
+		var tl := int(thaw_in())
+		out.append("Frozen river: soldiers can march over it and a road can cross it with no planks, until the ice breaks up in %d:%02d." % [tl / 60, tl % 60])
+	elif freezes(i):
+		var tf := int(freeze_in())
+		out.append("This water freezes hard in deep winter (in %d:%02d), and soldiers can then cross it." % [tf / 60, tf % 60])
+	return out
 
 
 var _win: Window
@@ -508,6 +633,7 @@ func _fill_window() -> void:
 	t += "\n[b][color=#d8aa4a]Seasons[/color][/b]\n"
 	t += "Crops (farms, orchards, hop, flax and herb gardens, vineyards, apiaries): +10% spring, +25% summer, +10% autumn, -60% winter. Orchards and vineyards +25% more in autumn.\n"
 	t += "Winter: animal farms -20%, fishers -30%, hunters -10%, foresters -50%, quarries and pits -15%, building -20%. People eat more below 5°C.\n"
+	t += "River ice: from a minute into winter until spring the rivers and lake shores of the taiga freeze hard. Soldiers march over the ice, and a road laid over it needs no planks (an ice road), but at the thaw the ice roads melt and half of any soldiers still on the ice drown.\n"
 	t += "\n[b][color=#d8aa4a]Biomes[/color][/b]\n"
 	t += "Northern taiga (cold): woodcutters, foresters, charcoal burners and hunters +20%; crops -25%.\n"
 	t += "Southern steppe (warm, dry): crops +10%, sheep farms and dairies +20%, saltworks +20%; foresters -30%. Heat waves hit crops hard.\n"
@@ -522,7 +648,7 @@ func _fill_window() -> void:
 # ---------------------------------------------------------------- drawing
 
 func _make_textures() -> void:
-	# one pass over the map fills all five pictures (the land of each climate, and the taiga's ice)
+	# one pass over the map fills all five pictures (the land of each climate, and the water that freezes)
 	var w := sim.w
 	var h := sim.h
 	var n := w * h
@@ -541,7 +667,7 @@ func _make_textures() -> void:
 		d0[j] = 255; d1[j] = 255; d2[j] = 255; d3[j] = 255; di[j] = 255
 		var b := biome[i]
 		if sim.ter[i] == Sim.WATER:
-			if b == TAIGA:
+			if _freeze.size() == n and _freeze[i] != 0:
 				di[j + 1] = 255
 		else:
 			match b:
@@ -608,13 +734,19 @@ func draw_map(view: CanvasItem, _rect: Rect2i) -> void:
 		_snow[k] = lerpf(float(_snow[k]), _snow_target(k), clampf((sim.time - _snow_t) / 30.0, 0.0, 1.0))
 		snow[k] = 0.6 * float(_snow[k])
 	_snow_t = sim.time
-	var ice := Color(0.85, 0.93, 1.0, (float(_snow[TAIGA]) - 0.4) * 0.9 if float(_snow[TAIGA]) > 0.4 else 0.0)
+	# the river ice: it sets over about twenty game seconds once the rivers freeze, and grows grey and
+	# cracked as the thaw draws near; the snow on it follows the taiga's snow
+	var frozen := not sim.ice.is_empty()
+	_ice_vis = lerpf(_ice_vis, 1.0 if frozen else 0.0, clampf((sim.time - _ice_t) / (20.0 if frozen else 5.0), 0.0, 1.0))
+	_ice_t = sim.time
+	var ice := Color(0.86, 0.93, 0.98, 0.95 * _ice_vis)
+	var thin := clampf(1.0 - thaw_in() / (ICE_WARN * 1.6), 0.0, 1.0) if frozen else 1.0
 	# laid on by the ground shader (so it lines up with raised ground and looks the same in OpenGL
 	# and Vulkan, which drew the old see-through overlays solid)
 	view.set_season(_masks[0], _ice, {
 		"tint0": BIOME_TINT[0], "tint1": BIOME_TINT[1], "tint2": BIOME_TINT[2], "tint3": BIOME_TINT[3],
 		"autumn_col": Color(0.85, 0.48, 0.12, 0.16 * autumn), "green_col": Color(0.35, 0.75, 0.25, 0.08 * green),
-		"snow_amt": snow, "ice_col": ice})
+		"snow_amt": snow, "ice_col": ice, "ice_thin": thin, "ice_snow": float(_snow[TAIGA])})
 
 
 func draw_overlay(view: CanvasItem, to_tile: Callable) -> void:
@@ -693,7 +825,7 @@ func draw_overlay(view: CanvasItem, to_tile: Callable) -> void:
 # ---------------------------------------------------------------- saving
 
 func save_state() -> Dictionary:
-	return {"weather": weather, "until": weather_until, "rng": rng.state, "seed": rng.seed, "season": last_season, "paved": _paved, "year": year_kind, "realm_t": _realm_t}
+	return {"weather": weather, "until": weather_until, "rng": rng.state, "seed": rng.seed, "season": last_season, "paved": _paved, "year": year_kind, "realm_t": _realm_t, "ice": ice_on, "ice_warned": ice_warned}
 
 
 func load_state(d: Dictionary) -> void:
@@ -703,6 +835,9 @@ func load_state(d: Dictionary) -> void:
 	rng.seed = int(d.get("seed", 0))
 	rng.state = int(d.get("rng", 0))
 	last_season = int(d.get("season", -1))
+	_ice_known = d.has("ice")
+	ice_on = bool(d.get("ice", false))
+	ice_warned = bool(d.get("ice_warned", false))
 	_paved = {}
 	var pv: Dictionary = d.get("paved", {})
 	for k in pv:

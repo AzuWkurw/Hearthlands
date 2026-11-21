@@ -60,6 +60,7 @@ TESTS = [
 	("weapons wear out",  "weapon_test", [], False, True, [r"WEAPON TEST: PASS"]),
 	("crops and seeds",   "crop_test", [], False, True, [r"CROP TEST: PASS"]),
 	("columns and water", "march_test", [], False, True, [r"MARCH TEST: PASS"]),
+	("river ice",         "ice_test", [], False, True, [r"ICE TEST: PASS"]),
 	("upgrades and war",  "mil2_test", [], False, False, [r"MIL2 TEST: PASS"]),
 	("workers and editor", "econ2_test", [], False, True, [r"ECON2 TEST: PASS"]),
 	("map editor",        "editor_test", [], True, True, [r"EDITOR TEST: PASS"]),
