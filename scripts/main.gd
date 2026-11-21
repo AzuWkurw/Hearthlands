@@ -160,6 +160,7 @@ var guide_ui := UiGuide.new(self)  # the first-game checklist (ui_guide.gd)
 var side_ui := UiSide.new(self)
 var info_ui := UiInfo.new(self)
 var log_ui := UiLog.new(self)      # the movable event log window (ui_log.gd)
+var chronicle_ui := UiChronicle.new(self)   # the story of the game, shown when it ends (ui_chronicle.gd)
 var notices_ui := UiNotices.new(self)   # notices you can click (ui_notices.gd)
 var sea_guide_ui := UiSeaGuide.new(self)  # the guide to ships, landings and supplies (ui_sea_guide.gd)
 var toolbar := UiToolbar.new(self) # the bottom toolbar: building menus, roads, demolish, scouts (ui_toolbar.gd)
@@ -1270,6 +1271,10 @@ func _build_end() -> void:
 	var v := _body(end_panel)
 	end_title = _label("Victory", 28, BRASS); v.add_child(end_title)
 	end_text = _label("", 15, DIM); v.add_child(end_text)
+	chronicle_ui.build()
+	var chron_b := _button("Read the chronicle", func(): chronicle_ui.open(chronicle_ui.won))
+	chron_b.tooltip_text = "The history of your realm, age by age: towns, wars, wonders, fires and famines, and every realm's growth."
+	v.add_child(chron_b)
 	var watch_b := _button("Watch the borders", func():
 		var st = sim.get_feature("statistics")
 		if st != null:
@@ -1416,6 +1421,8 @@ func _after_world_change() -> void:
 	sel_res = ""
 	_update_dip_button()
 	end_panel.visible = false
+	if chronicle_ui.win != null:
+		chronicle_ui.win.visible = false
 	acc = 0.0
 	autosave_t = 0.0
 	rp_hist.clear()
@@ -1438,6 +1445,7 @@ func _on_end(win: bool) -> void:
 	end_text.text += campaign_ui.on_end(win)
 	achievements.on_end(win)
 	end_text.text += achievements.earned_text()
+	chronicle_ui.won = win
 	end_next.visible = win and campaign_ui.has_next()
 	end_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	end_text.custom_minimum_size = Vector2(560, 0)

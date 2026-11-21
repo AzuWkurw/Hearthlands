@@ -288,6 +288,8 @@ func complete_tech(p: Sim.Player, id: String) -> void:
 	if p.research == id:
 		p.research = ""
 	_start_next(p)
+	if p.age > old_age:
+		Chronicle.note(sim, p, "age", {"age": p.age})
 	var t: Dictionary = GameData.techs[id]
 	if not p.ai:
 		# what it brings: its effects, the buildings and seeds it unlocks
