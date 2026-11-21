@@ -19,7 +19,7 @@ LIT = re.compile(r'(?<![&^])"((?:[^"\\\n]|\\.)*)"')
 # lines that never reach the player
 SKIP_LINE = re.compile(r'^\s*(?:#|print|prints|printerr|push_error|push_warning|assert|@export|signal |class_name|extends|preload|const [A-Z_]+ *:?= *preload)')
 SKIP_BEFORE = re.compile(r'(?:\b(?:print|prints|printerr|print_rich|push_error|push_warning|assert|load|preload|Color|get_node|has_node|'
-                         r'set_meta|get_meta|has_meta|connect|emit_signal|has_method|call|call_deferred|is_action_pressed|'
+                         r'set_meta|get_meta|has_meta|connect|emit_signal|has_method|call_deferred|is_action_pressed|'
                          r'get_setting|set_setting|set_shader_parameter|add_theme_[a-z_]+|get_theme_[a-z_]+|_log_net)\(\s*$)')
 TEXT_KEYS = {"name", "info", "title", "plural", "text", "story", "intro", "outro", "new"}
 # single words the game puts into its messages (people, soldiers); the checks above skip lone lower-case words
