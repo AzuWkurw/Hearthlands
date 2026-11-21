@@ -1178,6 +1178,38 @@ def make_building(style, wall, roof, cat, res_icon, W=64, H=64, bid=None):
         p.rectangle([30, b - 17, 34, b - 13], fill=(120, 84, 48, 255), outline=(70, 48, 28, 255), width=0.4)
         p.polygon([(12, b - 33), (32, b - 46), (52, b - 33)], fill=g.roof, outline=sh(g.roof, 0.5), width=0.6)
         p.polygon([(32, b - 46), (52, b - 33), (32, b - 33)], fill=sh(g.roof, 0.75))
+    elif style == "park":
+        # a lawn with a gravel path, a stone fountain, a bench and trees (factory_health, build 77)
+        import bld_variants as BV
+        p.ellipse([4, b - 22, 60, b + 1], fill=(0, 0, 0, 50))
+        lawn = [(6, b - 10), (14, b - 21), (50, b - 21), (59, b - 10), (50, b), (14, b)]
+        p.polygon(lawn, fill=(104, 158, 72, 255), outline=(70, 110, 48, 255), width=0.6)
+        rnd = random.Random(77)
+        for k in range(40):
+            x = rnd.uniform(10, 54)
+            y = rnd.uniform(b - 19, b - 2)
+            p.line([(x, y), (x + 0.4, y - 1.2)], fill=(80, 128, 56, 255), width=0.4)
+        # a path across the lawn to the fountain
+        p.polygon([(28, b), (36, b), (35, b - 9), (29, b - 9)], fill=(206, 190, 150, 255))
+        p.polygon([(12, b - 13), (52, b - 13), (52, b - 9), (12, b - 9)], fill=(206, 190, 150, 255))
+        p.ellipse([24, b - 15, 40, b - 7], fill=(150, 146, 136, 255), outline=(96, 92, 84, 255), width=0.6)
+        p.ellipse([26, b - 14, 38, b - 8], fill=(70, 120, 170, 255))
+        p.ellipse([28, b - 13.5, 32, b - 11.5], fill=(160, 200, 230, 220))
+        p.rectangle([31, b - 18, 33, b - 11], fill=(160, 156, 146, 255))
+        p.ellipse([29, b - 20, 35, b - 17], fill=(170, 166, 156, 255), outline=(96, 92, 84, 255), width=0.4)
+        p.line([(32, b - 20), (32, b - 23)], fill=(170, 210, 240, 220), width=0.8)
+        # a bench
+        p.rectangle([42, b - 6, 52, b - 5], fill=(120, 84, 50, 255))
+        p.rectangle([42, b - 8.5, 52, b - 7.5], fill=(110, 76, 44, 255))
+        for x in (43, 51):
+            p.line([(x, b - 5), (x, b - 3)], fill=(60, 44, 30, 255), width=0.6)
+        # flower beds
+        for fx, fy in ((16, b - 5), (20, b - 17), (46, b - 17)):
+            for k in range(6):
+                p.disc(fx + rnd.uniform(-3, 3), fy + rnd.uniform(-1.2, 1.2), 0.9, rnd.choice([(220, 70, 80, 255), (240, 210, 80, 255), (230, 230, 240, 255)]))
+        BV.tree(g, 12, b - 15, 6.5, trunk=7)
+        BV.tree(g, 52, b - 15, 7.0, trunk=8)
+        BV.tree(g, 9, b - 4, 5.5, trunk=6, col=(64, 112, 46))
     elif style == "mill":
         # a tapering stone tower with a conical cap; the sails are a separate sprite that the game turns
         w = g.wall

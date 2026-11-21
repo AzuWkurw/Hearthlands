@@ -150,6 +150,10 @@ func on_second() -> void:
 		var dis = sim.get_feature("diseases")
 		if dis != null:
 			m -= 0.15 * maxf(0.0, float(dis.sick_share(p)) - 0.1)
+		# the Industrial age's wants: clean water and parks near the homes (build 77)
+		var fh = sim.get_feature("factory_health")
+		if fh != null:
+			m -= float(fh.mood_loss(p))
 		if in_festival(p):
 			m += 0.2
 		# realm laws (build 77): the classes' contentment changes, weighted by their numbers; the

@@ -3755,5 +3755,56 @@
    "smoke": [],
    "glow": []
   }
+ },
+ "park": {
+  "name": "Park",
+  "cat": "folk",
+  "size": "medium",
+  "cost": {
+   "planks": 2,
+   "stone": 2
+  },
+  "time": 12,
+  "info": "Lawns and trees among the houses. In the Industrial age it takes away half the factory smoke of the homes within 7 tiles, and nobles want one near their homes.",
+  "art": {
+   "style": "park",
+   "wall": "#6f9a4a",
+   "sw": 2.0,
+   "smoke": [],
+   "glow": []
+  },
+  "tech": "town_planning",
+  "feature": "factory_health"
+ },
+ "waterworks": {
+  "name": "Waterworks",
+  "cat": "folk",
+  "size": "medium",
+  "cost": {
+   "planks": 4,
+   "stone": 5
+  },
+  "time": 22,
+  "worker": "peasant",
+  "cycle": 30,
+  "in": {
+   "coal": 1
+  },
+  "info": "A steam pump sending clean water through pipes to the homes within 13 tiles while it has coal: in the Industrial age artisans and nobles want it, and it keeps dysentery away.",
+  "art": {
+   "style": "workshop",
+   "wall": "#8fa6b8",
+   "sw": 2.2,
+   "sign": "drop",
+   "sign_color": "#5a9ad0",
+   "smoke": [
+    0.55,
+    0.14
+   ],
+   "glow": []
+  },
+  "tech": "public_health",
+  "trade": "healing",
+  "feature": "factory_health"
  }
 }

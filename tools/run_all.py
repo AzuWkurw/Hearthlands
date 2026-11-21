@@ -76,6 +76,7 @@ TESTS = [
 	("the Bronze Age",    "bronze_test", [], False, False, [r"BRONZE TEST: PASS"]),
 	("tools and arms by metal", "arms_test", [], False, False, [r"ARMS TEST: PASS"]),
 	("blueprints",        "bp_test", [], False, False, [r"BLUEPRINT TEST: PASS"]),
+	("factory smoke",     "health_test", [], False, True, [r"HEALTH TEST: PASS"]),
 	("toolbar tools",     "toolbar_tool_test", [], True, False, [r"tool clicks answered: 8 of 8"]),
 ]
 

@@ -278,10 +278,13 @@ func _ai_sites(p: Sim.Player, ty: String) -> Array:
 	var scored := []
 	var large := sim.size_of(ty) == "large"
 	var kin := _kin(p, ty)
+	var fh = sim.get_feature("factory_health")
 	for i in cands:
 		var x := i % sim.w
 		var y := i / sim.w
 		var sc := _site_score(ty, x, y, p) + _pack_score(ty, x, y, p) + _kin_score(kin, x, y) + sim.rng.randf() * 0.8
+		if fh != null:
+			sc += fh.ai_site_score(p, ty, x, y)
 		# spots kept for large buildings: only large ones go there, and they like them
 		var near_res := _near_reserved(p, x, y)
 		if near_res == 0 and large:
