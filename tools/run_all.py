@@ -26,7 +26,7 @@ TESTS = [
 	("garrisons",         "garrison_test", [], False, False, [r"attack: '' marching"]),
 	("field battles",     "field_test", [], False, False, [r"first side wins"]),
 	("research",          "research_test", [], False, False, [r"load: '' reps"]),
-	("new-game options",  "options_test", [], False, False, [r"all research: techs 154 of 155", r"creative stores"]),
+	("new-game options",  "options_test", [], False, False, [r"all research: techs 169 of 170", r"creative stores"]),
 	("reachable spots",   "reach_test", [], False, True, [r"reach test: \d+ ok, 0 bad"]),
 	("store transfers",   "transfer_test", [], False, False, [r"transfer test: ok"]),
 	("road carriers",     "stretch_test", [], False, False, [r"stretch test: ok"]),

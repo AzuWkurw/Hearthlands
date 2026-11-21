@@ -1,5 +1,17 @@
 # Changelog
 
+## Build 73 (v0.68.0, 2026-11-21)
+
+Build 73: speed on the biggest maps, bug fixes, and 15 more Bronze Age studies.
+- Fix: farm fields were not drawn on the map at all since build 67 (a list was filled into a copy). They show again.
+- Fix: the scrap forge made a bar every time it looked whether it could start, not once per melt. It now melts two scrap into one bar at the end of its work.
+- Fix: realms could stand still for good once their tools wore out: without axes, pickaxes and tongs no new tools can be made. A woodcutter, miner or smith now starts with a makeshift tool when none is in store (he works slowly, as with a worn one, and asks the toolsmith for a proper one).
+- Fix: peasants whose workshop waits because the stores are full of what it makes now help the carriers. On big realms goods piled up in the stores while workshops waited for them.
+- Rivals build a storehouse first when their stores are full (it came after many buildings short of planks and was never reached), and at war keep only steel back for arms (keeping iron too held their toolsmiths idle).
+- Speed on the biggest maps (448 x 448, nine realms): the realms' land is counted again only for the map rows that changed (30 ms after every border change before); rivals' attack choices look only at forts in reach; a fort's helpers are found by map cell; landings by sea search the water once per harbour and remember a way that does not exist; finding building spots tries a small realm's land a few spots at a time; the wolves' rounds and the grazing herds cost a third of what they did; the land of each island is labelled 3 to 4 times faster when a game starts or is loaded; toolsmiths check their metal before counting every tool on the roads. The worst moments in a 60-minute game of nine realms went from over 600 ms to under 200 ms, and from 20 stutters in the first minute to one.
+- Bronze Age: 15 new studies (28 in all, Iron working still needs 5): log tracks, weights and measures, bronze sickles, storage pits, wild hives, hot furnaces, tin prospecting, the potter's wheel, village elders, harvest festivals, herb gathering, the calendar, counting boards, war chariots and the shield wall.
+- The test bench can run a generated map too (gen=448), and reports the worst moment of each part of the game.
+
 ## Build 72 (v0.67.0, 2026-11-21)
 
 Build 72: metal from the merchants; tools in the realms graph; ore view; stores in groups; mines warn before they run dry.

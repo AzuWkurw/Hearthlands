@@ -101,9 +101,6 @@ func start_check(b: Sim.Bld, p: Sim.Player) -> String:
 	var keeps_food := String(d.get("train", "")) == "noble" or (d.get("out", {}) as Dictionary).has("research")
 	if keeps_food and sim.food_total(p) < sim.pop_total(p) * 0.2 + 10.0:
 		return "Saving food for the people"
-	if d.has("melts_scrap"):
-		# two scrap make a bar of their metal (build 70)
-		deliver(b, p, SimArms.METAL_RES[sim.arms.melt(p)], 1)
 	match String(d.get("train", "")):
 		"artisan":
 			if sim.idle(p, "peasant") < 1: return "No idle peasant"
@@ -124,11 +121,12 @@ func start_check(b: Sim.Bld, p: Sim.Player) -> String:
 			if p.scout - p.used_scout - p.scout_out >= 2: return "Enough scouts for now (2 idle)"
 	if String(d.get("train", "")) == "noble" and p.noble >= maxi(2, p.artisan / 2):
 		return "Enough nobles for now"
-	if d.has("makes_tools") and sim.wanted_tool(p, sim.arms.maker_tier(b.ty)) == "":
-		return "Every tool is in stock (see production targets)" if sim.wanted_tool(p) == "" else "Limit reached for %s tools (see production targets)" % SimArms.NAMES[sim.arms.maker_tier(b.ty)]
+	# (build 73: the quick metal check first; the tool count goes over every carrier on a big map)
 	var smc := sim.arms.smith_check(b, p)
 	if smc != "":
 		return smc
+	if d.has("makes_tools") and sim.wanted_tool(p, sim.arms.maker_tier(b.ty)) == "":
+		return "Every tool is in stock (see production targets)" if sim.wanted_tool(p) == "" else "Limit reached for %s tools (see production targets)" % SimArms.NAMES[sim.arms.maker_tier(b.ty)]
 	if Crops.is_farm(b):
 		var fw := Crops.farm_start(sim, b)
 		if fw != "":
@@ -335,6 +333,9 @@ func finish_prod(b: Sim.Bld, p: Sim.Player) -> void:
 			if tool == "":
 				break
 			deliver(b, p, tool, 1)
+	if d.has("melts_scrap"):
+		# two scrap make a bar of their metal (build 70; at the end of its work, build 73: it was at the start check)
+		deliver(b, p, SimArms.METAL_RES[sim.arms.melt(p)], 1)
 	match String(d.get("train", "")):
 		"artisan":
 			if p.peasant > 3:

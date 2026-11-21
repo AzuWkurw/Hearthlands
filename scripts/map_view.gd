@@ -2814,9 +2814,9 @@ func _field_index() -> void:
 		var k: int = (int(i) / sim.w) / FB * 4096 + (int(i) % sim.w) / FB
 		if not _fidx.has(k):
 			_fidx[k] = PackedInt32Array()
-		(_fidx[k] as PackedInt32Array).append(int(i))
+		_fidx[k].append(int(i))
 	for k in _fidx:
-		(_fidx[k] as PackedInt32Array).sort()
+		_fidx[k].sort()
 	for k in _fblk.keys():
 		if not _fidx.has(k):
 			_retire([_fblk[k][1]])

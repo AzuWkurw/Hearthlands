@@ -173,6 +173,7 @@ func take_ore(i: int, kind: int, keep := false) -> bool:
 			sim.ore[t] = 0
 			sim.changed_tiles.append(t)
 		sim._owned_dirty = true
+		sim._owned_full = true
 		if sim.owner[i] == 1:
 			sim.emit_log("A %s vein has run dry." % String(GameData.ORE_NAMES.get(kind, "ore")), Color("e0b060"), Vector2i(i % sim.w, i / sim.w))
 	return true
@@ -926,25 +927,30 @@ func target_of(p: Sim.Player, res: String) -> int:
 ## Tools of each kind made but not yet in store: waiting at the toolsmith or on a carrier's back.
 var _tc_memo := {}         # realm id -> [tick, trips count, tools coming] (build 69: asked many times a tick)
 
+## The tools on their way to the stores (made and waiting, or carried), by kind. (Build 73) Worked out
+## for every realm in one go over the carriers' trips, at most once a moment unless a tool is made or
+## arrives: smiths ask often, and on a big map one realm's count went over 1600 trips each time.
 func _tools_coming(p: Sim.Player) -> Dictionary:
 	var m = _tc_memo.get(p.id)
-	if m != null and int(m[0]) == sim._ticks and int(m[1]) == sim.trips.size():
+	# (within a moment: a carrier setting off with a new tool only moves it from the smith to the road,
+	# and a tool made or arriving clears this)
+	if m != null and int(m[0]) == sim._ticks:
 		return m[2]
-	var out := _tools_coming_now(p)
-	_tc_memo[p.id] = [sim._ticks, sim.trips.size(), out]
-	return out
-
-
-func _tools_coming_now(p: Sim.Player) -> Dictionary:
-	var out := {}
-	for b: Sim.Bld in realm_blds(p):
-		if b.def.has("makes_tools"):
+	var all := {}
+	for q in sim.players:
+		all[q.id] = {}
+	for b: Sim.Bld in sim.blds:
+		if b.def.has("makes_tools") and not b.dead and all.has(b.p):
+			var o: Dictionary = all[b.p]
 			for k in b.out_buf:
-				out[k] = int(out.get(k, 0)) + int(b.out_buf[k])
+				o[k] = int(o.get(k, 0)) + int(b.out_buf[k])
 	for t in sim.trips:
-		if t.p == p.id and not t.delivered and t.dest == 0 and GameData.is_tool_res(t.res):
-			out[t.res] = int(out.get(t.res, 0)) + t.n
-	return out
+		if not t.delivered and t.dest == 0 and all.has(t.p) and GameData.is_tool_res(t.res):
+			var o2: Dictionary = all[t.p]
+			o2[t.res] = int(o2.get(t.res, 0)) + t.n
+	for pid in all:
+		_tc_memo[pid] = [sim._ticks, sim.trips.size(), all[pid]]
+	return all.get(p.id, {})
 
 
 ## The tool most wanted: buildings waiting for one count first, then the shortfall against the target.
@@ -982,6 +988,10 @@ func _can_hire(p: Sim.Player, b: Sim.Bld) -> bool:
 		return true
 	if float(p.stock.get(tool, 0.0)) >= 1.0:
 		return true
+	if tool in SimPeople.MAKESHIFT:
+		# a makeshift one (build 73), and the toolsmith is asked for a proper one
+		p.tool_wait[tool] = int(p.tool_wait.get(tool, 0)) + 1
+		return true
 	b.need_tool = tool
 	p.tool_wait[tool] = int(p.tool_wait.get(tool, 0)) + 1
 	return false
@@ -1005,7 +1015,7 @@ func _clamp_stock(_p: Sim.Player) -> void:
 
 ## Porters free right now: those employed by the stores plus idle peasants, minus those out on the road.
 func porters_free(p: Sim.Player) -> int:
-	return p.store_porters + maxi(0, p.peasant - p.used_peasant) - p.busy_porters
+	return p.store_porters + maxi(0, p.peasant - p.used_peasant) + p.full_hands - p.busy_porters
 
 
 # --- Road carriers (a new-game option, The Settlers style) --------------------------------------------
@@ -1233,11 +1243,35 @@ func realm_blds(p: Sim.Player) -> Array:
 func mil_list() -> Array:
 	if sim._mil_dirty:
 		_mil = []
+		_mil_cells = {}
 		for b in sim.blds:
 			if sim.is_mil(b):
+				var ck := (b.x >> 4) * 4096 + (b.y >> 4)
+				if not _mil_cells.has(ck):
+					_mil_cells[ck] = PackedInt32Array()
+				_mil_cells[ck].append(_mil.size())
 				_mil.append(b)
 		sim._mil_dirty = false
 	return _mil
+
+
+## (build 73) The military buildings within r tiles' box of (x, y), in mil_list's order: by 16-tile
+## cell, so a question about one fort does not go over every fort on the map.
+var _mil_cells := {}
+
+func mil_near(x: int, y: int, r: int) -> Array:
+	var all := mil_list()
+	var idx := PackedInt32Array()
+	for cy in range((y - r) >> 4, ((y + r) >> 4) + 1):
+		for cx in range((x - r) >> 4, ((x + r) >> 4) + 1):
+			var c = _mil_cells.get(cx * 4096 + cy)
+			if c != null:
+				idx.append_array(c)
+	idx.sort()
+	var out := []
+	for i in idx:
+		out.append(all[i])
+	return out
 
 
 ## Sends carriers with materials from the stores to construction sites, high-priority sites first,

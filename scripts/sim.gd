@@ -344,6 +344,7 @@ class Player:
 	var imm_t := 0
 	var die_t := 0
 	var used_peasant := 0
+	var full_hands := 0               # peasants at work whose stores are full: they help carry (build 73)
 	var trades := 0         # trades made with other realms (a mission goal)
 	var attacks_made := 0   # attacks this realm launched
 	var colonies := 0       # harbours its expeditions founded
@@ -691,6 +692,7 @@ var _type_bonus: Dictionary = {}    # realm id -> building type -> speed bonus f
 
 
 var _owned_dirty := true
+var _owned_full := true      # the next count of each realm's tiles goes over the whole map (build 73)
 
 
 var _gs := PackedFloat32Array()
@@ -750,7 +752,7 @@ func new_game(p_seed: String, p_foes: int, p_strength: int, p_mix: bool, p_size 
 	_avail = {}; _avail_at = {}
 	players.clear(); blds.clear(); by_id.clear(); trips.clear(); attacks.clear(); navy.clear(); naval.fx.clear(); naval._comp = PackedInt32Array(); prices.clear(); price_hist.clear(); logs.clear()
 	rel = {}; rel_since = {}; proposals = []; standing = []; _prop_id = 0
-	time = 0.0; over = false; _bid = 0; _acc1 = 0.0; _sec_n = 0; _owned_dirty = true; _trip_n = -1; _trip_next = -1.0
+	time = 0.0; over = false; _bid = 0; _acc1 = 0.0; _sec_n = 0; _owned_dirty = true; _owned_full = true; _trip_n = -1; _trip_next = -1.0
 	_alloc_path_buffers()
 	rng.seed = seed_str.hash()
 	var names := AI_NAMES.duplicate()
@@ -2350,7 +2352,8 @@ func tick(dt: float) -> void:
 		var t := trips[k]
 		if not t.delivered and time >= t.t1:
 			t.delivered = true
-			logistics._tc_memo.clear()
+			if GameData.is_tool_res(t.res):
+				logistics._tc_memo.clear()     # (only a tool arriving changes the tools on their way)
 			var p := players[t.p - 1]
 			if t.kind == "ship":
 				sea.ship_arrival(t, p)

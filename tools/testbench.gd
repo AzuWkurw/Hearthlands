@@ -5,6 +5,7 @@ extends SceneTree
 ## stuck; at the end a short summary. godot --headless --script res://tools/testbench.gd -- mins=60
 ## [map=res://tools/bench_maps/test.json] [every=5] [save=user://bench.save]
 var map_path := "res://tools/bench_maps/test.json"
+var gen := 0
 
 
 func _row(sim: Sim, p: Sim.Player) -> String:
@@ -30,7 +31,18 @@ func _init() -> void:
 		if a.begins_with("map="): map_path = a.substr(4)
 		if a.begins_with("every="): every = float(a.substr(6))
 		if a.begins_with("save="): save_to = a.substr(5)
+		if a.begins_with("gen="): gen = int(a.substr(4))
 	GameData.ensure()
+	if gen > 0:
+		# a generated map of that size with eight rivals (build 73)
+		var sim0 := Sim.new()
+		var t0 := Time.get_ticks_msec()
+		sim0.new_game("bench%d" % gen, 8, 6, true, gen, false, {"features": Features.default_ids()})
+		sim0.players[0].ai = true
+		sim0._recompute_mods(sim0.players[0])
+		print("TESTBENCH: generated %d x %d, %d realms, %.0f min (set up in %d ms)" % [sim0.w, sim0.h, sim0.players.size(), mins, Time.get_ticks_msec() - t0])
+		_run(sim0, mins, every, save_to)
+		return
 	var m := WorldGen.load_map(map_path)
 	if m.is_empty():
 		print("TESTBENCH: no map at ", map_path)
@@ -43,15 +55,26 @@ func _init() -> void:
 	sim.players[0].ai = true
 	sim._recompute_mods(sim.players[0])
 	print("TESTBENCH: %s, %d x %d, %d realms, %.0f min (set up in %d ms)" % [m.get("name", "?"), sim.w, sim.h, sim.players.size(), mins, Time.get_ticks_msec() - t_real])
-	var errors_at := 0
+	_run(sim, mins, every, save_to)
+
+
+func _run(sim: Sim, mins: float, every: float, save_to: String) -> void:
+	var t_real := Time.get_ticks_msec()
 	var next := every
 	var last_pop := {}
 	var stuck := {}
 	sim.perf = {}
 	var span_t := sim.time
 	var span_real := Time.get_ticks_msec()
+	var worst := 0.0
+	var slow := 0
 	while sim.time < mins * 60.0 and not sim.over:
+		var tk := Time.get_ticks_usec()
 		sim.tick(Sim.TICK)
+		var tms := (Time.get_ticks_usec() - tk) / 1000.0
+		worst = maxf(worst, tms)
+		if tms > 50.0:
+			slow += 1
 		if sim.time >= next * 60.0:
 			var secs := sim.time - span_t
 			var parts := []
@@ -65,6 +88,9 @@ func _init() -> void:
 			print("min %3d: %.1f ms per game second (%.0fx real time) | %s | %d buildings, %d trips, %d animals" % [
 				roundi(next), total / secs / 1000.0, secs * 1000.0 / maxf(1.0, float(Time.get_ticks_msec() - span_real)), ", ".join(parts),
 				sim.blds.size(), sim.trips.size(), (sim.get_feature("wildlife").animals.size() if sim.get_feature("wildlife") != null else 0)])
+			print("   worst tick %.0f ms, %d ticks over 50 ms" % [worst, slow])
+			worst = 0.0
+			slow = 0
 			for p in sim.players:
 				if not p.alive:
 					continue

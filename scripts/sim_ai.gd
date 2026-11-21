@@ -257,7 +257,9 @@ func _ai_sites(p: Sim.Player, ty: String) -> Array:
 		var list := _free_tiles(p, lists[0])
 		if list.is_empty():
 			return []
-		if list.size() <= SITE_TRIES:
+		# (build 73: only a small land is tried tile by tile; a starting realm of 250 tiles cost 25 ms a
+		# search that way, two or three searches a turn)
+		if list.size() <= SITE_CANDS * 2:
 			for i in list:
 				if not bad.has(i) and _try_spot(p, ty, i, bad):
 					cands.append(i)
@@ -506,7 +508,8 @@ func _ai_metals(p: Sim.Player) -> void:
 	if war or p.crowded:
 		p.metal_order["tools"] = [1, 2, 3]
 		p.metal_order["weapons"] = [3, 2, 1]
-		p.metal_keep["tools"] = {"steel": 4, "iron": 3}
+		# (build 73: steel only; keeping iron back held its toolsmiths idle for good while tools ran out)
+		p.metal_keep["tools"] = {"steel": 4}
 	else:
 		p.metal_order["tools"] = [3, 2, 1]
 		p.metal_keep.erase("tools")
@@ -571,6 +574,7 @@ func ai_think(p: Sim.Player) -> void:
 	var war := p.pers == "warlord"
 	var need_house := pop + 5 >= cap
 	var c := func(t: String) -> int: return int(cnt.get(t, 0))
+	var needs_store := _ai_needs_store(p)
 	var houses: int = c.call("house")
 	var farms: int = c.call("farm")
 	# many workers waiting for tools (worn out or never had one): a second smith (build 66)
@@ -633,7 +637,7 @@ func ai_think(p: Sim.Player) -> void:
 		["catapult", mini(3, _siege_targets(p)) if mins > 14 and S.stone > 12 and p.techs.has("stone_masonry") else 0],
 		["bastion", c.call("bastion") + 1 if mins > 28 and unocc == 0 and p.reserve > 8 and c.call("bastion") < 3 else 0],
 		["redoubt", c.call("redoubt") + 1 if mins > 35 and unocc == 0 and p.reserve > 12 and c.call("redoubt") < 3 else 0],
-		["storehouse", maxi((1 if mins > 8 else 0) + (1 if mins > 18 else 0), mini(5, c.call("storehouse") + (1 if _ai_needs_store(p) else 0)))],
+		["storehouse", maxi((1 if mins > 8 else 0) + (1 if mins > 18 else 0), mini(5, c.call("storehouse") + (1 if needs_store else 0)))],
 		["lodge", (1 if mins > 12 else 0) + (1 if mins > 24 else 0)],
 		["mule_station", 1 if mins > 5 else 0], ["mule_station", 2 if mins > 15 else 0], ["cart_yard", 1], ["warehouse", 1 if mins > 20 else 0], ["depot", 1],
 		["toolsmith", 2 if mins > 12 else 1], ["toolsmith", 3 if mins > 25 and pop > 150 else 0],
@@ -723,6 +727,14 @@ func ai_think(p: Sim.Player) -> void:
 			cnt[key0] = c.call(key0) + 1
 		elif rk == "poor":
 			return
+	# (build 73) stores full of several goods: another storehouse comes first (its carriers and room
+	# free everything else; in the list below it came after many buildings short of planks, and was
+	# never reached while the realm stood still with full stores)
+	if needs_store and mins > 8 and c.call("storehouse") < 5 and made < p.max_b:
+		var rs := _ai_build(p, "storehouse")
+		if rs == "ok":
+			made += 1
+			cnt["storehouse"] = c.call("storehouse") + 1
 	var nosite := 0
 	var no_room := {}      # sizes that found no spot this time: others of that size will not either
 	# every peasant at work and none idle: a new workshop's worker would come from the carriers, and a
@@ -941,17 +953,30 @@ func _attack_value(t: Sim.Bld) -> float:
 
 
 func ai_attack(p: Sim.Player) -> bool:
+	# (build 73) the military buildings only, and only targets within reach of one of them: on a big
+	# map this looked at every building against every fort (the same choice, far quicker)
 	var srcs: Array[Sim.Bld] = []
-	for b in sim.blds:
-		if b.p == p.id and b.state == "ready" and sim.is_mil(b):
+	var x0 := 1 << 30
+	var y0 := 1 << 30
+	var x1 := -(1 << 30)
+	var y1 := -(1 << 30)
+	var mils := sim.mil_list()
+	for b in mils:
+		if b.p == p.id and b.state == "ready" and not b.dead:
 			srcs.append(b)
+			x0 = mini(x0, b.x); y0 = mini(y0, b.y); x1 = maxi(x1, b.x); y1 = maxi(y1, b.y)
+	if srcs.is_empty():
+		return _ai_landing(p)
+	var reach := int(ceil(Sim.RANGE))
 	var hq: Sim.Bld = null
 	for b in sim.blds:
 		if b.p == p.id and b.ty == "hq": hq = b; break
 	var best = null
 	var best_sc := -1e9
-	for t in sim.blds:
-		if t.p == p.id or t.state != "ready" or not sim.is_mil(t) or not sim.players[t.p - 1].alive:
+	for t in mils:
+		if t.dead or t.p == p.id or t.state != "ready" or not sim.players[t.p - 1].alive:
+			continue
+		if t.x < x0 - reach or t.x > x1 + reach or t.y < y0 - reach or t.y > y1 + reach:
 			continue
 		if not Diplomacy.at_war(sim, p.id, t.p):
 			continue
@@ -993,19 +1018,35 @@ func _ai_landing(p: Sim.Player) -> bool:
 	if hs.is_empty():
 		return false
 	p.sea_try = sim.time
+	for k in p.site_wait.keys():
+		if String(k).begins_with("@land:") and float(p.site_wait[k]) <= sim.time:
+			p.site_wait.erase(k)
 	var n := mini(mini(p.reserve - 2, sim.sea.free_ships(p) * SimSea.LANDING_PER_SHIP), SimSea.LANDING_MAX)
 	var cands := []
 	for t: Sim.Bld in sim.mil_list():
 		if t.p == p.id or t.state != "ready" or t.dead or not sim.players[t.p - 1].alive or not Diplomacy.at_war(sim, p.id, t.p):
 			continue
-		if float(n) / maxf(1.0, sim.defenders(t)) < p.odds:
+		# (build 73) its own garrison first: if that alone is too many, the helpers need not be counted
+		# (counting them goes over every fort near it, for every enemy fort: a fifth of a second)
+		if float(n) / maxf(1.0, sim.own_def(t)) < p.odds:
 			continue
-		cands.append([float(n) / maxf(1.0, sim.defenders(t)) + _attack_value(t), t])
+		var dn := sim.defenders(t)
+		if float(n) / maxf(1.0, dn) < p.odds:
+			continue
+		cands.append([float(n) / maxf(1.0, dn) + _attack_value(t), t])
 	cands.sort_custom(func(a, b): return a[0] > b[0] or (a[0] == b[0] and (a[1] as Sim.Bld).id < (b[1] as Sim.Bld).id))
 	for c in cands.slice(0, 3):
 		for h: Sim.Bld in hs.slice(0, 2):
-			if sim.military.launch_landing(h, c[1], n) == "":
+			# (build 73) a harbour that found no way by sea to that fort does not look again for five
+			# minutes: the search covers the whole sea, a second on the biggest maps
+			var key := "@land:%d:%d" % [h.id, (c[1] as Sim.Bld).id]
+			if float(p.site_wait.get(key, 0.0)) > sim.time:
+				continue
+			var why := sim.military.launch_landing(h, c[1], n)
+			if why == "":
 				return true
+			if why.begins_with("No way by sea"):
+				p.site_wait[key] = sim.time + 300.0
 	return false
 
 

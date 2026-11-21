@@ -737,6 +737,11 @@ EMBLEMS = {k: v for k, v in globals().items() if callable(v) and not k.startswit
 
 # study id -> emblem (studies not listed use their branch's emblem)
 BY_ID = {
+    # the Bronze Age studies of build 73
+    "corduroy_tracks": "road", "weights_measures": "scales", "sickles": "wheat", "storage_pits": "pot",
+    "wild_hives": "bee", "hot_furnaces": "furnace", "tin_prospecting": "pickaxe", "potters_wheel": "vase",
+    "village_elders": "houses", "festivals": "mug", "herb_gathering": "leaf", "calendar": "clock",
+    "counting_boards": "chart", "chariots": "wheel", "shield_wall": "shield",
     # land
     "salt_trade": "salt", "castles": "tower", "charters": "scroll_seal", "tool_patterns": "hammer", "new_crops": "corn",
     "iron_axes": "axe", "coppicing": "sapling", "fish_traps": "fish", "wells": "well", "wells_and_cisterns": "well",

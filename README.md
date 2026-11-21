@@ -10,14 +10,14 @@ economy you do.
 ## Download
 
 The ready-made Windows game is on the [Releases page](../../releases/latest): download the
-`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.67.0 build 72** (see
+`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.68.0 build 73** (see
 `CHANGELOG.md`). Every build is a release of its own, made by GitHub Actions
 (`.github/workflows/release.yml`) when a new version reaches `main`; older builds up to 50 are also
 on the [`downloads` branch](../../tree/downloads).
 
 What is in the game now:
 
-- Seven ages from the Bronze Age to the Industrial age, 155 techs and a special study at the end of each age that opens
+- Seven ages from the Bronze Age to the Industrial age, 170 techs and a special study at the end of each age that opens
   the next, a choice of path (wealth, war or learning) for each age and a wonder to build in it; each
   age has its own building looks and kind of soldier.
 - Over 120 buildings in long production chains, each drawn with the tools and goods of its trade;
@@ -32,7 +32,7 @@ What is in the game now:
 
 The full plan is in the [roadmap](https://claude.ai/artifact/YVAWwJGUN4FRBYtpz3zgQh).
 
-Done (builds 43 to 72):
+Done (builds 43 to 73):
 
 | Build | What came in |
 |---|---|
@@ -71,6 +71,7 @@ Done (builds 43 to 72):
 | 70.1 | Fix: farm crops could not be changed (the info box rebuilt its buttons every third of a second, losing clicks and closing lists) |
 | 71 | Soldiers drawn in their arms' metal, both sides' arms in the attack window; bronze smiths upgraded in place; rivals use the metal settings and build scrap forges; the metal chains in the bottleneck finder |
 | 72 | Metal from the merchants (bronze cheap, steel dear); tools and arms in the realms graph; the minimap's Ore found view; the stores list in groups; mines warn before they run dry |
+| 73 | Speed on the biggest maps (worst moments from 600 to under 200 ms); fixes: farm fields not drawn, scrap forge making free bars, realms stuck without tools or carriers; 15 more Bronze Age studies |
 
 Later: a story campaign through the ages, multiplayer, scripted scenarios, a chronicle at the end of a
 game, more animations, music for each age, and quality-of-life features (a production chain overlay,
@@ -616,6 +617,21 @@ Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples,
 | Bronze | Seafaring | 65 | Barter and trade | – | – |
 | Bronze | Lost-wax casting | 55 | Kilns | – | Bronze foundry +25% speed, Bronze smith +15% speed |
 | Bronze | Bronze armour | 65 | Citadels | – | defence odds +2% |
+| Bronze | Log tracks | 50 | The wheel | – | carrier speed +6% |
+| Bronze | Weights and measures | 55 | Barter and trade | – | gold tax +6% |
+| Bronze | Bronze sickles | 45 | Irrigation | – | Farm +10% speed, Mill +10% speed |
+| Bronze | Storage pits | 45 | – | – | store room +8%, people eat -3% |
+| Bronze | Wild hives | 45 | Storage pits | – | Apiary +15% speed, Orchard +10% speed |
+| Bronze | Hot furnaces | 50 | – | – | Bronze foundry +15% speed, Copper smelter +15% speed, Charcoal burner +15% speed |
+| Bronze | Tin prospecting | 60 | Hot furnaces | – | Tin mine +15% speed, Copper mine +15% speed, 10% of mining leaves the vein untouched |
+| Bronze | The potter's wheel | 45 | – | – | Clay pit +15% speed, Brickworks +10% speed, build speed +5% |
+| Bronze | Village elders | 45 | – | – | newcomers arrive +10% faster, gold tax +4% |
+| Bronze | Harvest festivals | 55 | Village elders | – | newcomers arrive +10% faster, workers learn +5% faster |
+| Bronze | Herb gathering | 45 | – | – | Herb garden +20% speed, Apothecary +15% speed |
+| Bronze | The calendar | 55 | Writing | – | research +5%, Farm +5% speed |
+| Bronze | Counting boards | 55 | Writing | – | research +6%, gold tax +3% |
+| Bronze | War chariots | 70 | Bows | – | attack odds +4% |
+| Bronze | Shield wall | 60 | Bronze armour | – | defence odds +3%, workers learn +5% faster |
 | Roman | Iron working | 110 | – | – | all production +2% |
 | Roman | Roman roads | 100 | Iron working | – | carrier speed +8% |
 | Roman | Roman concrete | 100 | Iron working | – | build speed +10% |

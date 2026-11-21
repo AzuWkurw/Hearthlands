@@ -87,21 +87,57 @@ func territory_loss(b: Sim.Bld) -> Dictionary:
 	return out
 
 
+## Each realm's tiles (and its mountain tiles with ore left), in map order. (Build 73) Made again
+## only for the map rows whose owners changed since: on the biggest maps a whole new count took 30 ms
+## and came after every change of the borders. Each row keeps its own lists; a realm's list is its rows'
+## lists one after the other, so the order is the same as before. A vein running dry counts everything
+## again (sim._owned_full).
+var _rows: Array = []          # per map row: [[tiles of realm 1, 2, ...], [mountain tiles of 1, 2, ...]]
+var _own_seen := PackedByteArray()
+
 func owned(pid: int) -> Array:
 	if sim._owned_dirty:
+		var w: int = sim.w
+		var np := sim.players.size()
+		var full: bool = sim._owned_full or _own_seen.size() != sim.owner.size() or _rows.size() != sim.h \
+				or (_rows.size() > 0 and (_rows[0][0] as Array).size() != np)
+		if full:
+			_rows = []
+			_rows.resize(sim.h)
+			_own_seen = PackedByteArray()
+			_own_seen.resize(sim.owner.size())
+			_own_seen.fill(255)
+		var owner: PackedByteArray = sim.owner
+		for y in sim.h:
+			var a := y * w
+			if not full and owner.slice(a, a + w) == _own_seen.slice(a, a + w):
+				continue
+			var lt := []
+			var lm := []
+			for k in np:
+				lt.append(PackedInt32Array())
+				lm.append(PackedInt32Array())
+			for i in range(a, a + w):
+				var o := owner[i]
+				if o == 0:
+					continue
+				lt[o - 1].append(i)
+				if sim.ter[i] == Sim.MOUNT and sim.ore[i] != 0 and sim.vein_left(i) > 0:
+					lm[o - 1].append(i)
+			_rows[y] = [lt, lm]
+		_own_seen = owner.duplicate()
 		_owned = []
 		_owned_mtn = []
-		for p in sim.players:
-			_owned.append(PackedInt32Array())
-			_owned_mtn.append(PackedInt32Array())
-		for i in sim.owner.size():
-			var o := sim.owner[i]
-			if o == 0:
-				continue
-			_owned[o - 1].append(i)
-			if sim.ter[i] == Sim.MOUNT and sim.ore[i] != 0 and sim.vein_left(i) > 0:
-				_owned_mtn[o - 1].append(i)
+		for k in np:
+			var t := PackedInt32Array()
+			var m := PackedInt32Array()
+			for y in sim.h:
+				t.append_array(_rows[y][0][k])
+				m.append_array(_rows[y][1][k])
+			_owned.append(t)
+			_owned_mtn.append(m)
 		sim._owned_dirty = false
+		sim._owned_full = false
 	return [_owned[pid - 1], _owned_mtn[pid - 1]]
 
 
@@ -111,7 +147,7 @@ func own_def(b: Sim.Bld) -> int:
 
 func helpers(t: Sim.Bld) -> Array:
 	var out := []
-	for b: Sim.Bld in sim.mil_list():
+	for b: Sim.Bld in sim.logistics.mil_near(t.x, t.y, 10):
 		if b == t or b.state != "ready":
 			continue
 		if b.p != t.p and Diplomacy.relation(sim, b.p, t.p) != Diplomacy.ALLY:

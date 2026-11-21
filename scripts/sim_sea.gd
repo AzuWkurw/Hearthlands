@@ -320,6 +320,72 @@ const LAND_R := 24               # a landing goes ashore at most this far from i
 ## The way for soldiers from harbour h to building t across the water: [the crossing (water tiles,
 ## then the beach), the march from the beach], or [] when no sea joins them. The ships take the
 ## shortest way to any beach within LAND_R of the target, then the soldiers march.
+var _hbfs := {}          # harbour id -> [came, depth, order] of the water search from it (build 73)
+var _hbfs_lru := []
+var _hbfs_key := 0
+
+
+## The breadth-first search of the water from a harbour's moorings (the first 120000 tiles reached, as
+## before): for each water tile where it came from (-2 not reached), how far, and in what order it was
+## reached. Kept for the six harbours used last; made again if the land changes.
+func _harbour_bfs(hid: int, starts: PackedInt32Array) -> Array:
+	_wb_check()
+	if _hbfs_key != _wb_key:
+		_hbfs = {}
+		_hbfs_lru = []
+		_hbfs_key = _wb_key
+	if _hbfs.has(hid):
+		_hbfs_lru.erase(hid)
+		_hbfs_lru.append(hid)
+		return _hbfs[hid]
+	var W: int = sim.w
+	var H: int = sim.h
+	var came := PackedInt32Array()
+	came.resize(W * H)
+	came.fill(-2)
+	var depth := PackedInt32Array()
+	depth.resize(W * H)
+	var order := PackedInt32Array()
+	order.resize(W * H)
+	var q := PackedInt32Array()
+	for s in starts:
+		came[s] = -1
+		q.append(s)
+	for s0 in starts:
+		depth[s0] = 0
+	var ter: PackedByteArray = sim.ter
+	var head := 0
+	while head < q.size() and head < 120000:
+		var cur: int = q[head]
+		order[cur] = head
+		head += 1
+		var cx := cur % W
+		var cy := cur / W
+		for ddy in range(-1, 2):
+			var ny := cy + ddy
+			if ny < 0 or ny >= H:
+				continue
+			for ddx in range(-1, 2):
+				var nx := cx + ddx
+				if (ddx == 0 and ddy == 0) or nx < 0 or nx >= W:
+					continue
+				var ni := ny * W + nx
+				if came[ni] != -2 or ter[ni] != Sim.WATER:
+					continue
+				came[ni] = cur
+				depth[ni] = depth[cur] + 1
+				q.append(ni)
+	# tiles queued but never taken out of the queue (past the limit) were not reached
+	for k in range(head, q.size()):
+		came[q[k]] = -2
+	var e := [came, depth, order]
+	_hbfs[hid] = e
+	_hbfs_lru.append(hid)
+	if _hbfs_lru.size() > 6:
+		_hbfs.erase(_hbfs_lru.pop_front())
+	return e
+
+
 func landing_route(h: Sim.Bld, t: Sim.Bld) -> Array:
 	var starts := _moorings(h.x, h.y)
 	if starts.is_empty():
@@ -346,45 +412,40 @@ func landing_route(h: Sim.Bld, t: Sim.Bld) -> Array:
 							gd[wi] = d
 	if goal.is_empty():
 		return []
-	# breadth-first over the water from the harbour to the first such beach
-	var came := {}
-	var q := []
-	for s in starts:
-		came[s] = -1
-		q.append(s)
-	var head := 0
-	var found := -1
-	# the beach to land on: close to the target first, then a short crossing (the ships search the
-	# water outward from the harbour; the depth of each tile is the length of the crossing to it)
-	var depth := {}
-	for s0 in starts:
-		depth[s0] = 0
-	var best_sc := INF
-	while head < q.size() and head < 120000:
-		var cur: int = q[head]
-		head += 1
-		if goal.has(cur):
-			var sc := sqrt(float(gd[cur])) * 3.0 + float(depth[cur]) * 0.15
-			if sc < best_sc:
-				best_sc = sc
-				found = cur
-		# once the crossings grow long, nothing nearer the target is worth the extra sailing
-		if found >= 0 and float(depth[cur]) * 0.15 > best_sc:
+	# (build 73) no beach on the harbour's own water: no way at all, found at once (it searched all of
+	# that sea before, up to a second on the biggest maps, each minute a rival thought of a landing)
+	_wb_check()
+	var sb := {}
+	for s1 in starts:
+		sb[water_body(s1)] = true
+	var reach_goal := false
+	for g in goal:
+		if sb.has(water_body(g)):
+			reach_goal = true
 			break
-		var cx := cur % sim.w
-		var cy := cur / sim.w
-		for ddy in range(-1, 2):
-			for ddx in range(-1, 2):
-				var nx := cx + ddx
-				var ny := cy + ddy
-				if (ddx == 0 and ddy == 0) or not sim.inb(nx, ny):
-					continue
-				var ni := ny * sim.w + nx
-				if came.has(ni) or sim.ter[ni] != Sim.WATER:
-					continue
-				came[ni] = cur
-				depth[ni] = int(depth[cur]) + 1
-				q.append(ni)
+	if not reach_goal:
+		return []
+	# the beach to land on: close to the target first, then a short crossing. (Build 73) The ships'
+	# search of the water outward from the harbour is the same whatever the target, so it is made once
+	# for a harbour and kept: the best beach is the one with the lowest score, the earliest found on a tie
+	# (the depth of each tile is the length of the crossing to it), exactly as the search that stopped at
+	# the first good beach chose.
+	var bfs := _harbour_bfs(h.id, starts)
+	var came: PackedInt32Array = bfs[0]
+	var depth: PackedInt32Array = bfs[1]
+	var order: PackedInt32Array = bfs[2]
+	var found := -1
+	var best_sc := INF
+	var best_o := 1 << 30
+	for g in goal:
+		var gi: int = g
+		if came[gi] == -2:
+			continue
+		var sc := sqrt(float(gd[gi])) * 3.0 + float(depth[gi]) * 0.15
+		if sc < best_sc or (sc == best_sc and order[gi] < best_o):
+			best_sc = sc
+			best_o = order[gi]
+			found = gi
 	if found < 0:
 		return []
 	var sea := PackedInt32Array()

@@ -23,7 +23,7 @@ func _refresh_stock_rows() -> void:
 func _refresh_folk() -> void:
 	var p := main.sim.human()
 	var t := ""
-	t += "Peasants  [b]%d[/b] (%d at work)\n" % [p.peasant, p.used_peasant]
+	t += "Peasants  [b]%d[/b] (%d at work%s)\n" % [p.peasant, p.used_peasant, (", %d of them carrying while their stores are full" % p.full_hands) if p.full_hands > 0 else ""]
 	t += "Artisans  [b]%d[/b] (%d at work)  content %d%%\n" % [p.artisan, p.used_artisan, roundi(float(p.sat.get("artisan", 0.0)) * 100)]
 	t += "Nobles  [b]%d[/b]  content %d%%\n" % [p.noble, roundi(float(p.sat.get("noble", 0.0)) * 100)]
 	var lux_n := 0

@@ -580,8 +580,12 @@ func _label_land() -> void:
 	_comp.fill(-1)
 	var lab := 0
 	var q := PackedInt32Array()
+	# (build 73) the map held here and the four steps written out: the same labels, 3 to 4 times faster
+	var ter: PackedByteArray = sim.ter
+	var W: int = sim.w
+	var WATER := Sim.WATER
 	for s in n:
-		if _comp[s] != -1 or sim.ter[s] == Sim.WATER:
+		if _comp[s] != -1 or ter[s] == WATER:
 			continue
 		_comp[s] = lab
 		q.resize(0)
@@ -590,15 +594,17 @@ func _label_land() -> void:
 		while head < q.size():
 			var c := q[head]
 			head += 1
-			var cx := c % sim.w
-			var cy := c / sim.w
-			for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-				var nx: int = cx + d.x
-				var ny: int = cy + d.y
-				if nx < 0 or ny < 0 or nx >= sim.w or ny >= sim.h:
-					continue
-				var ni := ny * sim.w + nx
-				if _comp[ni] == -1 and sim.ter[ni] != Sim.WATER:
-					_comp[ni] = lab
-					q.append(ni)
+			var cx := c % W
+			if cx + 1 < W and _comp[c + 1] == -1 and ter[c + 1] != WATER:
+				_comp[c + 1] = lab
+				q.append(c + 1)
+			if cx > 0 and _comp[c - 1] == -1 and ter[c - 1] != WATER:
+				_comp[c - 1] = lab
+				q.append(c - 1)
+			if c + W < n and _comp[c + W] == -1 and ter[c + W] != WATER:
+				_comp[c + W] = lab
+				q.append(c + W)
+			if c - W >= 0 and _comp[c - W] == -1 and ter[c - W] != WATER:
+				_comp[c - W] = lab
+				q.append(c - W)
 		lab += 1

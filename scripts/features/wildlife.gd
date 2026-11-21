@@ -123,14 +123,22 @@ func pos(a: Array) -> Vector2:
 	return Vector2(float(a[1]), float(a[2])).lerp(Vector2(float(a[3]), float(a[4])), f)
 
 
+## When an animal that arrived moves on (see on_second).
+static func _wake(a: Array) -> float:
+	return float(a[6]) + 3.0 + fmod(float(a[5]) * 7.31 + float(a[1]) * 3.17 + float(a[2]) * 1.93, 12.0)
+
+
 func on_second() -> void:
 	_t += 1
 	# half the animals are looked at each second, the other half the next (a big map has thousands)
 	for ai in range(_t % 2, animals.size(), 2):
 		var a: Array = animals[ai]
 		# grazes 3 to 15 seconds where it arrived (how long follows from when and where it set out, so
-		# no dice are rolled each second for each animal)
-		if sim.time < float(a[6]) + 3.0 + fmod(float(a[5]) * 7.31 + float(a[1]) * 3.17 + float(a[2]) * 1.93, 12.0):
+		# no dice are rolled each second for each animal); the time it moves on is kept with it (build 73:
+		# thousands of animals are looked at each second)
+		if a.size() < 8:
+			a.append(_wake(a))
+		if sim.time < float(a[7]):
 			continue
 		var here := Vector2(float(a[3]), float(a[4]))
 		# mostly short moves; now and then a longer roam, so animals spread back into hunted land
@@ -145,6 +153,7 @@ func on_second() -> void:
 		_g_add(a)
 		a[5] = sim.time
 		a[6] = sim.time + here.distance_to(to) / float(KINDS[a[0]].speed)
+		a[7] = _wake(a)
 	if _t % 30 == 0:
 		_breed()
 		_wander_in()
@@ -219,9 +228,12 @@ func _wander_in() -> void:
 func _wolves() -> void:
 	# the herds' farms, found once (not once for every wolf)
 	var farms := []
+	var f_at := {}            # (build 73) a farm's place in that list, for the order below
 	for b: Sim.Bld in sim.blds:
 		if b.ty in FARMS and b.state == "ready" and not b.dead:
+			f_at[b] = farms.size()
 			farms.append(b)
+	_hunters = {}
 	# the farms by 8-tile cell, so each wolf looks only at those around it
 	var fcell := {}
 	for f0: Sim.Bld in farms:
@@ -230,6 +242,7 @@ func _wolves() -> void:
 			fcell[fk] = []
 		(fcell[fk] as Array).append(f0)
 	_prey_grid = {}
+	_prey_removed = []
 	for wv in animals.filter(func(a): return a[0] == "wolf"):
 		var wp := pos(wv)
 		var near_f := []
@@ -239,7 +252,7 @@ func _wolves() -> void:
 			for gx in range(cx - 1, cx + 2):
 				near_f.append_array(fcell.get(gx * 4096 + gy, []))
 		# (in the order the farms were found, as before)
-		near_f.sort_custom(func(x, y): return farms.find(x) < farms.find(y)) if near_f.size() > 1 else null
+		near_f.sort_custom(func(x, y): return int(f_at[x]) < int(f_at[y])) if near_f.size() > 1 else null
 		# a farm's herd nearby
 		for f: Sim.Bld in _farms_near(wp, 3, near_f):
 			if not scared.has(f.id) and rng.randf() < 0.1 and not _hunter_near(f):
@@ -252,17 +265,34 @@ func _wolves() -> void:
 			var prey = _nearest_prey(wp, 2.0)
 			if prey != null:
 				_g_del(prey)
-				animals.erase(prey)
-				_prey_grid = {}
+				# its place now: where it was when the grid was made, less those caught before it this round
+				var at0 := int(_prey_at)
+				for r0 in _prey_removed:
+					if int(r0) < int(_prey_at):
+						at0 -= 1
+				if at0 >= 0 and at0 < animals.size() and is_same(animals[at0], prey):
+					animals.remove_at(at0)
+				else:
+					animals.erase(prey)
+				_prey_removed.append(_prey_at)
+				_prey_gone(prey)
 	for k in scared.keys():
 		if sim.time >= float(scared[k]):
 			scared.erase(k)
 
 
 ## A hunter whose grounds reach the farm keeps the wolves away from it.
+var _hunters := {}         # realm id -> its staffed hunters, found once a wolves' round (build 73)
+
 func _hunter_near(f: Sim.Bld) -> bool:
-	for b: Sim.Bld in sim.realm_blds(sim.players[f.p - 1]):
-		if b.ty == "hunter" and b.staffed and Vector2(b.x - f.x, b.y - f.y).length() <= float(sim.work_radius(b)) + 1.0:
+	if not _hunters.has(f.p):
+		var hs := []
+		for b: Sim.Bld in sim.realm_blds(sim.players[f.p - 1]):
+			if b.ty == "hunter":
+				hs.append(b)
+		_hunters[f.p] = hs
+	for b: Sim.Bld in _hunters[f.p]:
+		if b.staffed and Vector2(b.x - f.x, b.y - f.y).length() <= float(sim.work_radius(b)) + 1.0:
 			return true
 	return false
 
@@ -289,7 +319,7 @@ func _nearest_prey(at: Vector2, r: float):
 				var k := (int(p.x) >> 2) * 4096 + (int(p.y) >> 2)
 				if not _prey_grid.has(k):
 					_prey_grid[k] = []
-				(_prey_grid[k] as Array).append(i)
+				(_prey_grid[k] as Array).append([i, a])
 	# the same answer as _nearest: the closest within r, the later in the list on a tie
 	var cands := []
 	var cx := int(at.x) >> 2
@@ -297,15 +327,31 @@ func _nearest_prey(at: Vector2, r: float):
 	for gy in range(cy - 1, cy + 2):
 		for gx in range(cx - 1, cx + 2):
 			cands.append_array(_prey_grid.get(gx * 4096 + gy, []))
-	cands.sort()
+	# (the list order among them: the index each had when the grid was made; a caught one leaves the
+	# grid, and the others keep their order)
+	cands.sort_custom(func(x, y): return int(x[0]) < int(y[0]))
 	var best = null
 	var bd := r
-	for i in cands:
-		var a: Array = animals[i]
+	for e in cands:
+		var a: Array = e[1]
 		var d := pos(a).distance_to(at)
 		if d <= bd:
-			bd = d; best = a
+			bd = d; best = a; _prey_at = int(e[0])
 	return best
+
+
+var _prey_at := -1
+var _prey_removed := []
+
+
+func _prey_gone(a: Array) -> void:
+	for k in _prey_grid:
+		if k is int:
+			var lst: Array = _prey_grid[k]
+			for j in lst.size():
+				if is_same(lst[j][1], a):
+					lst.remove_at(j)
+					return
 
 
 func _nearest(at: Vector2, r: float, kinds: Array):

@@ -202,6 +202,13 @@ func staffing(p: Sim.Player) -> void:
 			b.worker = 0
 	p.used_peasant = p.peasant - ip - spare
 	p.used_artisan = p.artisan - ia
+	# (build 73) a peasant whose workshop waits because the stores are full of what it makes helps the
+	# carriers meanwhile: on a big realm the goods otherwise pile up while nobody carries them on
+	var full := 0
+	for b: Sim.Bld in ordered:
+		if b.staffed and b.state == "ready" and String(b.def.get("worker", "")) == "peasant" and b.msg.begins_with("Stores are full"):
+			full += 1
+	p.full_hands = full
 	p.used_scout = p.scout - p.scout_out - isc
 	_trim_specialists(p, "peasant", p.peasant - p.used_peasant - spare)
 	_trim_specialists(p, "artisan", p.artisan - p.used_artisan)
@@ -252,6 +259,13 @@ func _spec_tools(p: Sim.Player, key: String) -> Array:
 
 ## Building b gets a worker: the most experienced idle specialist of its trade if there is one,
 ## otherwise a newcomer who starts at level 1.
+## (build 73) The tools that make the tools: without axes no charcoal, without pickaxes no ore, without
+## tongs no metal, and so no new tools ever. When none is in store, a woodcutter, miner or smith starts
+## with a makeshift one (counted as worn out: he works slowly and asks the toolsmith for a proper one),
+## so a realm whose tools all wore out can make new ones instead of standing still for good.
+const MAKESHIFT := ["axes", "pickaxes", "tongs"]
+
+
 func _hire_worker(p: Sim.Player, b: Sim.Bld) -> void:
 	b.wxp = 0.0
 	var pool: Array = p.spec.get(spec_key(b), [])
@@ -266,10 +280,17 @@ func _hire_worker(p: Sim.Player, b: Sim.Bld) -> void:
 			took = tool
 			sim.arms.give_tool(b, sim.arms.take_best(p, tool))
 		elif tool != "":
-			# good tool care: he makes do with an old one of the age's metal
+			# good tool care: he makes do with an old one of the age's metal (or, none in store, a
+			# makeshift one: see MAKESHIFT)
 			sim.arms.give_tool(b, sim.arms.default_tier(p))
+		var makeshift := tool in MAKESHIFT and took == "" and float(p.stock.get(tool, 0.0)) < 1.0
 		for f: Feature in sim.features:
 			f.on_hire(p, b, took)
+		if makeshift:
+			b.tool_q = 0                          # no metal: nothing comes back as scrap
+			var tqf = sim.get_feature("tool_quality")
+			if tqf != null:
+				tqf.held[b.id] = [-1.0, 0.0]      # worn from the start: slow, and he asks for a proper one
 		return
 	var best := 0
 	for i in pool.size():
