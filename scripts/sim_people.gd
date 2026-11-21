@@ -200,6 +200,9 @@ func staffing(p: Sim.Player) -> void:
 		ip -= 1
 		spare = 1
 	var lim_n := {}
+	var limits: Dictionary = p.job_limit
+	var any_lim := not limits.is_empty()
+	var creative_p := sim.creative(p)
 	for b: Sim.Bld in readies:
 		if b.state != "ready":
 			continue
@@ -207,8 +210,8 @@ func staffing(p: Sim.Player) -> void:
 		var was := b.staffed
 		# the player's limit on how many of this kind get workers
 		var lim_ok := true
-		if not p.job_limit.is_empty() and p.job_limit.has(b.ty):
-			lim_ok = int(lim_n.get(b.ty, 0)) < int(p.job_limit[b.ty])
+		if any_lim and limits.has(b.ty):
+			lim_ok = int(lim_n.get(b.ty, 0)) < int(limits[b.ty])
 		if wk == "peasant":
 			b.staffed = b.prio != Sim.PRIO_PAUSED and lim_ok and ip > 0 and (was or sim._can_hire(p, b))
 			if b.staffed: ip -= 1
@@ -224,16 +227,16 @@ func staffing(p: Sim.Player) -> void:
 			continue
 		if b.staffed:
 			b.need_tool = ""
-			if wk != "":
+			if wk != "" and any_lim:
 				lim_n[b.ty] = int(lim_n.get(b.ty, 0)) + 1
 		if was and not b.staffed:
 			_release_worker(p, b)
 		elif b.staffed and not was:
 			_hire_worker(p, b)
 		# a newly hired worker walks from his home; one who leaves goes home
-		if b.staffed and b.worker == 0 and walks_to_work(b):
-			if sim.creative(p) or send_from_home(b, p, "worker", wk):
-				b.worker = 2 if sim.creative(p) else 1
+		if b.staffed and b.worker == 0 and (wk == "peasant" or wk == "artisan" or wk == "scout"):
+			if creative_p or send_from_home(b, p, "worker", wk):
+				b.worker = 2 if creative_p else 1
 		elif not b.staffed and b.worker != 0:
 			b.worker = 0
 	p.used_peasant = p.peasant - ip - spare

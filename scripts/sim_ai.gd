@@ -942,12 +942,10 @@ func _siege_targets(p: Sim.Player, most := 3) -> int:
 	if cells.is_empty():
 		return 0
 	var war := {}
+	for q: Sim.Player in sim.players:
+		war[q.id] = Diplomacy.at_war(sim, p.id, q.id)
 	for t: Sim.Bld in sim.mil_list():
-		if t.p == p.id or t.state != "ready" or t.ty == "hq" or sim.own_def(t) < 3:
-			continue
-		if not war.has(t.p):
-			war[t.p] = Diplomacy.at_war(sim, p.id, t.p)
-		if not war[t.p]:
+		if not war.get(t.p, false) or t.state != "ready" or t.ty == "hq" or t.garrison < 3:
 			continue
 		var hit := false
 		for cy in range((t.y - 14) >> 4, ((t.y + 14) >> 4) + 1):

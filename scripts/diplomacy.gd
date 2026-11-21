@@ -92,16 +92,30 @@ static func on_attacked(sim: Sim, victim: int, attacker: int) -> void:
 ## Breaking a peace or an alliance makes every realm trust the breaker less.
 ## Whether realms a and b have military buildings within attack reach of each other.
 static func borders(sim: Sim, a: int, b: int) -> bool:
-	var ma: Array = []
-	var mb: Array = []
-	for m in sim.mil_list():
+	if a == b:
+		return false
+	# (build 78) each realm's own forts only, and b's by 16-tile cell, so each of a's looks only at those
+	# of b's around it (the same answer)
+	var cells := {}
+	for m: Sim.Bld in sim.realm_mil(b):
 		if m.dead or m.state != "ready": continue
-		if m.p == a: ma.append(m)
-		elif m.p == b: mb.append(m)
-	for x: Sim.Bld in ma:
-		for y: Sim.Bld in mb:
-			if Vector2(x.x - y.x, x.y - y.y).length() <= Sim.RANGE:
-				return true
+		var ck := (m.x >> 4) * 4096 + (m.y >> 4)
+		if not cells.has(ck):
+			cells[ck] = []
+		(cells[ck] as Array).append(m)
+	if cells.is_empty():
+		return false
+	var reach := int(ceil(Sim.RANGE))
+	for x: Sim.Bld in sim.realm_mil(a):
+		if x.dead or x.state != "ready": continue
+		for cy in range((x.y - reach) >> 4, ((x.y + reach) >> 4) + 1):
+			for cx in range((x.x - reach) >> 4, ((x.x + reach) >> 4) + 1):
+				var c = cells.get(cx * 4096 + cy)
+				if c == null:
+					continue
+				for y: Sim.Bld in c:
+					if Vector2(x.x - y.x, x.y - y.y).length() <= Sim.RANGE:
+						return true
 	return false
 
 
