@@ -217,6 +217,11 @@ Exporting needs Godot 4.3's export templates (in the editor: Editor > Manage Exp
   by different amounts. Mines also eat. Without food, production halves and peasants starve.
 - **Hills.** Heights shade the map; carriers are slower on steep roads, marked yellow to red.
 - **Sandbox options.** Start with all research done, or play in creative mode (free, instant building, stores kept half full).
+- **Spectator mode** (new-game option). The computer plays every realm, yours too, with no fog of war.
+  Watch from anywhere: the Realms list at the top of the side panel compares every realm (age, people,
+  buildings, soldiers, land, studies) and a click on one takes the camera to its headquarters; click any
+  building to see how it is doing. Nothing you do changes the game, so it is also a way to test the
+  balance. The game ends when one realm is left standing (or one wins the peaceful victory).
 - **A living town.** Close up, townsfolk walk the roads, chat at their doors and play; porters carry crates and sacks, ox carts show their load. Further out the game draws less detail and smaller textures, so it stays fast.
 - **Battles in the open.** Columns of realms at war that meet on the march stop and fight: volleys while they close in, then duels with no walls. The winners march on.
 - **Dry mines** are demolished 30 s after a warning (40% of their cost back); switch it off in Settings.
