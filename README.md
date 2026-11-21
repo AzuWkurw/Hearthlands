@@ -77,9 +77,8 @@ Done (builds 43 to 76):
 | 75.1 | Wording: references to other games removed from the game, README and change log |
 | 76 | Smoother screen in huge late games (each moment done in parts across frames); trees no longer vanish when zoomed out; trade carts go round mountains and cross water by boat; faster guild counts; fix for repeatable studies' message |
 
-Later: a story campaign through the ages, multiplayer, scripted scenarios, a chronicle at the end of a
-game, more animations, music for each age, and quality-of-life features (a production chain overlay,
-a build queue, rebindable keys, interface scale).
+Later: a story campaign through the ages (beyond today's eight chapters), multiplayer, scripted
+scenarios, a chronicle at the end of a game, more animations, and rebindable keys.
 
 ## Run it
 
