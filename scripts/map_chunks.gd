@@ -318,7 +318,7 @@ func _bake_image(cx: int, cy: int) -> Image:
 			if o != 0 and o <= _tint.size():
 				img.blend_rect(_tint[o - 1], full, pos)
 			# how steep the road is here: no mark when flat, then 1 to 3 marks, yellow to red (as the
-			# road markers in The Settlers II), so you can see where carriers will be slow
+			# road markers), so you can see where carriers will be slow
 			if sim.road[i] != 0 and sim.bmap[i] == 0:
 				var sl := sim.road_slope(i, int(sim.road[i]))
 				if sl > 0:

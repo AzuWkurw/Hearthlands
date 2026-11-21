@@ -1,5 +1,10 @@
 # Changelog
 
+## Build 75.1 (v0.70.0, 2026-11-21)
+
+Build 75.1: wording.
+- References to other games are gone from the game, its help text, the README and the change log: the new-game option, the Sites button and the read-me now just say what they do.
+
 ## Build 75 (v0.70.0, 2026-11-21)
 
 Build 75: more speed in huge late games: carriers' road routes, battles and rival building.
@@ -280,7 +285,7 @@ Smoother big maps, and downloads on GitHub Releases.
 
 ## Build 50 (v0.45.0, 2026-11-14)
 
-Priorities in numbers: a transport priorities window and a worker priorities window, as in The Settlers II.
+Priorities in numbers: a transport priorities window and a worker priorities window.
 
 - Transport priorities (K, or Transport in the top bar): every good gets a number from 1 (first) to 9 (last), 5 as usual. Carriers pick up goods waiting at workshops, bring workshops what they use, and bring building sites their materials, lower numbers first. "Any food" counts for inns, mines and others that take whatever food there is. Show every good lists also goods you have none of yet.
 - Worker priorities (L, or Workers in the top bar): every kind of building gets a number from 1 to 9. When there are not enough peasants or artisans for all, kinds with a lower number get new workers and builders first. Each row shows how many of that kind have their workers.
@@ -626,7 +631,7 @@ The eight ideas from the "what next" list, and smaller touches with them.
 
 Everything from the suggestions list (docs/SUGGESTIONS.md), and a round of bug fixes.
 
-- Raised ground: hills stand up from the map as in The Settlers II (2.5D). Buildings, people, markers, fog and seasons sit at the right height, and clicks find the right tile. Settings can turn it off.
+- Raised ground: hills stand up from the map (2.5D). Buildings, people, markers, fog and seasons sit at the right height, and clicks find the right tile. Settings can turn it off.
 - Road carriers, a new-game option: one carrier for each stretch of road between flags, goods handed on at the flags, a donkey on busy stretches. On busy roads goods wait at the flags, so road layout matters.
 - Rivals plan their towns a little (large spots kept for farms, workshops near their suppliers), choose attack targets by their worth, keep a guard home, and call back attacks that go badly. Their toolsmith waits when weapons are short, and maps for many realms are larger.
 - Building spots no new road can reach are refused ("No road can get to this spot") and are no longer marked as free.
@@ -663,7 +668,7 @@ Goods kept in each store, raw materials carried to workshops, people who live in
 
 ## Build 30 (v0.26.0, 2026-11-08)
 
-Building sizes as in The Settlers, building-place markers and a Sites button, and fixes for the toolbar's Geologist and Scout.
+Building sizes, building-place markers and a Sites button, and fixes for the toolbar's Geologist and Scout.
 
 - Building sizes: small buildings (guard hut, palisade, watch tower, woodcutter, forester, quarry, fisher, hunter, well...) stand on one tile; medium ones (houses, workshops, guardhouse, tower, storehouse...) on two, one behind the other; large ones (farms, keep, castle, fortress, bastion, warehouse, university, the headquarters...) on a plot three wide and two deep, on fairly flat ground; mines on one mountain tile. Every building needs one free tile all round its plot (roads may use it), so buildings never stand on top of each other. Nothing else can go on a plot: no roads, no trees from foresters.
 - Entrances by size: small buildings and mines can face any side, medium ones south, east or west, large ones only south. R turns only to the sides allowed.
@@ -679,7 +684,7 @@ Building sizes as in The Settlers, building-place markers and a Sites button, an
 
 A toolbar along the bottom of the screen, building entrances with roads you lay yourself, Go buttons on events, and Vulkan as the preferred renderer.
 
-- Toolbar along the bottom of the map, as in The Settlers: the eight building groups (Raw, Food, Industry, Crafts, Folk, Science, Stores, Military), each opening its buildings in a panel just above the bar; Road, Pave and Remove road; Auto roads; Demolish; and Scout and Geologist. Esc closes an open group. The side panel no longer has the Build section, and the minimap sits above the toolbar. In a narrow window (or at a large interface size) the toolbar shows icons only; hover a button for its name.
+- Toolbar along the bottom of the map: the eight building groups (Raw, Food, Industry, Crafts, Folk, Science, Stores, Military), each opening its buildings in a panel just above the bar; Road, Pave and Remove road; Auto roads; Demolish; and Scout and Geologist. Esc closes an open group. The side panel no longer has the Build section, and the minimap sits above the toolbar. In a narrow window (or at a large interface size) the toolbar shows icons only; hover a button for its name.
 - Demolish tool: click one of your buildings to pull it down (with the usual question and the preview of lost land).
 - Building entrances: every new building's entrance faces one side, shown while placing it by an arrow and a flag on the tile in front. R turns it (Shift+R the other way); R still opens research when you are not placing a building. Roads and carriers join a building only at its entrance, and nothing can be built on another building's entrance tile. Your buildings show a small flag at the entrance; a pulsing ring means no road reaches it yet. Buildings from older saves, and the headquarters, can still be reached from any side.
 - Roads by hand: after placing a building the road tool starts at its entrance. Click where it should join your roads; the tool stops by itself once it joins, or Esc leaves the road for later (the site waits for it).
@@ -693,7 +698,7 @@ Hills that slow the carriers, road steepness marks, and two new-game options: al
 
 - The land has heights: it rises away from the sea, rolls in hills and climbs steeply towards the mountains. The same map always gets the same hills, older saves too. The map and the minimap shade them: slopes facing the light (upper left) and high ground lighter, slopes facing away and low ground darker. Click a tile to see its height.
 - Slopes slow transport: each step along a road takes longer the steeper it is, 1.3 times as long on a gentle slope, 1.7 on a steep one, 2.3 on a very steep one, for porters, mules and ox carts alike. Roads laid for you (with a new building, or with the road tool) go round hills where they can. On a typical map about 60% of grassland is flat, a third gently sloping and 6% steep.
-- Road steepness marks, as in The Settlers II: 1, 2 or 3 marks on a road tile, yellow, orange or red, for a gentle, steep or very steep road; a flat road has none. A road being planned is coloured the same way, so you can pick a flatter way. Clicking a road tile says how much slower carriers are there.
+- Road steepness marks: 1, 2 or 3 marks on a road tile, yellow, orange or red, for a gentle, steep or very steep road; a flat road has none. A road being planned is coloured the same way, so you can pick a flatter way. Clicking a road tile says how much slower carriers are there.
 - New-game option "All research done at the start": every realm starts in the Industrial age with everything studied but the Industrial Revolution itself (so research victory can still be won); soldiers and headquarters start in the Industrial style. Mastery studies are still open.
 - New-game option "Creative mode": your buildings cost nothing and stand at once (no builder, no materials), and every good in your stores is kept at least half full. The rivals play by the usual rules.
 

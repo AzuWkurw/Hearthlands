@@ -81,8 +81,8 @@ a farm or a barracks later (the "pull down a house" rule in `ai_think` is a patc
   `_ai_sites` for other buildings).
 - Group buildings: food near farms, smiths near mines, a storehouse and a workers' lodge in each group.
 
-### A3. Carriers per road stretch, as in The Settlers (L)
-Today a porter walks the whole way from store to building and back. In The Settlers each stretch of road
+### A3. Carriers per road stretch (L)
+Today a porter walks the whole way from store to building and back. With this option each stretch of road
 between two flags has its own carrier, goods are handed on at flags, and busy roads get donkeys. That
 makes road layout matter much more and shows traffic jams.
 - It is a big change in `sim_logistics.gd` (trips become a chain of hand-overs) and in drawing. Worth a
@@ -176,7 +176,7 @@ would make it possible to translate the game, and easier to change wording.
 ## D. Look and feel
 
 ### D1. 2.5D terrain (L)
-Raise each tile by its height and light it from its slope, as in The Settlers II, with more ground detail
+Raise each tile by its height and light it from its slope, with more ground detail
 (grass tufts, pebbles, reeds, foam, snow on peaks). This was asked for earlier and is not done yet. It
 mostly lives in `map_chunks.gd` (baking) and needs buildings and people drawn at the raised height in
 `map_view.gd`.

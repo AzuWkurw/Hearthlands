@@ -630,7 +630,7 @@ func _on_piece_end(i: int) -> void:
 	if _mood == "war":
 		_start_piece(WAR)
 	else:
-		# silence between the calm pieces, as in The Settlers
+		# silence between the calm pieces
 		_gap = _rng.randf_range(20.0, 60.0)
 
 

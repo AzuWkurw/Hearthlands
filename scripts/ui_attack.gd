@@ -1,6 +1,6 @@
 class_name UiAttack
 extends RefCounted
-## The attack window, as in The Settlers II: clicking an enemy military building opens it. It shows the
+## The attack window: clicking an enemy military building opens it. It shows the
 ## defenders, lets you pick how many soldiers march (from all your military buildings in range, the
 ## nearest first) and which kinds, and gives a rough idea of the odds. Each building keeps at least one
 ## soldier home, as before.

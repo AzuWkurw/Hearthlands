@@ -1,6 +1,6 @@
 class_name UiToolbar
 extends RefCounted
-## The toolbar along the bottom of the map, as in the Settlers games: a button per building group
+## The toolbar along the bottom of the map: a button per building group
 ## (each opens a panel of its buildings just above the bar), the road tools and Auto roads, Demolish,
 ## and the tools of the game features (send a scout, send a geologist). Esc closes the panel.
 
@@ -53,7 +53,7 @@ func build() -> void:
 	bar.add_child(row)
 
 	var bg := _group(row, "BUILD")
-	sites_btn = _btn("Sites", _sites_icon(), "Sites (B): show building places on the map, as in The Settlers.\nA small house: room for a small building; a bigger house: medium; a castle: large; a mine sign: a mine (where a geologist found ore).\nClose up only: zoom in to see them.", toggle_sites)
+	sites_btn = _btn("Sites", _sites_icon(), "Sites (B): show building places on the map.\nA small house: room for a small building; a bigger house: medium; a castle: large; a mine sign: a mine (where a geologist found ore).\nClose up only: zoom in to see them.", toggle_sites)
 	bg.add_child(sites_btn)
 	for c in GameData.CATEGORIES:
 		var id := String(c[0])

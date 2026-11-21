@@ -117,7 +117,7 @@ var _scn_ver := -1                 # chunks.ver the meshes were made for
 # --- Raised ground (2.5D) ---------------------------------------------------------------------------
 # Each tile corner is raised by the height of the ground around it (LIFT tiles per height step, the sea
 # stays flat), and the ground is drawn as a grid of quads through those corners, so hills stand up from
-# the map as in The Settlers II; the light and shade from the slopes is baked into the chunks. Buildings,
+# the map; the light and shade from the slopes is baked into the chunks. Buildings,
 # people and markers are drawn raised by the height under their feet (lift_at). Clicks are traced back
 # through the raised ground (screen_to_tile). The "Raised ground" option turns it off (all flat).
 const LIFT := 0.014
@@ -2110,7 +2110,7 @@ func _leg_pos(t: Sim.Trip) -> Vector3:
 	return Vector3(t.path[last], t.path[last], 0.0)
 
 
-## A building-site marker, as in The Settlers: a small house, a bigger house, a castle, or a mine.
+## A building-site marker: a small house, a bigger house, a castle, or a mine.
 func _site_icon(c: Vector2, size: String) -> void:
 	var gold := Color("f2cf5a")
 	var edge := Color(0.18, 0.12, 0.04, 0.85)

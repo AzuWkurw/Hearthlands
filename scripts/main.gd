@@ -1176,7 +1176,7 @@ const DIFF_CHOICES := [
 
 
 const DIFF_CHECKS := [["Endless ore veins", "endless_ore"], ["Endless stone, clay and fish", "endless_raw"], ["New workers need their trade's tool", "tools"],
-	["Road carriers: one carrier per stretch of road, goods handed on at flags (The Settlers style)", "road_carriers"], ["All research done at the start", "all_research"], ["Creative mode: build free and at once, stores never run low", "creative"],
+	["Road carriers: one carrier per stretch of road, goods handed on at flags", "road_carriers"], ["All research done at the start", "all_research"], ["Creative mode: build free and at once, stores never run low", "creative"],
 	["Land from the sea: your headquarters is a harbour on the coast, with a ship", "sea_start"]]
 
 

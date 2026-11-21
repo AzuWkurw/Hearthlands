@@ -38,7 +38,7 @@ Settings > Game features switches optional features on or off ("Classic rules" t
 Toolbar along the bottom: building groups, Road, Pave, Remove road, Flag, Auto roads, Demolish, Scout, Geologist.
 Each building has an entrance (flag); roads join it only there. With Auto roads off you lay each new
 building's road yourself, starting at its entrance. Events with a Go button move the camera there.
-Buildings come in sizes, as in The Settlers: small (1 tile), medium (2), large (3 x 2, flat ground) and
+Buildings come in sizes: small (1 tile), medium (2), large (3 x 2, flat ground) and
 mines, with a free tile all round. The Sites button (or B) marks where each size fits.
 Select a building: High / Normal / Low / Paused set its priority (Page Up, Page Down, P). Delete demolishes (it asks first).
 Settings (button on the top bar, or F10): Vulkan or OpenGL renderer, window or fullscreen, resolution,

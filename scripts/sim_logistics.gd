@@ -1080,13 +1080,13 @@ func porters_free(p: Sim.Player) -> int:
 	return p.store_porters + maxi(0, p.peasant - p.used_peasant) + p.full_hands - p.busy_porters
 
 
-# --- Road carriers (a new-game option, The Settlers style) --------------------------------------------
+# --- Road carriers (a new-game option) ----------------------------------------------------------------
 # Every stretch of road between two flags has its own carrier. Flags stand at buildings, where roads
 # meet, and at least every FLAG_EVERY tiles. A load is handed from carrier to carrier at the flags; a
 # carrier takes one load at a time and walks back before the next, so goods queue at the flags of busy
 # stretches; when a stretch is busy a donkey helps (a second slot). Each load's whole journey is worked
 # out when it sets off: on each stretch it starts when the load is at the flag and that stretch's carrier
-# (or donkey) is free. A load that would queue too long is not sent yet. As in The Settlers, the stretch
+# (or donkey) is free. A load that would queue too long is not sent yet. The stretch
 # carriers come from the headquarters and do not use up porters; road_carriers only counts them.
 
 const FLAG_EVERY := 4
@@ -1118,7 +1118,7 @@ func _is_flag(path: PackedInt32Array, k: int, pid: int) -> bool:
 
 ## Plans a load's journey along path (goods going from path[0] to the end when forward, else back):
 ## [arrival time, legs], or [] when it would wait more than MAX_QUEUE at flags (the roads are too busy
-## now). Stretch carriers come from the headquarters as in The Settlers: they do not use up porters.
+## now). Stretch carriers come from the headquarters: they do not use up porters.
 ## commit: book the stretches (their carriers are busy until the load is through).
 func plan_chain(p: Sim.Player, path: PackedInt32Array, forward: bool, commit: bool) -> Array:
 	var n := path.size()
@@ -1152,7 +1152,7 @@ func plan_chain(p: Sim.Player, path: PackedInt32Array, forward: bool, commit: bo
 			k += step
 		cost /= spd
 		# the stretch's carrier and a second carrier (x, y), and on a busy stretch a donkey too (z), as in
-		# The Settlers: each the time it is free again
+		# each the time it is free again
 		var slots := Vector3(-1e9, -1e9, -1e9)
 		if p.segs.has(key):
 			var v = p.segs[key]
@@ -1223,7 +1223,7 @@ func road_carrier_tick(p: Sim.Player) -> void:
 
 
 ## A rival sets a flag halfway along stretches where loads queue (the carrier booked well ahead), the
-## way a Settlers player splits a jammed road. Only road tiles that are not already flags or buildings.
+## way a player splits a jammed road. Only road tiles that are not already flags or buildings.
 func _ai_flags(p: Sim.Player, keys: Array) -> void:
 	var N := sim.w * sim.h
 	var placed := 0

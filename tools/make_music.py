@@ -13,7 +13,7 @@ The tunes are written out note by note below, in the old modes (Dorian, Mixolydi
 with chords under them; the harp plays the chords as broken arpeggios. A hall echo (a convolution
 with decaying stereo noise) puts the players in one room.
 
-Pieces: four calm ones played in turn in peacetime (with silence between, as in The Settlers), a war
+Pieces: four calm ones played in turn in peacetime (with silence between), a war
 theme for when your land is attacked, and short cues for a new age, victory and defeat.
 """
 import os, sys, subprocess, wave

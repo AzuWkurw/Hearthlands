@@ -1,6 +1,6 @@
 # Hearthlands
 
-A Settlers II style economy and conquest game for **Godot 4.3 or newer**. Build roads, run long
+An economy and conquest game for **Godot 4.3 or newer**. Build roads, run long
 production chains, keep four classes of people fed and content, and push your border out until
 every rival headquarters has fallen. Every map is random, and up to 8 AI rivals run the same
 economy you do.
@@ -10,7 +10,7 @@ economy you do.
 ## Download
 
 The ready-made Windows game is on the [Releases page](../../releases/latest): download the
-`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.70.0 build 75** (see
+`...-Windows.zip`, unzip it and run `Hearthlands.exe`. Current version: **v0.70.0 build 75.1** (see
 `CHANGELOG.md`). Every build is a release of its own, made by GitHub Actions
 (`.github/workflows/release.yml`) when a new version reaches `main`; older builds up to 50 are also
 on the [`downloads` branch](../../tree/downloads).
@@ -74,6 +74,7 @@ Done (builds 43 to 75):
 | 73 | Speed on the biggest maps (worst moments from 600 to under 200 ms); fixes: farm fields not drawn, scrap forge making free bars, realms stuck without tools or carriers; 15 more Bronze Age studies |
 | 74 | Speed for buildings and carriers in huge late games (a game second from about 150 to 124 ms of work on a 60-minute nine-realm save); fix: upgraded buildings missing from lists by kind |
 | 75 | More speed in huge late games: carriers' routes mended instead of searched again, battles a third cheaper, rivals' road-reach maps 3 to 4 times faster |
+| 75.1 | Wording: references to other games removed from the game, README and change log |
 
 Later: a story campaign through the ages, multiplayer, scripted scenarios, a chronicle at the end of a
 game, more animations, music for each age, and quality-of-life features (a production chain overlay,
@@ -213,7 +214,7 @@ Exporting needs Godot 4.3's export templates (in the editor: Editor > Manage Exp
   nobles pay three times the tax.
 - **Food.** Everyone eats. Apples, honey, fish, meat, bread, cheese, sausages and smoked fish fill people
   by different amounts. Mines also eat. Without food, production halves and peasants starve.
-- **Hills.** Heights shade the map; carriers are slower on steep roads, marked yellow to red as in The Settlers II.
+- **Hills.** Heights shade the map; carriers are slower on steep roads, marked yellow to red.
 - **Sandbox options.** Start with all research done, or play in creative mode (free, instant building, stores kept half full).
 - **A living town.** Close up, townsfolk walk the roads, chat at their doors and play; porters carry crates and sacks, ox carts show their load. Further out the game draws less detail and smaller textures, so it stays fast.
 - **Battles in the open.** Columns of realms at war that meet on the march stop and fight: volleys while they close in, then duels with no walls. The winners march on.
@@ -235,7 +236,7 @@ Exporting needs Godot 4.3's export templates (in the editor: Editor > Manage Exp
   their range. Paved roads are walked faster. A building with 6 goods waiting stops until they are collected.
   A spot that no new road could reach (closed in by other buildings, water or rocks) is refused, and the
   site markers leave it out.
-- **Road carriers (new-game option).** As in The Settlers: every stretch of road between two flags
+- **Road carriers (new-game option).** Every stretch of road between two flags
   (buildings, junctions, and at least every 6 tiles) has its own carrier, and goods are handed on at the
   flags. A carrier takes one load at a time (a donkey helps on a busy stretch), so on busy roads goods
   wait at the flags; more roads, and more ways out of the headquarters, move more. In a test game realms
@@ -413,7 +414,7 @@ Open **Settings** (top bar or F10). Everything there is remembered in `user://se
   limit** saves power.
 - **Ground details** (on by default): grass tufts, flowers, pebbles, reeds, shore foam and snow on high
   peaks. **Day and night** (off by default): a slow day, dark nights with lit windows; only the look changes.
-- **Raised ground** (on by default) draws hills standing up from the map, as in The Settlers II (2.5D).
+- **Raised ground** (on by default) draws hills standing up from the map (2.5D).
   Off gives the flat map of earlier builds.
 - **Language**: English or German (Deutsch) for the interface. Messages from the game itself (the event
   log and the building info) are still in English. Other languages: add `data/lang_<code>.json` (or put
@@ -934,7 +935,7 @@ playing with the standard set.
 
 ## Priorities in numbers
 
-Two windows, as in The Settlers II, where 1 comes first, 9 last and 5 is as usual:
+Two windows, where 1 comes first, 9 last and 5 is as usual:
 
 - **Transport priorities** (K, or Transport in the top bar): which goods the carriers take first.
   Goods waiting at workshops are picked up, workshops get what they use, and building sites get

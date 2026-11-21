@@ -157,7 +157,7 @@ const DEFAULT_OPTS := {
 	"research": 1.0,        # research speed
 	"build": 1.0,           # construction speed
 	"tools": true,          # new workers need their trade's tool
-	"road_carriers": false, # The Settlers style: one carrier for each stretch of road, goods handed on at flags
+	"road_carriers": false, # one carrier for each stretch of road, goods handed on at flags
 	"all_research": false,  # every realm starts with all research done (but the Industrial Revolution)
 	"creative": false,      # creative mode: you build for free and at once, and your stores never run low
 	"sea_start": false,     # you land from the sea: your headquarters is a harbour on the coast, with a ship
@@ -1191,7 +1191,7 @@ func site_check(d: Dictionary, x: int, y: int, runtime: bool) -> String:
 
 
 # ---------------------------------------------------------------- building sizes
-## As in The Settlers: small buildings (huts, guard posts) stand on one tile, medium ones on two (one
+## Small buildings (huts, guard posts) stand on one tile, medium ones on two (one
 ## behind the other), large ones (farms, castles, warehouses) on a plot three wide and two deep, on
 ## flat ground. Mines stand on one mountain tile. Between any two buildings' plots there is at least
 ## one free tile (roads may use it), so buildings never stand on top of each other.
@@ -1289,7 +1289,7 @@ func plot_check(size: String, x: int, y: int, pid: int) -> String:
 
 ## The largest size of building that has room at (x, y) for realm pid, ignoring what a particular
 ## building needs nearby (trees, water...) and research: "" (none), "small", "medium", "large" or "mine".
-## The map shows it as building-site markers, as in The Settlers.
+## The map shows it as building-site markers.
 func site_size(x: int, y: int, pid: int) -> String:
 	if not inb(x, y):
 		return ""

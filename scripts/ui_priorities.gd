@@ -1,6 +1,6 @@
 class_name UiPriorities
 extends RefCounted
-## Two windows of priorities set with numbers, as in The Settlers II: 1 comes first, 9 last, 5 is as
+## Two windows of priorities set with numbers: 1 comes first, 9 last, 5 is as
 ## usual.
 ##   Transport priorities (K): which goods the carriers take first: goods waiting at workshops are
 ##   picked up, workshops get what they use, and building sites get their materials, lower numbers
