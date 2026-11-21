@@ -59,7 +59,9 @@ func show() -> void:
 		st.custom_minimum_size = Vector2(560, 0)
 		box.add_child(st)
 		var goals: Array = ms.get("goals", [])
-		var gl := "\n".join(goals.map(func(g): return "  •  " + String(g.get("text", ""))))
+		var gl := "\n".join(goals.filter(func(g): return not g.get("hidden", false)).map(func(g): return "  •  " + tr(String(g.get("text", "")))))
+		if goals.any(func(g): return g.get("hidden", false)):
+			gl += "\n  •  " + tr("...and more, as the story unfolds")
 		var mins := int(ms.get("minutes", 0))
 		var info := "%s\n  %d rival%s, strength %d%s" % [gl, int(ms.get("foes", 1)), "s" if int(ms.get("foes", 1)) > 1 else "", int(ms.get("strength", 5)), (", within %d minutes" % mins) if mins > 0 else ""]
 		box.add_child(main._label(info, 13))

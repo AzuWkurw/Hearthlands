@@ -313,8 +313,9 @@ Exporting needs Godot 4.3's export templates (in the editor: Editor > Manage Exp
   The save list shows a small picture of each map.
   Saves are complete: loading continues the game exactly where it was, including rival plans and armies on the march.
   They live in `user://saves` next to the texture folder.
-- **Missions.** The Missions button on the new-game screen: four games with goals (build, grow, arm,
-  study, conquer) and a deadline. The third plays on a hand-made map. Goals show in the box on the left.
+- **Missions.** The Missions button on the new-game screen: seven games with goals (build, grow, arm,
+  study, conquer, hold out) and often a deadline; the last three (a siege to hold out, a broken alliance,
+  a Bronze Age race) use events. The third plays on a hand-made map. Goals show in the box on the left.
   More can be added in `data/missions.json` (or a mod's).
 - **Mission events.** A mission can script what happens in it: "when this happens, do that". Starts: a
   game minute (once or every few minutes), some minutes after another event, a realm reaching an age or
@@ -382,8 +383,12 @@ Exporting needs Godot 4.3's export templates (in the editor: Editor > Manage Exp
 - **Spreading fires.** A fire (a random event, or a catapult's stone) grows and jumps to wooden
   neighbours within 3 tiles, and burns buildings down. Working wells within 10 tiles send a person with
   a bucket each, a fire station within 14 sends three. Stone and brick buildings don't catch.
-- **Campaign.** Eight chapters on a map, each a mission with a story before and after; a chapter opens
-  when the one before is won and can carry veteran soldiers or goods over. Best time and score are kept.
+- **Campaign.** Eleven chapters on a map, from the Bronze Age to the railways, each a mission with a
+  story before and after and events along the way: bread for the first winter, bronze and tin, a war for
+  reaching the Iron Age first, trade over a river, landings on the Iron Coast, a great hall, the guild
+  towns and their cathedral, gunpowder against a walled rival, warships among the islands, steam and
+  rails, and the crown. Later chapters start in a later age (missions can set `"start_age"`). A chapter
+  opens when the one before is won and can carry veteran soldiers or goods over. Best time and score are kept.
 - **Achievements.** Fifteen goals across all your games (a town of 200, a bridge, ten trades, a colony,
   winning without attacking...), kept between games and listed on the new-game screen.
 - **Rivals' words.** Rivals warn you before they go to war, thank you for trades, and a much stronger

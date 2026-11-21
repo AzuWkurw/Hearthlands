@@ -16,7 +16,7 @@ func _init() -> void:
 	var ok := true
 	cu.show()
 	print("chapters ", cu.chapters.size(), ", open: ", range(cu.chapters.size()).filter(func(k): return cu.is_open(k)))
-	if cu.chapters.size() != 8 or cu.is_open(1): ok = false; print("FAIL: only chapter 1 should be open")
+	if cu.chapters.size() != 11 or cu.is_open(1): ok = false; print("FAIL: only chapter 1 should be open")
 	if out != "":
 		for i in 5: await process_frame
 		await RenderingServer.frame_post_draw

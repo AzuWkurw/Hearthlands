@@ -854,8 +854,9 @@ func new_game(p_seed: String, p_foes: int, p_strength: int, p_mix: bool, p_size 
 	if int(opts.get("start_age", 0)) >= 1:
 		# (not on the new-game screen: every game starts in the Bronze Age. Tests and scripts that need
 		# the Roman age's buildings at once start there, as games did before build 65.)
+		# (build 77) a mission can start in a later age: every study of the ages before it is known
 		for p in players:
-			learn_bronze_age(p)
+			learn_ages(p, clampi(int(opts.start_age), 1, GameData.ages.size() - 1))
 	if bool(opts.get("all_research", false)):
 		# every realm starts in the last age, with everything studied but the Industrial Revolution itself
 		for p in players:
@@ -1690,8 +1691,18 @@ static func soldier_plural(era: int) -> String:
 ## Every Bronze study and Iron working, known at once: realm p is in the Roman age, its buildings and
 ## soldiers Roman.
 func learn_bronze_age(p: Player) -> void:
+	learn_ages(p, 1)
+
+
+## Realm p knows every study of the ages before `upto` and the gate into it (and so is in that age).
+func learn_ages(p: Player, upto: int) -> void:
+	var gates := {}
+	for a in range(1, upto + 1):
+		gates[GameData.gate_of(a)] = true
 	for id in GameData.techs:
-		if int(GameData.techs[id].get("age", 0)) == 0 or id == GameData.gate_of(1):
+		if GameData.techs[id].get("final", false):
+			continue
+		if int(GameData.techs[id].get("age", 0)) < upto or gates.has(id):
 			p.techs[id] = true
 	_recompute_mods(p)
 	p.res_era = float(p.age)
@@ -2687,7 +2698,8 @@ static var log_checksums := false
 # A mission (data/missions.json) is a game with goals: {name, story, goals: [...], minutes (a deadline,
 # 0 for none), ...}. Each goal is {"kind": ..., ...}: "pop" (n people), "build" (ty, n ready buildings),
 # "soldiers" (n), "tech" (id studied), "land" (n tiles), "stock" (res, n in store), "defeat" (n rival
-# realms gone; 0 or missing: all of them). All goals done: won. The deadline passes first: lost.
+# realms gone; 0 or missing: all of them), and since build 77 "age" (n: the age reached), "ships" (n ships
+# and warships), "wonders" (n finished) and "hold" (hold out until minute n). All goals done: won. The deadline passes first: lost.
 var mission := {}
 var mission_done: Array = []      # one flag per goal; a goal once done stays done
 var script_fired: Dictionary = {}  # a mission's events (MissionScript) that fired: id -> [times, game time of the last]
@@ -2716,6 +2728,14 @@ func goal_progress(g: Dictionary) -> Array:
 			return [int(float(me.stock.get(String(g.get("res", "")), 0.0))), n]
 		"trades":
 			return [me.trades, n]
+		"age":
+			return [mini(me.age, n), n]
+		"ships":
+			return [me.ships + me.warships, n]
+		"wonders":
+			return [wonders_of(me).size(), n]
+		"hold":
+			return [mini(int(time / 60.0), n), n]
 		"defeat":
 			var gone := 0
 			for p in players:

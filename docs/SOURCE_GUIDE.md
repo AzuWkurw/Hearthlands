@@ -249,6 +249,9 @@ mission's peace. A goal with `"hidden": true` is not shown or counted until a `s
 go to the log and to `Sim.story`, which `ui_story.gd` shows in a window. Events use no randomness, so a
 game with events stays deterministic; `tools/script_test.gd` checks every kind, saving and loading, and
 that the shipped missions' events are well formed (`MissionScript.problems`).
+A mission's `opts.start_age` (1 to 5) starts every realm in that age with all earlier studies known
+(`Sim.learn_ages`); `tools/chapters_test.gd` starts every chapter and mission and plays five minutes of each
+(`-- only=b9 mins=100` plays one chapter for longer).
 
 ### 3.8 The rival AI (`sim_ai.gd`)
 

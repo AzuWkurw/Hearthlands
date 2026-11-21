@@ -55,7 +55,8 @@ const SIZES := [1, 3, 5, 9, 15]
 const FORDS := [["No fords", 100000], ["Fords often", 9], ["Fords now and then", 14], ["Few fords", 22]]
 const UNDO_MAX := 60
 const GOAL_KINDS := [["build", "Build"], ["pop", "People"], ["soldiers", "Soldiers"], ["stock", "Goods in store"],
-	["tech", "Study"], ["land", "Land"], ["trades", "Trades"], ["defeat", "Defeat rivals"]]
+	["tech", "Study"], ["land", "Land"], ["trades", "Trades"], ["defeat", "Defeat rivals"], ["age", "Reach an age"],
+	["ships", "Ships"], ["wonders", "Wonders"], ["hold", "Hold out (minutes)"]]
 
 var main: Main
 var win: Window
@@ -676,6 +677,11 @@ func _goal_params(kind: String) -> Array:
 			for id in GameData.techs:
 				out2.append([id, GameData.tech_name(id)])
 			return out2
+		"age":
+			var out3 := []
+			for k in range(1, GameData.ages.size()):
+				out3.append([k, tr("%s Age") % tr(String(GameData.ages[k]))])
+			return out3
 	return []
 
 
@@ -690,6 +696,10 @@ static func goal_text(g: Dictionary) -> String:
 		"land": return "Hold %d tiles of land" % n
 		"trades": return "Make %d trades" % n
 		"defeat": return "Defeat every rival" if n <= 0 else "Defeat %d rival realm%s" % [n, "" if n == 1 else "s"]
+		"age": return "Reach the %s Age" % String(GameData.ages[clampi(n, 0, GameData.ages.size() - 1)])
+		"ships": return "Have %d ships" % n
+		"wonders": return "Build %d wonder%s" % [n, "" if n == 1 else "s"]
+		"hold": return "Hold out for %d minutes" % n
 	return ""
 
 
@@ -791,7 +801,7 @@ func _mission_tab() -> void:
 		ar.add_child(po)
 	var ar2 := HBoxContainer.new()
 	body.add_child(ar2)
-	if kind != "tech":
+	if kind != "tech" and kind != "age":
 		ar2.add_child(main._label("How many" if kind != "defeat" else "Rivals (0: all)", 13, Main.DIM))
 		var ns := SpinBox.new()
 		ns.min_value = 0 if kind == "defeat" else 1; ns.max_value = 100000; ns.value = _goal_n
@@ -800,7 +810,9 @@ func _mission_tab() -> void:
 		ar2.add_child(ns)
 	ar2.add_child(main._button("Add the goal", func():
 		var gd := {"kind": kind, "n": _goal_n if kind != "tech" else 1}
-		if not params.is_empty():
+		if kind == "age":
+			gd["n"] = int(params[clampi(_goal_param, 0, params.size() - 1)][0])
+		elif not params.is_empty():
 			var key: String = {"build": "ty", "stock": "res", "tech": "id"}[kind]
 			gd[key] = String(params[clampi(_goal_param, 0, params.size() - 1)][0])
 		gd["text"] = goal_text(gd)
