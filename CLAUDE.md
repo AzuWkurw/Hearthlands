@@ -92,7 +92,7 @@ contentment are `Feature` subclasses (`scripts/features/feature.gd`), registered
 
 **Translations.** Interface text is English source strings; `data/lang_<code>.json` maps them to
 translations. Labels whose text is exactly a key are translated automatically; text with numbers goes
-through `tr("... %d ...")`. Run `python3 tools/extract_strings.py` to collect new strings.
+through `tr("... %d ..." % n)` (format inside `tr`). Polish is the one translation. Run `python3 tools/extract_strings.py` to collect new strings.
 
 ## Conventions
 

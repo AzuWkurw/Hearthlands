@@ -1,6 +1,6 @@
 ---
 name: hearthlands-localization
-description: Translate or check Hearthlands text in data/lang_*.json (Polish, German, new languages). Use when adding player-facing text, translating strings, fixing a wrong or missing translation, adding Polish plural forms, or reviewing a language file.
+description: Translate or check Hearthlands text in data/lang_*.json (Polish, or a new language). Use when adding player-facing text, translating strings, fixing a wrong or missing translation, adding Polish plural forms, or reviewing a language file.
 ---
 
 # Hearthlands localization
@@ -17,8 +17,9 @@ do not exist yet.
 ## Workflow
 
 1. Write new player-facing text in English in the scripts or data files, as usual.
-   - Text with numbers or names in it: build it from one template, `tr("%d %s left") % [n, name]`
-     or `"%s is finished." % name`, not by joining pieces. A template is one key; pieces are many keys
+   - Text with numbers or names in it: build it from one template, `tr("%d %s left" % [n, name])`
+     (format inside `tr`, so the inserted names are translated too) or `"%s is finished." % name`,
+     not by joining pieces. A template is one key; pieces are many keys
      that cannot be reordered in another language.
 2. Run `python3 tools/extract_strings.py`. It adds new keys with an empty value to every
    `data/lang_*.json`. An empty value shows English.
