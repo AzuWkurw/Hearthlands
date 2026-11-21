@@ -97,7 +97,7 @@ func guild_size(p: Sim.Player, b: Sim.Bld) -> int:
 	return n
 
 
-var _gt_src := -2          # SimLogistics._pb_sv of the realm lists the index below was made from
+var _gt_src := -2          # SimLogistics._pb_gen of the realm lists the index below was made from
 var _gt: Array = []        # per realm: trade -> 16-tile map cell -> its buildings in realm_blds
 
 func _trade_blds(p: Sim.Player, tr: String) -> Dictionary:
@@ -105,8 +105,8 @@ func _trade_blds(p: Sim.Player, tr: String) -> Dictionary:
 	var src: Array = sim.logistics._pb
 	# (the lists are made again every second, but hold the same buildings while no building came, went,
 	# changed hands or changed kind: then the index stays)
-	if int(sim.logistics._pb_sv) != _gt_src or _gt.size() != src.size():
-		_gt_src = int(sim.logistics._pb_sv)
+	if int(sim.logistics._pb_gen) != _gt_src or _gt.size() != src.size():
+		_gt_src = int(sim.logistics._pb_gen)
 		_gt = []
 		for lst: Array in src:
 			var d := {}
@@ -146,13 +146,13 @@ func staffing(p: Sim.Player) -> void:
 	# within each priority, building types with a lower number in the worker priorities first (ties: as
 	# they stood). (Build 78: sorted in one pass over the realm's buildings, which also counts the
 	# worn-out tools; the order is the same as before.)
-	var ordered: Array = []
 	var ranked := not p.work_rank.is_empty()
+	# (sites and the rest kept apart as they are sorted: two lists, each in that order)
+	var nb := 40 if ranked else 4
 	var bk := []
-	bk.resize(40 if ranked else 4)
+	bk.resize(nb * 2)
 	for g in bk.size():
 		bk[g] = []
-	var any_prio := false
 	var wr: Dictionary = p.work_rank
 	for b: Sim.Bld in mine:
 		if worn_check and b.worker > 0:
@@ -161,28 +161,25 @@ func staffing(p: Sim.Player) -> void:
 				var t := sim.tool_of(b)
 				if t != "":
 					p.tool_wait[t] = int(p.tool_wait.get(t, 0)) + 1
+		var st := b.state
+		var half := 0
+		if st == "ready":
+			half = nb
+		elif st != "build":
+			continue
 		var pr := b.prio
 		var g := 1
 		if pr != Sim.PRIO_NORMAL:
 			g = 0 if pr == Sim.PRIO_HIGH else (2 if pr == Sim.PRIO_LOW else (3 if pr == Sim.PRIO_PAUSED else 1))
-			if g != 1:
-				any_prio = true
 		if ranked:
-			(bk[g * 10 + clampi(int(wr.get(b.ty, 5)), 0, 9)] as Array).append(b)
+			(bk[half + g * 10 + clampi(int(wr.get(b.ty, 5)), 0, 9)] as Array).append(b)
 		else:
-			(bk[g] as Array).append(b)
-	if not ranked and not any_prio:
-		ordered = mine
-	else:
-		for row in bk:
-			ordered.append_array(row)
+			(bk[half + g] as Array).append(b)
 	var sites := []
 	var readies := []
-	for b: Sim.Bld in ordered:
-		if b.state == "build":
-			sites.append(b)
-		elif b.state == "ready":
-			readies.append(b)
+	for k in nb:
+		sites.append_array(bk[k])
+		readies.append_array(bk[nb + k])
 	for b: Sim.Bld in sites:
 		if b.state == "build":
 			b.staffed = b.prio != Sim.PRIO_PAUSED and ip > 0
@@ -200,6 +197,7 @@ func staffing(p: Sim.Player) -> void:
 		ip -= 1
 		spare = 1
 	var lim_n := {}
+	var full := 0
 	var limits: Dictionary = p.job_limit
 	var any_lim := not limits.is_empty()
 	var creative_p := sim.creative(p)
@@ -239,14 +237,13 @@ func staffing(p: Sim.Player) -> void:
 				b.worker = 2 if creative_p else 1
 		elif not b.staffed and b.worker != 0:
 			b.worker = 0
+		if b.staffed and wk == "peasant" and b.msg.begins_with("Stores are full"):
+			full += 1
 	p.used_peasant = p.peasant - ip - spare
 	p.used_artisan = p.artisan - ia
 	# (build 73) a peasant whose workshop waits because the stores are full of what it makes helps the
 	# carriers meanwhile: on a big realm the goods otherwise pile up while nobody carries them on
-	var full := 0
-	for b: Sim.Bld in readies:
-		if b.staffed and b.state == "ready" and String(b.def.get("worker", "")) == "peasant" and b.msg.begins_with("Stores are full"):
-			full += 1
+	# (counted in the loop above)
 	p.full_hands = full
 	p.used_scout = p.scout - p.scout_out - isc
 	_trim_specialists(p, "peasant", p.peasant - p.used_peasant - spare)

@@ -739,6 +739,9 @@ func _path_to_net_inner(sx: int, sy: int, pid: int, door := -1, doors: Array = [
 ## a store and stay there; goods needed are fetched from a store that has them.
 
 var _store_ver := 0
+## (build 78) Changes only when a building comes, goes, changes hands or changes kind (not when one is
+## finished): the lists that hold buildings by kind whatever their state are kept until it changes.
+var _set_ver := 0
 var _stores_at := -1
 var _stores := {}          # realm id -> its finished stores, by id
 
@@ -994,8 +997,8 @@ func _tools_coming(p: Sim.Player) -> Dictionary:
 		all[q.id] = {}
 	# (build 74) the toolsmiths are kept in a list until a building comes, goes or changes: on a big
 	# map going over every building for them took most of the time
-	if _tsm_at != _store_ver:
-		_tsm_at = _store_ver
+	if _tsm_at != _set_ver:
+		_tsm_at = _set_ver
 		_tsm = []
 		for b: Sim.Bld in sim.blds:
 			if b.def.has("makes_tools"):
@@ -1284,16 +1287,30 @@ func _chain_trip(p: Sim.Player, t: Sim.Trip, path: PackedInt32Array, forward: bo
 	return true
 
 
+var _pb_set := -1                  # (build 78) _set_ver when _pb was made: while it holds, so do the lists
+var _pb_gen := 0                   # counts the times _pb was made anew
+var _carriers_b: Array = []        # the buildings with carriers (mule stations, cart yards), in Sim.blds order
+
 func _rebuild_realm_lists() -> void:
 	_pb_sv = _store_ver
-	_pb = []
+	if _pb_set != _set_ver or _pb.size() != sim.players.size():
+		# (build 78) only when a building came, went or changed hands or kind: otherwise the lists are
+		# the same as they were (made once a second before, over every building)
+		_pb_set = _set_ver
+		_pb_gen += 1
+		_pb = []
+		_carriers_b = []
+		for p in sim.players:
+			_pb.append([])
+		for b in sim.blds:
+			_pb[b.p - 1].append(b)
+			if b.def.has("carriers"):
+				_carriers_b.append(b)
 	_stations = []
 	for p in sim.players:
-		_pb.append([])
 		_stations.append([])
-	for b in sim.blds:
-		_pb[b.p - 1].append(b)
-		if b.def.has("carriers") and b.state == "ready" and b.staffed and b.working:
+	for b: Sim.Bld in _carriers_b:
+		if b.state == "ready" and b.staffed and b.working:
 			_stations[b.p - 1].append(b)
 
 
@@ -1776,8 +1793,8 @@ var _inb_at := -1
 var _inb := {}             # realm id -> its buildings that use goods, by id
 
 func _input_blds(p: Sim.Player) -> Array:
-	if _inb_at != _store_ver:
-		_inb_at = _store_ver
+	if _inb_at != _set_ver:
+		_inb_at = _set_ver
 		_inb = {}
 		for b in sim.blds:
 			if not b.dead and b.def.has("in"):

@@ -1335,6 +1335,7 @@ func _capture(a: Sim.Attack, t: Sim.Bld, p: Sim.Player, op: Sim.Player) -> void:
 		plunder = t.inv.duplicate()
 		for k in plunder:
 			sim.logistics.store_add(t, op, k, -float(plunder[k]))
+	sim.logistics._set_ver += 1
 	t.p = p.id; t.garrison = 1; t.staffed = false; t.path = PackedInt32Array(); t.out_buf = {}
 	t.blunt = 0; t.archers = 0; t.archer_want = 0; t.sally = false
 	p.blunt = mini(p.blunt + a.blunt, p.reserve + a.n - 1)
