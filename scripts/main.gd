@@ -551,12 +551,9 @@ func _ready() -> void:
 	setup.visible = true
 	welcome_ui = UiWelcome.new(self)
 	add_child(welcome_ui)
-	var wst := settings.welcome_style
-	for a in OS.get_cmdline_user_args():
-		if a.begins_with("welcome="): wst = int(a.substr(8))
 	# (not when a test or screenshot script runs the game: it opens the screen itself if it wants it)
 	if settings.welcome and get_tree().current_scene == self:
-		welcome_ui.open(wst)
+		welcome_ui.open()
 	if GameData.errors.size() > 0:
 		_show_hint("Data problems: " + "; ".join(GameData.errors), 12.0)
 	_after_restart()

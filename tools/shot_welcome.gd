@@ -1,7 +1,6 @@
 extends SceneTree
-## The welcome screen in each of its looks (UiWelcome.STYLES), with a saved game to continue and, for
-## the first-steps look, also without one (a first start).
-##   xvfb-run -a -s "-screen 0 1920x1080x24" godot --rendering-driver opengl3 --script res://tools/shot_welcome.gd -- out=/dir
+## The welcome screen at startup: with a saved game to continue, and on a first start with no saves.
+##   xvfb-run -a -s "-screen 0 1920x1080x24" godot --rendering-driver opengl3 --script res://tools/shot_welcome.gd -- out=/dir [lang=pl]
 func _init() -> void:
 	var out := "user://"
 	var lang := "en"
@@ -22,17 +21,21 @@ func _init() -> void:
 	main._start("hearth", 3, 5, true)
 	main.setup.visible = true
 	main.paused = true
-	for st in UiWelcome.STYLES.size():
-		main.welcome_ui.open(st)
-		for i in 90: await process_frame
-		await RenderingServer.frame_post_draw
-		root.get_texture().get_image().save_png(out + "welcome_%d_%s.png" % [st + 1, lang])
+	main.welcome_ui.open()
+	for i in 90: await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png(out + "welcome_%s.png" % lang)
 	# a first start: no saves yet
-	DirAccess.remove_absolute(Main.SAVE_DIR + "/autosave.save")
-	main.welcome_ui.open(2)
+	main.welcome_ui.close()
+	for fn in DirAccess.get_files_at(Main.SAVE_DIR):
+		if fn.begins_with("autosave"): DirAccess.remove_absolute(Main.SAVE_DIR + "/" + fn)
+	main.welcome_ui.open()
 	for i in 30: await process_frame
 	await RenderingServer.frame_post_draw
-	root.get_texture().get_image().save_png(out + "welcome_3_first_%s.png" % lang)
+	root.get_texture().get_image().save_png(out + "welcome_first_%s.png" % lang)
+	# closing it brings the new-game screen back
+	main.welcome_ui.close()
+	print("ok closed: ", not main.welcome_ui.visible and main.setup.visible)
 	I18n.set_language("en")
 	print("WELCOME SHOTS: done")
 	quit()
