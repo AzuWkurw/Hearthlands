@@ -156,6 +156,7 @@ Exporting needs Godot 4.3's export templates (in the editor: Editor > Manage Exp
 | Blueprints | U or Blueprints: copy a group of buildings and roads, place it again with one click, sorted in categories |
 | Interface size | Ctrl and + or -, or Settings > Interface size (Auto fits big screens) |
 | Sea and supplies guide | Shift+H, or the button in a harbour's info and the attack window |
+| Handbook | F1 or Handbook: a page for every building, good, tech, age, law and game feature, with a search; ? in a building's info opens its page |
 | Notices | Important news with a place (attacks, ships sunk, starving soldiers) shows under the top bar for a while: click it to go there |
 | Production chain on the map | Map in the bottleneck finder, or Show on map in a good's chain window; Esc hides it |
 | Upgrade a military building | Select it: Upgrade to (a bigger one of the same size); soldiers stay inside |
@@ -466,6 +467,10 @@ Open **Settings** (top bar or F10). Everything there is remembered in `user://se
   its default key, *Default keys* puts them all back. The keys are kept in the settings file.
 - **Show the first-game guide**: a short checklist for the first minutes of a new game, ticked off as you
   go. Closing it turns this off.
+- **Short tips the first time something happens**: a small box the first time your realm enters a new
+  age, factory smoke reaches your homes or a worker wears out his tool, with a button to the handbook
+  page about it. Each tip shows once; *No more tips* in the box turns them off, and turning this on
+  again shows them all again.
 - Command line (also for the exported game): `--rendering-method gl_compatibility` or `forward_plus` or
   `mobile` starts with that renderer once; `--resolution 1280x720` sets the window size.
 
@@ -1281,6 +1286,12 @@ their soldiers carry guns, and fireworks for their festivals.
 - **Sea and supplies guide:** harbours, ships, expeditions, landings, warships, coastal forts, river
   boats and the food armies need far from home. It opens by itself the first time you have a harbour
   or a shipyard, and with Shift+H.
+- **Handbook (F1):** a page for every building, good, tech, mastery study, age, law and game feature,
+  written from the game's data files (so a mod's buildings and goods get pages too). What a building
+  costs, who works there, what it turns into what, the tech it needs, its smoke; what makes and uses
+  each good and who wants it at home; what a tech does, needs and leads to; each age's bonuses. Type to
+  search by name or by any word on a page; gold words are links, Back returns. The ? in a building's
+  info box opens its page.
 
 ## A living world
 
@@ -1396,7 +1407,8 @@ scripts/
   main.gd        UI, input and game loop
   ui_*.gd        one part each: info box, side panel, research, settings, demolish, saves, diplomacy,
                  targets, textures, event log, toolbar, first-game guide (and mission goals), problems,
-                 attack, production chain, map editor, missions, campaign, traffic map, undo
+                 attack, production chain, map editor, missions, campaign, traffic map, undo,
+                 handbook (pages written by handbook.gd from the data files), first-time tips
   achievements.gd, share_pack.gd   achievements; map and mission packs
   chronicle.gd   the story of a game for the end screen (notes kept in Player.chron); ui_chronicle.gd shows it
   i18n.gd        interface languages (data/lang_*.json)

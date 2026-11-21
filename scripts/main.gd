@@ -167,6 +167,8 @@ var log_ui := UiLog.new(self)      # the movable event log window (ui_log.gd)
 var chronicle_ui := UiChronicle.new(self)   # the story of the game, shown when it ends (ui_chronicle.gd)
 var notices_ui := UiNotices.new(self)   # notices you can click (ui_notices.gd)
 var sea_guide_ui := UiSeaGuide.new(self)  # the guide to ships, landings and supplies (ui_sea_guide.gd)
+var handbook_ui := UiHandbook.new(self)   # a page for every building, good, tech and law (ui_handbook.gd)
+var tips_ui := UiTips.new(self)           # tips the first time something happens (ui_tips.gd)
 var toolbar := UiToolbar.new(self) # the bottom toolbar: building menus, roads, demolish, scouts (ui_toolbar.gd)
 var sound: Sound                    # sound effects and ambience (sound.gd)
 var top_bar: HFlowContainer
@@ -807,6 +809,10 @@ func _build_ui() -> void:
 	trb.tooltip_text = "Colour your roads by how busy they are (F7)"
 	key_text(trb, "tooltip_text")
 	tb.add_child(trb)
+	var hbb := _button("Handbook", func(): handbook_ui.toggle())
+	hbb.tooltip_text = "Every building, good, tech, age and law, with a search (F1)"
+	key_text(hbb, "tooltip_text")
+	tb.add_child(hbb)
 	tb.add_child(_button("New game", func(): setup.visible = true; paused = true))
 
 	minimap = Minimap.new()
@@ -988,6 +994,9 @@ func _build_ui() -> void:
 	sel_head.tooltip_text = "Drag to move. Double-click to put it back in the corner."
 	sel_head.gui_input.connect(_sel_drag)
 	var sel_title := _label("INFO", 14, BRASS); sel_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL; sel_head.add_child(sel_title)
+	var hb_q := _button("?", _handbook_sel)
+	hb_q.tooltip_text = "This building's page in the handbook"
+	sel_head.add_child(hb_q)
 	sel_head.add_child(_button("Close", _clear_selection))
 	sel_label = _rich(); sel_label.custom_minimum_size = Vector2(390, 0); se.add_child(sel_label)
 	garrison_box = VBoxContainer.new(); garrison_box.add_theme_constant_override("separation", 4); se.add_child(garrison_box)
@@ -1003,6 +1012,8 @@ func _build_ui() -> void:
 	guide_ui.build()
 	notices_ui.build()
 	sea_guide_ui.build()
+	handbook_ui.build()
+	tips_ui.build()
 	editor_ui.build()
 	missions_ui.build()
 	campaign_ui.build()
@@ -1942,6 +1953,17 @@ func _jump_idle() -> void:
 	_show_hint(keys.keyed("%d of %d: %s (I for the next)", ["idle"]) % [(_idle_i - 1) % list.size() + 1, list.size(), String(e[1]) if String(e[1]).contains(":") else String(b.def.name) + ": " + String(e[1])], 3.0)
 
 
+## The ? in the info box: the selected building's (or good's) page in the handbook.
+func _handbook_sel() -> void:
+	var b: Sim.Bld = sim.by_id.get(view.sel_id)
+	if b != null and not b.dead:
+		handbook_ui.open("bld:" + b.ty)
+	elif sel_res != "":
+		handbook_ui.open("res:" + sel_res)
+	else:
+		handbook_ui.open()
+
+
 func _show_achievements() -> void:
 	var w := AcceptDialog.new()
 	w.title = "Achievements"
@@ -2118,6 +2140,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 		"sea_guide":
 			if not menu: sea_guide_ui.open()
+			return
+		"handbook":
+			handbook_ui.toggle()
 			return
 		"bottlenecks":
 			if not menu and not ed: neck_ui.toggle()
@@ -2429,6 +2454,7 @@ func _refresh_all() -> void:
 	guide_ui.refresh()
 	notices_ui.tick()
 	sea_guide_ui.check()
+	tips_ui.check()
 	problems_ui.refresh()
 	traffic_ui.update()
 	_check_watch()
