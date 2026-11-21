@@ -3246,7 +3246,7 @@ func ai_think(p: Player) -> void:
 func ai_attack(p: Player) -> bool:
 	return ai.ai_attack(p)
 
-func find_path(sx: int, sy: int, gx: int, gy: int, pid: int, ice := false) -> PackedInt32Array:
+func find_path(sx: int, sy: int, gx: int, gy: int, pid: int, ice := true) -> PackedInt32Array:
 	return logistics.find_path(sx, sy, gx, gy, pid, ice)
 
 func vein_left(i: int) -> int:
@@ -3255,8 +3255,8 @@ func vein_left(i: int) -> int:
 func take_ore(i: int, kind: int, keep := false) -> bool:
 	return logistics.take_ore(i, kind, keep)
 
-func lay_road(path: PackedInt32Array, pid: int) -> void:
-	logistics.lay_road(path, pid)
+func lay_road(path: PackedInt32Array, pid: int, ice := true) -> void:
+	logistics.lay_road(path, pid, ice)
 
 func _territory_nets(before: PackedByteArray) -> void:
 	logistics._territory_nets(before)

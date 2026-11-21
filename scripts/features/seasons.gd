@@ -267,7 +267,7 @@ func _ice_second() -> void:
 		ice_warned = false
 		if _freeze_n > 0:
 			sim.ice = _freeze.duplicate()
-			sim.emit_log("The northern rivers have frozen hard: soldiers can march over the ice, and roads can cross it without a bridge (ice roads melt in spring).", Color("9fd0e8"))
+			sim.emit_log("The northern rivers have frozen hard: soldiers can march over the ice, and roads cross it without a bridge (ice roads melt in spring: keep planks for bridges).", Color("9fd0e8"))
 	elif ice_on and not now:
 		ice_on = false
 		var mask := sim.ice
@@ -275,7 +275,10 @@ func _ice_second() -> void:
 		if not mask.is_empty():
 			sim.military.ice_breaks(mask)
 			var melted := sim.logistics.melt_ice_roads(mask)
-			if melted > 0:
+			if sim.logistics.thaw_cut > 0:
+				sim.emit_log("The river ice breaks up: your ice roads have melted, and %d buildings are cut off from the stores. Join them up again with roads and bridges." % sim.logistics.thaw_cut, Color("e0b060"))
+				sim.logistics.thaw_cut = 0
+			elif melted > 0:
 				sim.emit_log("The river ice breaks up: %d tiles of your ice roads have melted away." % melted, Color("9fd0e8"))
 			else:
 				sim.emit_log("The river ice breaks up.", Color("9fd0e8"))

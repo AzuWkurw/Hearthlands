@@ -35,6 +35,8 @@ func _river(sim: Sim, dy: int) -> int:
 	sim.map_biome.fill(se.TAIGA + 1)
 	se._make_biomes()
 	se._make_freeze()
+	# the heights follow the land (as a loaded game works them out again)
+	sim.height = WorldGen.heights(sim.seed_str, sim.ter, sim.w, sim.h)
 	return ry
 
 
@@ -108,6 +110,14 @@ func _init() -> void:
 	_check(why == "" and ice_road == 3, "a road over the ice is an ice road (%s, %d tiles)" % [why, ice_road])
 	_check(absf(float(me.stock.get("planks", 0.0)) - planks) < 0.01, "an ice road takes no planks")
 	_check(sim.road[g0] == 1, "the ice road reaches the far bank")
+	# a building on the far bank: its own road crosses the ice too (everyone lays ice roads)
+	var wb := sim.place("house", me.hq.x - 2, ry + 5, me)
+	var far: Sim.Bld = sim.bld_at(me.hq.x - 2, ry + 5)
+	_check(wb == "" and far != null, "a house is put down on the far bank ('%s')" % wb)
+	var far_ice := 0
+	for i in sim.w * sim.h:
+		if sim.pave[i] == 2: far_ice += 1
+	_check(far != null and sim.connected(far) and far_ice >= ice_road, "it joins the stores over the ice (%d ice road tiles in all)" % far_ice)
 
 	# an attack over the ice, caught on it by the thaw
 	var r := sim.military.launch_attack(a, d, 6)
@@ -158,12 +168,26 @@ func _init() -> void:
 	var drowned := sim.logs.any(func(l): return String(l[1] if l is Array else l).contains("drowned"))
 	_check(drowned, "the drowning is told in the log")
 	_check(sim.military.land_path(a.x, a.y, d.x, d.y).is_empty(), "no way over the river once it thaws")
+	var cut := sim.logs.any(func(l): return String(l[1] if l is Array else l).contains("cut off from the stores"))
+	_check(cut and far != null and not sim.connected(far), "the house is cut off at the thaw, and you are told")
+	# a rival in the same place joins it up again with a bridge
+	var pl0 := float(me.stock.get("planks", 0.0))
+	for z: Sim in [sim, sim2]:
+		z.human().ai = true
+		z.logistics._after_thaw(z.human())
+		z.human().ai = false
+	_check(far != null and sim.connected(far) and float(me.stock.get("planks", 0.0)) < pl0, "a rival bridges the river to its cut-off building")
+	_check(sim.checksum() == sim2.checksum(), "the same in the loaded game")
+	if sim.checksum() != sim2.checksum():
+		_diff(sim.to_save(), sim2.to_save(), "")
 	_check(sim.checksum() == sim2.checksum(), "the loaded game went through the thaw the same")
 	if sim.checksum() != sim2.checksum():
 		_diff(sim.to_save(), sim2.to_save(), "")
 	for k in 600:
 		sim.tick(Sim.TICK); sim2.tick(Sim.TICK)
 	_check(sim.checksum() == sim2.checksum(), "and a minute after it")
+	if sim.checksum() != sim2.checksum():
+		_diff(sim.to_save(), sim2.to_save(), "")
 
 	# a rival does not cross ice that breaks up before it is over, and calls back a column on it
 	var sim3 := Sim.new()

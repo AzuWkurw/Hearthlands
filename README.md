@@ -421,11 +421,13 @@ Exporting needs Godot 4.3's export templates (in the editor: Editor > Manage Exp
 - **Snow on the roads.** In winter, where it is cold, carriers walk up to a quarter slower on unpaved
   roads.
 - **River ice.** From a minute into winter until the first day of spring the rivers, lake shores and
-  bays of the northern taiga freeze hard. Soldiers march over the ice, and a road laid over it is an
-  ice road: no planks, any way it turns. At the thaw the ice roads melt away, columns whose way crossed
-  the ice look for another, and half of any soldiers still on the ice drown (you are warned 25 seconds
-  before). Rivals strike at targets the ice brings in reach, keep an extra soldier home where an enemy
-  could walk over the ice, and stay off ice that will break before they are across.
+  bays of the northern taiga freeze hard. Soldiers march over the ice, and any road laid over it (by
+  hand, a new building's own road, or a rival's) is an ice road: no planks, any way it turns. At the
+  thaw the ice roads melt away (you are told which buildings are cut off; rivals bridge theirs again),
+  columns whose way crossed the ice look for another, and half of any soldiers still on the ice drown
+  (you are warned 25 seconds before). Rivals strike at targets the ice brings in reach, keep an extra
+  soldier home where an enemy could walk over the ice, and stay off ice that will break before they
+  are across.
 - **Sharing maps and missions.** The map editor's Export to share, and Export my missions / Import a
   shared pack in the Missions window, write and read .hlpack files with maps and missions.
 - **Boundary stones** (Military group). Claim free land 4 tiles around without any soldier, for 3 stone and
