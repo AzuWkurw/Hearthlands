@@ -92,7 +92,12 @@ contentment are `Feature` subclasses (`scripts/features/feature.gd`), registered
 
 **Translations.** Interface text is English source strings; `data/lang_<code>.json` maps them to
 translations. Labels whose text is exactly a key are translated automatically; text with numbers goes
-through `tr("... %d ..." % n)` (format inside `tr`). Polish is the one translation. Run `python3 tools/extract_strings.py` to collect new strings.
+through `tr("... %d ..." % n)` (format inside `tr`). Polish is the one translation, chosen on the new-game
+screen or in Settings. The simulation, event log and saves always stay English (game logic matches on
+those messages); text is translated only when shown, by `I18n.Table` in `scripts/i18n.gd`, which also
+matches `%s`/`%d` keys as templates and picks Polish plural forms from `"a|b|c|d"` values. Run
+`python3 tools/extract_strings.py` (`--missing` lists untranslated text) to collect new strings;
+`check_data.py` checks placeholders and plural forms, and `lang_test` covers the switch.
 
 ## Conventions
 
