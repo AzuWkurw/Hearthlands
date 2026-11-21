@@ -418,6 +418,7 @@ to `Bld`/`Player` (saved automatically) with a default that works for old saves.
 | missions | `Sim._mission_check`, `goal_progress`, `data/missions.json`, `ui_missions.gd` |
 | maps and the editor | `WorldGen.load_map`, `save_map`, `from_map`, `ui_editor.gd` |
 | statistics and border replay | `features/statistics.gd` |
+| the end-of-game chronicle | `chronicle.gd` (`Chronicle.note`, `story`), `ui_chronicle.gd`, notes in `Player.chron` |
 | trade by cart, standing offers, rivals' words | `Diplomacy.send_cart`, `cart_arrival`, `standing_tick`, `say`, `_warn_first` |
 | bridges | `SimLogistics.bridge_landing`, `bridge_step`, `bridge_cost_ok` |
 | taverns, chapels, contentment | `features/contentment.gd` |

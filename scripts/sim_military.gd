@@ -882,6 +882,7 @@ func _attack_tick(dt: float) -> void:
 		_arrows(a, p, t, 0.0)
 		if a.n <= 0:
 			sim.attacks.remove_at(k)
+			Chronicle.note(sim, sim.players[t.p - 1], "repelled", {"o": a.p})
 			if a.p == 1 or t.p == 1:
 				sim.emit_log("The attack on %s was beaten back." % String(t.def.name), Color("86ad5c") if t.p == 1 else Color("e08a6a"), Vector2i(t.x, t.y))
 			continue
@@ -951,11 +952,13 @@ func _attack_tick(dt: float) -> void:
 			# a rival sees the attack going badly and calls the rest back
 			_retreat(a, p)
 			sim.attacks.remove_at(k)
+			Chronicle.note(sim, sim.players[t.p - 1], "repelled", {"o": a.p})
 			if t.p == 1:
 				sim.emit_log("%s's attack on your %s falls back." % [p.name, String(t.def.name)], Color("86ad5c"), Vector2i(t.x, t.y))
 			continue
 		if a.n <= 0:
 			sim.attacks.remove_at(k)
+			Chronicle.note(sim, sim.players[t.p - 1], "repelled", {"o": a.p})
 			if a.p == 1 or t.p == 1:
 				sim.emit_log("The attack on %s was beaten back." % String(t.def.name), Color("86ad5c") if t.p == 1 else Color("e08a6a"), Vector2i(t.x, t.y))
 			continue
@@ -1206,6 +1209,7 @@ func _fall(a: Sim.Attack, p: Sim.Player, k: int) -> void:
 func _field_end(won: Sim.Attack, lost: Sim.Attack) -> void:
 	won.field = 0
 	lost.field = 0
+	Chronicle.note(sim, sim.players[won.p - 1], "field_won", {"o": lost.p})
 	if won.p == 1 or lost.p == 1:
 		var t: Sim.Bld = sim.by_id.get(won.tgt)
 		var where := String(t.def.name).to_lower() if t != null else "their target"
@@ -1344,6 +1348,7 @@ func _capture(a: Sim.Attack, t: Sim.Bld, p: Sim.Player, op: Sim.Player) -> void:
 	Sim.mix_add(sim.rmix_of(p), a.amix)
 	p.reserve += rest
 	p.res_era = Sim.mix_avg(p.rmix)
+	Chronicle.note(sim, p, "capture", {"o": op.id, "b": t.ty})
 	if sim.spectating():
 		sim.emit_log("%s captured a %s from %s." % [p.name, String(t.def.name), op.name], Color("d8aa4a"), Vector2i(t.x, t.y))
 	elif p.id == 1 or op.id == 1:
@@ -1353,6 +1358,7 @@ func _capture(a: Sim.Attack, t: Sim.Bld, p: Sim.Player, op: Sim.Player) -> void:
 
 func eliminate(op: Sim.Player, by: Sim.Player) -> void:
 	op.alive = false
+	Chronicle.note(sim, op, "fall", {"by": by.id})
 	var you := op.id == 1 and not sim.spectating()
 	sim.emit_log("%s %s been defeated by %s!" % [op.name, "have" if you else "has", by.name], Color("e0603a") if you else Color("d8aa4a"))
 	for b in sim.blds.duplicate():

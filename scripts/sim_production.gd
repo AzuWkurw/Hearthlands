@@ -479,6 +479,8 @@ func _finish_site(b: Sim.Bld, p: Sim.Player) -> void:
 		b.state = "ready"; b.prog = 0.0; b.msg = ""
 		sim._after_building_change(b)
 		sim.building_done.emit(b.id)
+		if b.town != "" and b.ty != "hq":
+			Chronicle.note(sim, p, "town", {"name": b.town, "b": b.ty})
 		if sim.is_store(b):
 			sim._recount_stores(p)
 		if b.def.has("garrison"):
@@ -622,6 +624,7 @@ func work_progress(b: Sim.Bld) -> float:
 ## every wonder wins (when the research victory, the peaceful way to win, is on).
 func _wonder_done(b: Sim.Bld, p: Sim.Player) -> void:
 	sim._recompute_mods(p)
+	Chronicle.note(sim, p, "wonder", {"b": b.ty})
 	var n := sim.wonders_of(p).size()
 	var all := Sim.wonder_count()
 	if p.ai:

@@ -6,6 +6,7 @@ extends Control
 var series: Array = []
 var x_label := "minutes ago"
 var unit := ""
+var x_from := -1   # when 0 or more: the bottom shows game minutes counted from this one, not "minutes ago"
 
 
 func _ready() -> void:
@@ -43,7 +44,8 @@ func _draw() -> void:
 	for k in 5:
 		var x := area.position.x + area.size.x * k / 4.0
 		var ago := roundi((n - 1) * (1.0 - k / 4.0))
-		draw_string(font, Vector2(x - 20, size.y - 4), "now" if ago == 0 else str(ago), HORIZONTAL_ALIGNMENT_CENTER, 40, fs, Color(0.7, 0.7, 0.6))
+		var lbl := ("now" if ago == 0 else str(ago)) if x_from < 0 else str(x_from + n - ago)
+		draw_string(font, Vector2(x - 20, size.y - 4), lbl, HORIZONTAL_ALIGNMENT_CENTER, 40, fs, Color(0.7, 0.7, 0.6))
 	for s in series:
 		var vals: Array = s.values
 		var pts := PackedVector2Array()

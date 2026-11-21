@@ -48,6 +48,7 @@ func ignite(b: Sim.Bld) -> bool:
 	if b == null or burning.has(b.id) or not flammable(b):
 		return false
 	burning[b.id] = {"heat": 0.3, "dmg": 0.0, "t": sim.time}
+	Chronicle.fire(sim, sim.players[b.p - 1])
 	if b.p == 1:
 		sim.emit_log("Fire in your %s! Wells and fire stations nearby send people with buckets." % String(b.def.name).to_lower(), Color("e0603a"), Vector2i(b.x, b.y))
 	return true
@@ -91,6 +92,7 @@ func on_second() -> void:
 		if float(f.dmg) >= 1.0:
 			burning.erase(bid)
 			lost[b.p] = int(lost.get(b.p, 0)) + 1
+			Chronicle.burned(sim, sim.players[b.p - 1])
 			var mil: bool = sim.is_mil(b) or bool(b.def.get("claim_only", false))
 			sim.destroy(b, "burned down.")
 			if mil:

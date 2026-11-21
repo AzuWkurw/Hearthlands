@@ -306,6 +306,7 @@ class Player:
 	var color := Color.WHITE
 	var ai := false
 	var alive := true
+	var chron: Array = []      # (build 77) the realm's history for the chronicle: see chronicle.gd
 	var stock: Dictionary = {}
 	var goal_i := 0          # the sandbox goal being worked on (build 63; SandboxGoals.LIST)
 	var routes: Array = []   # standing orders at the market (build 61): see SimMarket.run_routes
@@ -2875,6 +2876,8 @@ func _player_second_work(p: Player) -> void:
 	while p.hunger >= 1.0:
 		var v := take_food(p)
 		if v <= 0.0:
+			if p.starve == 0:
+				Chronicle.famine(self, p)
 			p.starve = mini(30, p.starve + 10)
 			p.hunger -= 1.0
 		else:
@@ -2887,6 +2890,7 @@ func _player_second_work(p: Player) -> void:
 			if not p.ai: emit_log("Hunger sends an artisan back to the fields.", Color("e08a6a"))
 		if p.die_t >= 12 and p.peasant > 4:
 			p.peasant -= 1; p.die_t = 0
+			Chronicle.famine(self, p, 1)
 			if not p.ai: emit_log("A peasant starved.", Color("e08a6a"))
 	else:
 		p.die_t = 0

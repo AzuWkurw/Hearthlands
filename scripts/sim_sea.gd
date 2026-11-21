@@ -241,6 +241,7 @@ func ship_arrival(t: Sim.Trip, p: Sim.Player) -> void:
 			sim.recompute_territory()
 			sim.net_dirty(p.id)
 			sim._mil_dirty = true
+			Chronicle.note(sim, p, "town", {"name": b.town, "b": b.ty, "sea": true})
 			if not p.ai:
 				sim.emit_log("The expedition founds a colony across the water.", Color("86ad5c"), Vector2i(x, y))
 		else:
