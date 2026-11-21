@@ -340,6 +340,10 @@ usually just data edits. After changing buildings, goods or techs, run `tools/re
   ground from baked chunks, site markers, buildings sorted back to front with townsfolk between them,
   entrance flags, carriers and walkers, soldiers and battles, the placement ghost, selection rings.
   It turns mouse input into tile clicks for `main`.
+- **`map_anim.gd`** (`MapView.anim`) draws the longer animations: building sites rising in stages
+  (pegs, footing, timber frame, walls inside scaffolding, a hoist on big sites), sieges at the walls
+  (defenders on the battlements, a ladder with climbers, a ram at the gate) and cargo ships lying at a
+  jetty while dockers load or unload them. Pictures only: it reads the sim and never changes it.
 - **`map_chunks.gd`** bakes the parts of the map that rarely change (terrain with blended edges,
   relief shading, roads with slope marks, trees and rocks, territory borders) into 16×16-tile images,
   re-baking only chunks whose tiles changed (`sim.changed_tiles`). Far out it uses a lower-resolution
