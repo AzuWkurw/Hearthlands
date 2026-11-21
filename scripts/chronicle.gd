@@ -362,6 +362,11 @@ func _ending(sim: Sim, win: bool, notes: Array) -> PackedStringArray:
 		var gone := "" if q.alive else " " + tr("(fallen)")
 		rows.append("[cell]%s%s  [/cell][cell]%s  [/cell][cell]%d  [/cell][cell]%d  [/cell][cell]%d[/cell]" % [_realm(sim, q.id), gone, _age(q.age), sim.pop_total(q) if q.alive else 0, sim.owned(q.id)[0].size() if q.alive else 0, sim.wonders_of(q).size() if q.alive else 0])
 	lines.append("\n" + "".join(rows) + "[/table]")
+	# the final score (score.gd), not for a spectator game
+	var sc := Score.compute(sim, win)
+	if bool(sc.ranked):
+		var sl := Score.lines(sc)
+		lines.append("\n[font_size=18][color=#d8aa4a]%s[/color][/font_size]\n%s" % [sl[0], sl[1]])
 	return lines
 
 

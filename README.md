@@ -192,6 +192,8 @@ Exporting needs Godot 4.3's export templates (in the editor: Editor > Manage Exp
 | Settings | Settings button or F10: renderer (OpenGL or Vulkan), display mode, resolution, interface size, VSync, frame-rate limit, animations, sound and volumes (music, effects, ambience), game features |
 | Production statistics | F2, or the Statistics button: goods made and used per minute, every realm's growth and a table of where you stand, and Borders: everyone's land minute by minute, to play back (land you have not seen stays dark until the game is over) |
 | Chronicle | When a game ends, Read the chronicle on the end screen: the story of your realm age by age (towns founded, ages reached, wonders, buildings taken and lost, attacks beaten back, fires, famines, realms that fell), how it ended and the realm at its height, then every realm's people and land over the whole game, with the border replay and the realm graphs a click away |
+| Score and high scores | Every finished game gets a score on the end screen and at the end of the chronicle: land and people at the realm's height, wonders raised, and a bonus for a fast victory, times a difficulty multiplier (1.0 for the Normal preset with three rivals of strength 5). The best ten for each map seed (or mission) are kept on your computer: High scores on the new-game screen, and the best score on the seed you typed shows under the seed |
+| Map of the day | On the new-game screen: a map made from today's date ("day 2026-11-21"), with the same rivals and settings for everyone who plays it that day, on the Normal preset. Its scores have their own list |
 | Event log | E, or the Events button. Drag its title to move it and its edges to resize it. Go on an event moves the camera to where it happened |
 | Climate | F4, or the Climate button: seasons, biomes, weather and their effects |
 | Laws | F8, or the Laws button: taxes, food rations, conscription, the working day and road tolls, what each does to every class, and the rivals' laws |
@@ -1399,6 +1401,7 @@ scripts/
                  attack, production chain, map editor, missions, campaign, traffic map, undo
   achievements.gd, share_pack.gd   achievements; map and mission packs
   chronicle.gd   the story of a game for the end screen (notes kept in Player.chron); ui_chronicle.gd shows it
+  score.gd       the final score, the high-score lists (user://scores.json) and the map of the day
   i18n.gd        interface languages (data/lang_*.json)
   line_chart.gd  the chart in the statistics window
   map_view.gd    world renderer
