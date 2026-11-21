@@ -34,6 +34,7 @@ const ANIMALS := {"sheep_farm": "unit_sheep", "pig_farm": "unit_pig"}
 var sim: Sim
 var minimap: Minimap
 var chunks := MapChunks.new()
+var anim := MapAnim.new(self)    # building sites rising, sieges at the walls, ships at the quays
 var cam := Vector2(40, 40)       # camera centre in tiles
 var zoom := 32.0                 # screen pixels per tile
 var place_type := ""             # a building id, or a tool: "@road", "@pave", "@unroad", "@work"
@@ -683,7 +684,9 @@ func trip_pos(t: Sim.Trip) -> Vector2:
 		var c := int(lp.y)
 		return Vector2(a % sim.w, a / sim.w).lerp(Vector2(c % sim.w, c / sim.w), absf(lp.z)) + Vector2(0.5, 0.75)
 	var prog := 0.0
-	if not t.delivered:
+	if t.kind == "ship" and not t.delivered:
+		prog = anim.ship_prog(t)
+	elif not t.delivered:
 		prog = clampf((sim.time - t.t0) / maxf(0.01, t.t1 - t.t0), 0.0, 0.999)
 	else:
 		prog = 1.0 - clampf((sim.time - t.t1) / maxf(0.01, t.t2 - t.t1), 0.0, 1.0)
@@ -1258,7 +1261,10 @@ func _draw() -> void:
 		if mini(ax0, ax1) - slack > vx1 or maxi(ax0, ax1) + slack < vx0 or mini(ay0, ay1) - slack > vy1 or maxi(ay0, ay1) + slack < vy0:
 			continue
 		var prog := 0.0
-		if not t.delivered:
+		if t.kind == "ship" and not t.delivered:
+			# (a cargo ship waits at the quays while it loads and unloads, see MapAnim.docked)
+			prog = anim.ship_prog(t)
+		elif not t.delivered:
 			prog = clampf((sim.time - t.t0) / maxf(0.01, t.t1 - t.t0), 0.0, 0.999)
 		else:
 			prog = 1.0 - clampf((sim.time - t.t1) / maxf(0.01, t.t2 - t.t1), 0.0, 1.0)
@@ -1319,7 +1325,15 @@ func _draw() -> void:
 			_person(fid, pos, step % (8 if Tex.frames(fid) >= 10 else 4), dx < 0, pc.lightened(0.25), sim.players[t.p - 1].age)
 			continue
 		if t.kind == "ship":
-			_draw_ship(pos, dx < 0, pc, t.t0, t.res if t.res != "@expedition" else "", false)
+			var dock: Array = anim.docked(t)
+			if dock.is_empty():
+				_draw_ship(pos, dx < 0, pc, t.t0, t.res if t.res != "@expedition" else "", false)
+			else:
+				_draw_ship(pos, dx < 0, pc, t.t0, "", false, true)
+				if z >= ANIM_ZOOM:
+					_batching = false
+					anim.dock_work(t, pos, dock, pc)
+					_batching = true
 			continue
 		if t.kind == "boat":
 			_draw_boat(pos, dx < 0, pc, t.t0, t.res if not t.delivered else "")
@@ -1417,6 +1431,9 @@ func _draw() -> void:
 				ndef = sim.military.own_def(sim.military._defending(tgt))
 				_track_losses(-tgt.id, ndef, at + Vector2(-0.3 * sgn, 0), did, dcol, not left)
 			var pairs := clampi(mini(a.n, maxi(1, ndef)), 1, 3)
+			if tgt != null:
+				# the rest of the siege: defenders on the walls, ladders, a ram at the gate
+				anim.siege(a, tgt, at, left, ndef, pairs, did, dcol, aid, col)
 			for k in pairs:
 				var row := Vector2(0.08 * k, (k - (pairs - 1) / 2.0) * 0.32)
 				var ph := fmod(tt + k * 0.37, 2.0)
@@ -2384,13 +2401,18 @@ func _star(c: Vector2, r: float, col: Color) -> void:
 	_cv.draw_polyline(pts, Color(0.25, 0.15, 0.05, 0.8), 0.02)
 
 
-func _draw_ship(pos: Vector2, left: bool, pc: Color, seed: float, res: String, war: bool) -> void:
+## furled: at a quay or moored, its sail rolled up on the yard.
+func _draw_ship(pos: Vector2, left: bool, pc: Color, seed: float, res: String, war: bool, furled := false) -> void:
 	var fl := -1.0 if left else 1.0
 	var bob := 0.03 * sin(sim.time * 3.0 + seed)
 	var hp := pos + Vector2(0, -0.2 + bob)
 	_cv.draw_colored_polygon(PackedVector2Array([hp + 1.6 * Vector2(-0.45 * fl, -0.1), hp + 1.6 * Vector2(0.5 * fl, -0.1), hp + 1.6 * Vector2(0.3 * fl, 0.12), hp + 1.6 * Vector2(-0.35 * fl, 0.12)]), Color("5a3a22") if war else Color("6b4a2a"))
 	_cv.draw_line(hp + 1.6 * Vector2(0, -0.1), hp + 1.6 * Vector2(0, -0.75), Color("3a2a18"), 0.07)
-	_cv.draw_colored_polygon(PackedVector2Array([hp + 1.6 * Vector2(0.03 * fl, -0.72), hp + 1.6 * Vector2(0.34 * fl, -0.2), hp + 1.6 * Vector2(0.03 * fl, -0.2)]), pc.lightened(0.55) if war else Color("f2efe4"))
+	if furled:
+		_cv.draw_line(hp + 1.6 * Vector2(0.0, -0.66), hp + 1.6 * Vector2(0.3 * fl, -0.62), Color("3a2a18"), 0.04)
+		_cv.draw_line(hp + 1.6 * Vector2(0.02 * fl, -0.645), hp + 1.6 * Vector2(0.28 * fl, -0.61), pc.lightened(0.55) if war else Color("e6e0d0"), 0.09)
+	else:
+		_cv.draw_colored_polygon(PackedVector2Array([hp + 1.6 * Vector2(0.03 * fl, -0.72), hp + 1.6 * Vector2(0.34 * fl, -0.2), hp + 1.6 * Vector2(0.03 * fl, -0.2)]), pc.lightened(0.55) if war else Color("f2efe4"))
 	_cv.draw_rect(Rect2(hp + 1.6 * Vector2(-0.02, -0.82), Vector2(0.16 * fl, 0.08)).abs(), Color("c03020") if war else pc)
 	if war:
 		for k in 3:
@@ -2661,33 +2683,13 @@ func _draw_building(b: Sim.Bld, labels: Array, detail: bool, part := 0) -> void:
 	var st := part != 2
 	var lv := part != 1
 	if b.state == "build":
-		# the building rises from the ground as work progresses, inside a scaffold
+		# the site rises in stages: pegged out, footing, timber frame, walls inside scaffolding, roof
+		# (MapAnim.site_still), with the builder at work at the height the walls have reached
 		var p := clampf(b.prog, 0.0, 1.0)
 		if st:
-			_cv.draw_texture_rect(tex, rect, false, Color(1, 1, 1, 0.22))
-			var th := float(tex.get_height())
-			_cv.draw_texture_rect_region(tex, Rect2(rect.position.x, rect.end.y - rect.size.y * p, rect.size.x, rect.size.y * p),
-				Rect2(0, th * (1.0 - p), tex.get_width(), th * p))
-			var cs := minf(sw, 1.6)
-			_cv.draw_texture_rect(_constr, Rect2(b.x + 0.5 - cs / 2.0, b.y + 1.0 - cs, cs, cs), false)
+			anim.site_still(tex, rect, sw, p, zoom < ANIM_ZOOM)
 		if lv and detail and b.builder == 2:
-			var bt := sim.time * 4.0 + b.id
-			var beat := int(bt)
-			var hp := Vector2(b.x + 0.12, b.y + 1.0)
-			_sprite("unit_worker_hammer", hp, 0.4, 4 + beat % 2, false, pc.lightened(0.35))
-			if animate:
-				# each blow: a flick of sparks where the hammer lands, and dust drifting up from the site
-				var ph := fmod(bt, 1.0)
-				if beat % 2 == 1 and ph < 0.3:
-					var sp := hp + Vector2(0.2, -0.22)
-					for k in 3:
-						var a := -0.6 - k * 0.5
-						_cv.draw_line(sp, sp + Vector2(cos(a), sin(a)) * (0.05 + ph * 0.25), Color(1.0, 0.9, 0.5, 1.0 - ph * 3.0), 0.02)
-				var tt := Time.get_ticks_msec() / 1000.0
-				for k in 3:
-					var dph := fmod(tt * 0.45 + k * 0.33 + b.id * 0.17, 1.0)
-					var dp := Vector2(b.x + 0.2 + k * 0.3 + sin(tt + k) * 0.05, b.y + 0.95 - dph * 0.7)
-					_cv.draw_circle(dp, 0.07 + dph * 0.12, Color(0.78, 0.7, 0.58, 0.32 * (1.0 - dph)))
+			anim.site_moving(b, tex, rect, p, pc)
 		if not st:
 			return
 		# materials lying at the site, waiting to be used
@@ -2710,11 +2712,18 @@ func _draw_building(b: Sim.Bld, labels: Array, detail: bool, part := 0) -> void:
 	if st and zoom >= 9.0 and sim.sea.is_harbour(b) and b.state == "ready":
 		var pl := sim.players[b.p - 1]
 		var moor := sim.sea._moorings(b.x, b.y)
+		# (moored where they look afloat, clear of the beach, when there is such water)
+		var deep := PackedInt32Array()
+		for mi in moor:
+			if anim._open_water(mi):
+				deep.append(mi)
+		if not deep.is_empty():
+			moor = deep
 		var free := sim.sea.free_ships(pl)
 		if not moor.is_empty() and free > 0 and (b.ty == "hq" or sim.sea.harbours(pl).find(b) == 0):
 			for k in mini(free, 2):
 				var mi := moor[(k * 3) % moor.size()]
-				_draw_ship(Vector2(mi % sim.w + 0.5, mi / sim.w + 0.75), k % 2 == 1, sim.players[b.p - 1].color, b.id + k, "", false)
+				_draw_ship(Vector2(mi % sim.w + 0.5, mi / sim.w + 0.75), k % 2 == 1, sim.players[b.p - 1].color, b.id + k, "", false, true)
 	if st:
 		_cv.draw_texture_rect(tex, rect, false)
 	# snow on the roofs in winter (the seasons feature says how much lies here)
