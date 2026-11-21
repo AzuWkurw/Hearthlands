@@ -183,7 +183,7 @@ func refresh() -> void:
 	for e in bs.slice(0, 20):
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 6)
-		var l := main._label(String(e[1]), 14)
+		var l := main._label(main.keys.keyed(String(e[1])), 14)  # "(K)" shows the key transport priorities have now
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		l.custom_minimum_size = Vector2(480, 0)

@@ -743,7 +743,7 @@ func _prio_numbers(b: Sim.Bld) -> void:
 	var inp: Dictionary = b.def.get("in", {})
 	if not inp.is_empty():
 		var tl := main._label(tr("  Transport no."), 13, Main.DIM)
-		tl.tooltip_text = tr("Transport priority of each good it takes (K): goods with a lower number are carried first.")
+		tl.tooltip_text = main.keys.keyed("Transport priority of each good it takes (K): goods with a lower number are carried first.")
 		row.add_child(tl)
 		for k in inp:
 			var key := String(k)

@@ -79,6 +79,9 @@ func _init() -> void:
 	check(ks4.keyed("Space pauses, A Space station", ["pause"]) == "Ctrl+P pauses, A Ctrl+P station" and ks4.keyed("Space pauses") == "Space pauses", "a key as a word only for the actions named; brackets only otherwise")
 	ks4.set_key("idle", KEY_X)
 	check(ks4.keyed("%d of %d: %s (I for the next)") == "%d of %d: %s (X for the next)" and ks4.keyed("I think (Idle)") == "I think (Idle)", "(I for the next) follows the key, other I's do not")
+	ks4.set_key("transport", KEY_Y)
+	var neck := ks4.keyed(" (food in store: 50 — the carriers are slow to bring it: roads, a store nearer, transport priorities (K))")
+	check(neck.ends_with("transport priorities (Y))"), "the bottleneck finder's hint names the transport key: %s" % neck)
 
 	# 3. saved with the settings and read back
 	st.save_file()
