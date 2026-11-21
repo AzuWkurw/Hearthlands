@@ -40,6 +40,11 @@ func food_factor(_p: Sim.Player) -> float:
 	return 1.0
 
 
+## How much tax realm p's nobles pay compared with normal (1.0).
+func tax_factor(_p: Sim.Player) -> float:
+	return 1.0
+
+
 ## A building of realm p made n of res.
 func on_made(_p: Sim.Player, _res: String, _n: float) -> void:
 	pass

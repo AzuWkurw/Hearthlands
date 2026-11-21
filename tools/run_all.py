@@ -60,6 +60,7 @@ TESTS = [
 	("ruins and bandits", "places_test", [], False, True, [r"PLACES TEST: PASS"]),
 	("sound and music",   "sound_test", [], True, True, [r"SOUND TEST: PASS"]),
 	("campaign",          "campaign_test", [], True, False, [r"campaign test: ok"]),
+	("realm laws",        "laws_test", [], False, True, [r"LAWS TEST: PASS"]),
 	("spreading fires",   "fire_test", [], False, True, [r"fire test: ok"]),
 	("small touches",     "touches_test", [], True, False, [r"touches test: ok"]),
 	("fog after loading", "fogsave_test", [], True, False, [r"after 3 s: (\d+)"]),

@@ -192,6 +192,7 @@ Exporting needs Godot 4.3's export templates (in the editor: Editor > Manage Exp
 | Production statistics | F2, or the Statistics button: goods made and used per minute, every realm's growth and a table of where you stand, and Borders: everyone's land minute by minute, to play back (land you have not seen stays dark until the game is over) |
 | Event log | E, or the Events button. Drag its title to move it and its edges to resize it. Go on an event moves the camera to where it happened |
 | Climate | F4, or the Climate button: seasons, biomes, weather and their effects |
+| Laws | F8, or the Laws button: taxes, food rations, conscription, the working day and road tolls, what each does to every class, and the rivals' laws |
 | Random events | F6: switch single events on or off, and see your recent events |
 | Send scout | Toolbar: Scout, then click a spot on the map (needs an idle scout from a scout lodge) |
 | Send geologist | Toolbar: Geologist, then click a mountain in or near your land |
@@ -344,6 +345,15 @@ Exporting needs Godot 4.3's export templates (in the editor: Editor > Manage Exp
   content, and content people work up to 10% faster; hunger and sickness do the opposite. A tavern with
   beer and bread to spare holds a festival now and then (everyone 10% faster for 3 minutes). An unhappy
   realm loses idle peasants, one a minute.
+- **Realm laws.** Five laws (F8): taxes, food rations, conscription, the working day and road tolls, each
+  light, usual or harsh. The usual changes nothing; the others trade gold, food, work speed, soldiers or
+  carriers' speed against the contentment of the four classes. Each class's change moves the realm's
+  contentment by its share of the people; unhappy nobles pay less tax, unhappy artisans and peasants
+  work slower, unhappy soldiers train slower, and the peasants' own contentment decides whether they
+  leave. A law can be changed again two minutes after its last change. Rivals choose theirs by their
+  character (builders go easy, warlords tax hard and raise levies), ease them when their people grow
+  unhappy, cut rations when food runs short and raise levies in wartime. The laws are in
+  `data/laws.json`.
 - **Archers and sallies.** A bowyer makes bows from wood. Soldiers in a military building take them up
   to be archers: they shoot attackers from 6 tiles out but fight worse at the gate. A building set to
   march out sends its soldiers to meet an attack in the open.
@@ -1312,6 +1322,8 @@ A feature can override these hooks; the simulation calls them for every switched
 | `on_second()` | once per game second |
 | `speed_bonus(p, b)` | a building works out its speed; return extra speed (0.25 = 25% faster) |
 | `food_factor(p)` | a realm's people eat; return a multiplier |
+| `tax_factor(p)` | a realm's nobles pay tax; return a multiplier |
+| `carry_factor(p)` | a realm's carriers walk; return a multiplier |
 | `build_factor(p, b)` | a construction site goes up; return a multiplier |
 | `work_block(p, b)` | before a work cycle starts; return a reason to wait, or "" |
 | `on_cycle(p, b)` / `on_made_at(b, p, res, n)` / `on_hire(p, b, tool)` | a building finished a cycle / made goods / took on a worker |
@@ -1332,7 +1344,8 @@ while that feature is off. A feature can set `needs = ["other_id"]` to require a
 Built-in features: `statistics` (F2), `seasons` (seasons, biomes, weather and temperature, F4),
 `clothing` (summer and winter clothes; needs `seasons`), `diseases` (outbreaks, prevention and cures),
 `events` (random events, F6), `tool_quality` (tool quality and wear) and `fog` (fog of war, scouts and
-watch towers), `geology` (geologists; mines need surveyed ore) and `wildlife` (animals, hunting, wolves).
+watch towers), `geology` (geologists; mines need surveyed ore), `wildlife` (animals, hunting, wolves)
+and `laws` (realm laws, F8).
 
 `mods_examples/bountiful_harvest.gd` is a small example: every few minutes, farms work 25% faster for a minute.
 Copy it into the mods folder to try it.
@@ -1363,7 +1376,7 @@ scripts/
   sim_logistics.gd   roads, the road network and carriers
   sim_research.gd    research
   sim_sea.gd     ships, harbours, expeditions and sea transport
-  features/      optional features (feature.gd base, features.gd list, statistics.gd, seasons.gd, clothing.gd, diseases.gd, events.gd, tool_quality.gd, fog.gd, geology.gd, wildlife.gd, contentment.gd, fires.gd)
+  features/      optional features (feature.gd base, features.gd list, statistics.gd, seasons.gd, clothing.gd, diseases.gd, events.gd, tool_quality.gd, fog.gd, geology.gd, wildlife.gd, contentment.gd, fires.gd, laws.gd)
   world_gen.gd   random maps
   game_data.gd   loads and merges the JSON data
   diplomacy.gd   relations, opinions, trade values and rival diplomacy

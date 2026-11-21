@@ -415,6 +415,7 @@ to `Bld`/`Player` (saved automatically) with a default that works for old saves.
 | trade by cart, standing offers, rivals' words | `Diplomacy.send_cart`, `cart_arrival`, `standing_tick`, `say`, `_warn_first` |
 | bridges | `SimLogistics.bridge_landing`, `bridge_step`, `bridge_cost_ok` |
 | taverns, chapels, contentment | `features/contentment.gd` |
+| realm laws, contentment by class | `features/laws.gd`, `data/laws.json` |
 | archers and sallies | `SimMilitary.archers_tick`, `_arrows`, `_sally` |
 | spreading fires | `features/fires.gd` |
 | campaign | `ui_campaign.gd`, `data/campaign.json` |

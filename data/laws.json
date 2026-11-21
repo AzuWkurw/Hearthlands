@@ -1,0 +1,85 @@
+{
+ "_about": "Realm laws (scripts/features/laws.gd). Each law has options; the one marked default changes nothing. Effects: tax (share more or less noble tax), food (share more or less food eaten), work (work speed of every workplace), train (training speed of barracks), carry (carriers' speed), toll (gold a minute for each carrier on the roads), mood (contentment of each class: peasant, artisan, noble, soldier). 'pl' holds the Polish text, keyed by the English.",
+ "classes": ["peasant", "artisan", "noble", "soldier"],
+ "laws": [
+  {"id": "tax", "name": "Taxes", "info": "What the nobles pay into the treasury.", "default": "usual", "options": [
+   {"id": "light", "name": "Light", "effects": {"tax": -0.3, "mood": {"noble": 0.12, "artisan": 0.05}}},
+   {"id": "usual", "name": "Usual", "effects": {}},
+   {"id": "heavy", "name": "Heavy", "effects": {"tax": 0.4, "mood": {"noble": -0.18, "artisan": -0.06, "peasant": -0.04}}}
+  ]},
+  {"id": "rations", "name": "Food rations", "info": "How much everyone is given to eat.", "default": "usual", "options": [
+   {"id": "meagre", "name": "Meagre", "effects": {"food": -0.15, "mood": {"peasant": -0.15, "soldier": -0.12, "artisan": -0.06}}},
+   {"id": "usual", "name": "Usual", "effects": {}},
+   {"id": "generous", "name": "Generous", "effects": {"food": 0.2, "mood": {"peasant": 0.1, "soldier": 0.1, "artisan": 0.05}}}
+  ]},
+  {"id": "conscription", "name": "Conscription", "info": "How soldiers are found.", "default": "usual", "options": [
+   {"id": "volunteers", "name": "Volunteers only", "effects": {"train": -0.3, "mood": {"peasant": 0.06, "artisan": 0.06, "soldier": 0.08}}},
+   {"id": "usual", "name": "Usual", "effects": {}},
+   {"id": "levy", "name": "Levy", "effects": {"train": 0.4, "mood": {"peasant": -0.08, "artisan": -0.12, "soldier": -0.06}}}
+  ]},
+  {"id": "workday", "name": "Working day", "info": "How long people work each day.", "default": "usual", "options": [
+   {"id": "short", "name": "Short", "effects": {"work": -0.08, "mood": {"peasant": 0.1, "artisan": 0.1}}},
+   {"id": "usual", "name": "Usual", "effects": {}},
+   {"id": "long", "name": "Long", "effects": {"work": 0.1, "mood": {"peasant": -0.14, "artisan": -0.12}}}
+  ]},
+  {"id": "tolls", "name": "Road tolls", "info": "What travellers and carts pay on your roads.", "default": "none", "options": [
+   {"id": "none", "name": "None", "effects": {}},
+   {"id": "low", "name": "Low", "effects": {"toll": 0.12, "mood": {"artisan": -0.03}}},
+   {"id": "high", "name": "High", "effects": {"toll": 0.3, "carry": -0.06, "mood": {"artisan": -0.08, "noble": -0.05, "peasant": -0.03}}}
+  ]}
+ ],
+ "ai": {
+  "builder": {"tax": "light", "rations": "generous", "conscription": "volunteers", "workday": "long", "tolls": "low"},
+  "balanced": {"tax": "usual", "rations": "usual", "conscription": "usual", "workday": "usual", "tolls": "low"},
+  "warlord": {"tax": "heavy", "rations": "generous", "conscription": "levy", "workday": "usual", "tolls": "none"}
+ },
+ "pl": {
+  "Laws": "Prawa",
+  "Laws (F8)": "Prawa (F8)",
+  "Realm laws": "Prawa królestwa",
+  "Taxes": "Podatki",
+  "What the nobles pay into the treasury.": "Ile szlachta płaci do skarbca.",
+  "Light": "Niskie",
+  "Usual": "Zwykłe",
+  "Heavy": "Wysokie",
+  "Food rations": "Racje żywności",
+  "How much everyone is given to eat.": "Ile jedzenia dostaje każdy mieszkaniec.",
+  "Meagre": "Skąpe",
+  "Generous": "Hojne",
+  "Conscription": "Pobór",
+  "How soldiers are found.": "Skąd biorą się żołnierze.",
+  "Volunteers only": "Tylko ochotnicy",
+  "Levy": "Przymusowy pobór",
+  "Working day": "Dzień pracy",
+  "How long people work each day.": "Jak długo ludzie pracują każdego dnia.",
+  "Short": "Krótki",
+  "Long": "Długi",
+  "Road tolls": "Myto drogowe",
+  "What travellers and carts pay on your roads.": "Ile podróżni i wozy płacą na twoich drogach.",
+  "None": "Brak",
+  "Low": "Niskie",
+  "High": "Wysokie",
+  "Peasants": "Chłopi",
+  "Artisans": "Rzemieślnicy",
+  "Nobles": "Szlachta",
+  "Soldiers": "Żołnierze",
+  "noble tax %+d%%": "podatek szlachty %+d%%",
+  "food eaten %+d%%": "zjadana żywność %+d%%",
+  "work speed %+d%%": "tempo pracy %+d%%",
+  "training %+d%%": "szkolenie %+d%%",
+  "carriers %+d%%": "tragarze %+d%%",
+  "tolls %.2f gold a minute per carrier": "myto %.2f złota na minutę od tragarza",
+  "%s %+d": "%s %+d",
+  "no effect": "brak",
+  "Effects: %s": "Skutki: %s",
+  "Each law makes some classes happier and others less so. Contentment by class (with the laws now in force):": "Każde prawo zadowala jedne stany, a drugie mniej. Zadowolenie według stanów (przy obecnych prawach):",
+  "A law can be changed again %d s after its last change.": "Prawo można znów zmienić %d s po ostatniej zmianie.",
+  "can change again in %d s": "zmiana możliwa za %d s",
+  "Rivals' laws": "Prawa rywali",
+  "Laws  %s": "Prawa  %s",
+  "Contentment by class  %s": "Zadowolenie stanów  %s",
+  "Tolls this game  %d gold": "Myto w tej grze  %d złota",
+  "Unhappy nobles pay less tax, unhappy artisans and peasants work slower, unhappy soldiers train slower, and unhappy peasants leave.": "Niezadowolona szlachta płaci mniejsze podatki, niezadowoleni rzemieślnicy i chłopi pracują wolniej, niezadowoleni żołnierze szkolą się wolniej, a niezadowoleni chłopi odchodzą.",
+  "Laws: taxes, food rations, conscription, the working day and road tolls. Each one pleases some classes of people and displeases others. Rivals choose theirs by their character.": "Prawa: podatki, racje żywności, pobór, dzień pracy i myto. Każde zadowala jedne stany, a drugie nie. Rywale wybierają swoje według charakteru."
+ }
+}
