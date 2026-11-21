@@ -870,7 +870,7 @@ func _attack_tick(dt: float) -> void:
 					if a.p == 1 or t.p == 1:
 						sim.emit_log("The landing at %s was thrown back into the sea by the peasants." % String(t.def.name).to_lower(), Color("86ad5c") if t.p == 1 else Color("e08a6a"), Vector2i(t.x, t.y))
 					continue
-			if defenders(t) <= 0 and sim.time >= a.t1:
+			if sim.time >= a.t1 and defenders(t) <= 0:
 				_capture(a, t, p, sim.players[t.p - 1])
 				sim.attacks.remove_at(k)
 				continue
@@ -1019,7 +1019,9 @@ const CHASE_SPEED := 1.1     # tiles a second
 ## their archers shoot at it, and one set to march out (rivals: one with clearly more soldiers) sends
 ## soldiers to stop it in the open.
 func _passing(a: Sim.Attack, p: Sim.Player, pos: Vector2) -> void:
-	for b: Sim.Bld in sim.mil_list():
+	# (build 75) only the forts by the column, in the same order as going over every fort
+	var reach := ceili(maxf(ARCHER_RANGE, INTERCEPT_R)) + 1
+	for b: Sim.Bld in sim.logistics.mil_near(floori(pos.x), floori(pos.y), reach):
 		if b.p == a.p or b.id == a.tgt or b.state != "ready" or b.dead or b.ty == "hq":
 			continue
 		var d := Vector2(b.x, b.y).distance_to(pos)
@@ -1408,6 +1410,12 @@ func _volleys(a: Sim.Attack, p: Sim.Player, t: Sim.Bld) -> void:
 	var left := column_pos(a).distance_to(a.to)
 	for g: int in GUNS:
 		var gun: Array = GUNS[g]
+		if left > float(gun[0]):
+			# (build 75) out of this gun's range nobody fires: only the column's age is brought up to
+			# date, as below, without looking for the defenders unless it changed
+			if a.era != Sim.mix_avg(a.amix) and own_def(_defending(t)) > 0:
+				a.era = Sim.mix_avg(a.amix)
+			continue
 		var shooters := int(a.amix[g]) if a.amix.size() > g else 0
 		if shooters > 0 and left <= float(gun[0]) and sim.time >= float(a.vt[g - GUN0]):
 			shooters = _ammo_for(a, shooters)

@@ -611,6 +611,7 @@ var map_dirty := true          # terrain/deco changed (minimap)
 
 
 var territory_version := 0
+var rock_ver := 0          # (build 75) counts rocks and clay dug away (not saved: only for reach's cache)
 
 
 var rng := RandomNumberGenerator.new()
@@ -1925,6 +1926,7 @@ func _reno_tick(p: Player) -> void:
 				b.upg = ""
 				_tick_dirty = true
 				logistics._store_ver += 1     # (build 74) its kind changed: the lists by kind are made again
+				logistics._bver[b.p] = int(logistics._bver.get(b.p, 0)) + 1
 				_rebuild_realm_lists()
 				recompute_territory()
 				if not p.ai and b.def.has("garrison"):

@@ -244,6 +244,7 @@ func _territory_nets(before: PackedByteArray) -> void:
 ## Called whenever a building appears, disappears, finishes or changes hands.
 func _after_building_change(b: Sim.Bld) -> void:
 	_store_ver += 1
+	_bver[b.p] = int(_bver.get(b.p, 0)) + 1
 	sim._mil_dirty = true
 	sim._tick_dirty = true
 	if b.dead or b.x < 0:
@@ -254,7 +255,28 @@ func _after_building_change(b: Sim.Bld) -> void:
 		sim.changed_tiles.append(sim.idx(b.x, b.y))
 
 
+## (build 75) What changed in each realm's roads, version by version: the tiles of each change that only
+## added something (new roads, buildings, a store finished, paving), or that it was all worked out again.
+## The stores' road searches are mended from these instead of starting again.
+var _net_log: Array = []       # per realm: [[version, tiles], ...], the last NET_LOG of them
+var _net_full: Array = []      # per realm: the version of the last full rebuild
+const NET_LOG := 48
+
+func _log_net(k: int, tiles) -> void:
+	while _net_log.size() <= k:
+		_net_log.append([]); _net_full.append(0)
+	if tiles == null:
+		_net_full[k] = int(net_ver[k])
+		(_net_log[k] as Array).clear()
+		return
+	var lg: Array = _net_log[k]
+	lg.append([int(net_ver[k]), tiles])
+	if lg.size() > NET_LOG:
+		lg.pop_front()
+
+
 func _reset_nets() -> void:
+	_net_log.clear(); _net_full.clear(); _reach.clear(); _sfield.clear()
 	sim._net_dist.clear(); _net_par.clear(); sim._net_dirty.clear(); net_ver.clear(); sim._net_add.clear()
 	for p in sim.players:
 		sim._net_dist.append(PackedFloat32Array())
@@ -292,6 +314,7 @@ func _net_ready(pid: int) -> void:
 		_relax_net(pid)
 
 
+var _bver := {}            # realm id -> counts changes to its buildings (build 75: for reach)
 var _reach := {}           # realm id -> [net_ver, _store_ver, PackedByteArray: 1 where a new road can get to]
 var _ra_seen := PackedInt32Array()   # reach_avoiding's marks: tile -> the search's stamp
 var _ra_stamp := 0
@@ -305,43 +328,67 @@ func reach(pid: int) -> PackedByteArray:
 	_net_ready(pid)
 	var nv := int(net_ver[k])
 	var e = _reach.get(pid)
-	if e != null and int(e[0]) == nv and int(e[1]) == _store_ver:
+	# (build 75) worked out again when this realm's roads, buildings or land change, or rocks or clay
+	# are dug away (before: whenever any building anywhere changed, and a quarry's work went unseen)
+	var key := [nv, int(_bver.get(pid, 0)), sim.territory_version, sim.rock_ver]
+	if e != null and e[0] == key:
 		return e[2]
 	var r := PackedByteArray()
 	r.resize(sim.w * sim.h)
 	var q := PackedInt32Array()
+	# (build 75) the map's arrays held here, and the same search with less looking up per step
+	var nd: PackedFloat32Array = sim._net_dist[k]
+	var road: PackedByteArray = sim.road
+	var bmap: PackedInt32Array = sim.bmap
+	var owner: PackedByteArray = sim.owner
+	var deco: PackedByteArray = sim.deco
+	var plot: PackedInt32Array = sim.plot
+	var ter: PackedByteArray = sim.ter
+	var by_id: Dictionary = sim.by_id
+	var W := sim.w
+	var H := sim.h
 	for i in sim.owned(pid)[0]:
 		# a new road can join a road or a store, not another building
-		if net_dist(pid, i) < INF and (sim.road[i] == pid or (sim.bmap[i] != 0 and is_store(sim.by_id.get(sim.bmap[i])))):
+		if nd[i] < INF and (road[i] == pid or (bmap[i] != 0 and is_store(by_id.get(bmap[i])))):
 			r[i] = 1
 			q.append(i)
 	var head := 0
 	while head < q.size():
 		var cur := q[head]
 		head += 1
-		var cx := cur % sim.w
-		var cy := cur / sim.w
+		var cx := cur % W
+		var cy := cur / W
+		var cb := bmap[cur]
 		for dd in 4:
-			var nx := cx + (1 if dd == 0 else (-1 if dd == 1 else 0))
-			var ny := cy + (1 if dd == 2 else (-1 if dd == 3 else 0))
-			if nx < 0 or ny < 0 or nx >= sim.w or ny >= sim.h:
+			var ni: int
+			if dd == 0:
+				if cx + 1 >= W: continue
+				ni = cur + 1
+			elif dd == 1:
+				if cx - 1 < 0: continue
+				ni = cur - 1
+			elif dd == 2:
+				if cy + 1 >= H: continue
+				ni = cur + W
+			else:
+				if cy - 1 < 0: continue
+				ni = cur - W
+			if r[ni] == 1 or owner[ni] != pid:
 				continue
-			var ni := ny * sim.w + nx
-			if r[ni] == 1 or sim.owner[ni] != pid:
+			var dc := deco[ni]
+			if dc == Sim.D_ROCK or dc == Sim.D_CLAY:
 				continue
-			if sim.deco[ni] == Sim.D_ROCK or sim.deco[ni] == Sim.D_CLAY:
+			if plot[ni] != 0 or bmap[ni] != 0:
 				continue
-			if sim.plot[ni] != 0 or sim.bmap[ni] != 0:
+			if cb != 0 and not sim.links(cur, ni):
 				continue
-			if sim.bmap[cur] != 0 and not sim.links(cur, ni):
-				continue
-			if sim.ter[ni] == Sim.WATER:
+			if ter[ni] == Sim.WATER:
 				# along a bridge that is there, or from the shore over water a bridge could cross: the
 				# far shore can be reached
-				if sim.road[ni] == pid:
+				if road[ni] == pid:
 					r[ni] = 1
 					q.append(ni)
-				elif sim.ter[cur] != Sim.WATER:
+				elif ter[cur] != Sim.WATER:
 					var land := bridge_landing(cur, ni, pid)
 					if land >= 0 and r[land] == 0:
 						r[land] = 1
@@ -349,7 +396,7 @@ func reach(pid: int) -> PackedByteArray:
 				continue
 			r[ni] = 1
 			q.append(ni)
-	_reach[pid] = [nv, _store_ver, r]
+	_reach[pid] = [key, 0, r]
 	return r
 
 
@@ -434,6 +481,7 @@ func _relax_net(pid: int) -> void:
 	var dist: PackedFloat32Array = sim._net_dist[k]
 	var par: PackedInt32Array = _net_par[k]
 	var hp := Sim.MinHeap.new()
+	var logged := PackedInt32Array(sim._net_add[k])
 	for t: int in sim._net_add[k]:
 		if t < 0 or not _net_open(t, pid):
 			continue
@@ -485,6 +533,7 @@ func _relax_net(pid: int) -> void:
 	sim._net_dist[k] = dist
 	_net_par[k] = par
 	net_ver[k] = int(net_ver[k]) + 1
+	_log_net(k, logged)
 	sim._pf("road network", t0)
 
 
@@ -556,6 +605,7 @@ func _build_net(pid: int) -> void:
 	sim._net_dirty[k] = false
 	(sim._net_add[k] as Array).clear()
 	net_ver[k] = int(net_ver[k]) + 1
+	_log_net(k, null)
 	sim._pf("road network", t0)
 	sim._net_builds += 1
 
@@ -1400,7 +1450,9 @@ func store_field(s: Sim.Bld, to := -1) -> Array:
 	var k := s.p - 1
 	_net_ready(s.p)
 	var e = _sfield.get(s.id)
-	if e == null or int(e[0]) != int(net_ver[k]):
+	if e != null and int(e[0]) != int(net_ver[k]) and _sf_mend(s, e):
+		pass
+	elif e == null or int(e[0]) != int(net_ver[k]):
 		var dist: PackedFloat32Array
 		var par: PackedInt32Array
 		var done: PackedByteArray
@@ -1425,7 +1477,7 @@ func store_field(s: Sim.Bld, to := -1) -> Array:
 		dist[st0] = 0.0
 		touched.append(st0)
 		hp0.push(0.0, st0)
-		e = [int(net_ver[k]), dist, par, done, hp0, touched]
+		e = [int(net_ver[k]), dist, par, done, hp0, touched, -1.0]
 		_sfield[s.id] = e
 		dist = PackedFloat32Array(); par = PackedInt32Array(); done = PackedByteArray(); touched = PackedInt32Array()
 	var done2: PackedByteArray = e[3]
@@ -1457,11 +1509,13 @@ func store_field(s: Sim.Bld, to := -1) -> Array:
 	var m1 := float(Sim.SLOPE_MUL[1])
 	var m2 := float(Sim.SLOPE_MUL[2])
 	var m3 := float(Sim.SLOPE_MUL[3])
+	var last: float = e[6]
 	while hp.size() > 0:
 		var cur := hp.pop()
 		if done2[cur] == 1:
 			continue
 		done2[cur] = 1
+		last = dist2[cur]
 		var cb := bmap[cur]
 		if cb != 0 and cur != st and not is_store(by_id.get(cb)):
 			if cur == to: break
@@ -1511,8 +1565,122 @@ func store_field(s: Sim.Bld, to := -1) -> Array:
 		if cur == to:
 			break
 	# put the updated ones back
-	e[1] = dist2; e[2] = par2; e[3] = done2; e[5] = tch
+	e[1] = dist2; e[2] = par2; e[3] = done2; e[5] = tch; e[6] = last
 	return e
+
+
+## One step of store_field's search, from tile cur (walking time dcur) onto its neighbour ni: the
+## walking time there, or INF where the search does not go (the same rules and sums as store_field).
+func _sf_step(cur: int, ni: int, dcur: float, pid: int, st: int) -> float:
+	var cb := sim.bmap[cur]
+	if cb != 0 and cur != st and not is_store(sim.by_id.get(cb)):
+		return INF
+	if sim.owner[ni] != pid:
+		return INF
+	var nbm := sim.bmap[ni]
+	if nbm != 0:
+		var nb: Sim.Bld = sim.by_id.get(nbm)
+		if nb == null or nb.p != pid:
+			return INF
+	elif sim.road[ni] != pid:
+		return INF
+	if (cb != 0 or nbm != 0) and not sim.links(cur, ni):
+		return INF
+	var cost := Sim.PAVED_COST if (nbm != 0 or sim.pave[ni] == 1) else Sim.DIRT_COST
+	if not sim.height.is_empty():
+		var dh := absi(int(sim.height[cur]) - int(sim.height[ni]))
+		if dh >= float(Sim.SLOPE_STEPS[0]):
+			cost *= float(Sim.SLOPE_MUL[1]) if dh < float(Sim.SLOPE_STEPS[1]) else (float(Sim.SLOPE_MUL[2]) if dh < float(Sim.SLOPE_STEPS[2]) else float(Sim.SLOPE_MUL[3]))
+	_f32[0] = dcur + cost
+	return _f32[0]
+
+
+## (build 75) Mends store s's half-done road search e after the roads changed only by additions, when
+## nothing it has settled gets nearer and nothing new comes nearer than the farthest it settled: then
+## the search is just where a new one would be at that point, and goes on from there. False when it
+## must start again (a rebuild, a change too old to know, or something nearer).
+func _sf_mend(s: Sim.Bld, e: Array) -> bool:
+	var k := s.p - 1
+	if e.size() < 7 or k >= _net_log.size() or int(_net_full[k]) > int(e[0]):
+		return false
+	var v0 := int(e[0])
+	var want := v0 + 1
+	var tiles := PackedInt32Array()
+	for ent in _net_log[k]:
+		var v := int(ent[0])
+		if v <= v0:
+			continue
+		if v != want:
+			return false
+		tiles.append_array(ent[1])
+		want += 1
+	if want != int(net_ver[k]) + 1:
+		return false
+	var dist: PackedFloat32Array = e[1]
+	var par: PackedInt32Array = e[2]
+	var done: PackedByteArray = e[3]
+	var hp: Sim.MinHeap = e[4]
+	var tch: PackedInt32Array = e[5]
+	e[1] = null; e[2] = null; e[3] = null; e[5] = null
+	var far := float(e[6])
+	var pid := s.p
+	var st := sim.idx(s.x, s.y)
+	var W := sim.w
+	var ok := true
+	var seen := {}
+	for x in tiles:
+		if x < 0 or x >= dist.size() or seen.has(x):
+			continue
+		seen[x] = true
+		var xx := x % W
+		var xy := x / W
+		var nbs := PackedInt32Array()
+		if xx + 1 < W: nbs.append(x + 1)
+		if xx > 0: nbs.append(x - 1)
+		if xy + 1 < sim.h: nbs.append(x + W)
+		if xy > 0: nbs.append(x - W)
+		# the best way onto x from what the search has settled
+		var bd := INF
+		var bp := -1
+		for u in nbs:
+			if done[u] != 1:
+				continue
+			var nd := _sf_step(u, x, dist[u], pid, st)
+			if nd < bd or (nd == bd and u < bp):
+				bd = nd; bp = u
+		if done[x] == 1:
+			if x != st and (bd < dist[x] or (bd == dist[x] and bp < par[x])):
+				ok = false; break
+		elif bd < INF:
+			if bd < far or bd > dist[x]:
+				ok = false; break
+			if bd < dist[x] or bp < par[x]:
+				if dist[x] == INF: tch.append(x)
+				var nearer := bd < dist[x]
+				dist[x] = bd; par[x] = bp
+				if nearer: hp.push(bd, x)
+		# and on from x, if it is settled
+		if done[x] == 1:
+			for v in nbs:
+				var nd2 := _sf_step(x, v, dist[x], pid, st)
+				if nd2 == INF:
+					continue
+				if done[v] == 1:
+					if nd2 < dist[v] or (nd2 == dist[v] and x < par[v]):
+						ok = false; break
+				elif nd2 < dist[v] or (nd2 == dist[v] and x < par[v]):
+					if nd2 < far:
+						ok = false; break
+					if dist[v] == INF: tch.append(v)
+					var nearer2 := nd2 < dist[v]
+					dist[v] = nd2; par[v] = x
+					if nearer2: hp.push(nd2, v)
+			if not ok:
+				break
+	e[1] = dist; e[2] = par; e[3] = done; e[5] = tch
+	if ok:
+		e[0] = int(net_ver[k])
+	return ok
 
 
 ## Sends a carrier with up to `want` of res from the nearest store that has it to building b: to a

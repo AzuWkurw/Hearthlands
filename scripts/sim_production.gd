@@ -332,7 +332,7 @@ func finish_prod(b: Sim.Bld, p: Sim.Player) -> void:
 			if sim.deco[tg] == Sim.D_ROCK:
 				if not sim.opts.endless_raw:
 					sim.amt[tg] -= 1
-				if sim.amt[tg] == 0: sim.deco[tg] = 0; sim.changed_tiles.append(tg)
+				if sim.amt[tg] == 0: sim.deco[tg] = 0; sim.changed_tiles.append(tg); sim.rock_ver += 1
 			elif not sim.take_ore(tg, 4, sim.rng.randf() < sim.mod(p, "vein")):
 				return
 		"fish":
@@ -343,7 +343,7 @@ func finish_prod(b: Sim.Bld, p: Sim.Player) -> void:
 			if tg < 0 or sim.deco[tg] != Sim.D_CLAY or sim.amt[tg] == 0: return
 			if not sim.opts.endless_raw:
 				sim.amt[tg] -= 1
-			if sim.amt[tg] == 0: sim.deco[tg] = 0; sim.changed_tiles.append(tg)
+			if sim.amt[tg] == 0: sim.deco[tg] = 0; sim.changed_tiles.append(tg); sim.rock_ver += 1
 		"plant":
 			if tg >= 0 and sim.deco[tg] == 0 and sim.bmap[tg] == 0 and sim.plot[tg] == 0 and sim.road[tg] == 0:
 				sim.deco[tg] = Sim.D_TREE; sim.changed_tiles.append(tg)

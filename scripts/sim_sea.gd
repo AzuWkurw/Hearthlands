@@ -479,13 +479,23 @@ func ship_pos(t: Sim.Trip) -> Vector2:
 
 ## A fleet at sea sinks the cargo ships and expeditions of realms it is at war with that it meets.
 func fleets_meet_ships() -> void:
+	# (build 75) the ships among the trips are found once, not for every fleet (the trips are mostly
+	# carriers: over a thousand on a big map); the same trips in the same order as before
+	var ships := PackedInt32Array()
+	var found := false
 	for a: Sim.Attack in sim.attacks:
 		if not sim.military.at_sea(a) or a.n <= 0:
 			continue
+		if not found:
+			found = true
+			for k0 in sim.trips.size():
+				if sim.trips[k0].kind == "ship":
+					ships.append(k0)
 		var fp := sim.military.column_pos(a)
-		for k in range(sim.trips.size() - 1, -1, -1):
+		for j in range(ships.size() - 1, -1, -1):
+			var k := ships[j]
 			var t := sim.trips[k]
-			if t.kind != "ship" or t.p == a.p or not Diplomacy.at_war(sim, a.p, t.p):
+			if t.p == a.p or not Diplomacy.at_war(sim, a.p, t.p):
 				continue
 			if ship_pos(t).distance_to(fp) > 1.6:
 				continue
@@ -493,6 +503,9 @@ func fleets_meet_ships() -> void:
 			q.ships = maxi(0, q.ships - 1)
 			q.ships_out = maxi(0, q.ships_out - 1)
 			sim.trips.remove_at(k)
+			ships.remove_at(j)
+			for jj in range(j, ships.size()):
+				ships[jj] -= 1
 			if t.p == 1:
 				sim.emit_log("%s's fleet sank your ship%s." % [sim.players[a.p - 1].name, " and its expedition" if t.res == "@expedition" else (" with %d %s" % [t.n, t.res] if not t.delivered else "")], Color("e08a6a"), Vector2i(fp.round()))
 			elif a.p == 1:

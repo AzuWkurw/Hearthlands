@@ -1,5 +1,15 @@
 # Changelog
 
+## Build 75 (v0.70.0, 2026-11-21)
+
+Build 75: more speed in huge late games: carriers' road routes, battles and rival building.
+- Carriers' routes are mended, not worked out again: after a new road, building or paving, each store's route map is patched where the change reaches, instead of being searched again from scratch. Over three quarters of road changes are of this kind. A store's map is still searched again after a road or building is lost.
+- Columns on the march look only at the forts near them, not at every fort on the map, to see who fires at them or marches out to stop them. Guns out of range no longer look for the defenders.
+- Fleets at sea look only at the ships among the trips (on a big map over a thousand trips are carriers) to find cargo ships to sink.
+- Rivals' search for building spots: the map of where a new road could reach is worked out three to four times faster (11 ms down to 3 ms on a big realm), and only when that realm's roads, buildings or land change, or rocks or clay are dug away. Before, any building anywhere on the map made it start again, and a quarry digging away rocks went unseen.
+- A game stays exactly the same: on a 60-minute save of nine realms, three minutes of play give the same game, down to every carrier, as build 74.
+- On that save, battles cost a third less (about 17.5 down to 11.5 ms a game second), carriers about 12% less and rival building about 13% less: about 8% less work in all. In the 60-minute test game on a fresh 448 map, the last quarter hour went from 98 to 89 ms of work per game second.
+
 ## Build 74 (v0.69.0, 2026-11-21)
 
 Build 74: speed for buildings and carriers in huge late games.
