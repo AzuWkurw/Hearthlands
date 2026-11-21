@@ -44,6 +44,7 @@ TESTS = [
 	("luxuries",          "luxury_test", [], False, False, [r"luxury test: ok"]),
 	("wonders",           "wonder_test", [], False, False, [r"wonder test: ok"]),
 	("chronicle",         "chronicle_test", [], False, True, [r"chronicle test: ok"]),
+	("score",             "score_test", [], False, True, [r"SCORE TEST: PASS"]),
 	("station upgrade",   "station_upgrade_test", [], False, True, [r"STATION UPGRADE TEST: PASS"]),
 	("sea war",           "sea_war_test", [], False, True, [r"SEA WAR TEST: PASS"]),
 	("navy",              "navy_test", [], False, True, [r"NAVY TEST: PASS"]),

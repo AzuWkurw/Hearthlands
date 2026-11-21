@@ -1102,7 +1102,10 @@ func _build_setup() -> void:
 	var r1 := HBoxContainer.new(); v.add_child(r1)
 	r1.add_child(_label("Map seed"))
 	seed_edit = LineEdit.new(); seed_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL; r1.add_child(seed_edit)
-	r1.add_child(_button("Random", func(): seed_edit.text = _rand_seed()))
+	r1.add_child(_button("Random", func(): seed_edit.text = _rand_seed(); _update_seed_best()))
+	seed_best = _label("", 13, DIM)
+	v.add_child(seed_best)
+	seed_edit.text_changed.connect(func(_t): _update_seed_best())
 	foes_lbl = _label(""); v.add_child(foes_lbl)
 	foes_slider = HSlider.new(); foes_slider.min_value = 1; foes_slider.max_value = 8; foes_slider.value = 3
 	foes_slider.value_changed.connect(func(x): foes_lbl.text = tr("Rival realms: %d" % int(x)))
@@ -1196,7 +1199,81 @@ func _found_realm_ui_done(v: VBoxContainer) -> void:
 	var ac_b := _button("Achievements", _show_achievements)
 	ac_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	er.add_child(ac_b)
+	var sr := HBoxContainer.new(); v.add_child(sr)
+	var day_b := _button("Map of the day", func():
+		if game_running():
+			confirm("Start a new game? The game you are playing ends; anything not saved is lost.", "Start new game", _start_daily)
+			return
+		_start_daily())
+	day_b.tooltip_text = "Today's map, made from the date: the same map and settings for everyone who plays it today. Normal difficulty."
+	day_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sr.add_child(day_b)
+	var hs_b := _button("High scores", _show_scores)
+	hs_b.tooltip_text = "The best scores on each map you have played, kept on this computer."
+	hs_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sr.add_child(hs_b)
 	v.add_child(_button("Load a saved game", _open_saves))
+	_update_seed_best()
+
+
+var seed_best: Label   # the best score on the seed typed in (new-game screen)
+
+
+## Shows the best score kept for the seed in the seed field, if any.
+func _update_seed_best() -> void:
+	if seed_best == null:
+		return
+	var list := Score.best(seed_edit.text if seed_edit.text != "" else "hearth")
+	seed_best.text = tr("Best score on this seed: %s (%s)") % [Score.group(int(list[0].score)), String(list[0].date)] if not list.is_empty() else ""
+	seed_best.visible = not list.is_empty()
+
+
+## Starts the map of the day: today's seed, its number of rivals, the Normal preset (score.gd).
+func _start_daily() -> void:
+	var d := Score.daily_setup()
+	var o: Dictionary = (DIFF_PRESETS[1][1] as Dictionary).duplicate()
+	o["features"] = settings.enabled_features()
+	if not _start(String(d.seed), int(d.foes), int(d.strength), true, 0, true, o):
+		_show_hint("Could not make that map. Try another seed or a bigger map.", 5.0)
+		return
+	seed_edit.text = String(d.seed)
+	_update_seed_best()
+	setup.visible = false
+	paused = false
+	_set_speed(1.0)
+	_show_hint(tr("Map of the day: %s, %d rival realms. Good luck!") % [Score.today(), int(d.foes)], 6.0)
+
+
+## The high-score window: the map of the day, the seed typed in, then every map with a score.
+func _show_scores() -> void:
+	var w := AcceptDialog.new()
+	w.title = "High scores"
+	w.theme = UiLog.window_theme()
+	var l := _rich(460)
+	l.custom_minimum_size = Vector2(620, 460)
+	var all := Score.load_all()
+	var out := PackedStringArray()
+	var day := Score.daily_seed()
+	out.append("[font_size=18][color=#d8aa4a]%s[/color][/font_size]" % (tr("Map of the day (%s)") % Score.today()))
+	out.append(Score.list_text(all.get(day, [])))
+	var typed := seed_edit.text if seed_edit.text != "" else "hearth"
+	if typed != day:
+		out.append("\n[font_size=18][color=#d8aa4a]%s[/color][/font_size]" % (tr("This seed: %s") % typed))
+		out.append(Score.list_text(all.get(typed, [])))
+	var keys := all.keys().filter(func(k): return k != day and k != typed and not (all[k] as Array).is_empty())
+	keys.sort_custom(func(a, b): return int(all[a][0].score) > int(all[b][0].score) or (int(all[a][0].score) == int(all[b][0].score) and String(a) < String(b)))
+	if not keys.is_empty():
+		out.append("\n[font_size=18][color=#d8aa4a]%s[/color][/font_size]" % tr("Other maps"))
+		for k in keys:
+			var e: Dictionary = all[k][0]
+			out.append(tr("[b]%s[/b]: best %s (%s), %d scores kept") % [Score.key_name(String(k)), Score.group(int(e.score)), String(e.date), (all[k] as Array).size()])
+	out.append("\n[color=#9a9c88]%s[/color]" % tr("A score adds land, people, wonders and a bonus for a fast victory, multiplied by the difficulty."))
+	l.text = "\n".join(out)
+	w.add_child(l)
+	add_child(w)
+	w.confirmed.connect(w.queue_free)
+	w.canceled.connect(w.queue_free)
+	w.popup_centered()
 
 
 var map_opt: OptionButton
@@ -1505,11 +1582,34 @@ func _on_end(win: bool) -> void:
 	end_text.text += campaign_ui.on_end(win)
 	achievements.on_end(win)
 	end_text.text += achievements.earned_text()
+	end_text.text += _score_text(win)
 	chronicle_ui.won = win
 	end_next.visible = win and campaign_ui.has_next()
 	end_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	end_text.custom_minimum_size = Vector2(560, 0)
 	end_panel.visible = true
+
+
+## The end screen's score lines: the final score and its parts, recorded in this map's high-score list,
+## and the place it took there (score.gd).
+func _score_text(win: bool) -> String:
+	var sc := Score.compute(sim, win)
+	if not bool(sc.ranked):
+		return ""
+	var k := Score.key(sim)
+	var place := Score.record(k, Score.entry(sim, sc))
+	var sl := Score.lines(sc)
+	var out := "\n\n" + sl[0] + "\n" + sl[1]
+	var list := Score.best(k)
+	if place == 1 and list.size() > 1:
+		out += "\n" + tr("A new best score on this map!")
+	elif place == 1:
+		out += "\n" + tr("The first score on this map.")
+	elif place > 0:
+		out += "\n" + tr("Place %d of the best scores on this map (best: %s).") % [place, Score.group(int(list[0].score))]
+	else:
+		out += "\n" + tr("Best score on this map: %s.") % Score.group(int(list[0].score))
+	return out
 
 
 func _toggle_pause() -> void:
