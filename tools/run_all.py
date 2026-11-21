@@ -31,6 +31,7 @@ TESTS = [
 	("store transfers",   "transfer_test", [], False, False, [r"transfer test: ok"]),
 	("road carriers",     "stretch_test", [], False, False, [r"stretch test: ok"]),
 	("missions and maps", "mission_test", [], False, False, [r"mission test: ok"]),
+	("mission events",    "script_test", [], False, False, [r"SCRIPT TEST: PASS"]),
 	("ships and harbours", "sea_test", ["seed=bay"], False, False, [r"sea test: ok"]),
 	("catapults",         "catapult_test", [], False, True, [r"catapult test: ok"]),
 	("boundary stones",   "claim_test", [], False, True, [r"claim test: ok"]),
@@ -78,7 +79,7 @@ TESTS = [
 
 # tests written for the Bronze Age itself; the older ones start their games in the Roman age, as
 # games did before build 65 (Sim.new_game reads HEARTHLANDS_START_AGE)
-BRONZE_AWARE = {"bronze_test", "save_test", "arms_test"}
+BRONZE_AWARE = {"bronze_test", "save_test", "arms_test", "script_test"}
 
 
 def run(cmd, timeout, env=None):

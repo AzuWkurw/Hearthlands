@@ -239,6 +239,17 @@ Maps (`WorldGen.load_map`, `save_map`, `from_map`) are JSON with the map arrays 
 compressed and the start places; `new_game(..., p_map)` plays one instead of generating a world. The
 editor (`ui_editor.gd`) saves them to `user://maps`.
 
+**Mission events** (build 77, `mission_script.gd`): a mission's `"rules"` list, each
+`{"id", "when": {...}, "do": [{...}, ...]}`. `MissionScript.check` runs from `_mission_check` once a game
+second, after the goals: a rule whose `when` holds (`holds`) runs its actions (`run`) once, or again every
+so many minutes for `"every"`. `MissionScript.WHEN` and `DO` list every kind with its fields (the editor's
+Events section is built from them). `"who"`: 0 you, 1..8 a rival, -1 any/every rival. What fired and when
+is `sim.script_fired` (saved); `Player.script_war` lets a rival sent to war by an event attack during the
+mission's peace. A goal with `"hidden": true` is not shown or counted until a `show_goal` action. Messages
+go to the log and to `Sim.story`, which `ui_story.gd` shows in a window. Events use no randomness, so a
+game with events stays deterministic; `tools/script_test.gd` checks every kind, saving and loading, and
+that the shipped missions' events are well formed (`MissionScript.problems`).
+
 ### 3.8 The rival AI (`sim_ai.gd`)
 
 Every few seconds each rival runs `ai_think(p)`:
@@ -410,6 +421,7 @@ to `Bld`/`Player` (saved automatically) with a default that works for old saves.
 | road carriers | `SimLogistics.plan_chain`, `_chain_trip` |
 | ships and colonies | `SimSea.expedition`, `ship_arrival`, `sea_transfers` |
 | missions | `Sim._mission_check`, `goal_progress`, `data/missions.json`, `ui_missions.gd` |
+| mission events | `MissionScript.check`, `holds`, `run` (`mission_script.gd`), `ui_story.gd` |
 | maps and the editor | `WorldGen.load_map`, `save_map`, `from_map`, `ui_editor.gd` |
 | statistics and border replay | `features/statistics.gd` |
 | trade by cart, standing offers, rivals' words | `Diplomacy.send_cart`, `cart_arrival`, `standing_tick`, `say`, `_warn_first` |
