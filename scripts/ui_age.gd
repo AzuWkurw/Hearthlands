@@ -17,7 +17,7 @@ func _init(m: Main) -> void:
 
 ## Called with the side panel's refresh: opens the window when an age still waits for its path.
 func check() -> void:
-	if main.sim.w == 0 or main.sim.over or main.setup.visible or main.editor_ui.open:
+	if main.sim.w == 0 or main.sim.over or main.setup.visible or main.editor_ui.open or (main.welcome_ui != null and main.welcome_ui.visible):
 		return
 	if panel != null and panel.visible:
 		return

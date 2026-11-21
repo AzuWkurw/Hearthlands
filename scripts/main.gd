@@ -153,6 +153,7 @@ var problems_btn: Button
 var editor_ui := UiEditor.new(self)  # the map editor (ui_editor.gd)
 var missions_ui := UiMissions.new(self)  # the missions list (ui_missions.gd)
 var campaign_ui := UiCampaign.new(self)  # the campaign map (ui_campaign.gd)
+var welcome_ui: UiWelcome                 # the welcome screen at startup (ui_welcome.gd)
 var end_next: Button
 var age_ui := UiAge.new(self)       # the new age's window and its choice of path (ui_age.gd)
 var choice_ui := UiChoice.new(self) # events that ask you to choose (ui_choice.gd)
@@ -548,6 +549,14 @@ func _ready() -> void:
 	_start(seed_edit.text, 3, 5, true)
 	paused = true
 	setup.visible = true
+	welcome_ui = UiWelcome.new(self)
+	add_child(welcome_ui)
+	var wst := settings.welcome_style
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("welcome="): wst = int(a.substr(8))
+	# (not when a test or screenshot script runs the game: it opens the screen itself if it wants it)
+	if settings.welcome and get_tree().current_scene == self:
+		welcome_ui.open(wst)
 	if GameData.errors.size() > 0:
 		_show_hint("Data problems: " + "; ".join(GameData.errors), 12.0)
 	_after_restart()

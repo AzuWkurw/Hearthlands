@@ -52,6 +52,8 @@ var store_folded := {}        # the stores list's groups folded away (build 72)
 var voices := true        # a word from the worker when you pick a building (build 63)
 var goals := true         # the sandbox goals in endless games (build 63)
 var guide := true                         # show the first-game guide in a new game
+var welcome := true                       # show the welcome screen when the game starts
+var welcome_style := 0                    # which look the welcome screen has (UiWelcome.STYLES)
 var keys := {}                            # action -> key code the player chose (Keys in Settings)
 var sea_guide := false                    # the sea and supplies guide has been shown once
 var prio_presets := {}                    # name -> {"carry": {...}, "work": {...}}: priority sets the player saved
@@ -83,6 +85,8 @@ func load_file() -> void:
 	log_open = bool(cf.get_value("display", "log_open", log_open))
 	features = cf.get_value("game", "features", {})
 	guide = bool(cf.get_value("game", "guide", guide))
+	welcome = bool(cf.get_value("ui", "welcome", welcome))
+	welcome_style = int(cf.get_value("ui", "welcome_style", welcome_style))
 	voices = bool(cf.get_value("game", "voices", voices))
 	pause_attacked = bool(cf.get_value("game", "pause_attacked", pause_attacked))
 	var sf = cf.get_value("ui", "store_folded", {})
@@ -122,6 +126,8 @@ func save_file() -> void:
 	cf.set_value("display", "log_open", log_open)
 	cf.set_value("game", "features", features)
 	cf.set_value("game", "guide", guide)
+	cf.set_value("ui", "welcome", welcome)
+	cf.set_value("ui", "welcome_style", welcome_style)
 	cf.set_value("game", "voices", voices)
 	cf.set_value("game", "pause_attacked", pause_attacked)
 	cf.set_value("ui", "store_folded", store_folded)
