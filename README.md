@@ -76,9 +76,8 @@ Done (builds 43 to 75):
 | 75 | More speed in huge late games: carriers' routes mended instead of searched again, battles a third cheaper, rivals' road-reach maps 3 to 4 times faster |
 | 75.1 | Wording: references to other games removed from the game, README and change log |
 
-Later: a story campaign through the ages, multiplayer, scripted scenarios, a chronicle at the end of a
-game, more animations, music for each age, and quality-of-life features (a production chain overlay,
-a build queue, rebindable keys, interface scale).
+Later: a story campaign through the ages (beyond today's eight chapters), multiplayer, scripted
+scenarios, a chronicle at the end of a game, more animations, and rebindable keys.
 
 ## Run it
 
