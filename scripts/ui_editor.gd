@@ -55,7 +55,8 @@ const SIZES := [1, 3, 5, 9, 15]
 const FORDS := [["No fords", 100000], ["Fords often", 9], ["Fords now and then", 14], ["Few fords", 22]]
 const UNDO_MAX := 60
 const GOAL_KINDS := [["build", "Build"], ["pop", "People"], ["soldiers", "Soldiers"], ["stock", "Goods in store"],
-	["tech", "Study"], ["land", "Land"], ["trades", "Trades"], ["defeat", "Defeat rivals"]]
+	["tech", "Study"], ["land", "Land"], ["trades", "Trades"], ["defeat", "Defeat rivals"], ["age", "Reach an age"],
+	["ships", "Ships"], ["wonders", "Wonders"], ["hold", "Hold out (minutes)"]]
 
 var main: Main
 var win: Window
@@ -94,6 +95,8 @@ var mission := {}              # the mission being written
 var _goal_kind := 0
 var _goal_param := 0
 var _goal_n := 1
+var _ev := {}                  # the mission event being put together: {"when": {...}, "do": [...]}
+var _ev_act := {}              # the action being put together for it
 var _fair_r := 15
 
 
@@ -674,6 +677,11 @@ func _goal_params(kind: String) -> Array:
 			for id in GameData.techs:
 				out2.append([id, GameData.tech_name(id)])
 			return out2
+		"age":
+			var out3 := []
+			for k in range(1, GameData.ages.size()):
+				out3.append([k, tr("%s Age") % tr(String(GameData.ages[k]))])
+			return out3
 	return []
 
 
@@ -688,6 +696,10 @@ static func goal_text(g: Dictionary) -> String:
 		"land": return "Hold %d tiles of land" % n
 		"trades": return "Make %d trades" % n
 		"defeat": return "Defeat every rival" if n <= 0 else "Defeat %d rival realm%s" % [n, "" if n == 1 else "s"]
+		"age": return "Reach the %s Age" % String(GameData.ages[clampi(n, 0, GameData.ages.size() - 1)])
+		"ships": return "Have %d ships" % n
+		"wonders": return "Build %d wonder%s" % [n, "" if n == 1 else "s"]
+		"hold": return "Hold out for %d minutes" % n
 	return ""
 
 
@@ -747,9 +759,17 @@ func _mission_tab() -> void:
 	for k in goals.size():
 		var gr := HBoxContainer.new()
 		body.add_child(gr)
-		var gl := main._label("•  " + String(goals[k].get("text", "")), 13)
+		var gl := main._label("%d.  %s" % [k + 1, String(goals[k].get("text", ""))], 13)
 		gl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		gr.add_child(gl)
+		var hid := main._button("Hidden" if goals[k].get("hidden", false) else "Shown", func():
+			if goals[k].get("hidden", false):
+				goals[k].erase("hidden")
+			else:
+				goals[k]["hidden"] = true
+			_fill())
+		hid.tooltip_text = "A hidden goal is not shown, and does not count, until an event shows it"
+		gr.add_child(hid)
 		gr.add_child(main._button("Remove", func():
 			goals.remove_at(k)
 			_fill()))
@@ -781,7 +801,7 @@ func _mission_tab() -> void:
 		ar.add_child(po)
 	var ar2 := HBoxContainer.new()
 	body.add_child(ar2)
-	if kind != "tech":
+	if kind != "tech" and kind != "age":
 		ar2.add_child(main._label("How many" if kind != "defeat" else "Rivals (0: all)", 13, Main.DIM))
 		var ns := SpinBox.new()
 		ns.min_value = 0 if kind == "defeat" else 1; ns.max_value = 100000; ns.value = _goal_n
@@ -790,12 +810,15 @@ func _mission_tab() -> void:
 		ar2.add_child(ns)
 	ar2.add_child(main._button("Add the goal", func():
 		var gd := {"kind": kind, "n": _goal_n if kind != "tech" else 1}
-		if not params.is_empty():
+		if kind == "age":
+			gd["n"] = int(params[clampi(_goal_param, 0, params.size() - 1)][0])
+		elif not params.is_empty():
 			var key: String = {"build": "ty", "stock": "res", "tech": "id"}[kind]
 			gd[key] = String(params[clampi(_goal_param, 0, params.size() - 1)][0])
 		gd["text"] = goal_text(gd)
 		goals.append(gd)
 		_fill()))
+	_events_section()
 	var br := HFlowContainer.new()
 	body.add_child(br)
 	br.add_child(main._button("Save the mission", func():
@@ -812,10 +835,204 @@ func _mission_tab() -> void:
 			main._show_hint("The mission could not be started: each start needs open grass around it.", 5.0)))
 
 
+## The mission's events (build 77): "when this happens, do that" (MissionScript).
+func _events_section() -> void:
+	body.add_child(main._label("Events", 14, Main.BRASS))
+	if not mission.has("rules"):
+		mission["rules"] = []
+	var rules: Array = mission.rules
+	if rules.is_empty():
+		body.add_child(_wrap("No events yet. An event does something when something happens: a rival declares war when you reach the next age, a fleet lands at minute 30, a message tells the story, a hidden goal is shown."))
+	for k in rules.size():
+		var rr := HBoxContainer.new()
+		body.add_child(rr)
+		var rl := _wrap("%s.  %s" % [MissionScript.rule_id(rules[k], k), MissionScript.rule_text(rules[k])], 13, Color("e8e0c8"))
+		rl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		rr.add_child(rl)
+		rr.add_child(main._button("Remove", func():
+			rules.remove_at(k)
+			_fill()))
+	for why in MissionScript.problems(mission):
+		body.add_child(_wrap("⚠ " + tr(String(why)), 12, Color("e0a060")))
+	if _ev.is_empty():
+		_ev = {"when": {"kind": "time", "min": 10}, "do": []}
+	if _ev_act.is_empty():
+		_ev_act = {"kind": "message", "text": ""}
+	# when
+	var wr := HFlowContainer.new()
+	body.add_child(wr)
+	wr.add_child(main._label("When", 13, Main.DIM))
+	var wo := OptionButton.new()
+	wo.focus_mode = Control.FOCUS_NONE
+	var wk := String(_ev.when.get("kind", "time"))
+	for k in MissionScript.WHEN.size():
+		wo.add_item(String(MissionScript.WHEN[k][1]))
+		if MissionScript.WHEN[k][0] == wk:
+			wo.select(k)
+	wo.item_selected.connect(func(i):
+		_ev["when"] = {"kind": String(MissionScript.WHEN[i][0])}
+		_fill())
+	wr.add_child(wo)
+	for f in _fields_of(MissionScript.WHEN, wk):
+		_event_field(wr, _ev.when, String(f), false)
+	# then
+	for a in _ev.do:
+		body.add_child(_wrap("   → " + MissionScript.do_text(a), 13))
+	var dr := HFlowContainer.new()
+	body.add_child(dr)
+	dr.add_child(main._label("Then", 13, Main.DIM))
+	var dk := String(_ev_act.get("kind", "message"))
+	var dop := OptionButton.new()
+	dop.focus_mode = Control.FOCUS_NONE
+	for k in MissionScript.DO.size():
+		dop.add_item(String(MissionScript.DO[k][1]))
+		if MissionScript.DO[k][0] == dk:
+			dop.select(k)
+	dop.item_selected.connect(func(i):
+		_ev_act = {"kind": String(MissionScript.DO[i][0])}
+		_fill())
+	dr.add_child(dop)
+	for f in _fields_of(MissionScript.DO, dk):
+		_event_field(dr, _ev_act, String(f), true)
+	var br := HFlowContainer.new()
+	body.add_child(br)
+	br.add_child(main._button("Add this action", func():
+		if String(_ev_act.get("kind", "")) == "message" and String(_ev_act.get("text", "")).strip_edges() == "":
+			main._show_hint("Write the message first.", 3.0)
+			return
+		_ev.do.append(_ev_act.duplicate(true))
+		_ev_act = {"kind": _ev_act.kind} if _ev_act.kind != "message" else {}
+		_fill()))
+	br.add_child(main._button("Add the event", func():
+		if (_ev.do as Array).is_empty():
+			main._show_hint("Add at least one action to the event first (Add this action).", 3.0)
+			return
+		var used := {}
+		for k in rules.size():
+			used[MissionScript.rule_id(rules[k], k)] = true
+		var n := rules.size() + 1
+		while used.has("e%d" % n):
+			n += 1
+		var r := _ev.duplicate(true)
+		r["id"] = "e%d" % n
+		rules.append(r)
+		_ev = {}
+		_ev_act = {}
+		_fill()))
+
+
+static func _fields_of(table: Array, kind: String) -> Array:
+	for e in table:
+		if e[0] == kind:
+			return e[2]
+	return []
+
+
+## One setting of an event's start or action, written into d[key].
+func _event_field(row: Control, d: Dictionary, key: String, action: bool) -> void:
+	match key:
+		"who":
+			var o := OptionButton.new()
+			o.focus_mode = Control.FOCUS_NONE
+			var vals := []
+			if not action or not (String(d.get("kind", "")) in ["war", "peace", "ally", "attack", "landing"]):
+				vals.append([0, tr("You")])
+			for k in range(1, maxi(1, int(mission.get("foes", 1))) + 1):
+				vals.append([k, tr("Rival %d") % k])
+			vals.append([-1, tr("Every rival") if action else tr("Any rival")])
+			if not d.has("who"):
+				d["who"] = vals[0][0]
+			for k in vals.size():
+				o.add_item(String(vals[k][1]))
+				if int(vals[k][0]) == int(d.who):
+					o.select(k)
+			o.item_selected.connect(func(i): d["who"] = int(vals[i][0]))
+			row.add_child(o)
+		"min", "every", "n":
+			var label: String = {"min": "minute" if String(d.get("kind", "")) != "after" else "minutes later", "every": "every (minutes)", "n": "how many"}[key]
+			row.add_child(main._label(String(label), 12, Main.DIM))
+			var sp := SpinBox.new()
+			sp.min_value = 0 if key != "every" else 1
+			sp.max_value = 100000
+			if key == "n" and String(d.get("kind", "")) == "minutes":
+				sp.min_value = -600
+			if not d.has(key):
+				d[key] = {"min": 10, "every": 10, "n": 1 if not action else 10}[key]
+			sp.value = int(d[key])
+			sp.value_changed.connect(func(v): d[key] = int(v))
+			row.add_child(sp)
+		"age":
+			var o := OptionButton.new()
+			o.focus_mode = Control.FOCUS_NONE
+			for k in GameData.ages.size():
+				o.add_item(tr("%s Age") % tr(String(GameData.ages[k])))
+			if not d.has("age"):
+				d["age"] = 1
+			o.select(clampi(int(d.age), 0, GameData.ages.size() - 1))
+			o.item_selected.connect(func(i): d["age"] = i)
+			row.add_child(o)
+		"id", "ty", "res":
+			var params := _goal_params({"id": "tech", "ty": "build", "res": "stock"}[key])
+			var o := OptionButton.new()
+			o.focus_mode = Control.FOCUS_NONE
+			o.custom_minimum_size = Vector2(150, 0)
+			o.clip_text = true
+			if not d.has(key) and not params.is_empty():
+				d[key] = String(params[0][0])
+			for k in params.size():
+				o.add_item(String(params[k][1]))
+				if String(params[k][0]) == String(d.get(key, "")):
+					o.select(k)
+			o.item_selected.connect(func(i): d[key] = String(params[i][0]))
+			row.add_child(o)
+		"rule":
+			var rules: Array = mission.get("rules", [])
+			var o := OptionButton.new()
+			o.focus_mode = Control.FOCUS_NONE
+			if rules.is_empty():
+				row.add_child(main._label("(add another event first)", 12, Main.DIM))
+				return
+			if not d.has("rule"):
+				d["rule"] = MissionScript.rule_id(rules[0], 0)
+			for k in rules.size():
+				var id := MissionScript.rule_id(rules[k], k)
+				o.add_item(tr("event %s") % id)
+				if id == String(d.rule):
+					o.select(k)
+			o.item_selected.connect(func(i): d["rule"] = MissionScript.rule_id(rules[i], i))
+			row.add_child(o)
+		"goal":
+			var goals: Array = mission.get("goals", [])
+			if goals.is_empty():
+				row.add_child(main._label("(add a goal first)", 12, Main.DIM))
+				return
+			var o := OptionButton.new()
+			o.focus_mode = Control.FOCUS_NONE
+			o.custom_minimum_size = Vector2(150, 0)
+			o.clip_text = true
+			if not d.has("goal"):
+				d["goal"] = 0
+			for k in goals.size():
+				o.add_item("%d. %s" % [k + 1, String(goals[k].get("text", ""))])
+			o.select(clampi(int(d.goal), 0, goals.size() - 1))
+			o.item_selected.connect(func(i): d["goal"] = i)
+			row.add_child(o)
+		"text":
+			var le := LineEdit.new()
+			le.placeholder_text = tr("The message ({1} is the first rival's name, {you} yours)")
+			le.custom_minimum_size = Vector2(320, 0)
+			le.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			le.text = String(d.get("text", ""))
+			le.text_changed.connect(func(t): d["text"] = t)
+			row.add_child(le)
+
+
 ## Saves the map, then the mission (on this map) into your missions. "" when done, else why not.
 func save_mission() -> String:
-	if (mission.get("goals", []) as Array).is_empty():
+	if (mission.get("goals", []) as Array).is_empty() and (mission.get("rules", []) as Array).is_empty():
 		return "Give the mission at least one goal."
+	if not MissionScript.problems(mission).is_empty():
+		return tr("An event needs fixing: %s.") % tr(String(MissionScript.problems(mission)[0]))
 	if String(mission.get("name", "")).strip_edges() == "":
 		return "Give the mission a name."
 	var err := save(true)

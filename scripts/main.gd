@@ -156,6 +156,7 @@ var campaign_ui := UiCampaign.new(self)  # the campaign map (ui_campaign.gd)
 var end_next: Button
 var age_ui := UiAge.new(self)       # the new age's window and its choice of path (ui_age.gd)
 var choice_ui := UiChoice.new(self) # events that ask you to choose (ui_choice.gd)
+var story_ui := UiStory.new(self)   # a mission's scripted messages (ui_story.gd)
 var guide_ui := UiGuide.new(self)  # the first-game checklist (ui_guide.gd)
 var side_ui := UiSide.new(self)
 var spectate_ui := UiSpectate.new(self)  # spectator mode: every realm played by the computer (ui_spectate.gd)
@@ -538,6 +539,7 @@ func _ready() -> void:
 	sim.log_added.connect(sound.on_log)
 	sim.log_added.connect(func(t, c): notices_ui.on_log(String(t), c))
 	sim.ended.connect(_on_end)
+	sim.story.connect(story_ui.on_story)
 	seed_edit.text = _rand_seed()
 	_start(seed_edit.text, 3, 5, true)
 	paused = true
@@ -1417,6 +1419,7 @@ func game_running() -> bool:
 func _after_world_change() -> void:
 	has_played = false
 	notices_ui.clear()
+	story_ui.clear()
 	new_blds = {}
 	moving_id = 0
 	if toolbar != null:
@@ -2364,6 +2367,7 @@ func _refresh_all() -> void:
 	_refresh_research()
 	age_ui.check()
 	choice_ui.check()
+	story_ui.check()
 	_refresh_build()
 	_dry_mines()
 	_refresh_groups()

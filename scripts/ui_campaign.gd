@@ -149,14 +149,20 @@ func _fill() -> void:
 	var ch: Dictionary = chapters[sel]
 	var ms: Dictionary = ch.mission
 	detail.add_child(main._label(String(ms.get("name", "")), 19, Main.BRASS))
-	var intro := main._label(String(ch.get("intro", "")), 14)
+	var intro := main._label(tr(String(ch.get("intro", ""))), 14)
 	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	intro.custom_minimum_size = Vector2(800, 0)
 	detail.add_child(intro)
 	var lines := []
-	lines.append("New in this chapter: " + String(ch.get("new", "")))
+	lines.append(tr("New in this chapter: %s") % tr(String(ch.get("new", ""))))
+	var hidden := false
 	for g in ms.get("goals", []):
-		lines.append("  •  " + String(g.get("text", "")))
+		if g.get("hidden", false):
+			hidden = true
+		else:
+			lines.append("  •  " + tr(String(g.get("text", ""))))
+	if hidden:
+		lines.append("  •  " + tr("...and more, as the story unfolds"))
 	var mins := int(ms.get("minutes", 0))
 	lines.append("%d rival%s, strength %d%s" % [int(ms.get("foes", 1)), "s" if int(ms.get("foes", 1)) > 1 else "", int(ms.get("strength", 5)), (", within %d minutes" % mins) if mins > 0 else ""])
 	var bonus := _bonus_for(sel)

@@ -120,17 +120,19 @@ func _mission() -> void:
 	var lines := []
 	for k in goals.size():
 		var g: Dictionary = goals[k]
+		if g.get("hidden", false):
+			continue
 		var gp := sim.goal_progress(g)
 		var done: bool = k < sim.mission_done.size() and bool(sim.mission_done[k])
 		var prog := "" if int(gp[1]) <= 1 else " (%d of %d)" % [mini(int(gp[0]), int(gp[1])), int(gp[1])]
 		if done:
-			lines.append("[color=#86ad5c]✔[/color] [color=#9a9c88]%s[/color]" % String(g.get("text", "")))
+			lines.append("[color=#86ad5c]✔[/color] [color=#9a9c88]%s[/color]" % tr(String(g.get("text", ""))))
 		else:
-			lines.append("[color=#e8c870]▶[/color] %s[color=#b8b8a8]%s[/color]" % [String(g.get("text", "")), prog])
+			lines.append("[color=#e8c870]▶[/color] %s[color=#b8b8a8]%s[/color]" % [tr(String(g.get("text", ""))), prog])
 	var mins := float(sim.mission.get("minutes", 0))
 	if mins > 0.0:
 		var left := maxf(0.0, mins * 60.0 - sim.time)
-		lines.append("[color=%s]Time left: %d:%02d[/color]" % ["#d9483d" if left < 300.0 else "#b8b8a8", int(left) / 60, int(left) % 60])
+		lines.append(("[color=%s]" + tr("Time left: %d:%02d") + "[/color]") % ["#d9483d" if left < 300.0 else "#b8b8a8", int(left) / 60, int(left) % 60])
 	var key := "\n".join(lines)
 	if key == _last:
 		return

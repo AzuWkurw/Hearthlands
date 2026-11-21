@@ -4,11 +4,11 @@
   {
    "id": "c1",
    "pos": [
-    0.08,
-    0.8
+    0.06,
+    0.82
    ],
    "new": "Farms, mills and bakeries",
-   "intro": "Your people have crossed the mountains with little more than seed grain and hope. The valley is green, the neighbour quiet, and the first winter is coming. See that there is bread.",
+   "intro": "Your people have crossed the mountains with little more than seed grain and bronze sickles. The valley is green, the neighbour quiet, and the first winter is coming. See that there is bread.",
    "outro": "The granaries are full. Word of a valley that feeds its people spreads over the passes, and more settlers come.",
    "carry": {
     "goods": {
@@ -19,7 +19,7 @@
    "mission": {
     "id": "first_harvest",
     "name": "Chapter 1: The First Winter",
-    "story": "A green valley, a quiet neighbour, and hungry settlers. Grow grain, grind it and bake bread before the first winter's end.",
+    "story": "A green valley, a quiet neighbour, and hungry settlers. Grow wheat, grind it and bake bread before the first winter's end.",
     "seed": "first harvest",
     "foes": 1,
     "strength": 2,
@@ -49,14 +49,198 @@
      },
      {
       "kind": "stock",
-      "res": "bread",
-      "n": 80,
-      "text": "Store 80 bread"
+      "n": 60,
+      "text": "Store 60 bread",
+      "res": "bread"
      },
      {
       "kind": "pop",
-      "n": 60,
-      "text": "Grow to 60 people"
+      "n": 50,
+      "text": "Grow to 50 people"
+     }
+    ],
+    "rules": [
+     {
+      "id": "arrive",
+      "when": {
+       "kind": "start"
+      },
+      "do": [
+       {
+        "kind": "message",
+        "text": "Your people have stopped at last. {1}, lord of the next valley, sends word that he wants no quarrel with you. Sow the fields before the frost comes.",
+        "title": "The valley"
+       }
+      ]
+     },
+     {
+      "id": "mill",
+      "when": {
+       "kind": "build",
+       "who": 0,
+       "ty": "mill",
+       "n": 1
+      },
+      "do": [
+       {
+        "kind": "message",
+        "text": "The millstones turn. Flour means bread, and bread means nobody starves this winter."
+       }
+      ]
+     },
+     {
+      "id": "frost",
+      "when": {
+       "kind": "time",
+       "min": 20
+      },
+      "do": [
+       {
+        "kind": "message",
+        "text": "The first frost whitens the fields. {1} sends a cart of grain as a sign of friendship.",
+        "title": "First frost"
+       },
+       {
+        "kind": "goods",
+        "who": 0,
+        "res": "grain",
+        "n": 20
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "b2",
+   "pos": [
+    0.15,
+    0.6
+   ],
+   "new": "Copper, tin and bronze; tools and arms by metal",
+   "intro": "The eastern hills hold copper, and tin lies further off. Melt them together and you have bronze: better tools and sharper blades. Two neighbours have the same idea.",
+   "outro": "Bronze rings from your forges, and your warriors carry its blades. The veterans of the hill war follow you.",
+   "carry": {
+    "soldiers": 6
+   },
+   "mission": {
+    "name": "Chapter 2: Bronze and Tin",
+    "story": "Mine copper and tin, melt bronze and arm your warriors with it before a jealous neighbour comes for the hills.",
+    "seed": "bronze and tin",
+    "foes": 2,
+    "strength": 3,
+    "opts": {
+     "peace_min": 30,
+     "start_goods": 1.2
+    },
+    "minutes": 60,
+    "goals": [
+     {
+      "kind": "build",
+      "ty": "copper_mine",
+      "n": 1,
+      "text": "Open a copper mine"
+     },
+     {
+      "kind": "build",
+      "ty": "tin_mine",
+      "n": 1,
+      "text": "Open a tin mine"
+     },
+     {
+      "kind": "build",
+      "ty": "bronze_foundry",
+      "n": 1,
+      "text": "Build a bronze foundry"
+     },
+     {
+      "kind": "build",
+      "ty": "bronze_weaponsmith",
+      "n": 1,
+      "text": "Build a bronze weaponsmith"
+     },
+     {
+      "kind": "stock",
+      "n": 20,
+      "text": "Store 20 bronze",
+      "res": "bronze"
+     },
+     {
+      "kind": "soldiers",
+      "n": 15,
+      "text": "Have 15 soldiers",
+      "hidden": true
+     }
+    ],
+    "rules": [
+     {
+      "id": "start",
+      "when": {
+       "kind": "start"
+      },
+      "do": [
+       {
+        "kind": "message",
+        "text": "Copper in the eastern hills, tin further off. A geologist finds where the ore lies; a bronze foundry melts the two together over charcoal.",
+        "title": "Bronze and Tin"
+       }
+      ]
+     },
+     {
+      "id": "foundry",
+      "when": {
+       "kind": "build",
+       "who": 0,
+       "ty": "bronze_foundry",
+       "n": 1
+      },
+      "do": [
+       {
+        "kind": "message",
+        "text": "{2} has heard of your foundry. His envoys came to trade and stayed to count your warriors."
+       }
+      ]
+     },
+     {
+      "id": "war",
+      "when": {
+       "kind": "time",
+       "min": 30
+      },
+      "do": [
+       {
+        "kind": "message",
+        "text": "{2} wants your bronze and has come to take it. Arm your warriors!",
+        "title": "War in the hills"
+       },
+       {
+        "kind": "war",
+        "who": 2
+       },
+       {
+        "kind": "show_goal",
+        "goal": 5
+       }
+      ]
+     },
+     {
+      "id": "kin",
+      "when": {
+       "kind": "after",
+       "rule": "war",
+       "min": 10
+      },
+      "do": [
+       {
+        "kind": "message",
+        "text": "Kinsmen from over the mountains have heard of the war. Four warriors come to stand with you."
+       },
+       {
+        "kind": "soldiers",
+        "who": 0,
+        "n": 4
+       }
+      ]
      }
     ]
    }
@@ -64,38 +248,38 @@
   {
    "id": "c2",
    "pos": [
-    0.22,
-    0.62
+    0.25,
+    0.4
    ],
-   "new": "Mines, smelters and weapons",
-   "intro": "The hills above the valley are full of ore, and two rival lords have seen it too. Dig, smelt and arm your men before they come for the hills.",
-   "outro": "Iron rings from your forges. Your best soldiers march with you into the next chapter.",
+   "new": "Iron working and the Roman age",
+   "intro": "Your smiths have heard of a black metal harder than bronze. Whoever learns to work it first will rule these hills, and the realm that learns it second will not forgive the first.",
+   "outro": "Iron rings from your forges and a new age has begun. Your best soldiers march with you into the next chapter.",
    "carry": {
     "soldiers": 6
    },
    "mission": {
     "id": "iron_road",
-    "name": "Chapter 2: The Iron Road",
-    "story": "The hills are full of ore, and two rivals know it. Dig iron and coal, smelt it, and arm your men before they come.",
+    "name": "Chapter 3: The Iron Age",
+    "story": "Study iron working and reach the Roman age, then dig iron and coal and forge iron weapons. Reaching the new age first will not go unanswered.",
     "seed": "iron road",
     "foes": 2,
     "strength": 4,
     "opts": {
-     "peace_min": 20
+     "peace_min": 30,
+     "research": 1.3
     },
-    "minutes": 60,
+    "minutes": 75,
     "goals": [
+     {
+      "kind": "age",
+      "n": 1,
+      "text": "Reach the Roman Age"
+     },
      {
       "kind": "build",
       "ty": "iron_mine",
       "n": 1,
       "text": "Open an iron mine"
-     },
-     {
-      "kind": "build",
-      "ty": "coal_mine",
-      "n": 1,
-      "text": "Open a coal mine"
      },
      {
       "kind": "build",
@@ -114,14 +298,95 @@
       "n": 20,
       "text": "Have 20 soldiers"
      }
+    ],
+    "rules": [
+     {
+      "id": "start",
+      "when": {
+       "kind": "start"
+      },
+      "do": [
+       {
+        "kind": "message",
+        "text": "Research gathers in your scriptorium. The study of Iron working opens the Roman age: iron mines, smelters, and weaponsmiths whose blades break bronze.",
+        "title": "The black metal"
+       }
+      ]
+     },
+     {
+      "id": "rival_age",
+      "when": {
+       "kind": "age",
+       "who": -1,
+       "age": 1
+      },
+      "do": [
+       {
+        "kind": "message",
+        "text": "A rival realm has learned to work iron. Hurry, or its legions will be first in the hills."
+       }
+      ]
+     },
+     {
+      "id": "my_age",
+      "when": {
+       "kind": "age",
+       "who": 0,
+       "age": 1
+      },
+      "do": [
+       {
+        "kind": "message",
+        "text": "Iron in your hands frightens {1}. His warriors are on the march before your first iron blade is cold.",
+        "title": "The Iron Age"
+       },
+       {
+        "kind": "war",
+        "who": 1
+       }
+      ]
+     },
+     {
+      "id": "strike",
+      "when": {
+       "kind": "after",
+       "rule": "my_age",
+       "min": 12
+      },
+      "do": [
+       {
+        "kind": "attack",
+        "who": 1
+       }
+      ]
+     },
+     {
+      "id": "offer",
+      "when": {
+       "kind": "after",
+       "rule": "my_age",
+       "min": 20
+      },
+      "do": [
+       {
+        "kind": "message",
+        "text": "{2} has no love for {1}, and offers you an alliance against him. You accept.",
+        "title": "An ally"
+       },
+       {
+        "kind": "ally",
+        "who": 2
+       }
+      ]
+     }
     ]
    }
   },
   {
    "id": "c3",
    "pos": [
-    0.36,
-    0.46
+    0.34,
+    0.6
    ],
    "new": "Markets, trade and bridges",
    "intro": "A broad river splits the land, and the realm across it is at peace with you. Build a market, trade what you have plenty of for what you lack, and bridge the river.",
@@ -133,14 +398,15 @@
     }
    },
    "mission": {
-    "name": "Chapter 3: Markets and Bridges",
-    "story": "Trade with a peaceful neighbour across the river.",
+    "name": "Chapter 4: Markets and Bridges",
+    "story": "Trade with a peaceful neighbour across the river, while a second neighbour watches the carts go by.",
     "seed": "two rivers",
     "foes": 2,
     "strength": 4,
     "opts": {
      "peace_min": 60,
-     "start_goods": 1.3
+     "start_goods": 1.3,
+     "start_age": 1
     },
     "minutes": 60,
     "goals": [
@@ -166,30 +432,87 @@
       "n": 100,
       "text": "Grow to 100 people"
      }
+    ],
+    "rules": [
+     {
+      "id": "start",
+      "when": {
+       "kind": "start"
+      },
+      "do": [
+       {
+        "kind": "peace",
+        "who": 1
+       },
+       {
+        "kind": "message",
+        "text": "{1}, across the river, has made peace with you and has goods to spare. Build a market, then offer a trade in Diplomacy.",
+        "title": "The river"
+       }
+      ]
+     },
+     {
+      "id": "trade",
+      "when": {
+       "kind": "goal",
+       "goal": 1
+      },
+      "do": [
+       {
+        "kind": "message",
+        "text": "{1}'s merchants are pleased with the trade and leave a purse of gold at your market."
+       },
+       {
+        "kind": "goods",
+        "who": 0,
+        "res": "gold",
+        "n": 15
+       }
+      ]
+     },
+     {
+      "id": "envy",
+      "when": {
+       "kind": "time",
+       "min": 40
+      },
+      "do": [
+       {
+        "kind": "message",
+        "text": "{2} envies the trade on your river. His warriors gather at your border.",
+        "title": "Envy"
+       },
+       {
+        "kind": "war",
+        "who": 2
+       }
+      ]
+     }
     ]
    }
   },
   {
    "id": "c4",
    "pos": [
-    0.5,
-    0.62
+    0.43,
+    0.8
    ],
-   "new": "Harbours and ships",
-   "intro": "Aldric's legions hold the north of the iron coast. The sea is your road: hold the ridge, and take a rival realm.",
+   "new": "Harbours, ships and landings",
+   "intro": "A hand-made coast: your village in the south, a rich iron ridge in the middle, and to the north a rival with ships. The sea is a road for both of you.",
    "outro": "The coast is yours. Ships carry your banner along every shore.",
    "carry": {
     "soldiers": 8
    },
    "mission": {
     "id": "iron_coast",
-    "name": "Chapter 4: The Iron Coast",
-    "story": "A hand-made coast: your village in the south, a rich iron ridge in the middle, Aldric's legions to the north. Hold the ridge and take one rival realm.",
+    "name": "Chapter 5: The Iron Coast",
+    "story": "Hold the iron ridge, open a harbour, and take one rival realm, while fleets from the north land on your shore.",
     "map": "res://data/map_iron_coast.json",
     "foes": 2,
     "strength": 5,
     "opts": {
-     "peace_min": 10
+     "peace_min": 10,
+     "start_age": 1
     },
     "minutes": 90,
     "goals": [
@@ -197,6 +520,12 @@
       "kind": "land",
       "n": 1500,
       "text": "Hold 1500 tiles of land"
+     },
+     {
+      "kind": "build",
+      "ty": "harbour",
+      "n": 1,
+      "text": "Open a harbour"
      },
      {
       "kind": "soldiers",
@@ -208,18 +537,82 @@
       "n": 1,
       "text": "Defeat one rival realm"
      }
+    ],
+    "rules": [
+     {
+      "id": "start",
+      "when": {
+       "kind": "start"
+      },
+      "do": [
+       {
+        "kind": "message",
+        "text": "The iron ridge lies between you and {1}. Whoever holds it has iron for a generation. Keep soldiers near the beaches: {1} has ships.",
+        "title": "The Iron Coast"
+       }
+      ]
+     },
+     {
+      "id": "harbour",
+      "when": {
+       "kind": "build",
+       "who": 0,
+       "ty": "harbour",
+       "n": 1
+      },
+      "do": [
+       {
+        "kind": "message",
+        "text": "Your harbour is open. A shipyard builds ships, and ships carry soldiers waiting at your headquarters to a rival's shore: attack a building near the coast."
+       }
+      ]
+     },
+     {
+      "id": "sails",
+      "when": {
+       "kind": "time",
+       "min": 25
+      },
+      "do": [
+       {
+        "kind": "message",
+        "text": "Sails on the horizon! {1} comes by sea.",
+        "title": "Sails"
+       },
+       {
+        "kind": "landing",
+        "who": 1,
+        "n": 8
+       }
+      ]
+     },
+     {
+      "id": "again",
+      "when": {
+       "kind": "every",
+       "min": 50,
+       "every": 20
+      },
+      "do": [
+       {
+        "kind": "landing",
+        "who": 1,
+        "n": 10
+       }
+      ]
+     }
     ]
    }
   },
   {
    "id": "c5",
    "pos": [
-    0.63,
-    0.4
+    0.52,
+    0.55
    ],
-   "new": "Taverns, chapels and festivals",
-   "intro": "A long war leaves people weary. Give them taverns and chapels, and a festival or two, and see the town work with a will again.",
-   "outro": "Music from the taverns carries over the rooftops. Content people work harder, and your realm has never been richer.",
+   "new": "Taverns, chapels and a wonder: the great hall",
+   "intro": "A long war leaves people weary. Give them taverns and a chapel, and raise a great hall where the whole realm can feast, and see the town work with a will again.",
+   "outro": "Music from the great hall carries over the rooftops. Content people work harder, and your realm has never been richer.",
    "carry": {
     "goods": {
      "beer": 20,
@@ -227,23 +620,18 @@
     }
    },
    "mission": {
-    "name": "Chapter 5: Feast Days",
-    "story": "Make your people content.",
+    "name": "Chapter 6: The Great Hall",
+    "story": "Make your people content, and build the realm's first wonder: a great hall.",
     "seed": "feast days",
     "foes": 2,
     "strength": 5,
     "opts": {
      "peace_min": 30,
-     "start_goods": 1.4
+     "start_goods": 1.4,
+     "start_age": 2
     },
-    "minutes": 75,
+    "minutes": 80,
     "goals": [
-     {
-      "kind": "build",
-      "ty": "brewery",
-      "n": 1,
-      "text": "Build a brewery"
-     },
      {
       "kind": "build",
       "ty": "tavern",
@@ -257,58 +645,218 @@
       "text": "Build a chapel"
      },
      {
+      "kind": "wonders",
+      "n": 1,
+      "text": "Build a wonder: the great hall"
+     },
+     {
       "kind": "pop",
-      "n": 150,
-      "text": "Grow to 150 people"
+      "n": 120,
+      "text": "Grow to 120 people"
+     }
+    ],
+    "rules": [
+     {
+      "id": "start",
+      "when": {
+       "kind": "start"
+      },
+      "do": [
+       {
+        "kind": "message",
+        "text": "The new kingdoms have come. Your people want beer and bread in the taverns, candles in the chapel, and a hall worthy of the realm. A wonder is built once, and helps for good.",
+        "title": "Feast days"
+       }
+      ]
+     },
+     {
+      "id": "taverns",
+      "when": {
+       "kind": "build",
+       "who": 0,
+       "ty": "tavern",
+       "n": 2
+      },
+      "do": [
+       {
+        "kind": "message",
+        "text": "Songs from the taverns. People come from far off to see the feast days, and some of them stay."
+       }
+      ]
+     },
+     {
+      "id": "raid",
+      "when": {
+       "kind": "time",
+       "min": 35
+      },
+      "do": [
+       {
+        "kind": "message",
+        "text": "{2} sends raiders to spoil the feast.",
+        "title": "Raiders"
+       },
+       {
+        "kind": "war",
+        "who": 2
+       }
+      ]
+     },
+     {
+      "id": "hall",
+      "when": {
+       "kind": "wonders",
+       "who": 0,
+       "n": 1
+      },
+      "do": [
+       {
+        "kind": "message",
+        "text": "The great hall stands! Lords and craftsmen from far away bring gifts.",
+        "title": "The great hall"
+       },
+       {
+        "kind": "goods",
+        "who": 0,
+        "res": "gold",
+        "n": 10
+       },
+       {
+        "kind": "soldiers",
+        "who": 0,
+        "n": 4
+       }
+      ]
      }
     ]
    }
   },
   {
-   "id": "c6",
+   "id": "b7",
    "pos": [
-    0.72,
-    0.18
+    0.6,
+    0.3
    ],
-   "new": "Research",
-   "intro": "Peace, and three realms racing for learning. Be first to master the new ways of farming.",
-   "outro": "Your scholars are the wonder of the age. What they learned goes with you.",
+   "new": "Guilds and the cathedral",
+   "intro": "The towns are growing rich, and their craftsmen have learned that a trade worked side by side works faster. The old lords do not like the free towns at all.",
+   "outro": "The guild towns stand, and the cathedral's bells ring over them. The old lords have learned to leave the towns alone.",
    "carry": {
-    "soldiers": 6
+    "soldiers": 6,
+    "goods": {
+     "furniture": 20
+    }
    },
    "mission": {
-    "id": "scholars",
-    "name": "Chapter 6: The Scholars' Race",
-    "story": "No war this time: three realms race for learning. Be the first to master the heavy plough, watermills and the three-field system.",
-    "seed": "scholars",
+    "name": "Chapter 7: The Guild Towns",
+    "story": "Study Guilds and build workshops of one trade close together, so they form a guild. Raise a cathedral, and keep the lords from the towns.",
+    "seed": "guild towns",
     "foes": 2,
-    "strength": 6,
+    "strength": 5,
     "opts": {
-     "peace_min": 90,
-     "research": 1.5
+     "peace_min": 40,
+     "start_goods": 1.3,
+     "start_age": 3
     },
-    "minutes": 75,
+    "minutes": 90,
     "goals": [
      {
+      "kind": "tech",
+      "n": 1,
+      "text": "Study Guilds",
+      "id": "guilds"
+     },
+     {
       "kind": "build",
-      "ty": "scriptorium",
-      "n": 2,
-      "text": "Build two scriptoriums"
+      "ty": "carpenter",
+      "n": 3,
+      "text": "Build three carpenters close together"
      },
      {
-      "kind": "tech",
-      "id": "heavy_plough",
-      "text": "Study the heavy plough"
+      "kind": "build",
+      "ty": "cathedral",
+      "n": 1,
+      "text": "Build a wonder: the cathedral"
      },
      {
-      "kind": "tech",
-      "id": "watermills",
-      "text": "Study watermills"
+      "kind": "pop",
+      "n": 150,
+      "text": "Grow to 150 people"
+     }
+    ],
+    "rules": [
+     {
+      "id": "start",
+      "when": {
+       "kind": "start"
+      },
+      "do": [
+       {
+        "kind": "message",
+        "text": "High walls and busy streets. Workshops of the same trade near each other form a guild once you know Guilds, and each works faster for it: the more, the faster.",
+        "title": "The guild towns"
+       }
+      ]
      },
      {
-      "kind": "tech",
-      "id": "three_field",
-      "text": "Study the three-field system"
+      "id": "guilds",
+      "when": {
+       "kind": "tech",
+       "who": 0,
+       "id": "guilds"
+      },
+      "do": [
+       {
+        "kind": "message",
+        "text": "The guilds are founded. Build three carpenters close together: they need only planks, and make furniture the nobles want."
+       }
+      ]
+     },
+     {
+      "id": "lords",
+      "when": {
+       "kind": "time",
+       "min": 45
+      },
+      "do": [
+       {
+        "kind": "message",
+        "text": "{1}'s lords fear the free towns and march to put them in their place.",
+        "title": "The lords"
+       },
+       {
+        "kind": "war",
+        "who": 1
+       }
+      ]
+     },
+     {
+      "id": "strike",
+      "when": {
+       "kind": "after",
+       "rule": "lords",
+       "min": 10
+      },
+      "do": [
+       {
+        "kind": "attack",
+        "who": 1
+       }
+      ]
+     },
+     {
+      "id": "bells",
+      "when": {
+       "kind": "build",
+       "who": 0,
+       "ty": "cathedral",
+       "n": 1
+      },
+      "do": [
+       {
+        "kind": "message",
+        "text": "The cathedral's bells ring out. Pilgrims come, and stay."
+       }
+      ]
      }
     ]
    }
@@ -316,43 +864,383 @@
   {
    "id": "c7",
    "pos": [
-    0.8,
-    0.5
+    0.68,
+    0.55
    ],
-   "new": "Archers, catapults and sallies",
-   "intro": "Hartmut has walled himself in behind towers and palisades. Make bows and catapults, and break his realm.",
-   "outro": "Hartmut's banner is down. Only one realm still stands between you and the crown.",
+   "new": "Gunpowder, muskets and fortresses",
+   "intro": "A rival has walled himself in behind towers and castles. Bows and catapults will not break those walls: gunpowder will.",
+   "outro": "The walls are down. Only the sea and one last war stand between you and the crown.",
    "carry": {
     "soldiers": 10
    },
    "mission": {
-    "name": "Chapter 7: Siege of Hartmut",
-    "story": "Break a strong rival.",
+    "name": "Chapter 8: Powder and Shot",
+    "story": "Make gunpowder from sulfur, saltpeter and charcoal, arm musketeers, and break a rival who is already at war with you.",
     "seed": "siege",
     "foes": 1,
     "strength": 7,
     "opts": {
      "peace_min": 15,
-     "start_goods": 1.3
+     "start_goods": 1.3,
+     "start_age": 4
     },
     "minutes": 90,
     "goals": [
      {
       "kind": "build",
-      "ty": "bowyer",
+      "ty": "powder_mill",
       "n": 1,
-      "text": "Build a bowyer"
+      "text": "Build a powder mill"
      },
      {
       "kind": "build",
-      "ty": "catapult",
+      "ty": "gunsmith",
       "n": 1,
-      "text": "Build a catapult"
+      "text": "Build a gunsmith"
+     },
+     {
+      "kind": "soldiers",
+      "n": 30,
+      "text": "Have 30 soldiers"
      },
      {
       "kind": "defeat",
       "n": 1,
-      "text": "Defeat Hartmut"
+      "text": "Break the rival realm",
+      "hidden": true
+     }
+    ],
+    "rules": [
+     {
+      "id": "start",
+      "when": {
+       "kind": "start"
+      },
+      "do": [
+       {
+        "kind": "message",
+        "text": "{1} has declared war, and sits behind his walls. Sulfur and lead mines, a saltpeter works and a powder mill give you gunpowder; a gunsmith makes muskets of it.",
+        "title": "The siege"
+       },
+       {
+        "kind": "war",
+        "who": 1
+       }
+      ]
+     },
+     {
+      "id": "first",
+      "when": {
+       "kind": "time",
+       "min": 20
+      },
+      "do": [
+       {
+        "kind": "message",
+        "text": "{1}'s soldiers come out from behind the walls!"
+       },
+       {
+        "kind": "attack",
+        "who": 1
+       }
+      ]
+     },
+     {
+      "id": "guns",
+      "when": {
+       "kind": "build",
+       "who": 0,
+       "ty": "gunsmith",
+       "n": 1
+      },
+      "do": [
+       {
+        "kind": "message",
+        "text": "Muskets! Now break {1}'s realm.",
+        "title": "Powder and shot"
+       },
+       {
+        "kind": "show_goal",
+        "goal": 3
+       }
+      ]
+     },
+     {
+      "id": "sallies",
+      "when": {
+       "kind": "every",
+       "min": 40,
+       "every": 15
+      },
+      "do": [
+       {
+        "kind": "attack",
+        "who": 1
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "b9",
+   "pos": [
+    0.77,
+    0.78
+   ],
+   "new": "Warships, naval yards and coastal forts",
+   "intro": "You land on a coast of islands, with one ship and a harbour for a headquarters. The two realms here rule the sea, and they will not share it.",
+   "outro": "Your warships rule the sea between the islands. The last war is coming, and it will come by land.",
+   "carry": {
+    "soldiers": 8
+   },
+   "mission": {
+    "name": "Chapter 9: Lords of the Sea",
+    "story": "Build a naval yard and a fleet, guard your coast with forts, and take one realm across the water.",
+    "seed": "islands",
+    "size": 160,
+    "foes": 2,
+    "strength": 6,
+    "opts": {
+     "peace_min": 20,
+     "sea_start": true,
+     "start_age": 4
+    },
+    "minutes": 100,
+    "goals": [
+     {
+      "kind": "build",
+      "ty": "naval_yard",
+      "n": 1,
+      "text": "Build a naval yard"
+     },
+     {
+      "kind": "ships",
+      "n": 4,
+      "text": "Have 4 ships and warships"
+     },
+     {
+      "kind": "build",
+      "ty": "coastal_fort",
+      "n": 1,
+      "text": "Build a coastal fort"
+     },
+     {
+      "kind": "defeat",
+      "n": 1,
+      "text": "Defeat one rival realm"
+     }
+    ],
+    "rules": [
+     {
+      "id": "start",
+      "when": {
+       "kind": "start"
+      },
+      "do": [
+       {
+        "kind": "message",
+        "text": "Your harbour is your headquarters. A naval yard builds warships that sink fleets at sea and guard your landings; a coastal fort fires on ships that come near.",
+        "title": "The islands"
+       }
+      ]
+     },
+     {
+      "id": "yard",
+      "when": {
+       "kind": "build",
+       "who": 0,
+       "ty": "naval_yard",
+       "n": 1
+      },
+      "do": [
+       {
+        "kind": "message",
+        "text": "The first warship slides into the water. Keep your fleet escorting your landings."
+       }
+      ]
+     },
+     {
+      "id": "first",
+      "when": {
+       "kind": "time",
+       "min": 25
+      },
+      "do": [
+       {
+        "kind": "message",
+        "text": "{1}'s fleet is at sea, and it is coming for you!",
+        "title": "A fleet"
+       },
+       {
+        "kind": "landing",
+        "who": 1,
+        "n": 10
+       }
+      ]
+     },
+     {
+      "id": "again",
+      "when": {
+       "kind": "every",
+       "min": 45,
+       "every": 20
+      },
+      "do": [
+       {
+        "kind": "landing",
+        "who": 2,
+        "n": 12
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "b10",
+   "pos": [
+    0.8,
+    0.45
+   ],
+   "new": "Steam engines, steel and railways",
+   "intro": "Machines are coming: steam engines that pump mines dry, mills that make steel, and iron roads that carry a train of goods faster than any cart. The realm that builds them first will be the master of the age.",
+   "outro": "Trains run on your railways, and the halls of your exhibition palace are full of wonders. One crown remains.",
+   "carry": {
+    "soldiers": 10,
+    "goods": {
+     "steel": 20
+    }
+   },
+   "mission": {
+    "name": "Chapter 10: Steam and Rails",
+    "story": "Reach the Industrial age, make steel and join your towns by rail, before a rival does.",
+    "seed": "steam and rails",
+    "foes": 2,
+    "strength": 6,
+    "opts": {
+     "peace_min": 40,
+     "start_goods": 1.4,
+     "start_age": 5,
+     "research": 1.4
+    },
+    "minutes": 120,
+    "goals": [
+     {
+      "kind": "age",
+      "n": 6,
+      "text": "Reach the Industrial Age"
+     },
+     {
+      "kind": "tech",
+      "n": 1,
+      "text": "Study the steam engine",
+      "id": "steam_engine"
+     },
+     {
+      "kind": "stock",
+      "n": 30,
+      "text": "Store 30 steel",
+      "res": "steel"
+     },
+     {
+      "kind": "build",
+      "ty": "railway_station",
+      "n": 2,
+      "text": "Build two railway stations"
+     },
+     {
+      "kind": "build",
+      "ty": "exhibition_palace",
+      "n": 1,
+      "text": "Build a wonder: the exhibition palace",
+      "hidden": true
+     }
+    ],
+    "rules": [
+     {
+      "id": "start",
+      "when": {
+       "kind": "start"
+      },
+      "do": [
+       {
+        "kind": "message",
+        "text": "The Age of Reason is here. Your scholars point the way: the Dawn of industry, then the steam engine, then railways. Steel mills need iron and coal; stations join your towns by rail.",
+        "title": "The age of machines"
+       }
+      ]
+     },
+     {
+      "id": "industry",
+      "when": {
+       "kind": "age",
+       "who": 0,
+       "age": 6
+      },
+      "do": [
+       {
+        "kind": "message",
+        "text": "The Industrial age! Show the world what your realm can make: build an exhibition palace.",
+        "title": "Industry"
+       },
+       {
+        "kind": "show_goal",
+        "goal": 4
+       }
+      ]
+     },
+     {
+      "id": "rival_first",
+      "when": {
+       "kind": "age",
+       "who": -1,
+       "age": 6
+      },
+      "do": [
+       {
+        "kind": "message",
+        "text": "A rival realm has reached the Industrial age. Its factories smoke day and night."
+       }
+      ]
+     },
+     {
+      "id": "war",
+      "when": {
+       "kind": "time",
+       "min": 50
+      },
+      "do": [
+       {
+        "kind": "message",
+        "text": "{1} wants your coal and iron.",
+        "title": "War"
+       },
+       {
+        "kind": "war",
+        "who": 1
+       }
+      ]
+     },
+     {
+      "id": "rails",
+      "when": {
+       "kind": "tech",
+       "who": 0,
+       "id": "railways"
+      },
+      "do": [
+       {
+        "kind": "message",
+        "text": "Railways! A steel mill's steel and a rolling mill's rails make the iron road. Merchants send steel to help you start."
+       },
+       {
+        "kind": "goods",
+        "who": 0,
+        "res": "steel",
+        "n": 10
+       }
+      ]
      }
     ]
    }
@@ -360,35 +1248,121 @@
   {
    "id": "c8",
    "pos": [
-    0.88,
-    0.2
+    0.86,
+    0.14
    ],
    "new": "Everything",
-   "intro": "Three realms remain, and only one crown. Hold the Hearthlands.",
+   "intro": "Three realms remain, and only one crown. The lords have sworn to stop you together. Hold the Hearthlands.",
    "outro": "The Hearthlands are one realm under your banner. The chronicle ends here, but the land will remember.",
    "carry": {},
    "mission": {
-    "name": "Chapter 8: The Crown of the Hearthlands",
-    "story": "Win the Hearthlands.",
+    "name": "Chapter 11: The Crown of the Hearthlands",
+    "story": "Three strong rivals, sworn to stop you. Defeat them all.",
     "seed": "crown",
     "foes": 3,
     "strength": 7,
-    "size": 160,
     "opts": {
      "peace_min": 20,
-     "start_goods": 1.2
+     "start_goods": 1.2,
+     "start_age": 4
     },
     "minutes": 150,
     "goals": [
      {
       "kind": "land",
-      "n": 4000,
-      "text": "Hold 4000 tiles of land"
+      "n": 3000,
+      "text": "Hold 3000 tiles of land"
      },
      {
       "kind": "defeat",
-      "n": 2,
-      "text": "Defeat two rival realms"
+      "n": 0,
+      "text": "Defeat every rival"
+     }
+    ],
+    "rules": [
+     {
+      "id": "start",
+      "when": {
+       "kind": "start"
+      },
+      "do": [
+       {
+        "kind": "message",
+        "text": "{1}, {2} and {3} have sworn to stop you. They will not wait long.",
+        "title": "The crown"
+       }
+      ]
+     },
+     {
+      "id": "oath",
+      "when": {
+       "kind": "time",
+       "min": 30
+      },
+      "do": [
+       {
+        "kind": "message",
+        "text": "The three lords keep their oath: all three are at war with you.",
+        "title": "The oath"
+       },
+       {
+        "kind": "war",
+        "who": -1
+       }
+      ]
+     },
+     {
+      "id": "sea",
+      "when": {
+       "kind": "every",
+       "min": 50,
+       "every": 20
+      },
+      "do": [
+       {
+        "kind": "landing",
+        "who": 3,
+        "n": 12
+       }
+      ]
+     },
+     {
+      "id": "one",
+      "when": {
+       "kind": "fallen",
+       "who": -1,
+       "n": 1
+      },
+      "do": [
+       {
+        "kind": "message",
+        "text": "One banner is down! Soldiers who served the fallen lord come over to you."
+       },
+       {
+        "kind": "soldiers",
+        "who": 0,
+        "n": 10
+       }
+      ]
+     },
+     {
+      "id": "two",
+      "when": {
+       "kind": "fallen",
+       "who": -1,
+       "n": 2
+      },
+      "do": [
+       {
+        "kind": "message",
+        "text": "Only one lord still stands against you. Finish it.",
+        "title": "The last lord"
+       },
+       {
+        "kind": "minutes",
+        "n": 20
+       }
+      ]
      }
     ]
    }

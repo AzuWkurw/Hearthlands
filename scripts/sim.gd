@@ -16,6 +16,9 @@ signal tech_done(pid: int, tech: String)
 
 
 signal diplomacy_changed
+
+
+signal story(title: String, text: String)   # a mission's scripted message (MissionScript): shown in a window
 # For the eye only (the map shows them; nothing in the game depends on them):
 signal tree_felled(tile: int)          # a woodcutter felled the tree on this tile
 signal building_done(id: int)          # a building site was finished
@@ -421,6 +424,7 @@ class Player:
 	var odds := 1.3
 	var focus := 0.0
 	var max_b := 1
+	var script_war := false   # a mission's event sent this rival to war: it attacks even in the peace at the start
 
 
 class Trip:
@@ -743,6 +747,7 @@ func new_game(p_seed: String, p_foes: int, p_strength: int, p_mix: bool, p_size 
 		p_size = int(g.w)
 	mission = p_mission.duplicate(true)
 	mission_done = []
+	script_fired = {}
 	seed_str = p_seed; foes = p_foes; strength = p_strength; mix = p_mix; map_size = p_size; research_victory = p_research_victory
 	opts = DEFAULT_OPTS.duplicate()
 	opts.merge(p_opts, true)
@@ -857,8 +862,9 @@ func new_game(p_seed: String, p_foes: int, p_strength: int, p_mix: bool, p_size 
 	if int(opts.get("start_age", 0)) >= 1:
 		# (not on the new-game screen: every game starts in the Bronze Age. Tests and scripts that need
 		# the Roman age's buildings at once start there, as games did before build 65.)
+		# (build 77) a mission can start in a later age: every study of the ages before it is known
 		for p in players:
-			learn_bronze_age(p)
+			learn_ages(p, clampi(int(opts.start_age), 1, GameData.ages.size() - 1))
 	if bool(opts.get("all_research", false)):
 		# every realm starts in the last age, with everything studied but the Industrial Revolution itself
 		for p in players:
@@ -1708,8 +1714,18 @@ static func soldier_plural(era: int) -> String:
 ## Every Bronze study and Iron working, known at once: realm p is in the Roman age, its buildings and
 ## soldiers Roman.
 func learn_bronze_age(p: Player) -> void:
+	learn_ages(p, 1)
+
+
+## Realm p knows every study of the ages before `upto` and the gate into it (and so is in that age).
+func learn_ages(p: Player, upto: int) -> void:
+	var gates := {}
+	for a in range(1, upto + 1):
+		gates[GameData.gate_of(a)] = true
 	for id in GameData.techs:
-		if int(GameData.techs[id].get("age", 0)) == 0 or id == GameData.gate_of(1):
+		if GameData.techs[id].get("final", false):
+			continue
+		if int(GameData.techs[id].get("age", 0)) < upto or gates.has(id):
 			p.techs[id] = true
 	_recompute_mods(p)
 	p.res_era = float(p.age)
@@ -2707,9 +2723,11 @@ static var log_checksums := false
 # A mission (data/missions.json) is a game with goals: {name, story, goals: [...], minutes (a deadline,
 # 0 for none), ...}. Each goal is {"kind": ..., ...}: "pop" (n people), "build" (ty, n ready buildings),
 # "soldiers" (n), "tech" (id studied), "land" (n tiles), "stock" (res, n in store), "defeat" (n rival
-# realms gone; 0 or missing: all of them). All goals done: won. The deadline passes first: lost.
+# realms gone; 0 or missing: all of them), and since build 77 "age" (n: the age reached), "ships" (n ships
+# and warships), "wonders" (n finished) and "hold" (hold out until minute n). All goals done: won. The deadline passes first: lost.
 var mission := {}
 var mission_done: Array = []      # one flag per goal; a goal once done stays done
+var script_fired: Dictionary = {}  # a mission's events (MissionScript) that fired: id -> [times, game time of the last]
 
 
 ## How far goal g is: [now, needed].
@@ -2735,6 +2753,14 @@ func goal_progress(g: Dictionary) -> Array:
 			return [int(float(me.stock.get(String(g.get("res", "")), 0.0))), n]
 		"trades":
 			return [me.trades, n]
+		"age":
+			return [mini(me.age, n), n]
+		"ships":
+			return [me.ships + me.warships, n]
+		"wonders":
+			return [wonders_of(me).size(), n]
+		"hold":
+			return [mini(int(time / 60.0), n), n]
 		"defeat":
 			var gone := 0
 			for p in players:
@@ -2769,20 +2795,39 @@ func _mission_check() -> void:
 		mission_done.fill(false)
 	var all := true
 	for k in goals.size():
+		# a hidden goal (shown later by an event) is not counted yet, but the mission waits for it
+		if (goals[k] as Dictionary).get("hidden", false):
+			all = false
+			continue
 		if not mission_done[k]:
 			var gp := goal_progress(goals[k])
 			if int(gp[0]) >= int(gp[1]):
 				mission_done[k] = true
 				emit_log("Goal reached: %s" % String(goals[k].get("text", "")), Color("86ad5c"))
 		all = all and bool(mission_done[k])
-	if all:
-		over = true
-		emit_log("Mission complete: %s" % String(mission.get("name", "")), Color("d8aa4a"))
-		ended.emit(true)
+	# the mission's events (build 77), after the goals so "when a goal is reached" fires the same second
+	if mission.has("rules"):
+		MissionScript.check(self)
+		if over:
+			return
+	if all and not goals.is_empty():
+		end_mission(true)
 	elif float(mission.get("minutes", 0)) > 0.0 and time > float(mission.minutes) * 60.0:
 		over = true
 		emit_log("Time is up: the mission is lost.", Color("d9483d"))
 		ended.emit(false)
+
+
+## Ends a mission, won or lost (its goals, or an event that says so).
+func end_mission(win: bool) -> void:
+	if over:
+		return
+	over = true
+	if win:
+		emit_log("Mission complete: %s" % String(mission.get("name", "")), Color("d8aa4a"))
+	else:
+		emit_log("The mission is lost.", Color("d9483d"))
+	ended.emit(win)
 
 
 ## A number for the whole game state, for comparing two runs minute by minute (log_checksums). Caches
@@ -2934,7 +2979,7 @@ func _player_second_work(p: Player) -> void:
 		_pf("ai building", t0)
 		t0 = Time.get_ticks_usec()
 		p.attack_t -= 1.0
-		if p.attack_t <= 0.0 and time > p.grace and time >= float(opts.peace_min) * 60.0:
+		if p.attack_t <= 0.0 and time > p.grace and (time >= float(opts.peace_min) * 60.0 or p.script_war):
 			p.attack_t = (25.0 + (10 - p.skill) * 8.0 + rng.randf() * 20.0) * (0.5 if p.crowded else 1.0)
 			ai_attack(p)
 		_pf("ai attacks", t0)
@@ -2986,7 +3031,7 @@ func to_save() -> Dictionary:
 		"rng_seed": rng.seed, "rng_state": rng.state, "players": pl, "blds": bl, "trips": tr, "attacks": at,
 		"vein": vein, "vein_amt": vein_amt, "vein_tiles": vein_tiles, "pave": pave, "rail": rail, "fields": fields, "places": places, "map_biome": map_biome,
 		"rel": rel, "rel_since": rel_since, "proposals": proposals, "standing": standing, "prop_id": _prop_id,
-		"mission": mission, "mission_done": mission_done, "ticks": _ticks, "sec_n": _sec_n,
+		"mission": mission, "mission_done": mission_done, "script_fired": script_fired, "ticks": _ticks, "sec_n": _sec_n,
 		"coming": _coming, "coming_tick": _coming_tick, "navy": navy, "prices": prices, "price_hist": price_hist,
 	}
 
@@ -3014,7 +3059,7 @@ func from_save(d: Dictionary) -> String:
 	time = d.time; over = d.over; logs = d.logs; _bid = d.bid; _acc1 = d.acc1
 	rng.seed = d.rng_seed; rng.state = d.rng_state
 	rel = d.get("rel", {}); rel_since = d.get("rel_since", {}); proposals = d.get("proposals", []); standing = d.get("standing", []); _prop_id = int(d.get("prop_id", 0))
-	mission = d.get("mission", {}); mission_done = d.get("mission_done", [])
+	mission = d.get("mission", {}); mission_done = d.get("mission_done", []); script_fired = d.get("script_fired", {})
 	# the tick count decides which ticks hand out work (every 2nd, 3rd...): a loaded game must go on in
 	# the same rhythm (saves from before build 34 did not keep it; the time gives it closely enough)
 	_ticks = int(d.get("ticks", roundi(time / TICK)))

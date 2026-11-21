@@ -167,6 +167,7 @@ Exporting needs Godot 4.3's export templates (in the editor: Editor > Manage Exp
 | Map editor: climate, ruins, bandit camps | Paint tab: Climate brushes (temperate, taiga, steppe, wetland; Show the climate), Places: Ruins, Bandit camp, Remove place |
 | Map editor: set up starts | Starts tab: per start a name, goods x0.5 to x2, extra soldiers; for rivals strength 1 to 10 and manner (builder, balanced, warlord) |
 | Map editor: write a mission | Mission tab: name, rivals, their strength, minutes, story, goals (build, people, soldiers, goods, study, land, trades, defeat rivals); Save the mission or Play it |
+| Map editor: mission events | Mission tab, Events: pick When (a minute, every few minutes, after another event, an age, a study, people, buildings, soldiers, land, goods, wonders, ships, war, a fallen rival, a goal reached), then one or more actions (Add this action), then Add the event. A goal set to Hidden shows only when an event shows it |
 | Map editor: fair starts | Check tab: open land, trees, rocks, clay, fish, mountain and each ore within 10, 15 or 20 tiles of every start; red where a start has less than half of the richest |
 | Landscape on the new-game screen | Landscape... next to Map size: shape and the five sliders, for a map from the seed |
 | Clear a bandit camp | Click the camp: soldiers from your military building with the most to spare (within reach) march out; whoever wins the duels takes the camp's gold and weapons |
@@ -318,15 +319,24 @@ Exporting needs Godot 4.3's export templates (in the editor: Editor > Manage Exp
   The save list shows a small picture of each map.
   Saves are complete: loading continues the game exactly where it was, including rival plans and armies on the march.
   They live in `user://saves` next to the texture folder.
-- **Missions.** The Missions button on the new-game screen: four games with goals (build, grow, arm,
-  study, conquer) and a deadline. The third plays on a hand-made map. Goals show in the box on the left.
+- **Missions.** The Missions button on the new-game screen: seven games with goals (build, grow, arm,
+  study, conquer, hold out) and often a deadline; the last three (a siege to hold out, a broken alliance,
+  a Bronze Age race) use events. The third plays on a hand-made map. Goals show in the box on the left.
   More can be added in `data/missions.json` (or a mod's).
+- **Mission events.** A mission can script what happens in it: "when this happens, do that". Starts: a
+  game minute (once or every few minutes), some minutes after another event, a realm reaching an age or
+  finishing a study, having so many people, buildings, soldiers, land, goods, wonders or ships, a rival at
+  war with you or fallen, a goal reached. Actions: a message in a window (`{1}` is the first rival's name),
+  a rival declaring war (even in the peace at the start), making peace or an alliance, attacking at once,
+  a rival's fleet landing soldiers on your coast (by land when it has no harbour), soldiers, goods or a
+  study for a realm, a hidden goal shown, more time, the mission won or lost. Written in the editor's
+  Mission tab, or as `"rules"` in `data/missions.json` (see `scripts/mission_script.gd`).
 - **Map editor.** The Map editor button on the new-game screen opens the map of the seed and size chosen
   there (with the landscape settings), empty. Five tabs: Paint (brush, fill, smooth, rivers with fords,
   copy and paste turned or mirrored; ground, trees, rocks, clay, ore and its amount, climate, animals,
   ruins and bandit camps; square or round brushes; mirrored painting for fair maps; undo and redo), Map
   (open, generate, name, save, play, export), Starts (move them, and set each one up), Mission (write a
-  mission with goals on this map) and Check (what lies around each start). Saved maps can be picked under
+  mission with goals and events on this map) and Check (what lies around each start). Saved maps can be picked under
   Map on the new-game screen; they are kept in the `maps` folder of the game's data folder.
 - **Ruins and bandit camps.** Hand-made maps can hold them. The first realm whose land reaches ruins finds
   planks, stone, gold and tools there. Nobody builds within 3 tiles of a bandit camp; every 90 seconds the
@@ -397,8 +407,12 @@ Exporting needs Godot 4.3's export templates (in the editor: Editor > Manage Exp
   are less content. Each home's info says what it breathes; the People panel shows the realm's health.
   Rivals build parks and waterworks too, keep new homes out of the smoke and smoky works away from
   homes. Which buildings smoke, how much and how far is in `data/health.json` (mods can change it).
-- **Campaign.** Eight chapters on a map, each a mission with a story before and after; a chapter opens
-  when the one before is won and can carry veteran soldiers or goods over. Best time and score are kept.
+- **Campaign.** Eleven chapters on a map, from the Bronze Age to the railways, each a mission with a
+  story before and after and events along the way: bread for the first winter, bronze and tin, a war for
+  reaching the Iron Age first, trade over a river, landings on the Iron Coast, a great hall, the guild
+  towns and their cathedral, gunpowder against a walled rival, warships among the islands, steam and
+  rails, and the crown. Later chapters start in a later age (missions can set `"start_age"`). A chapter
+  opens when the one before is won and can carry veteran soldiers or goods over. Best time and score are kept.
 - **Achievements.** Fifteen goals across all your games (a town of 200, a bridge, ten trades, a colony,
   winning without attacking...), kept between games and listed on the new-game screen.
 - **Rivals' words.** Rivals warn you before they go to war, thank you for trades, and a much stronger
