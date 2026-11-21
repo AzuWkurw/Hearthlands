@@ -470,12 +470,13 @@ func _defender_gains_xp(t: Sim.Bld) -> void:
 
 ## want: at most this many march (-1: as many as can); kinds: only these soldier kinds march (empty: any).
 # ---------------------------------------------------------------- the way a column marches
-## Soldiers do not walk on water: a column marches round lakes and rivers and over bridges. A way
-## may be up to WAY_MAX times as long as the straight line.
+## Soldiers do not walk on water: a column marches round lakes and rivers and over bridges, and in deep
+## winter over the frozen rivers of the north (build 78). A way may be up to WAY_MAX times as long as
+## the straight line.
 const WAY_MAX := 2.2
 
 func _walkable(i: int) -> bool:
-	return sim.ter[i] != Sim.WATER or sim.road[i] != 0
+	return sim.ter[i] != Sim.WATER or sim.road[i] != 0 or sim.icy(i)
 
 
 ## The tiles a column walks from (sx, sy) to (tx, ty), or empty when water bars the way.
@@ -544,6 +545,127 @@ func land_path(sx: int, sy: int, tx: int, ty: int) -> PackedInt32Array:
 		c = par[c]
 	out.reverse()
 	return out
+
+
+# ---------------------------------------------------------------- river ice (build 78)
+## Share of the soldiers standing on the ice who drown when it breaks up under them.
+const ICE_DROWN := 0.5
+## A rival does not send a column over the ice that would still be on it this many seconds before the
+## thaw, and calls back the ones that would.
+const ICE_MARGIN := 25.0
+
+## Whether way `path` crosses tiles marked in `mask` (frozen water, not a bridge) after share f0 of it.
+func crosses(path: PackedInt32Array, mask: PackedByteArray, f0 := 0.0) -> bool:
+	if mask.is_empty() or path.size() < 2:
+		return false
+	var w := sim.w
+	if path.size() > 2:
+		# a way round the water: its tiles, from where the column is now
+		var total := path_len(w, path)
+		var walked := 0.0
+		for k in range(1, path.size()):
+			walked += Vector2(path[k] % w - path[k - 1] % w, path[k] / w - path[k - 1] / w).length()
+			if walked >= f0 * total - 0.01 and mask[path[k]] != 0 and sim.road[path[k]] == 0:
+				return true
+		return false
+	# a straight line: looked at every half tile
+	var a := Vector2(path[0] % w, path[0] / w)
+	var b := Vector2(path[1] % w, path[1] / w)
+	var steps := maxi(1, ceili(a.distance_to(b) * 2.0))
+	for k in range(0, steps + 1):
+		var f := f0 + (1.0 - f0) * float(k) / steps
+		var q := a.lerp(b, f).round()
+		var i := int(q.y) * w + int(q.x)
+		if mask[i] != 0 and sim.road[i] == 0:
+			return true
+	return false
+
+
+## How far along its way column a is (0..1).
+func _share(a: Sim.Attack) -> float:
+	return clampf((sim.time - a.t0) / maxf(0.01, a.t1 - a.t0), 0.0, 1.0)
+
+
+## Whether column a, if it set out now over way `path`, would still be on the ice when it breaks up.
+func ice_trap(path: PackedInt32Array) -> bool:
+	if sim.ice.is_empty() or not crosses(path, sim.ice):
+		return false
+	var se = sim.get_feature("seasons")
+	if se == null:
+		return false
+	return path_len(sim.w, path) * 1.1 + 1.0 + ICE_MARGIN > float(se.thaw_in())
+
+
+## The ice breaks up (mask: where it lay). Half the soldiers standing on it drown; columns whose way
+## still crosses it look for another way round, or turn back home when there is none.
+func ice_breaks(mask: PackedByteArray) -> void:
+	var w := sim.w
+	var lost_mine := 0
+	var lost_theirs := 0
+	var back_mine := 0
+	for k in range(sim.attacks.size() - 1, -1, -1):
+		var a := sim.attacks[k]
+		if a.fighting or at_sea(a) or a.n <= 0:
+			continue
+		var p := sim.players[a.p - 1]
+		var pos := column_pos(a).round()
+		var ti := int(pos.y) * w + int(pos.x)
+		if ti >= 0 and ti < mask.size() and mask[ti] != 0 and sim.road[ti] == 0:
+			var drown := mini(a.n, ceili(a.n * ICE_DROWN))
+			for d in drown:
+				_fall(a, p, Sim.mix_pick(a.amix, sim.rng))
+			if a.p == 1:
+				lost_mine += drown
+			else:
+				lost_theirs += drown
+			if a.n <= 0:
+				sim.attacks.remove_at(k)
+				if a.p == 1:
+					sim.emit_log("The ice broke up under your column: all %d drowned." % drown, Color("e08a6a"), Vector2i(pos))
+				continue
+		if a.chase != 0 or a.sea > 0:
+			continue
+		if not crosses(a.path, mask, _share(a)):
+			continue
+		var t: Sim.Bld = sim.by_id.get(a.tgt)
+		var way := land_path(int(pos.x), int(pos.y), t.x, t.y) if t != null else PackedInt32Array()
+		if way.is_empty():
+			_retreat(a, p)
+			sim.attacks.remove_at(k)
+			if a.p == 1:
+				back_mine += a.n
+			continue
+		a.path = way
+		a.from = pos
+		a.t0 = sim.time
+		a.t1 = sim.time + path_len(w, way) * 1.1 + 1.0
+	if lost_mine > 0:
+		sim.emit_log("The ice broke up under your soldiers: %d drowned in the river." % lost_mine, Color("e08a6a"))
+	if lost_theirs > 0:
+		sim.emit_log("The thaw caught enemy soldiers on the ice: %d drowned." % lost_theirs, Color("9fd0e8"))
+	if back_mine > 0:
+		sim.emit_log("The river ice has broken up ahead of your column: %d soldiers turn back home." % back_mine, Color("e0b060"))
+
+
+## The ice will break up soon: rivals call back their columns that would still be on it then.
+func ice_recall() -> void:
+	var se = sim.get_feature("seasons")
+	if se == null or sim.ice.is_empty():
+		return
+	var left := float(se.thaw_in())
+	for k in range(sim.attacks.size() - 1, -1, -1):
+		var a := sim.attacks[k]
+		var p := sim.players[a.p - 1]
+		if not p.ai or a.fighting or a.chase != 0 or a.sea > 0 or a.field != 0:
+			continue
+		# still to reach the far side of the ice before it breaks: back home
+		if a.t1 - sim.time > left and crosses(a.path, sim.ice, _share(a)):
+			_retreat(a, p)
+			sim.attacks.remove_at(k)
+			if a.tgt != 0:
+				var t: Sim.Bld = sim.by_id.get(a.tgt)
+				if t != null and t.p == 1:
+					sim.emit_log("%s calls back the column marching over the thinning ice." % p.name, Color("9fd0e8"), Vector2i(column_pos(a).round()))
 
 
 static func path_len(sim_w: int, path: PackedInt32Array) -> float:

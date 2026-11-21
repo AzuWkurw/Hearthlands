@@ -44,6 +44,23 @@ func sources(t: Sim.Bld) -> Array:
 	return out
 
 
+## A warning when the way from one of the sources to t crosses frozen river ice (build 78): "" if none does.
+func ice_words(t: Sim.Bld, src: Array) -> String:
+	var sim: Sim = main.sim
+	if sim.ice.is_empty():
+		return ""
+	var se = sim.get_feature("seasons")
+	for s in src:
+		var b: Sim.Bld = s[0]
+		var way := sim.military.land_path(b.x, b.y, t.x, t.y)
+		if sim.military.crosses(way, sim.ice):
+			var tl := int(se.thaw_in()) if se != null else 0
+			if sim.military.ice_trap(way):
+				return tr("The way crosses the frozen river, and the ice breaks up in %d:%02d: soldiers still on it then, half of them drown." % [tl / 60, tl % 60])
+			return tr("The way crosses the frozen river (the ice holds for %d:%02d more)." % [tl / 60, tl % 60])
+	return ""
+
+
 ## A landing on t from the sea: [your harbour, how many soldiers can sail] or [] when none can (no
 ## harbour with a free ship, no soldier waiting at the headquarters, or no sea way to a beach near it).
 ## Kept for the building last asked about, as finding the sea way takes a moment.
@@ -157,6 +174,9 @@ func open(t: Sim.Bld) -> String:
 	odds_lbl = main._label("", 15)
 	body.add_child(odds_lbl)
 	body.add_child(main._label(general_words(), 13, Color("e8c860")))
+	var iw := ice_words(t, src)
+	if iw != "":
+		body.add_child(main._label(iw, 13, Color("9fd0e8")))
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	body.add_child(row)

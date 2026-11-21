@@ -2297,9 +2297,12 @@ func _process(delta: float) -> void:
 			"@demolish": hint.text = "Demolish: click one of your buildings (Esc to stop)"
 			"@road":
 				hint.text = "Build road: " + ("click where the road should go (Esc to stop)" if view.road_start.x >= 0 else "click one of your roads or buildings to start")
-				var nb := sim.logistics.bridge_tiles(view.road_preview(), 1) if view.road_start.x >= 0 else 0
+				var nb := sim.logistics.bridge_tiles(view.road_preview(), 1, true) if view.road_start.x >= 0 else 0
+				var ni := sim.logistics.ice_tiles(view.road_preview(), 1) if view.road_start.x >= 0 else 0
 				if nb > 0:
 					hint.text += tr(". A bridge over %d tiles of water: %d planks" % [nb, nb * SimLogistics.BRIDGE_PLANKS])
+				if ni > 0:
+					hint.text += tr(". An ice road over %d tiles of frozen river: no planks, but it melts in spring" % ni)
 				elif view.road_start.x >= 0 and sim.inb(view.ghost.x, view.ghost.y) and view.road_preview().is_empty():
 					# no road to the pointer: say why when water is in the way
 					var why := sim.logistics._bridge_hint(sim.idx(view.road_start.x, view.road_start.y), sim.idx(view.ghost.x, view.ghost.y), 1)
@@ -2538,7 +2541,7 @@ func _tile_info(i: int) -> String:
 		t += "\n"
 	t += traffic_ui.tile_text(i)
 	if sim.ter[i] == Sim.WATER and sim.road[i] != 0:
-		t += ("A stone bridge.\n" if sim.pave[i] == 1 else "A wooden bridge (pave it to make it stone).\n")
+		t += ("A stone bridge.\n" if sim.pave[i] == 1 else ("An ice road over the frozen river: it melts away when the ice breaks up in spring.\n" if sim.pave[i] == 2 else "A wooden bridge (pave it to make it stone).\n"))
 	if sim.deco[i] == Sim.D_TREE:
 		t += "A tree: one log for a woodcutter.\n"
 	elif sim.deco[i] == Sim.D_ROCK:

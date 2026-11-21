@@ -801,7 +801,7 @@ func road_preview() -> PackedInt32Array:
 	var key := Vector4i(road_start.x, road_start.y, ghost.x, ghost.y)
 	if key != _preview_key:
 		_preview_key = key
-		_preview = sim.find_path(road_start.x, road_start.y, ghost.x, ghost.y, 1) if ghost != road_start and sim.owner[sim.idx(ghost.x, ghost.y)] == 1 else PackedInt32Array()
+		_preview = sim.find_path(road_start.x, road_start.y, ghost.x, ghost.y, 1, true) if ghost != road_start and sim.owner[sim.idx(ghost.x, ghost.y)] == 1 else PackedInt32Array()
 	return _preview
 
 

@@ -976,6 +976,9 @@ func ai_attack(p: Sim.Player) -> bool:
 		if b.p == p.id and b.ty == "hq": hq = b; break
 	var best = null
 	var best_sc := -1e9
+	# (build 78) frozen rivers: new ways open for a few minutes, for the rival and against it
+	var icy := not sim.ice.is_empty()
+	var front := {}
 	for t in mils:
 		if t.dead or t.p == p.id or t.state != "ready" or not sim.players[t.p - 1].alive:
 			continue
@@ -990,6 +993,15 @@ func ai_attack(p: Sim.Player) -> bool:
 				continue
 			# buildings close to the headquarters keep one more man home to guard it
 			var av := sim.own_def(s) - (2 if hq != null and absi(s.x - hq.x) + absi(s.y - hq.y) <= 8 else 1)
+			if icy:
+				# an enemy could walk over the ice to it: one more stays home
+				if not front.has(s.id):
+					front[s.id] = _ice_front(p, s, mils)
+				if front[s.id]:
+					av -= 1
+				# no column that would still be on the ice when it breaks up
+				if av >= 1 and sim.military.ice_trap(sim.military.land_path(s.x, s.y, t.x, t.y)):
+					continue
 			if av >= 1:
 				near.append(s); total += av
 		if near.is_empty() or total < 3:
@@ -999,6 +1011,9 @@ func ai_attack(p: Sim.Player) -> bool:
 		if ratio < (maxf(1.05, p.odds * 0.75) if p.crowded else p.odds):
 			continue
 		var sc := ratio + (p.focus * 2.0 if t.p == 1 else 0.0) + (1.5 if t.ty == "hq" else 0.0) + _attack_value(t)
+		# a target the ice has brought within reach will not stay so for long
+		if icy and _over_ice(near, t):
+			sc += ICE_CHANCE
 		if sc > best_sc:
 			best_sc = sc; best = [near, t]
 	if best == null:
@@ -1006,6 +1021,29 @@ func ai_attack(p: Sim.Player) -> bool:
 	for s in best[0]:
 		sim.launch_attack(s, best[1])
 	return true
+
+
+## How much more a rival wants a target it can reach only now, over the river ice (build 78).
+const ICE_CHANCE := 0.4
+
+## Whether the straight way from one of buildings `srcs` to t crosses the ice.
+func _over_ice(srcs: Array, t: Sim.Bld) -> bool:
+	for s: Sim.Bld in srcs:
+		if sim.military.crosses(PackedInt32Array([sim.idx(s.x, s.y), sim.idx(t.x, t.y)]), sim.ice):
+			return true
+	return false
+
+
+## Whether an enemy military building at war with p could march on s over the ice.
+func _ice_front(p: Sim.Player, s: Sim.Bld, mils: Array) -> bool:
+	for e: Sim.Bld in mils:
+		if e.p == p.id or e.dead or e.state != "ready" or not Diplomacy.at_war(sim, p.id, e.p):
+			continue
+		if Vector2(e.x - s.x, e.y - s.y).length() > Sim.RANGE:
+			continue
+		if sim.military.crosses(PackedInt32Array([sim.idx(e.x, e.y), sim.idx(s.x, s.y)]), sim.ice):
+			return true
+	return false
 
 
 const AI_LANDING_FROM := 25 * 60.0

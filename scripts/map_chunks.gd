@@ -31,6 +31,7 @@ var _owners := PackedByteArray()   # the owner of every tile when the chunks wer
 var _ter: Array = []
 var _road: Array = []
 var _bridge: Array = []     # [wooden E-W, wooden N-S, stone E-W, stone N-S]
+var _ice_road: Array = []   # an ice road over a frozen river, one for each way it joins its neighbours (build 78)
 var _paved: Array = []
 var _clay: Image
 var _ore: Dictionary = {}
@@ -74,10 +75,57 @@ func _bridge_img(ns: bool, stone: bool) -> Image:
 	return img
 
 
+## An ice road on a frozen river: a track of trodden, sanded snow over the ice, with two sledge ruts and spruce
+## boughs stuck in the snow along its edges to mark the safe way. m: which sides it joins (1 north,
+## 2 east, 4 south, 8 west).
+func _ice_road_img(m: int) -> Image:
+	var img := Image.create(TS, TS, false, Image.FORMAT_RGBA8)
+	var a := int(TS * 0.3)
+	var b := TS - 1 - a
+	var snow := Color("d9d0bd")
+	var edge := Color("a3a9ad")
+	var rut := Color("9c8e74")
+	var bough := Color("2f4a32")
+	var r := RandomNumberGenerator.new()
+	r.seed = 4242 + m
+	for y in TS:
+		for x in TS:
+			# on the track: the middle square, and an arm towards each side it joins
+			var mid := x >= a and x <= b and y >= a and y <= b
+			var on := mid or (m & 1 != 0 and y < a and x >= a and x <= b) or (m & 4 != 0 and y > b and x >= a and x <= b) \
+					or (m & 8 != 0 and x < a and y >= a and y <= b) or (m & 2 != 0 and x > b and y >= a and y <= b)
+			if not on:
+				continue
+			# the edge of the track, where the snow is pressed against the ice
+			var ex := (x == a or x == b) and not ((m & 1 != 0 and y < a) or (m & 4 != 0 and y > b)) and not (y > a and y < b and ((x == a and m & 8 != 0) or (x == b and m & 2 != 0)))
+			var ey := (y == a or y == b) and not ((m & 8 != 0 and x < a) or (m & 2 != 0 and x > b)) and not (x > a and x < b and ((y == a and m & 1 != 0) or (y == b and m & 4 != 0)))
+			var c := snow.darkened(r.randf() * 0.05)
+			if ex or ey:
+				c = edge
+			# the sledge ruts, along the way it runs
+			var q1 := int(TS * 0.42)
+			var q2 := TS - 1 - q1
+			if (m & 5 != 0 and (x == q1 or x == q2) and (y < a or y > b or mid)) or (m & 10 != 0 and (y == q1 or y == q2) and (x < a or x > b or mid)):
+				c = rut
+			img.set_pixel(x, y, c)
+	# spruce boughs marking the way, at the corners of the track
+	for cx in [a, b]:
+		for cy in [a, b]:
+			for d in [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(0, -1), Vector2i(-1, 0)]:
+				var px: int = cx + d.x
+				var py: int = cy + d.y
+				if px >= 0 and py >= 0 and px < TS and py < TS:
+					img.set_pixel(px, py, bough if d == Vector2i.ZERO or (d.x + d.y) % 2 != 0 else bough.lightened(0.15))
+	return img
+
+
 func load_images() -> void:
 	for c: MapChunks in _subs():
 		c.load_images()
 	_bridge = [_bridge_img(false, false), _bridge_img(true, false), _bridge_img(false, true), _bridge_img(true, true)]
+	_ice_road = []
+	for m in 16:
+		_ice_road.append(_ice_road_img(m))
 	_ter.clear(); _road.clear(); _paved.clear(); _ore.clear(); _edge.clear(); _snow.clear()
 	for t in Tex.TERRAIN:
 		for v in Tex.VARIANTS:
@@ -308,7 +356,10 @@ func _bake_image(cx: int, cy: int) -> Image:
 				if x < w - 1 and (sim.road[i + 1] != 0 or (sim.bmap[i + 1] != 0 and sim.links(i, i + 1))): m |= 2
 				if y < h - 1 and (sim.road[i + w] != 0 or (sim.bmap[i + w] != 0 and sim.links(i, i + w))): m |= 4
 				if x > 0 and (sim.road[i - 1] != 0 or (sim.bmap[i - 1] != 0 and sim.links(i, i - 1))): m |= 8
-				if t == 0:
+				if t == 0 and sim.pave[i] == 2:
+					# an ice road: trodden snow over the frozen river, any way it turns
+					img.blend_rect(_ice_road[m], full, pos)
+				elif t == 0:
 					# a road over water is a bridge: planks (or stone, once paved) across the way it runs
 					var ns := (m & 5) != 0 and (m & 10) == 0
 					img.blend_rect(_bridge[(1 if ns else 0) + (2 if sim.pave[i] == 1 else 0)], full, pos)
