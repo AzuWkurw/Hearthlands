@@ -109,17 +109,17 @@ func open(t: Sim.Bld) -> String:
 	for c in body.get_children():
 		body.remove_child(c)
 		c.queue_free()
-	body.add_child(main._label(tr("Attack %s's %s") % [sim.players[t.p - 1].name, String(t.def.name)], 22, Main.BRASS))
+	body.add_child(main._label(tr("Attack %s's %s" % [sim.players[t.p - 1].name, String(t.def.name)]), 22, Main.BRASS))
 	if src.is_empty():
 		_open_sea(t, sea)
 		return ""
 	var dm: Array = sim.military.mix_of(sim.military._defending(t))
-	body.add_child(main._label(tr("Defenders: %d (%s)") % [sim.defenders(t), Sim.mix_text(dm)], 14, Main.DIM))
+	body.add_child(main._label(tr("Defenders: %d (%s)" % [sim.defenders(t), Sim.mix_text(dm)]), 14, Main.DIM))
 	body.add_child(_arms_line(sim, t))
 	if t.archers > 0 or t.sally:
 		var extra := []
 		if t.archers > 0:
-			extra.append(tr("plus %d archers: they shoot from 6 tiles out") % t.archers)
+			extra.append(tr("plus %d archers: they shoot from 6 tiles out" % t.archers))
 		if t.sally:
 			extra.append("they march out to meet attackers")
 		var et := ", ".join(extra)
@@ -163,7 +163,7 @@ func open(t: Sim.Bld) -> String:
 	row.add_child(main._button("Attack", _go))
 	row.add_child(main._button("Cancel (Esc)", close))
 	if not sea.is_empty():
-		body.add_child(main._label(tr("Or land from the sea: up to %d soldiers waiting at headquarters sail from your %s.") % [int(sea[1]), String((sea[0] as Sim.Bld).def.name).to_lower()], 13, Color("9fd0e8")))
+		body.add_child(main._label(tr("Or land from the sea: up to %d soldiers waiting at headquarters sail from your %s." % [int(sea[1]), String((sea[0] as Sim.Bld).def.name).to_lower()]), 13, Color("9fd0e8")))
 		body.add_child(main._button(tr("Land from the sea instead"), func(): _open_sea(t, sea)))
 	_update()
 	panel.visible = true
@@ -178,19 +178,19 @@ func _open_sea(t: Sim.Bld, sea: Array) -> void:
 	for c in body.get_children():
 		body.remove_child(c)
 		c.queue_free()
-	body.add_child(main._label(tr("Land on %s's coast: attack the %s") % [sim.players[t.p - 1].name, String(t.def.name)], 22, Main.BRASS))
+	body.add_child(main._label(tr("Land on %s's coast: attack the %s" % [sim.players[t.p - 1].name, String(t.def.name)]), 22, Main.BRASS))
 	var dm: Array = sim.military.mix_of(sim.military._defending(t))
-	body.add_child(main._label(tr("Defenders: %d (%s)") % [sim.defenders(t), Sim.mix_text(dm)], 14, Main.DIM))
+	body.add_child(main._label(tr("Defenders: %d (%s)" % [sim.defenders(t), Sim.mix_text(dm)]), 14, Main.DIM))
 	body.add_child(_arms_line(sim, t))
 	body.add_child(main._label(general_words(), 13, Color("e8c860")))
 	body.add_child(main._button(tr("Sea and supplies guide"), func(): main.sea_guide_ui.open()))
 	var me_w := sim.human()
 	if me_w.warships > 0:
-		body.add_child(main._label(tr("Warships: %d afloat; escorts %s (up to %d sail with the fleet).") % [me_w.warships, tr("on") if me_w.escort else tr("off"), SimNavy.ESCORTS], 13, Color("9fd0e8")))
+		body.add_child(main._label(tr("Warships: %d afloat; escorts %s (up to %d sail with the fleet)." % [me_w.warships, tr("on") if me_w.escort else tr("off"), SimNavy.ESCORTS]), 13, Color("9fd0e8")))
 	var h: Sim.Bld = sea[0]
 	var info := main._rich()
 	info.custom_minimum_size = Vector2(460, 0)
-	info.text = tr("Soldiers waiting at your headquarters board ships at your %s, %d to a ship, sail to the nearest beach to it and march from there. The ships sail home once they are ashore; a fleet beaten at sea is lost with them. Enemy ships they meet on the way are sunk.\nFar from home they live on what they carry: rations from the stores for the crossing and three rounds at the gate.") % [String(h.def.name).to_lower(), SimSea.LANDING_PER_SHIP]
+	info.text = tr("Soldiers waiting at your headquarters board ships at your %s, %d to a ship, sail to the nearest beach to it and march from there. The ships sail home once they are ashore; a fleet beaten at sea is lost with them. Enemy ships they meet on the way are sunk.\nFar from home they live on what they carry: rations from the stores for the crossing and three rounds at the gate." % [String(h.def.name).to_lower(), SimSea.LANDING_PER_SHIP])
 	body.add_child(info)
 	var cl := main._label("", 15)
 	body.add_child(cl)
@@ -202,7 +202,7 @@ func _open_sea(t: Sim.Bld, sea: Array) -> void:
 	sea_slider.custom_minimum_size = Vector2(380, 24)
 	var upd := func(_v = 0):
 		var n := int(sea_slider.value)
-		cl.text = tr("%d soldiers on %d ships, %d rations") % [n, ceili(float(n) / SimSea.LANDING_PER_SHIP), ceili(n * SimMilitary.SUPPLY_PER) + SimMilitary.ration(n) * 3]
+		cl.text = tr("%d soldiers on %d ships, %d rations" % [n, ceili(float(n) / SimSea.LANDING_PER_SHIP), ceili(n * SimMilitary.SUPPLY_PER) + SimMilitary.ration(n) * 3])
 	sea_slider.value_changed.connect(upd)
 	upd.call()
 	body.add_child(sea_slider)
@@ -241,7 +241,7 @@ func _update() -> void:
 	var total := 0
 	for s in src:
 		total += int(s[1])
-	count_lbl.text = tr("Soldiers to send: %d of %d in range") % [n, total]
+	count_lbl.text = tr("Soldiers to send: %d of %d in range" % [n, total])
 	var ratio := float(n) / maxf(1.0, sim.defenders(t))
 	var txt := ""
 	var col := Color("86ad5c")
@@ -249,9 +249,9 @@ func _update() -> void:
 		txt = tr("Pick at least one kind.")
 		col = Color("d9483d")
 	elif ratio >= 2.0:
-		txt = tr("Good odds: about %.1f to 1 in your favour.") % ratio
+		txt = tr("Good odds: about %.1f to 1 in your favour." % ratio)
 	elif ratio >= 1.2:
-		txt = tr("Fair odds: about %.1f to 1. Walls and gun fire help the defenders.") % ratio
+		txt = tr("Fair odds: about %.1f to 1. Walls and gun fire help the defenders." % ratio)
 		col = Color("e0b060")
 	else:
 		txt = tr("Poor odds: they have as many or more. Send more, or wear them down first.")
@@ -282,7 +282,7 @@ func _go() -> void:
 			left -= a.n
 			sent += a.n
 	close()
-	main._show_hint(tr("%d soldiers march.") % sent if sent > 0 else why, 3.0)
+	main._show_hint(tr("%d soldiers march." % sent) if sent > 0 else why, 3.0)
 	main._refresh_all()
 
 
@@ -292,10 +292,10 @@ func general_words() -> String:
 	var me := sim.human()
 	var lvl := SimNavy.general_level(me.general_xp)
 	if me.general_uid != 0:
-		return tr("Your general (level %d) is away leading another column.") % lvl
+		return tr("Your general (level %d) is away leading another column." % lvl)
 	if sim.time < me.general_back:
-		return tr("A new general will be ready in %d s.") % ceili(me.general_back - sim.time)
-	return tr("Your general (level %d, +%d%% a duel) leads this column if it has %d soldiers or more.") % [lvl, roundi(lvl * SimNavy.GEN_DUEL * 100.0), SimNavy.GENERAL_MIN]
+		return tr("A new general will be ready in %d s." % ceili(me.general_back - sim.time))
+	return tr("Your general (level %d, +%d%% a duel) leads this column if it has %d soldiers or more." % [lvl, roundi(lvl * SimNavy.GEN_DUEL * 100.0), SimNavy.GENERAL_MIN])
 
 
 ## Both sides' arms by metal (build 71): "Arms: yours 8 steel, 4 iron; theirs 12 bronze".
@@ -305,5 +305,5 @@ func _arms_line(sim: Sim, t: Sim.Bld) -> RichTextLabel:
 	l.custom_minimum_size = Vector2(560, 0)
 	var mine := sim.arms.arms_text(sim.human(), true)
 	var theirs := sim.arms.arms_text(sim.players[t.p - 1], true)
-	l.text = tr("[color=#9a9c88]Arms:[/color] yours %s; theirs %s [color=#9a9c88](steel trains faster and wears out less; bronze arms only bronze warriors)[/color]") % [mine if mine != "" else "none yet", theirs if theirs != "" else "not known"]
+	l.text = tr("[color=#9a9c88]Arms:[/color] yours %s; theirs %s [color=#9a9c88](steel trains faster and wears out less; bronze arms only bronze warriors)[/color]" % [mine if mine != "" else "none yet", theirs if theirs != "" else "not known"])
 	return l

@@ -73,7 +73,7 @@ func _rebuild() -> void:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 2)
 		var b := Button.new()
-		var t := String(it[0])
+		var t := tr(String(it[0]))
 		b.text = t if t.length() <= 70 else t.substr(0, 68) + "…"
 		b.tooltip_text = t + "\n" + tr("Click to go there.")
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT

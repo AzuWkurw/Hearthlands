@@ -147,7 +147,7 @@ func refresh() -> void:
 				continue
 			var note := ""
 			if have.has(ty):
-				note = tr("%d of %d have workers") % [int(have[ty][1]), int(have[ty][0])]
+				note = tr("%d of %d have workers" % [int(have[ty][1]), int(have[ty][0])])
 			items.append([ty, String(d.name), main.view.bld_texture(ty, p.age), note])
 	# the order they are served in: by number, then by name
 	items.sort_custom(func(a, b):
@@ -244,7 +244,7 @@ func _use_preset() -> void:
 		var e: Dictionary = main.settings.prio_presets.get(md[1], {})
 		PrioPresets.apply(p, e.get("carry", {}), e.get("work", {}))
 	main.sim.staffing(p)
-	main._show_hint(tr("Priorities set: %s") % presets.get_item_text(presets.selected), 2.5)
+	main._show_hint(tr("Priorities set: %s" % presets.get_item_text(presets.selected)), 2.5)
 	refresh()
 	# the other window shows the other half of the set
 	var other: UiPriorities = main.work_prio_ui if mode == MODE_CARRY else main.carry_prio_ui
@@ -262,7 +262,7 @@ func _save_preset() -> void:
 	main.settings.save_file()
 	save_name.text = ""
 	_fill_presets()
-	main._show_hint(tr("Saved your set \"%s\".") % name, 2.5)
+	main._show_hint(tr("Saved your set \"%s\"." % name), 2.5)
 
 
 func _delete_preset() -> void:

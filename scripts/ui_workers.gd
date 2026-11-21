@@ -124,7 +124,7 @@ func refresh(rebuild: bool) -> void:
 	var kinds := _kinds(p)
 	for k in kinds:
 		total += int(kinds[k][0])
-	head.text = tr("%d buildings of %d kinds. Peasants: %d at work, %d idle. Artisans: %d at work, %d idle.") % [total, kinds.size(), p.used_peasant, maxi(0, idle_p), p.used_artisan, maxi(0, idle_a)]
+	head.text = tr("%d buildings of %d kinds. Peasants: %d at work, %d idle. Artisans: %d at work, %d idle." % [total, kinds.size(), p.used_peasant, maxi(0, idle_p), p.used_artisan, maxi(0, idle_a)])
 	var types: Array = kinds.keys()
 	var f := filter.selected
 	types = types.filter(func(t):

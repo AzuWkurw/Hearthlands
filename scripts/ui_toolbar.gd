@@ -247,7 +247,7 @@ func _on_auto() -> void:
 	main.settings.auto_roads = auto_btn.button_pressed
 	main.view.auto_roads = main.settings.auto_roads
 	main.settings.save_file()
-	main._show_hint(tr("Auto roads %s.") % ("on: new buildings get their road at once" if main.settings.auto_roads else "off: you lay each new building's road yourself"), 2.5)
+	main._show_hint(tr("Auto roads %s." % ("on: new buildings get their road at once" if main.settings.auto_roads else "off: you lay each new building's road yourself")), 2.5)
 
 
 ## The panel sits above its group's button, kept inside the map area.

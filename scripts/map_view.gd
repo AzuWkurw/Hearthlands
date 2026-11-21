@@ -1615,8 +1615,8 @@ func _draw() -> void:
 			l[0] = (l[0] as Vector2) + Vector2(0, -lift_at((l[0] as Vector2).x, (l[0] as Vector2).y + 0.6))
 		for l in labels + _tool_labels:
 			var sp: Vector2 = origin + (l[0] as Vector2) * z
-			draw_string_outline(font, sp + Vector2(-110, 0), String(l[1]), HORIZONTAL_ALIGNMENT_CENTER, 220, fs, 4, Color.BLACK)
-			draw_string(font, sp + Vector2(-110, 0), String(l[1]), HORIZONTAL_ALIGNMENT_CENTER, 220, fs, l[2])
+			draw_string_outline(font, sp + Vector2(-110, 0), tr(String(l[1])), HORIZONTAL_ALIGNMENT_CENTER, 220, fs, 4, Color.BLACK)
+			draw_string(font, sp + Vector2(-110, 0), tr(String(l[1])), HORIZONTAL_ALIGNMENT_CENTER, 220, fs, l[2])
 	if flash > 0.0:
 		_draw_alert_edges(flash)
 	if prof_on: _pm("labels")
@@ -1804,7 +1804,7 @@ func _draw_selection_and_tools() -> void:
 					var dl := lift_at(i % w + 0.5, i / w + 0.5)
 					_cv.draw_rect(Rect2(i % w + 0.2, i / w + 0.2 - dl, 0.6, 0.6), Color(0.78, 0.8, 0.84, 0.75) if sim.rail[i] == 0 else Color(0.5, 0.9, 0.5, 0.5))
 				var have := int(sim.human().stock.get("rails", 0.0))
-				_tool_labels.append([Vector2(ghost.x + 0.5, ghost.y - 0.5), (tr("%d rails (%d in store)") % [need, have]) if not rp.is_empty() else tr("no way for track"), Color("86ad5c") if not rp.is_empty() and need <= have else Color("e07a5f")])
+				_tool_labels.append([Vector2(ghost.x + 0.5, ghost.y - 0.5), (tr("%d rails (%d in store)" % [need, have])) if not rp.is_empty() else tr("no way for track"), Color("86ad5c") if not rp.is_empty() and need <= have else Color("e07a5f")])
 			else:
 				var sb := sim.bld_at(ghost.x, ghost.y)
 				var ok := sim.railway.has_rail(sim.idx(ghost.x, ghost.y), 1) or (SimRail.is_station(sb) and sb.p == 1)
@@ -2353,7 +2353,7 @@ func _draw_chain(labels: Array) -> void:
 		_cv.draw_colored_polygon(PackedVector2Array([p1, p1 - u * 0.35 + Vector2(-u.y, u.x) * 0.2, p1 - u * 0.35 - Vector2(-u.y, u.x) * 0.2]), Color(col, 0.95))
 	var cam := get_viewport_rect().size
 	var tl := screen_to_world(Vector2(cam.x * 0.45, 160))
-	labels.append([tl, tr("Chain of %s: %d makers, %d users (Esc hides it)") % [GameData.res_name(chain_res), makers.size(), users.size()], Color("f2d58a")])
+	labels.append([tl, tr("Chain of %s: %d makers, %d users (Esc hides it)" % [GameData.res_name(chain_res), makers.size(), users.size()]), Color("f2d58a")])
 
 
 ## A river boat (build 55): a small hull, a boatman with a pole, and its load.
@@ -3358,7 +3358,7 @@ func _draw_blueprint() -> void:
 	var ok := _bp_why.count("")
 	var lab := "%s %d/%d" % [String(blueprint.name), ok, items.size()]
 	if nt + nr > 0:
-		lab += " · " + tr("%d in the way") % (nt + nr)
+		lab += " · " + tr("%d in the way" % (nt + nr))
 	_tool_labels.append([Vector2(at.x, at.y - 0.4), lab, Color("f2cf5a")])
 
 

@@ -111,7 +111,7 @@ func _draw_map() -> void:
 	map.draw_rect(Rect2(Vector2.ZERO, sz), Color("cdbb8e"))
 	map.draw_rect(Rect2(Vector2(6, 6), sz - Vector2(12, 12)), Color("7a6640"), false, 2.0)
 	var font := map.get_theme_default_font()
-	map.draw_string(font, Vector2(20, 30), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color("3a2410"))
+	map.draw_string(font, Vector2(20, 30), map.tr(title), HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color("3a2410"))
 	# the road from chapter to chapter, dashed
 	for k in range(1, chapters.size()):
 		var a := _node_pos(k - 1)
@@ -130,7 +130,7 @@ func _draw_map() -> void:
 		var mark := "✔" if is_done(k) else str(k + 1)
 		map.draw_string(font, p + Vector2(-6, 6), mark, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color("1b1e15"))
 		var nm := String(chapters[k].mission.get("name", "")).get_slice(": ", 1)
-		map.draw_string(font, p + Vector2(-90, 34), nm, HORIZONTAL_ALIGNMENT_CENTER, 180, 12, Color("3a2410"))
+		map.draw_string(font, p + Vector2(-90, 34), map.tr(nm), HORIZONTAL_ALIGNMENT_CENTER, 180, 12, Color("3a2410"))
 
 
 func _map_input(ev: InputEvent) -> void:

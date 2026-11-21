@@ -74,7 +74,7 @@ func _open_targets() -> void:
 		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		hb.add_child(ic)
-		var nm := main._label(tr("%s (%d)") % [String(r.name), int(p.stock.get(r.id, 0.0))], 14)
+		var nm := main._label(tr("%s (%d)" % [String(r.name), int(p.stock.get(r.id, 0.0))]), 14)
 		nm.custom_minimum_size = Vector2(150, 0)
 		hb.add_child(nm)
 		hb.add_child(_target_ctrl(String(r.id)))

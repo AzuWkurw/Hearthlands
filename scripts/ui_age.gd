@@ -36,7 +36,7 @@ func open(a: int) -> void:
 	_was_paused = main.paused
 	main.paused = true
 	var name := GameData.age_name(a)
-	v.add_child(main._label(tr("The %s age begins") % name, 24, Main.BRASS))
+	v.add_child(main._label(tr("The %s age begins" % name), 24, Main.BRASS))
 	var t := main._rich()
 	t.custom_minimum_size = Vector2(640, 0)
 	t.text = _what_it_brings(a)
@@ -87,7 +87,7 @@ func _choose(a: int, id: String) -> void:
 ## What entering age a brings: its soldiers, the look of new buildings, what its studies open.
 func _what_it_brings(a: int) -> String:
 	var s := ""
-	s += tr("Your barracks now train [b]%s[/b], and new buildings go up in the %s style (Renovate brings old ones up to date).") % [Sim.soldier_plural(a), GameData.age_name(a)]
+	s += tr("Your barracks now train [b]%s[/b], and new buildings go up in the %s style (Renovate brings old ones up to date)." % [Sim.soldier_plural(a), GameData.age_name(a)])
 	var n := 0
 	var blds := []
 	for id in GameData.techs:
@@ -98,17 +98,17 @@ func _what_it_brings(a: int) -> String:
 		for b in GameData.unlocks(id):
 			if main.sim.bld_enabled(b) and not blds.has(b):
 				blds.append(b)
-	s += "\n\n" + tr("[b]%d studies[/b] are open to you now.") % n
+	s += "\n\n" + tr("[b]%d studies[/b] are open to you now." % n)
 	if not blds.is_empty():
 		var names := blds.slice(0, 10).map(func(b): return String(GameData.bld[b].name))
-		s += " " + tr("They lead to new buildings: %s%s.") % [", ".join(names), (tr(" and %d more") % (blds.size() - 10)) if blds.size() > 10 else ""]
+		s += " " + tr("They lead to new buildings: %s%s." % [", ".join(names), (tr(" and %d more") % (blds.size() - 10)) if blds.size() > 10 else ""])
 	var reps := []
 	for id in GameData.reps:
 		if int(GameData.reps[id].get("age", 0)) == a:
 			reps.append(String(GameData.reps[id].name))
 	if not reps.is_empty():
-		s += "\n\n" + tr("Mastery studies (repeatable): %s.") % ", ".join(reps)
+		s += "\n\n" + tr("Mastery studies (repeatable): %s." % ", ").join(reps)
 	var nxt := GameData.gate_of(a + 1)
 	if nxt != "":
-		s += "\n\n" + tr("To reach the %s age, study [b]%s[/b] once you know %d %s techs.") % [GameData.age_name(a + 1), GameData.tech_name(nxt), int(GameData.techs[nxt].get("need", 0)), GameData.age_name(a)]
+		s += "\n\n" + tr("To reach the %s age, study [b]%s[/b] once you know %d %s techs." % [GameData.age_name(a + 1), GameData.tech_name(nxt), int(GameData.techs[nxt].get("need", 0)), GameData.age_name(a)])
 	return s

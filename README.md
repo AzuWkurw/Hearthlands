@@ -26,7 +26,7 @@ What is in the game now:
 - Four classes of people with needs and contentment, seasons and weather, diseases, fires, wildlife,
   random events, ruins and bandit camps.
 - A map editor (painting, mirrored maps, rivers, starts, missions), missions and a campaign.
-- Music and positional sound; OpenGL or Vulkan; German and English.
+- Music and positional sound; OpenGL or Vulkan; English and Polish (chosen in the main menu or Settings).
 
 ## Roadmap
 
@@ -455,8 +455,8 @@ Open **Settings** (top bar or F10). Everything there is remembered in `user://se
   peaks. **Day and night** (off by default): a slow day, dark nights with lit windows; only the look changes.
 - **Raised ground** (on by default) draws hills standing up from the map (2.5D).
   Off gives the flat map of earlier builds.
-- **Language**: English or German (Deutsch) for the interface. Messages from the game itself (the event
-  log and the building info) are still in English. Other languages: add `data/lang_<code>.json` (or put
+- **Language**: English or Polish (Polski), also offered on the new-game screen. Everything is translated,
+  the game's own messages too (event log, building info, notices); saves stay the same in every language. Other languages: add `data/lang_<code>.json` (or put
   it in the mods folder's `data`); `python3 tools/extract_strings.py` fills in the texts to translate.
 - **Keys**: *Change keys* lists every shortcut (over 40, in groups: map, game, buildings, windows, and
   the keys of game features such as Statistics). Click a key, then press the new one; Shift, Ctrl and
