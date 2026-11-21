@@ -1,7 +1,8 @@
 # Builds the game and publishes it as a GitHub Release whenever a new version reaches main (every
 # build commit changes scripts/version.gd): it tags the commit (v0.45.0-build50), and attaches the
 # Windows zip and the source zip to the release, so the downloads no longer grow the repository.
-# It can also be started by hand (Actions > Release > Run workflow).
+# Before building it imports the project and runs every test (tools/run_all.py); a failing test stops the
+# release. It can also be started by hand (Actions > Release > Run workflow).
 name: Release
 
 on:
@@ -41,7 +42,15 @@ jobs:
           rm -f Godot_v4.3-stable_linux.x86_64.zip Godot_v4.3-stable_export_templates.tpz
           echo "GODOT=$RUNNER_TEMP/godot/Godot_v4.3-stable_linux.x86_64" >> "$GITHUB_ENV"
 
-      # (the tests run before every build is made: python3 tools/run_all.py)
+      # The tests gate the release: if any fails, the job stops here and nothing is tagged or published.
+      - name: Import the project
+        run: '"$GODOT" --headless --import'
+
+      - name: Run every test
+        # (run_all.py uses $GODOT; the window tests run under xvfb-run, which the runner has)
+        timeout-minutes: 60
+        run: python3 tools/run_all.py
+
       - name: Build the zips
         run: python3 tools/make_build.py --no-bump --no-check --out "$RUNNER_TEMP/out"
 
