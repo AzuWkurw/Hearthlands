@@ -1344,14 +1344,17 @@ func _capture(a: Sim.Attack, t: Sim.Bld, p: Sim.Player, op: Sim.Player) -> void:
 	Sim.mix_add(sim.rmix_of(p), a.amix)
 	p.reserve += rest
 	p.res_era = Sim.mix_avg(p.rmix)
-	if p.id == 1 or op.id == 1:
+	if sim.spectating():
+		sim.emit_log("%s captured a %s from %s." % [p.name, String(t.def.name), op.name], Color("d8aa4a"), Vector2i(t.x, t.y))
+	elif p.id == 1 or op.id == 1:
 		sim.emit_log("%s captured a %s%s" % [p.name, String(t.def.name), " from you!" if op.id == 1 else " from %s." % op.name], Color("e0603a") if op.id == 1 else Color("d8aa4a"), Vector2i(t.x, t.y))
 	recompute_territory()
 
 
 func eliminate(op: Sim.Player, by: Sim.Player) -> void:
 	op.alive = false
-	sim.emit_log("%s %s been defeated by %s!" % [op.name, "have" if op.id == 1 else "has", by.name], Color("e0603a") if op.id == 1 else Color("d8aa4a"))
+	var you := op.id == 1 and not sim.spectating()
+	sim.emit_log("%s %s been defeated by %s!" % [op.name, "have" if you else "has", by.name], Color("e0603a") if you else Color("d8aa4a"))
 	for b in sim.blds.duplicate():
 		if b.p == op.id:
 			b.garrison = 0
@@ -1371,6 +1374,8 @@ func eliminate(op: Sim.Player, by: Sim.Player) -> void:
 
 
 func _check_alliance_end() -> void:
+	if sim.spectating():
+		return
 	var allied := 0
 	var alive := 0
 	for p in sim.players:
@@ -1384,6 +1389,15 @@ func _check_alliance_end() -> void:
 
 func _check_end() -> void:
 	if sim.over:
+		return
+	# spectator mode (build 77): the game ends when one realm is left standing
+	if sim.spectating():
+		var left: Array = sim.players.filter(func(q): return q.alive)
+		if left.size() <= 1:
+			sim.over = true
+			if left.size() == 1:
+				sim.emit_log("%s is the last realm standing." % (left[0] as Sim.Player).name, Color("d8aa4a"))
+			sim.ended.emit(true)
 		return
 	if not sim.players[0].alive:
 		sim.over = true

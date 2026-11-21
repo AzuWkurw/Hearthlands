@@ -630,7 +630,10 @@ func _wonder_done(b: Sim.Bld, p: Sim.Player) -> void:
 		sim.emit_log("The %s stands: %d of %d wonders. %s" % [String(b.def.name), n, all, GameData.effect_text(b.def.wonder)], Color("d8aa4a"), Vector2i(b.x, b.y))
 	if n >= all and sim.research_victory and not sim.over:
 		sim.over = true
-		if p.id == 1 or Diplomacy.relation(sim, p.id, 1) == Diplomacy.ALLY:
+		if sim.spectating():
+			sim.emit_log("%s built every wonder of the ages first." % p.name, Color("d8aa4a"))
+			sim.ended.emit(true)
+		elif p.id == 1 or Diplomacy.relation(sim, p.id, 1) == Diplomacy.ALLY:
 			sim.emit_log("All the wonders of the ages stand in your realm! Victory." if p.id == 1 else "Your ally %s built every wonder. Shared victory!" % p.name, Color("d8aa4a"))
 			sim.ended.emit(true)
 		else:

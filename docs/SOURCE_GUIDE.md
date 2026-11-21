@@ -302,7 +302,12 @@ usually just data edits. After changing buildings, goods or techs, run `tools/re
   `ui_settings`, `ui_saves` (with map pictures), `ui_diplomacy`, `ui_demolish`, `ui_targets`,
   `ui_textures`, `ui_log`, `ui_toolbar`, `ui_guide` (the first-game checklist, or a mission's goals),
   `ui_problems` (what is stuck and why), `ui_attack` (the attack window), `ui_chain` (a good's production
-  chain), `ui_editor` (the map editor) and `ui_missions` (the mission list).
+  chain), `ui_editor` (the map editor), `ui_missions` (the mission list) and `ui_spectate` (spectator mode).
+- **Spectator mode** (`opts.spectate`, build 77): `Sim.new_game` makes every realm an AI one, the first
+  too, and leaves the fog of war out. `sim.human()` is still the first realm, so the simulation runs
+  exactly as it would with a player; the game ends when one realm is left (`SimMilitary._check_end`).
+  `ui_spectate.gd` hides the toolbar and the windows that give orders (`Main.play_btns`), blocks the
+  order keys and the info box's controls, and shows a Realms board at the top of the side panel.
 - **Languages** (`i18n.gd`): `data/lang_<code>.json` maps English text to a translation and is loaded as a
   Godot translation, so labels and buttons whose text is a key show translated; text with numbers goes
   through `tr("... %d ...")`. `tools/extract_strings.py` collects new text into the files. German is
@@ -359,6 +364,7 @@ There are about 75 scripts. The ones to know:
 | `door_test.gd`, `walk_test.gd`, `site_test.gd`, `full_test.gd` | roads and entrances, walking people, construction supply, full stores |
 | `garrison_test.gd`, `field_test.gd`, `battle_test.gd`, `battle_forts.gd` | soldiers and fighting |
 | `research_test.gd`, `research_ai_test.gd`, `options_test.gd`, `oldsave_test.gd` | research, new-game options, old saves |
+| `spectate_test.gd`, `shot_spectate.gd` | spectator mode: every realm played by the computer, no fog, the watching interface |
 | `mission_test.gd`, `sea_test.gd`, `catapult_test.gd`, `claim_test.gd` | missions and maps, ships and colonies, catapults, boundary stones |
 | `ai_stuck.gd`, `econ_diag.gd`, `food_diag.gd`, `chain_diag.gd`, `route_diag.gd`, `war_check.gd`, `rival_check.gd` | finding out why rivals are stuck, hungry, short of iron, or not fighting |
 | `shot_*.gd` | screenshots of a feature (need a display: `xvfb-run -a -s "-screen 0 1920x1080x24" godot --rendering-driver opengl3 --script ...`) |
@@ -425,6 +431,7 @@ to `Bld`/`Player` (saved automatically) with a default that works for old saves.
 | translations | `i18n.gd`, `data/lang_*.json`, `tools/extract_strings.py` |
 | drawing buildings, people, carriers | `MapView._draw`, `_draw_building`, `_collect_folk` |
 | trees, peaks and boulders | `MapView._draw_scenery`, `_scenery_mesh` (pictures from `tools/make_scenery.py`) |
+| spectator mode | `Sim.spectating`, `opts.spectate`, `ui_spectate.gd` |
 | renderer and display settings | `settings.gd`, `ui_settings.gd`, `Main._probe_vulkan` |
 
 ---

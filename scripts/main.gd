@@ -158,6 +158,9 @@ var age_ui := UiAge.new(self)       # the new age's window and its choice of pat
 var choice_ui := UiChoice.new(self) # events that ask you to choose (ui_choice.gd)
 var guide_ui := UiGuide.new(self)  # the first-game checklist (ui_guide.gd)
 var side_ui := UiSide.new(self)
+var spectate_ui := UiSpectate.new(self)  # spectator mode: every realm played by the computer (ui_spectate.gd)
+var play_btns: Array = []               # buttons that give orders, hidden while spectating
+var spect_check: CheckBox               # the new-game screen's Spectator mode
 var info_ui := UiInfo.new(self)
 var log_ui := UiLog.new(self)      # the movable event log window (ui_log.gd)
 var notices_ui := UiNotices.new(self)   # notices you can click (ui_notices.gd)
@@ -755,9 +758,11 @@ func _build_ui() -> void:
 		b.toggle_mode = true
 		speed_btns[s] = b
 		tb.add_child(b)
-	tb.add_child(_button("Research", _open_tech))
+	var rsb := _button("Research", _open_tech)
+	tb.add_child(rsb)
 	dip_btn = _button("Diplomacy", _open_diplomacy)
 	tb.add_child(dip_btn)
+	play_btns = [rsb, dip_btn]
 	tb.add_child(_button("Save / Load", _open_saves))
 	tb.add_child(_button("Settings", _open_settings))
 	tb.add_child(_button("Events", func(): log_ui.toggle()))
@@ -782,6 +787,7 @@ func _build_ui() -> void:
 	var bpb := _button("Blueprints", func(): blueprints_ui.toggle())
 	bpb.tooltip_text = "Blueprints: groups of buildings and roads you copied, to place again with one click (U)"
 	tb.add_child(bpb)
+	play_btns.append_array([wkb, cpb, wpb, nkb, mkb, bpb])
 	var trb := _button("Traffic", func(): traffic_ui.toggle())
 	trb.tooltip_text = "Colour your roads by how busy they are (F7)"
 	tb.add_child(trb)
@@ -858,7 +864,9 @@ func _build_ui() -> void:
 	scroll.add_child(col)
 
 	var st := _section(col, "Stores")
-	st.add_child(_button("Production targets (T)", _open_targets))
+	var tgb := _button("Production targets (T)", _open_targets)
+	st.add_child(tgb)
+	play_btns.append(tgb)
 	var stn := _label("All your stores together. Each store keeps its own goods: click one to see what it holds.", 12, DIM)
 	stn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	stn.custom_minimum_size = Vector2(SIDE_W - 40, 0)
@@ -941,7 +949,9 @@ func _build_ui() -> void:
 	research_label = _rich(); rs.add_child(research_label)
 	research_bar = ProgressBar.new(); research_bar.custom_minimum_size = Vector2(0, 16); research_bar.show_percentage = false
 	rs.add_child(research_bar)
-	rs.add_child(_button("Open research tree (R)", _open_tech))
+	var rtb := _button("Open research tree (R)", _open_tech)
+	rs.add_child(rtb)
+	play_btns.append(rtb)
 
 	# building menus, road tools, demolish and scouts are on the toolbar along the bottom of the map
 	toolbar.build()
@@ -969,6 +979,7 @@ func _build_ui() -> void:
 
 	var rv := _section(col, "Rivals")
 	rivals_label = _rich(); rv.add_child(rivals_label)
+	spectate_ui.build(col)
 
 	log_ui.build()
 	guide_ui.build()
@@ -1093,6 +1104,10 @@ func _build_setup() -> void:
 	mr.add_child(map_opt)
 	_fill_maps()
 	rv_check = CheckBox.new(); rv_check.text = "Peaceful victory: the first to the Industrial Revolution, or to build all five wonders, wins"; rv_check.button_pressed = true; v.add_child(rv_check)
+	spect_check = CheckBox.new(); spect_check.text = "Spectator mode: the computer plays every realm, with no fog of war, and you watch"
+	spect_check.tooltip_text = "Your realm is played by the computer too. Move the camera anywhere, click any building to see how it does, and compare the realms in the side panel."
+	spect_check.focus_mode = Control.FOCUS_NONE
+	v.add_child(spect_check)
 	_build_difficulty(v)
 	foes_slider.value_changed.emit(foes_slider.value)
 	str_slider.value_changed.emit(str_slider.value)
@@ -1120,6 +1135,7 @@ func _found_realm() -> void:
 			return
 		var o := _difficulty_opts()
 		o["features"] = settings.enabled_features()
+		o["spectate"] = spect_check.button_pressed
 		if new_gen != WorldGen.GEN_DEFAULTS:
 			o["gen"] = new_gen.duplicate()
 		if not _start(seed_edit.text if seed_edit.text != "" else "hearth", int(foes_slider.value), int(str_slider.value), mix_check.button_pressed, sz, rv_check.button_pressed, o):
@@ -1313,6 +1329,7 @@ func _start(seed_str: String, foes: int, strength: int, mix: bool, size := 0, rv
 func start_map(m: Dictionary, foes: int, mission := {}) -> bool:
 	var o := _difficulty_opts()
 	o["features"] = settings.enabled_features()
+	o["spectate"] = spect_check.button_pressed and mission.is_empty()
 	o.merge(mission.get("opts", {}), true)
 	var strength := int(mission.get("strength", str_slider.value))
 	if not sim.new_game(String(m.get("seed", "map")), clampi(foes, 1, (m.starts as Array).size() - 1), strength, mix_check.button_pressed if mission.is_empty() else true, 0, rv_check.button_pressed if mission.is_empty() else false, o, m, mission):
@@ -1418,6 +1435,7 @@ func _after_world_change() -> void:
 	end_panel.visible = false
 	acc = 0.0
 	autosave_t = 0.0
+	spectate_ui.apply()
 	rp_hist.clear()
 	log_dirty = true
 	_refresh_all()
@@ -1425,6 +1443,16 @@ func _after_world_change() -> void:
 
 func _on_end(win: bool) -> void:
 	paused = true
+	if spectate_ui.active():
+		var et := spectate_ui.end_text()
+		end_title.text = String(et[0])
+		end_text.text = String(et[1])
+		end_watch.visible = sim.get_feature("statistics") != null
+		end_next.visible = false
+		end_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		end_text.custom_minimum_size = Vector2(560, 0)
+		end_panel.visible = true
+		return
 	end_title.text = "Victory" if win else "Defeat"
 	var m := int(sim.time) / 60
 	var last := String(sim.logs[-1][1]) if sim.logs.size() > 0 else ""
@@ -1597,6 +1625,9 @@ func _cancel_place() -> void:
 func _on_tile(t: Vector2i) -> void:
 	if sim.over or setup.visible:
 		return
+	var watching := spectate_ui.active()
+	if watching:
+		view.place_type = ""
 	if view.place_type.begins_with("@"):
 		_use_tool(t)
 		_refresh_all()
@@ -1639,7 +1670,7 @@ func _on_tile(t: Vector2i) -> void:
 	var cfog = sim.get_feature("fog")
 	if not camp.is_empty() and cfog != null and not cfog.explored_at(sim.idx(int(camp.x), int(camp.y))):
 		camp = {}   # not found yet
-	if not camp.is_empty() and camp.kind == "bandits" and not bool(camp.done) and sim.bld_at(t.x, t.y) == null:
+	if not watching and not camp.is_empty() and camp.kind == "bandits" and not bool(camp.done) and sim.bld_at(t.x, t.y) == null:
 		var src := Places.best_source(sim, sim.human(), camp)
 		if src == null or sim.own_def(src) < 2:
 			_show_hint(Places.send(sim, sim.human(), camp), 4.0)
@@ -1665,11 +1696,11 @@ func _on_tile(t: Vector2i) -> void:
 			return
 	# an enemy military building at war: the attack window (who marches, how many)
 	# (or, with a harbour, free ships and soldiers waiting, a landing from the sea)
-	var can_land: bool = b != null and b.p != 1 and sim.is_mil(b) and b.state == "ready" and Diplomacy.at_war(sim, 1, b.p) \
+	var can_land: bool = not watching and b != null and b.p != 1 and sim.is_mil(b) and b.state == "ready" and Diplomacy.at_war(sim, 1, b.p) \
 			and not attack_ui.sea_option(b).is_empty()
-	if b != null and b.p != 1 and sim.is_mil(b) and b.state == "ready" and Diplomacy.at_war(sim, 1, b.p) and attack_ui.sources(b).is_empty() and not can_land:
+	if not watching and b != null and b.p != 1 and sim.is_mil(b) and b.state == "ready" and Diplomacy.at_war(sim, 1, b.p) and attack_ui.sources(b).is_empty() and not can_land:
 		_show_hint(attack_ui.why_not(b), 5.0)
-	if b != null and b.p != 1 and sim.is_mil(b) and b.state == "ready" and Diplomacy.at_war(sim, 1, b.p) and (not attack_ui.sources(b).is_empty() or can_land):
+	if not watching and b != null and b.p != 1 and sim.is_mil(b) and b.state == "ready" and Diplomacy.at_war(sim, 1, b.p) and (not attack_ui.sources(b).is_empty() or can_land):
 		var r2 := attack_ui.open(b)
 		if r2 != "":
 			_show_hint(r2, 2.5)
@@ -1970,6 +2001,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif event.keycode == KEY_ESCAPE:
 			confirm_panel.visible = false
 		return
+	if spectate_ui.blocks_key(event):
+		return
 	if (set_panel.visible or targets_panel.visible) and event.keycode != KEY_ESCAPE:
 		return
 	for fid in feature_ui:
@@ -2118,7 +2151,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _process(delta: float) -> void:
 	_hide_windows_under_panels()
-	if not paused and not setup.visible:
+	if not paused and not setup.visible and not spectate_ui.active():
 		achievements.check(delta)
 	_place_sel_box()
 	# floating windows keep their title bar (drawn above the window) below the top bar
@@ -2347,6 +2380,7 @@ func _refresh_all() -> void:
 	for q in sim.players:
 		if q.ai and q.alive: alive += 1
 	lbl_foes.text = tr("Rivals %d") % alive
+	spectate_ui.refresh()
 	var bits := PackedStringArray()
 	for f: Feature in sim.features:
 		var tt := f.top_text(p)
@@ -2367,6 +2401,10 @@ func _refresh_build() -> void:
 
 func _refresh_sel() -> void:
 	info_ui._refresh_sel()
+	# a spectator sees what a building is doing, but has no say in it
+	var watching := spectate_ui.active()
+	for box: Control in [prio_row, garrison_box, sel_actions]:
+		box.visible = not watching
 
 
 ## Whether the player is using the info box now: a list in it is open, or a mouse button is held over it.

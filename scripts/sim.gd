@@ -161,6 +161,7 @@ const DEFAULT_OPTS := {
 	"all_research": false,  # every realm starts with all research done (but the Industrial Revolution)
 	"creative": false,      # creative mode: you build for free and at once, and your stores never run low
 	"sea_start": false,     # you land from the sea: your headquarters is a harbour on the coast, with a ship
+	"spectate": false,      # spectator mode: the computer plays every realm, with no fog of war, and you watch
 }
 
 
@@ -744,6 +745,9 @@ func new_game(p_seed: String, p_foes: int, p_strength: int, p_mix: bool, p_size 
 	seed_str = p_seed; foes = p_foes; strength = p_strength; mix = p_mix; map_size = p_size; research_victory = p_research_victory
 	opts = DEFAULT_OPTS.duplicate()
 	opts.merge(p_opts, true)
+	# spectator mode (build 77) is not for missions
+	if not mission.is_empty():
+		opts["spectate"] = false
 	# the test runner starts the tests written before build 65 in the Roman age (tools/run_all.py)
 	if not p_opts.has("start_age") and OS.has_environment("HEARTHLANDS_START_AGE"):
 		opts["start_age"] = int(OS.get_environment("HEARTHLANDS_START_AGE"))
@@ -782,8 +786,11 @@ func new_game(p_seed: String, p_foes: int, p_strength: int, p_mix: bool, p_size 
 		var p := Player.new()
 		p.id = k + 1
 		p.color = PCOL[k % PCOL.size()]
-		p.ai = k != 0
-		p.name = "You" if k == 0 else String(names[(k - 1) % names.size()])
+		p.ai = k != 0 or spectating()
+		if spectating():
+			p.name = String(names[k % names.size()])
+		else:
+			p.name = "You" if k == 0 else String(names[(k - 1) % names.size()])
 		p.start = starts[k]
 		p.res_era = 0.0
 		for r in GameData.resources:
@@ -868,8 +875,23 @@ func new_game(p_seed: String, p_foes: int, p_strength: int, p_mix: bool, p_size 
 	# buildings of the game before (the fog then showed patches of land around them as explored)
 	_rebuild_realm_lists()
 	_mil_dirty = true
-	setup_features(opts.get("features", Features.default_ids()), false, {})
+	setup_features(_spectate_features(opts.get("features", Features.default_ids())), false, {})
+	if spectating():
+		emit_log("Spectator mode: the computer plays every realm. Watch them from anywhere on the map.", Color("8fc0ff"))
 	return true
+
+
+## Whether this is a spectator game (build 77): every realm, the first one too, is played by the
+## computer. human() is still the first realm, so the simulation runs exactly as it would for a player.
+func spectating() -> bool:
+	return bool(opts.get("spectate", false))
+
+
+## The features of a game: a spectator game has no fog of war.
+func _spectate_features(ids: Array) -> Array:
+	if not spectating():
+		return ids
+	return ids.filter(func(f): return String(f) != "fog")
 
 
 ## One start's setup from a hand-made map: {name, pers, skill, goods (times the usual), soldiers}.
@@ -2044,6 +2066,8 @@ func set_feature(id: String, on: bool) -> void:
 	var ids: Array = feature_ids()
 	if on == (id in ids):
 		return
+	if on and spectating() and _spectate_features([id]).is_empty():
+		return
 	if on:
 		for e in Features.available():
 			if e.id == id:
@@ -2722,7 +2746,7 @@ func goal_progress(g: Dictionary) -> Array:
 ## The sandbox goals (build 63): in a game without a mission, the human works through SandboxGoals.LIST
 ## one at a time; each done gives its reward in gold and says so.
 func _goals_check() -> void:
-	if not mission.is_empty() or players.is_empty():
+	if not mission.is_empty() or players.is_empty() or spectating():
 		return
 	var me := human()
 	while me.goal_i < SandboxGoals.LIST.size():
