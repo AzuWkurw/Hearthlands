@@ -1608,6 +1608,8 @@ func _draw() -> void:
 			draw_string_outline(tfont, sp2 + Vector2(-90, 0), b.town, HORIZONTAL_ALIGNMENT_CENTER, 180, tfs, 5, Color(0, 0, 0, 0.85))
 			draw_string(tfont, sp2 + Vector2(-90, 0), b.town, HORIZONTAL_ALIGNMENT_CENTER, 180, tfs, sim.players[b.p - 1].color.lightened(0.55))
 	if prof_on: _pm("town_names")
+	if z >= 9.0 and not editor:
+		_draw_vassal_banners(origin, z, x0, y0, x1, y1)
 	if z >= 14.0:
 		var font := get_theme_default_font()
 		var fs := clampi(int(z * 0.42), 10, 20)
@@ -1625,6 +1627,51 @@ func _draw() -> void:
 
 ## The warning of an attack: a red glow along the screen's edges, fading towards the middle, so the
 ## map itself stays clear.
+## A vassal's headquarters flies its overlord's banner beside its own colours: a pole with a swallow-tailed
+## flag in the overlord's colour, edged in the vassal's, that ripples in the wind.
+func _draw_vassal_banners(origin: Vector2, z: float, x0: int, y0: int, x1: int, y1: int) -> void:
+	var fogf = sim.get_feature("fog")
+	var tt := Time.get_ticks_msec() / 1000.0
+	for p: Sim.Player in sim.players:
+		if p.overlord == 0 or not p.alive or p.hq == null or p.hq.dead:
+			continue
+		var b: Sim.Bld = p.hq
+		if b.x < x0 - 2 or b.x > x1 + 2 or b.y < y0 - 2 or b.y > y1 + 3:
+			continue
+		if fogf != null and b.p != 1 and not fogf.explored_at(sim.idx(b.x, b.y)):
+			continue
+		var lord: Color = sim.players[p.overlord - 1].color
+		var base := Vector2(b.x + 1.35, b.y + 0.9)
+		if raised:
+			base.y -= lift_at(b.x + 0.5, b.y + 0.5)
+		var foot: Vector2 = origin + base * z
+		var s := z / 32.0
+		var top := foot + Vector2(0, -58.0 * s)
+		draw_line(foot + Vector2(1, 1) * s, top + Vector2(1, 1) * s, Color(0, 0, 0, 0.45), maxf(1.0, 3.0 * s))
+		draw_line(foot, top, Color("5a4630"), maxf(1.0, 2.5 * s))
+		draw_circle(top, maxf(1.0, 2.6 * s), Color("d8aa4a"))
+		var pts := PackedVector2Array()
+		var n := 6
+		var lw := 30.0 * s
+		var lh := 20.0 * s
+		for k in n + 1:
+			var f := float(k) / n
+			pts.append(top + Vector2(f * lw, 3.0 * s + sin(tt * 3.0 + f * 3.5 + b.id) * 2.2 * s * f))
+		pts.append(top + Vector2(lw * 0.72, 3.0 * s + lh * 0.5 + sin(tt * 3.0 + 2.5 + b.id) * 1.6 * s))
+		for k in range(n, -1, -1):
+			var f2 := float(k) / n
+			pts.append(top + Vector2(f2 * lw, 3.0 * s + lh + sin(tt * 3.0 + f2 * 3.5 + b.id) * 2.2 * s * f2))
+		draw_colored_polygon(pts, lord)
+		var edge := pts.duplicate()
+		edge.append(pts[0])
+		draw_polyline(edge, p.color.lightened(0.15), maxf(1.0, 2.0 * s))
+		# the overlord's mark: a small gold crown on its banner
+		var c := top + Vector2(lw * 0.36, 3.0 * s + lh * 0.5)
+		var cw := 6.0 * s
+		draw_colored_polygon(PackedVector2Array([c + Vector2(-cw, cw * 0.6), c + Vector2(-cw, -cw * 0.4), c + Vector2(-cw * 0.5, cw * 0.05),
+			c + Vector2(0, -cw * 0.7), c + Vector2(cw * 0.5, cw * 0.05), c + Vector2(cw, -cw * 0.4), c + Vector2(cw, cw * 0.6)]), Color("f0d070"))
+
+
 func _draw_alert_edges(f: float) -> void:
 	var w := minf(size.x, size.y) * 0.09
 	var o := Color(0.85, 0.2, 0.16, 0.45 * f)

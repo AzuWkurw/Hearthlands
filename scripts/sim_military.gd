@@ -1375,52 +1375,69 @@ func eliminate(op: Sim.Player, by: Sim.Player) -> void:
 		if a.p != op.id: ka.append(a)
 	sim.attacks = ka
 	Diplomacy.drop_proposals(sim, op.id, 0)
+	Diplomacy.on_fallen(sim, op.id)
 	recompute_territory()
 	_check_end()
 
 
 func _check_alliance_end() -> void:
 	if sim.spectating():
+		if Diplomacy.any_vassals(sim):
+			_check_end()
 		return
+	if sim.players[0].overlord != 0:
+		return
+	var lr := _rivals_left()
+	var left: int = lr[0]
+	if (left == 0 and not Diplomacy.vassals_of(sim, 1).is_empty()) or (left > 0 and lr[1] == left and left * 2 <= sim.players.size() - 1):
+		_check_end()
+
+
+## The rivals still standing that are not your vassals, and how many of them are your allies.
+## (A rival that has surrendered to you counts as beaten.)
+func _rivals_left() -> Array:
+	var left := 0
 	var allied := 0
-	var alive := 0
 	for p in sim.players:
-		if p.ai and p.alive:
-			alive += 1
+		if p.ai and p.alive and p.overlord != 1:
+			left += 1
 			if Diplomacy.relation(sim, 1, p.id) == Diplomacy.ALLY:
 				allied += 1
-	if alive > 0 and allied == alive and alive * 2 <= sim.players.size() - 1:
-		_check_end()
+	return [left, allied]
 
 
 func _check_end() -> void:
 	if sim.over:
 		return
-	# spectator mode (build 77): the game ends when one realm is left standing
+	# spectator mode (build 77): the game ends when one realm is left standing (or every other realm
+	# left serves it as a vassal)
 	if sim.spectating():
-		var left: Array = sim.players.filter(func(q): return q.alive)
+		var left: Array = sim.players.filter(func(q): return q.alive and q.overlord == 0)
 		if left.size() <= 1:
 			sim.over = true
 			if left.size() == 1:
-				sim.emit_log("%s is the last realm standing." % (left[0] as Sim.Player).name, Color("d8aa4a"))
+				var lp := left[0] as Sim.Player
+				if Diplomacy.vassals_of(sim, lp.id).is_empty():
+					sim.emit_log("%s is the last realm standing." % lp.name, Color("d8aa4a"))
+				else:
+					sim.emit_log("%s is the last free realm: every other realm left serves it." % lp.name, Color("d8aa4a"))
 			sim.ended.emit(true)
 		return
 	if not sim.players[0].alive:
 		sim.over = true
 		sim.ended.emit(false)
 		return
-	var alive := 0
-	var allied := 0
-	for p in sim.players:
-		if p.ai and p.alive:
-			alive += 1
-			if Diplomacy.relation(sim, 1, p.id) == Diplomacy.ALLY:
-				allied += 1
-	if alive > 0 and (allied < alive or alive * 2 > sim.players.size() - 1):
+	if sim.players[0].overlord != 0:
+		return    # a vassal cannot win; it must break free first
+	var lr := _rivals_left()
+	var left: int = lr[0]
+	if left > 0 and (lr[1] < left or left * 2 > sim.players.size() - 1):
 		return
 	sim.over = true
-	if alive > 0:
+	if left > 0:
 		sim.emit_log("Every remaining realm is your ally. Allied victory!", Color("d8aa4a"))
+	elif not Diplomacy.vassals_of(sim, 1).is_empty():
+		sim.emit_log("Every rival realm still standing serves you as a vassal. Victory!", Color("d8aa4a"))
 	sim.ended.emit(true)
 
 

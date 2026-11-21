@@ -1498,6 +1498,8 @@ func _on_end(win: bool) -> void:
 	end_watch.visible = sim.get_feature("statistics") != null
 	if not sim.mission.is_empty():
 		end_text.text = ("%s: every goal reached in %d minutes." if win else "%s: %s (%d minutes)") % ([String(sim.mission.get("name", "")), m] if win else [String(sim.mission.get("name", "")), "the goals were not reached in time" if sim.players[0].alive else "your headquarters was captured", m])
+	elif win and "serves you as a vassal" in last:
+		end_text.text = "Every rival realm still standing has bowed to you as a vassal. Your reign took %d minutes." % m
 	elif "Industrial Revolution" in last:
 		end_text.text = ("Your realm reached the Industrial Revolution first, after %d minutes." if win else last + " (%d minutes)") % m
 	else:
