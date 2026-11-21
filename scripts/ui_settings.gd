@@ -134,6 +134,10 @@ func _fill_settings() -> void:
 		main.settings.daynight = on
 		main.view.daynight = on
 		main.settings.save_file()))
+	_set_row(g, "", _check("Soft shade towards the screen's corners", main.settings.vignette, func(on):
+		main.settings.vignette = on
+		main.view.set_vignette(on)
+		main.settings.save_file()))
 	_set_row(g, "", _check("Smooth scaling (turn off for a crisp pixel look)", main.settings.smooth, func(on):
 		main.settings.smooth = on
 		main.view.set_smooth(on)

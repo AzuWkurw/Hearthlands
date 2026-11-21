@@ -520,6 +520,7 @@ func _ready() -> void:
 	view.auto_roads = settings.auto_roads
 	view.raised = settings.raised
 	view.daynight = settings.daynight
+	view.set_vignette(settings.vignette)
 	view.set_details(settings.details)
 	ask_demolish = settings.ask_demolish
 	# in a window the interface size must follow the window when it is resized
