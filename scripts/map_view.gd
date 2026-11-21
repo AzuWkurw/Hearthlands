@@ -113,6 +113,8 @@ var _scn_atlas: ImageTexture       # trees, peaks and boulders side by side (see
 var _scn_size: Array = []          # per SCENERY entry: [uv rect in the atlas, size in tiles]
 var _scn_mesh := {}                # chunk key -> ArrayMesh of the scenery standing in it (null: none)
 var _scn_ver := -1                 # chunks.ver the meshes were made for
+var _scn_hold: Array = []         # (build 76) replaced scenery meshes the building layer may still draw
+var _scn_stale := {}               # (build 76) chunk keys whose mesh is out of date: still drawn until made again
 
 # --- Raised ground (2.5D) ---------------------------------------------------------------------------
 # Each tile corner is raised by the height of the ground around it (LIFT tiles per height step, the sea
@@ -506,6 +508,9 @@ func ground_changed() -> void:
 func reset_world() -> void:
 	chunks.sim = sim
 	chunks.clear()
+	_retire(_scn_mesh.values())
+	_scn_mesh = {}
+	_scn_stale = {}
 	_lift_key = ""          # the ground's heights may have changed (map editor)
 	road_start = Vector2i(-1, -1)
 	_preview = PackedInt32Array()
@@ -630,8 +635,9 @@ func tiles_changed(tiles: PackedInt32Array) -> void:
 			if xx >= 0 and yy >= 0 and xx < sim.w and yy < sim.h:
 				var sk := (yy / MapChunks.CH) * 1000 + xx / MapChunks.CH
 				if _scn_mesh.has(sk):
-					_retire([_scn_mesh[sk]])
-					_scn_mesh.erase(sk)
+					# (build 76) the old trees stay until the new mesh is made: erased, the chunk's
+					# trees vanished until there was time to make it again (zoomed out, many frames)
+					_scn_stale[sk] = true
 
 
 ## The map point under screen position pos (in tiles, not rounded), on the ground.
@@ -1102,6 +1108,12 @@ func _draw() -> void:
 		_layer_off()
 		_draw_fields(x0, x1, y0, y1)
 	if prof_on: _pm("fields")
+	# (build 76) trees that changed are made again a little each frame, the old ones shown meanwhile
+	if z >= SCENERY_ZOOM:
+		_scn_refresh(x0, x1, y0, y1, 1500)
+	if not layered and not _scn_hold.is_empty():
+		_retire(_scn_hold)
+		_scn_hold = []
 	if z >= SCENERY_ZOOM and not layered:
 		_draw_scenery(x0, x1, y0, y1)
 	if prof_on: _pm("scenery")
@@ -1310,6 +1322,10 @@ func _draw() -> void:
 			_draw_ship(pos, dx < 0, pc, t.t0, t.res if t.res != "@expedition" else "", false)
 			continue
 		if t.kind == "boat":
+			_draw_boat(pos, dx < 0, pc, t.t0, t.res if not t.delivered else "")
+			continue
+		if t.kind == "trade" and sim.ter[a] == Sim.WATER and sim.ter[c] == Sim.WATER:
+			# (build 76) a trade cart crossing water goes by boat
 			_draw_boat(pos, dx < 0, pc, t.t0, t.res if not t.delivered else "")
 			continue
 		if t.kind == "soldier":
@@ -2565,6 +2581,10 @@ func _layer_fill(x0: int, x1: int, y0: int, y1: int, origin: Vector2, z: float, 
 	var fy1 := mini(sim.h - 1, y1 + my)
 	_lrect = Rect2i(fx0, fy0, fx1 - fx0 + 1, fy1 - fy0 + 1)
 	_lrc.clear()
+	# (build 76) meshes replaced since the last recording are no longer drawn by it
+	if not _scn_hold.is_empty():
+		_retire(_scn_hold)
+		_scn_hold = []
 	_cv = _lrc
 	_cv.draw_set_transform(origin, 0.0, Vector2(z, z))
 	_draw_fields(fx0, fx1, fy0, fy1)
@@ -3705,10 +3725,7 @@ func _scenery_mesh(cx: int, cy: int) -> ArrayMesh:
 func _draw_scenery(x0: int, x1: int, y0: int, y1: int) -> void:
 	if _scn_atlas == null:
 		_make_scenery_atlas()
-	if _scn_ver != chunks.ver:
-		_scn_ver = chunks.ver
-		_retire(_scn_mesh.values())
-		_scn_mesh = {}
+	_scn_check_ver()
 	var CHN := MapChunks.CH
 	var deadline := Time.get_ticks_usec() + 2000
 	var made := 0
@@ -3723,3 +3740,52 @@ func _draw_scenery(x0: int, x1: int, y0: int, y1: int) -> void:
 			var m: ArrayMesh = _scn_mesh[k]
 			if m != null:
 				_cv.draw_mesh(m, _scn_atlas)
+
+
+## (build 76) Everything was baked again (details, colours, a new map): the meshes are made again,
+## the old ones drawn meanwhile; a new map drops them (see reset_world).
+func _scn_check_ver() -> void:
+	if _scn_ver != chunks.ver:
+		_scn_ver = chunks.ver
+		for k in _scn_mesh:
+			_scn_stale[k] = true
+
+
+## (build 76) Makes out-of-date scenery meshes in view again, up to budget_us microseconds a frame
+## (at least one). Called every frame, also while the building layer shows the trees.
+func _scn_refresh(x0: int, x1: int, y0: int, y1: int, budget_us: int) -> bool:
+	if _scn_atlas == null:
+		return false
+	_scn_check_ver()
+	var CHN := MapChunks.CH
+	var deadline := Time.get_ticks_usec() + budget_us
+	var made := 0
+	# the view and half a screen round it (what the building layer records): missing meshes are made
+	# ahead of time, so panning finds them ready (else the layer was recorded again every frame until
+	# they were all made, and the trees came in a few at a time)
+	var mx := (x1 - x0) / 2 + 4
+	var my := (y1 - y0) / 2 + 4
+	var ax0 := maxi(0, x0 - mx)
+	var ax1 := mini(sim.w - 1, x1 + mx)
+	var ay0 := maxi(0, y0 - my)
+	var ay1 := mini(sim.h - 1, y1 + my)
+	for cy in range(ay0 / CHN, mini(sim.h - 1, ay1 + 2) / CHN + 1):
+		for cx in range(ax0 / CHN, ax1 / CHN + 1):
+			var k := cy * 1000 + cx
+			if not _scn_mesh.has(k):
+				if made > 0 and Time.get_ticks_usec() > deadline:
+					return true
+				_scn_mesh[k] = _scenery_mesh(cx, cy)
+				made += 1
+				continue
+			if not _scn_stale.has(k):
+				continue
+			if made > 0 and Time.get_ticks_usec() > deadline:
+				return true
+			_scn_stale.erase(k)
+			var old = _scn_mesh.get(k)
+			_scn_mesh[k] = _scenery_mesh(cx, cy)
+			if old != null:
+				_scn_hold.append(old)     # the building layer may still draw it: freed after its next recording
+			made += 1
+	return made > 0

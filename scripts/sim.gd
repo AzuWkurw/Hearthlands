@@ -611,6 +611,8 @@ var map_dirty := true          # terrain/deco changed (minimap)
 
 
 var territory_version := 0
+var cart_routes := {}      # (build 76) trade carts' ways, by ends (Diplomacy.cart_route): not saved
+var map_ver := 0           # (build 76) goes up whenever the whole map's look changed (map_dirty), not saved
 var rock_ver := 0          # (build 75) counts rocks and clay dug away (not saved: only for reach's cache)
 
 
@@ -768,7 +770,7 @@ func new_game(p_seed: String, p_foes: int, p_strength: int, p_mix: bool, p_size 
 	_avail = {}; _avail_at = {}
 	players.clear(); blds.clear(); by_id.clear(); trips.clear(); attacks.clear(); navy.clear(); naval.fx.clear(); naval._comp = PackedInt32Array(); prices.clear(); price_hist.clear(); logs.clear()
 	rel = {}; rel_since = {}; proposals = []; standing = []; _prop_id = 0
-	time = 0.0; over = false; _bid = 0; _acc1 = 0.0; _sec_n = 0; _owned_dirty = true; _owned_full = true; _th_known = -1; _tt = {}
+	time = 0.0; over = false; _bid = 0; _acc1 = 0.0; _sec_n = 0; tick_stage = 0; cart_routes = {}; _owned_dirty = true; _owned_full = true; _th_known = -1; _tt = {}
 	_alloc_path_buffers()
 	rng.seed = seed_str.hash()
 	var names := AI_NAMES.duplicate()
@@ -2470,7 +2472,64 @@ func _wake(b: Bld) -> void:
 	_wheel_put(b, false)
 
 
+## (build 76) One moment of the game, in parts: the buildings, the carriers, battles, then the
+## once-a-second work. tick() does them all; tick_part() does the next one, so the game can spread a
+## moment over several frames on a big map (the same work in the same order: the game goes on exactly
+## the same). tick_stage is the next part to do (0: a new moment); a game is saved between moments.
+var tick_stage := 0
+var _sec_now := false      # this moment has the once-a-second work (parts 3 to 5)
+
 func tick(dt: float) -> void:
+	while not tick_part(dt):
+		pass
+
+
+## Does the next part of the current moment; true when the moment is finished. The parts, in order:
+## 0 the buildings, 1 carriers sent out, 2 trips arriving, 3 battles, 4 to 6 the once-a-second work
+## (the game, its features, the market), 7 one realm's once-a-second work.
+const TICK_PARTS := 8
+
+func tick_part(dt: float) -> bool:
+	var st := tick_stage
+	match st:
+		0:
+			_tick_buildings(dt)
+		1:
+			_tick_dispatch()
+		2:
+			_tick_carriers(dt)
+		3:
+			var t0 := Time.get_ticks_usec()
+			attack_tick(dt)
+			_pf("combat", t0)
+		4:
+			_acc1 += dt
+			_sec_now = _acc1 >= 1.0
+			if _sec_now:
+				_acc1 -= 1.0
+				_sec_n = 0
+				_secondly()
+			else:
+				_sec_n += 1
+		5:
+			if _sec_now:
+				_secondly_features()
+		6:
+			if _sec_now:
+				_secondly_end()
+			_sec_now = false
+		_:
+			# each realm's once-a-second work in its own tenth of the second (build 66.1): all of it in
+			# one tick made the game stutter once a second on a big map (a tick of 150 to 300 ms)
+			if _sec_n < 10:
+				for p in players:
+					if p.alive and p.id % 10 == _sec_n and not over:
+						_player_second(p)
+	tick_stage = (st + 1) % TICK_PARTS
+	return tick_stage == 0
+
+
+func _tick_buildings(dt: float) -> void:
 	time += dt
 	_ticks += 1
 	var t0 := Time.get_ticks_usec()
@@ -2529,9 +2588,17 @@ func tick(dt: float) -> void:
 		if not b.dead and b._tidx >= 0 and b._wk < 0:
 			_wheel_put(b, false)
 	_pf("buildings", t0)
-	t0 = Time.get_ticks_usec()
+
+
+func _tick_dispatch() -> void:
+	var t0 := Time.get_ticks_usec()
 	if _ticks % 3 == 0:
 		_dispatch()
+	_pf("carriers", t0)
+
+
+func _tick_carriers(_dt: float) -> void:
+	var t0 := Time.get_ticks_usec()
 	# (build 74) only the trips due now are looked at, from the trip schedule, in the same order the
 	# old look over every trip took (from the last to the first), so a game goes on exactly as before
 	var tdue := _trips_due()
@@ -2602,24 +2669,8 @@ func tick(dt: float) -> void:
 			_th_push(t.t1, t)
 	if changed_tiles.size() > 100000:
 		changed_tiles.clear()
-		map_dirty = true
+		map_dirty = true; map_ver += 1
 	_pf("carriers", t0)
-	t0 = Time.get_ticks_usec()
-	attack_tick(dt)
-	_pf("combat", t0)
-	_acc1 += dt
-	if _acc1 >= 1.0:
-		_acc1 -= 1.0
-		_sec_n = 0
-		_secondly()
-	else:
-		_sec_n += 1
-	# each realm's once-a-second work in its own tenth of the second (build 66.1): all of it in one tick
-	# made the game stutter once a second on a big map (a tick of 150 to 300 ms)
-	if _sec_n < 10:
-		for p in players:
-			if p.alive and p.id % 10 == _sec_n and not over:
-				_player_second(p)
 
 
 ## For finding where two runs of the same game part ways: a number that changes with any change to the
@@ -2757,10 +2808,18 @@ func _secondly() -> void:
 		military.mark_borders()
 	if not standing.is_empty() and int(time) % 5 == 0:
 		Diplomacy.standing_tick(self)
+
+
+
+## The features' once-a-second work (a part of its own, see tick_part).
+func _secondly_features() -> void:
 	for f: Feature in features:
 		var _tf := Time.get_ticks_usec()
 		f.on_second()
 		_pf("f " + f.id, _tf)
+
+
+func _secondly_end() -> void:
 	market.on_second()
 	if not over:
 		_check_alliance_end()
@@ -2871,6 +2930,9 @@ static func _restore(o: Object, d: Dictionary) -> void:
 
 
 func to_save() -> Dictionary:
+	# (build 76) a moment half done is finished first: a game is saved between moments
+	while tick_stage != 0:
+		tick_part(TICK)
 	var pl := []
 	for p in players:
 		var pd := _dump(p, ["hq"])
@@ -2933,7 +2995,7 @@ func from_save(d: Dictionary) -> String:
 		vein = d.vein; vein_amt = d.vein_amt; vein_tiles = d.vein_tiles
 	else:
 		_veins_from_old_save()
-	players.clear(); blds.clear(); by_id.clear(); trips.clear(); attacks.clear()
+	players.clear(); blds.clear(); by_id.clear(); trips.clear(); attacks.clear(); tick_stage = 0; cart_routes = {}
 	navy = (d.get("navy", []) as Array).duplicate(true)
 	naval._comp = PackedInt32Array()
 	prices = (d.get("prices", {}) as Dictionary).duplicate(true)
@@ -3047,7 +3109,7 @@ func from_save(d: Dictionary) -> String:
 	_mil_dirty = true
 	_tick_dirty = true
 	_owned_dirty = true
-	map_dirty = true
+	map_dirty = true; map_ver += 1
 	changed_tiles = PackedInt32Array()
 	territory_version += 1
 	_fix_eras()

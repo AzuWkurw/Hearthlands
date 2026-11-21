@@ -80,14 +80,50 @@ func guild_size(p: Sim.Player, b: Sim.Bld) -> int:
 	if tr == "" or String(b.def.get("worker", "")) == "":
 		return 0
 	var n := 0
-	for o: Sim.Bld in sim.realm_blds(p):
-		if o.dead or o.state != "ready" or not o.staffed:
-			continue
-		if absi(o.x - b.x) > GUILD_R or absi(o.y - b.y) > GUILD_R:
-			continue
-		if (o.x - b.x) * (o.x - b.x) + (o.y - b.y) * (o.y - b.y) <= GUILD_R * GUILD_R and GameData.trade(o.ty) == tr:
-			n += 1
+	# (build 76) only the realm's buildings of the same trade, not all of them: each workshop asks
+	# when it starts a cycle, hundreds of times a game second on a big map
+	var cells: Dictionary = _trade_blds(p, tr)
+	for cy in range((b.y - GUILD_R) >> 4, ((b.y + GUILD_R) >> 4) + 1):
+		for cx in range((b.x - GUILD_R) >> 4, ((b.x + GUILD_R) >> 4) + 1):
+			var lst = cells.get(cx * 4096 + cy)
+			if lst == null:
+				continue
+			for o: Sim.Bld in lst:
+				if o.dead or o.state != "ready" or not o.staffed:
+					continue
+				if absi(o.x - b.x) > GUILD_R or absi(o.y - b.y) > GUILD_R:
+					continue
+				if (o.x - b.x) * (o.x - b.x) + (o.y - b.y) * (o.y - b.y) <= GUILD_R * GUILD_R and GameData.trade(o.ty) == tr:
+					n += 1
 	return n
+
+
+var _gt_src := -2          # SimLogistics._pb_sv of the realm lists the index below was made from
+var _gt: Array = []        # per realm: trade -> 16-tile map cell -> its buildings in realm_blds
+
+func _trade_blds(p: Sim.Player, tr: String) -> Dictionary:
+	sim.realm_blds(p)      # (made if missing)
+	var src: Array = sim.logistics._pb
+	# (the lists are made again every second, but hold the same buildings while no building came, went,
+	# changed hands or changed kind: then the index stays)
+	if int(sim.logistics._pb_sv) != _gt_src or _gt.size() != src.size():
+		_gt_src = int(sim.logistics._pb_sv)
+		_gt = []
+		for lst: Array in src:
+			var d := {}
+			for o: Sim.Bld in lst:
+				var t := GameData.trade(o.ty)
+				if t == "":
+					continue
+				if not d.has(t):
+					d[t] = {}
+				var ck := (o.x >> 4) * 4096 + (o.y >> 4)
+				var cd: Dictionary = d[t]
+				if not cd.has(ck):
+					cd[ck] = []
+				(cd[ck] as Array).append(o)
+			_gt.append(d)
+	return (_gt[p.id - 1] as Dictionary).get(tr, {})
 
 
 func guild_bonus(p: Sim.Player, b: Sim.Bld) -> float:

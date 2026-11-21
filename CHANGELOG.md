@@ -1,5 +1,14 @@
 # Changelog
 
+## Build 76 (v0.71.0, 2026-11-21)
+
+Build 76: a smoother screen in huge late games, trees that stay put, trade carts that take real roads.
+- A moment of the game is now done in parts (buildings, carriers sent out, trips arriving, battles, the once-a-second work, each realm's own work), as many as fit in a tenth of each frame. Before, a whole moment ran inside one frame: on a 125-minute game of nine realms that was 20 to 40 ms (up to 180 ms) at once, so the screen stalled several times a second even with the processor mostly idle. The game plays exactly the same; a save is always made between moments.
+- Trees no longer vanish and come back when zoomed out. A tree cut or planted anywhere threw away that part of the map's trees until there was time to make them again; now the old ones stay until the new ones are ready. Trees just off screen are made ahead of time, so panning finds them ready, and the map is no longer baked again on every frame for a second after loading.
+- Trade carts go over land round mountains, and cross water by boat only where they must (they went in a straight line over sea and mountains). The way is worked out once for each pair of markets. Trades between realms far apart take longer now.
+- Workshops find their guild faster: only the same trade's workplaces nearby are counted, not every building of the realm, each time one starts work (buildings' time on a 125-minute save from about 111 to 75 ms per game second).
+- Fix: finishing a repeatable study (Mass production, Statistics, General staff) stopped the "Research complete" message with an error.
+
 ## Build 75.1 (v0.70.0, 2026-11-21)
 
 Build 75.1: wording.

@@ -9,6 +9,7 @@ var sim: Sim
 var _net_par: Array = []           # per realm: next tile on the way to that store
 var net_ver: Array = []            # per realm: counts rebuilds, so cached paths know when they are stale
 var _mil: Array = []               # all military buildings and headquarters
+var _pb_sv := -1                    # (build 76) _store_ver when _pb was made: same version, same lists
 var _pb: Array = []                # per realm: its buildings, rebuilt once a second
 var _stations: Array = []          # per realm: working mule stations and cart yards
 
@@ -1284,6 +1285,7 @@ func _chain_trip(p: Sim.Player, t: Sim.Trip, path: PackedInt32Array, forward: bo
 
 
 func _rebuild_realm_lists() -> void:
+	_pb_sv = _store_ver
 	_pb = []
 	_stations = []
 	for p in sim.players:

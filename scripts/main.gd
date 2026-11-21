@@ -15,6 +15,9 @@ const BRASS := Color("d8aa4a")
 const DIM := Color("9a9c88")
 
 
+## (build 76) The simulation's share of a frame when it keeps up (microseconds); behind, up to 50 ms.
+const SIM_SHARE_US := 10000
+var _map_marked := -1         # (build 76) the sim.map_ver the map was last baked again for
 var sim := Sim.new()
 
 ## The interface's parts (see ui_*.gd). Each holds a reference back to this object.
@@ -992,7 +995,7 @@ func _build_ui() -> void:
 				nb.append(String(GameData.bld[b].name))
 		_rebuild_build_list()
 		toolbar.mark_new()
-		var fx := GameData.effect_text(GameData.techs[tid].get("effects", {}))
+		var fx := GameData.effect_text((GameData.techs.get(tid, GameData.reps.get(tid, {})) as Dictionary).get("effects", {}))
 		var parts := []
 		if fx != "": parts.append(fx)
 		if not nb.is_empty(): parts.append(tr("new: %s") % ", ".join(nb))
@@ -2142,13 +2145,21 @@ func _process(delta: float) -> void:
 		acc += delta * speed
 		has_played = true
 		var n := 0
-		# the simulation gets at most 50 ms of each frame: when it can't keep up the game runs
-		# slower than the speed chosen (shown on the speed button and with F3) instead of freezing the screen
-		var budget := Time.get_ticks_usec() + 50000
-		while acc >= Sim.TICK and n < 120:
-			sim.tick(Sim.TICK)
-			acc -= Sim.TICK
-			n += 1
+		# (build 76) a moment is done in parts (buildings, carriers, battles, the once-a-second work), as
+		# many as fit in this frame's share of time, so a big late game no longer holds a frame for a
+		# whole moment (20 to 40 ms on a 9-realm map): the screen stays smooth and the game keeps its
+		# speed. Behind, the share grows up to 50 ms a frame; when the computer can't keep up even so,
+		# the game runs slower than the speed chosen (shown on the speed button and with F3) instead of
+		# freezing the screen.
+		var share := SIM_SHARE_US if acc < Sim.TICK * 2.0 else 50000
+		var budget := Time.get_ticks_usec() + share
+		var parts := 0
+		while (acc >= Sim.TICK or sim.tick_stage != 0) and n < 120:
+			if sim.tick_stage == 0:
+				acc -= Sim.TICK
+			if sim.tick_part(Sim.TICK):
+				n += 1
+			parts += 1
 			if Time.get_ticks_usec() > budget:
 				break
 		if n >= 120 or acc > Sim.TICK * 4.0:
@@ -2166,8 +2177,11 @@ func _process(delta: float) -> void:
 			if b != null:
 				b.modulate = Color(1.0, 0.7, 0.45) if behind else Color.WHITE
 				b.tooltip_text = (tr("Chosen %dx, but the computer only keeps up with %.1fx right now (a big late game). The game runs at that speed.") % [int(speed), real_speed]) if behind else ("16 times as fast (key 5), for long games when the computer keeps up" if int(speed) == 16 else "")
-	if sim.map_dirty:
+	# (build 76) once per change: the minimap clears the flag only once a second, and until then the
+	# whole map was baked again every frame (after loading, or a very busy moment)
+	if sim.map_ver != _map_marked:
 		view.chunks.mark_all()
+		_map_marked = sim.map_ver
 	if sim.changed_tiles.size() > 0:
 		view.tiles_changed(sim.changed_tiles)
 		minimap.tiles_changed(sim.changed_tiles)

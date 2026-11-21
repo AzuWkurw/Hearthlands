@@ -196,6 +196,86 @@ static func _line(sim: Sim, a: Vector2i, b: Vector2i) -> PackedInt32Array:
 	return out
 
 
+## (build 76) The way a trade cart takes from tile a to tile b: [tiles, cost in flat-land tiles]. Over
+## land a tile costs 1, a mountain CART_MOUNT; over water CART_WATER (the cart goes on a
+## boat). Worked out from the ground only, which never changes in a game, so each way is kept.
+const CART_MOUNT := 4.0
+const CART_WATER := 2.5
+const CART_NODES := 150000
+
+static func cart_route(sim: Sim, a: int, b: int) -> Array:
+	var key := a * 1000003 + b
+	var known = sim.cart_routes.get(key)
+	if known != null:
+		return known
+	var W := sim.w
+	var H := sim.h
+	var n := W * H
+	var dist := PackedFloat32Array(); dist.resize(n); dist.fill(INF)
+	var par := PackedInt32Array(); par.resize(n); par.fill(-1)
+	var done := PackedByteArray(); done.resize(n)
+	var ter: PackedByteArray = sim.ter
+	var bx := b % W
+	var by := b / W
+	var hp := Sim.MinHeap.new()
+	dist[a] = 0.0
+	hp.push(0.0, a)
+	var seen := 0
+	var found := false
+	while hp.size() > 0:
+		var cur := hp.pop()
+		if done[cur] == 1:
+			continue
+		done[cur] = 1
+		if cur == b:
+			found = true
+			break
+		seen += 1
+		if seen > CART_NODES:
+			break
+		var cx := cur % W
+		var cy := cur / W
+		for dd in 4:
+			var ni: int
+			if dd == 0:
+				if cx + 1 >= W: continue
+				ni = cur + 1
+			elif dd == 1:
+				if cx < 1: continue
+				ni = cur - 1
+			elif dd == 2:
+				if cy + 1 >= H: continue
+				ni = cur + W
+			else:
+				if cy < 1: continue
+				ni = cur - W
+			if done[ni] == 1:
+				continue
+			var tr := ter[ni]
+			var c := CART_WATER if tr == Sim.WATER else (CART_MOUNT if tr == Sim.MOUNT else 1.0)
+			var nd := dist[cur] + c
+			if nd < dist[ni]:
+				dist[ni] = nd
+				par[ni] = cur
+				# A*: the straight distance left, at the cheapest cost a tile can have
+				hp.push(nd + float(absi(ni % W - bx) + absi(ni / W - by)), ni)
+	var out: Array
+	if found:
+		var path := PackedInt32Array()
+		var c2 := b
+		while c2 != -1:
+			path.append(c2)
+			c2 = par[c2]
+		path.reverse()
+		out = [path, float(dist[b])]
+	else:
+		var line := _line(sim, Vector2i(a % W, a / W), Vector2i(b % W, b / W))
+		out = [line, float(line.size())]
+	# (only the ground counts, which stays as it is: the same way every time, before and after loading)
+	sim.cart_routes[key] = out
+	return out
+
+
 ## Sends n of res from realm a to realm b by cart: a Trip of kind "trade" from a's market to b's.
 static func send_cart(sim: Sim, a: Sim.Player, b: Sim.Player, res: String, n: float) -> void:
 	if n <= 0.0:
@@ -207,8 +287,11 @@ static func send_cart(sim: Sim, a: Sim.Player, b: Sim.Player, res: String, n: fl
 		return
 	var t := Sim.Trip.new()
 	t.p = a.id; t.kind = "trade"; t.res = res; t.n = roundi(n); t.dest = dst.id; t.site = src.id; t.aim = b.id
-	t.path = _line(sim, Vector2i(src.x, src.y), Vector2i(dst.x, dst.y))
-	var tt := maxf(4.0, float(t.path.size()) / CART_SPEED)
+	# (build 76) along a real way over the land, round mountains, and by boat only over water that
+	# must be crossed (it went in a straight line over sea and mountains)
+	var route := cart_route(sim, sim.idx(src.x, src.y), sim.idx(dst.x, dst.y))
+	t.path = route[0]
+	var tt := maxf(4.0, float(route[1]) / CART_SPEED)
 	t.t0 = sim.time; t.t1 = sim.time + tt; t.t2 = t.t1 + tt
 	sim.trips.append(t)
 
