@@ -553,7 +553,7 @@ var _main: Main
 
 func build_ui(main: Main) -> void:
 	_main = main
-	main.add_feature_key(self, KEY_F6, _toggle)
+	main.add_feature_key(self, KEY_F6, _toggle, "Random events window")
 	_win = main.add_feature_window(self, "Random events (F6)", Vector2i(520, 460))
 	var bg := PanelContainer.new()
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)

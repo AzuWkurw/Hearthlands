@@ -27,7 +27,9 @@ func _build_save_panel() -> void:
 		if n == "": n = "save-" + Time.get_datetime_string_from_system().replace(":", "-")
 		_save_game(n)
 		_fill_saves()))
-	v.add_child(main._label("The game also autosaves every 5 minutes of play. F5 quick saves, F9 quick loads.", 13, Main.DIM))
+	var asl := main._label("The game also autosaves every 5 minutes of play. F5 quick saves, F9 quick loads.", 13, Main.DIM)
+	v.add_child(asl)
+	main.key_text(asl, "text", ["quicksave", "quickload"])
 	var sc := ScrollContainer.new(); sc.custom_minimum_size = Vector2(620, 360); v.add_child(sc)
 	main.save_list = VBoxContainer.new(); main.save_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL; sc.add_child(main.save_list)
 	main.save_panel.visible = false

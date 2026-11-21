@@ -124,12 +124,16 @@ func build() -> void:
 	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	sc.add_child(body)
 	win.close_requested.connect(close)
-	# Ctrl+Z and Ctrl+Y work with the panel focused too (not while typing in a field)
+	# the undo and redo keys (Ctrl+Z, Ctrl+Y unless changed in Settings) work with the panel focused too
+	# (not while typing in a field)
 	win.window_input.connect(func(e: InputEvent):
-		if e is InputEventKey and e.pressed and not e.echo and e.ctrl_pressed and (e.keycode == KEY_Z or e.keycode == KEY_Y):
+		if e is InputEventKey and e.pressed and not e.echo:
+			var act := main.keys.action_of(e)
+			if act != "undo" and act != "redo":
+				return
 			if win.gui_get_focus_owner() is LineEdit or win.gui_get_focus_owner() is TextEdit:
 				return
-			if e.keycode == KEY_Y or e.shift_pressed: redo()
+			if act == "redo" or e.shift_pressed: redo()
 			else: undo()
 			win.set_input_as_handled())
 	main.add_child(win)
@@ -317,11 +321,11 @@ func _paint_tab() -> void:
 	body.add_child(ur)
 	var ub := main._button(tr("Undo (%d)") % _undo.size(), undo)
 	ub.disabled = _undo.is_empty()
-	ub.tooltip_text = "Ctrl+Z"
+	ub.tooltip_text = main.key_name("undo")
 	ur.add_child(ub)
 	var rb := main._button(tr("Redo (%d)") % _redo.size(), redo)
 	rb.disabled = _redo.is_empty()
-	rb.tooltip_text = "Ctrl+Y"
+	rb.tooltip_text = main.key_name("redo")
 	ur.add_child(rb)
 	body.add_child(main._label("Tool", 14, Main.BRASS))
 	var tf := HFlowContainer.new()
@@ -440,7 +444,9 @@ func _paint_tab() -> void:
 		show_climate = on
 		_sync_view())
 	body.add_child(cc)
-	body.add_child(_wrap("Left button paints, the middle button or a drag with the wheel moves the map. Ctrl+Z undoes a stroke, Ctrl+Y does it again."))
+	var hl := _wrap("Left button paints, the middle button or a drag with the wheel moves the map. Ctrl+Z undoes a stroke, Ctrl+Y does it again.")
+	body.add_child(hl)
+	main.key_text(hl, "text", ["undo", "redo"])
 
 
 func _map_tab() -> void:

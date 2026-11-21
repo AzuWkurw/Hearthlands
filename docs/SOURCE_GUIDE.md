@@ -309,8 +309,9 @@ usually just data edits. After changing buildings, goods or techs, run `tools/re
 ## 4. The interface
 
 - **`main.gd`**: builds the whole interface in code (`_build_ui`), runs the game loop (`_process`),
-  handles keys (`_unhandled_input`; keys the player changed in Settings are mapped back to the default
-  keys first, `_translate_key`), placing buildings and roads (`_on_tile`, `_use_tool`), and the new-game
+  handles keys (`_unhandled_input` asks `keys.gd` which action a key does, then acts on the action, so
+  every shortcut can be moved in Settings; a new shortcut goes into `Keys.ACTIONS`, a feature's into
+  `main.add_feature_key`), placing buildings and roads (`_on_tile`, `_use_tool`), and the new-game
   screen. The rest is split out into `ui_*.gd` helpers, each a small class that holds a reference to
   `main`: `ui_info` (the building info box, `_refresh_sel`), `ui_side` (the side panel), `ui_research`,
   `ui_settings`, `ui_saves` (with map pictures), `ui_diplomacy`, `ui_demolish`, `ui_targets`,
@@ -451,6 +452,7 @@ to `Bld`/`Player` (saved automatically) with a default that works for old saves.
 | trees, peaks and boulders | `MapView._draw_scenery`, `_scenery_mesh` (pictures from `tools/make_scenery.py`) |
 | spectator mode | `Sim.spectating`, `opts.spectate`, `ui_spectate.gd` |
 | renderer and display settings | `settings.gd`, `ui_settings.gd`, `Main._probe_vulkan` |
+| keyboard shortcuts | `keys.gd` (actions, default keys, swapping), `ui_settings.gd` (`set_body_key_rows`) |
 
 ---
 

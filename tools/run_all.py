@@ -80,6 +80,7 @@ TESTS = [
 	("blueprints",        "bp_test", [], False, False, [r"BLUEPRINT TEST: PASS"]),
 	("factory smoke",     "health_test", [], False, True, [r"HEALTH TEST: PASS"]),
 	("toolbar tools",     "toolbar_tool_test", [], True, False, [r"tool clicks answered: 8 of 8"]),
+	("rebindable keys",   "keys_test", [], False, True, [r"KEYS TEST: PASS"]),
 ]
 
 

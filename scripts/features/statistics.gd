@@ -178,8 +178,8 @@ func load_state(d: Dictionary) -> void:
 func build_ui(main: Main) -> void:
 	main.add_feature_button(self, "Statistics", open)
 	main.add_feature_button(self, "Realms", open_realms)
-	main.add_feature_key(self, KEY_F2, open)
-	main.add_feature_key(self, KEY_V, open_realms)
+	main.add_feature_key(self, KEY_F2, open, "Statistics window")
+	main.add_feature_key(self, KEY_V, open_realms, "Realms graph")
 	win = main.add_feature_window(self, "Statistics (F2)", Vector2i(760, 520))
 	var tabs := TabContainer.new()
 	tabs.set_anchors_preset(Control.PRESET_FULL_RECT)

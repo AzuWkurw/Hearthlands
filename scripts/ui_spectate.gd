@@ -16,9 +16,11 @@ var note: Label
 var _rows := {}               # realm id -> [name button, stats label, colour swatch]
 var _shown := false           # whether the interface is in its spectator state now
 
-## Keys that give orders, which do nothing while watching.
-const BLOCKED_KEYS := [KEY_Q, KEY_Z, KEY_I, KEY_J, KEY_K, KEY_L, KEY_N, KEY_M, KEY_U, KEY_B, KEY_R,
-	KEY_G, KEY_T, KEY_P, KEY_PAGEUP, KEY_PAGEDOWN, KEY_DELETE]
+## Shortcuts (scripts/keys.gd actions) that give orders, which do nothing while watching, whatever key
+## they are bound to.
+const BLOCKED_ACTIONS := ["copy", "queue_site", "undo", "idle", "buildings", "transport", "workers",
+	"bottlenecks", "market", "blueprints", "sites", "turn", "diplomacy", "targets", "prio_pause",
+	"prio_up", "prio_down", "demolish"]
 
 
 func _init(p_main: Main) -> void:
@@ -160,7 +162,7 @@ func refresh() -> void:
 
 ## Whether a key press is an order, which a spectator can't give.
 func blocks_key(event: InputEventKey) -> bool:
-	return _shown and not main.setup.visible and event.keycode in BLOCKED_KEYS
+	return _shown and not main.setup.visible and main.keys.action_of(event) in BLOCKED_ACTIONS
 
 
 ## The end screen's title and text for a spectator game.
