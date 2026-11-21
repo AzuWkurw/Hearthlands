@@ -35,7 +35,8 @@ python3 tools/check_data.py [modsdir]    # validate data/*.json (prints "data ch
 - After **any** simulation change run `save_test` (must report three `true` matches). After touching goods,
   `stores_test`. For pure refactors, `checksum_run.gd` before and after must print identical numbers;
   `checksum_diff.gd` finds the first field that differs after a load.
-- Performance: `perf_test.gd`, `bench.gd`, `late_bench.gd`, `testbench.gd` (`-- mins=60`), `ai_bench.gd`.
+- Performance: `perf_test.gd`, `bench.gd`, `late_bench.gd`, `testbench.gd` (`-- mins=60`), `ai_bench.gd`,
+  `late_profile.gd` (replays a saved late game: time per part and checksums, for before/after checks).
 
 ### Releases
 
