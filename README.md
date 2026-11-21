@@ -373,6 +373,15 @@ Exporting needs Godot 4.3's export templates (in the editor: Editor > Manage Exp
 - **Spreading fires.** A fire (a random event, or a catapult's stone) grows and jumps to wooden
   neighbours within 3 tiles, and burns buildings down. Working wells within 10 tiles send a person with
   a bucket each, a fire station within 14 sends three. Stone and brick buildings don't catch.
+- **Factory smoke and health.** From the Industrial age on, working smelters, steelworks, mills and every
+  workshop with a steam engine fill the homes within 6 tiles with smoke, and homes want clean water. A
+  **park** (Town planning) takes away half the smoke of the homes within 7 tiles; a **waterworks** (Public
+  health) burns coal to pipe clean water to the homes within 13 tiles. The realm's health falls with
+  smoke and foul water: work goes up to 15% slower, fevers and dysentery come more often, and below half
+  some people die of it. Artisans want clean water near home, nobles clean water and a park, or they
+  are less content. Each home's info says what it breathes; the People panel shows the realm's health.
+  Rivals build parks and waterworks too, keep new homes out of the smoke and smoky works away from
+  homes. Which buildings smoke, how much and how far is in `data/health.json` (mods can change it).
 - **Campaign.** Eight chapters on a map, each a mission with a story before and after; a chapter opens
   when the one before is won and can carry veteran soldiers or goods over. Best time and score are kept.
 - **Achievements.** Fifteen goals across all your games (a town of 200, a bridge, ten trades, a colony,
@@ -433,7 +442,7 @@ Logs, Stone, Clay, Water, Grain, Hops, Wool, Hides, Salt, Coal, Iron ore, Copper
 
 Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples, Vegetables, Cheese, Sausages, Honey.
 
-## Buildings (127 you can build)
+## Buildings (129 you can build)
 
 **Raw**
 
@@ -554,6 +563,8 @@ Food (everyone eats it, cheapest first): Bread, Fish, Smoked fish, Meat, Apples,
 | Grand academy | 30 stone, 30 bricks, 16 paper, 16 gold | – | – | – | Rebirth of learning |
 | Observatory | 40 bricks, 16 glassware, 16 iron, 20 gold | – | – | – | Age of reason |
 | Exhibition palace | 40 iron, 30 glassware, 30 bricks, 24 gold | – | – | – | Dawn of industry |
+| Park | 2 planks, 2 stone | – | – | – | Town planning |
+| Waterworks | 4 planks, 5 stone | peasant (healing) | 1 coal | – | Public health |
 
 **Science**
 
@@ -1363,7 +1374,7 @@ scripts/
   sim_logistics.gd   roads, the road network and carriers
   sim_research.gd    research
   sim_sea.gd     ships, harbours, expeditions and sea transport
-  features/      optional features (feature.gd base, features.gd list, statistics.gd, seasons.gd, clothing.gd, diseases.gd, events.gd, tool_quality.gd, fog.gd, geology.gd, wildlife.gd, contentment.gd, fires.gd)
+  features/      optional features (feature.gd base, features.gd list, statistics.gd, seasons.gd, clothing.gd, diseases.gd, events.gd, tool_quality.gd, fog.gd, geology.gd, wildlife.gd, contentment.gd, fires.gd, factory_health.gd)
   world_gen.gd   random maps
   game_data.gd   loads and merges the JSON data
   diplomacy.gd   relations, opinions, trade values and rival diplomacy

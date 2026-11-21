@@ -417,6 +417,7 @@ to `Bld`/`Player` (saved automatically) with a default that works for old saves.
 | taverns, chapels, contentment | `features/contentment.gd` |
 | archers and sallies | `SimMilitary.archers_tick`, `_arrows`, `_sally` |
 | spreading fires | `features/fires.gd` |
+| factory smoke, parks, waterworks, health | `features/factory_health.gd`, `data/health.json` |
 | campaign | `ui_campaign.gd`, `data/campaign.json` |
 | traffic map, undo, follow camera | `ui_traffic.gd`, `ui_undo.gd`, `MapView.follow` / `pick_mover` |
 | achievements, packs, town names | `achievements.gd`, `share_pack.gd`, `Sim.new_town_name` |
