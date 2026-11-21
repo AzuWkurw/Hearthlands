@@ -140,49 +140,50 @@ func staffing(p: Sim.Player) -> void:
 	p.tool_wait = {}
 	# worn-out tools wait for new ones too (build 66)
 	var tqf = sim.get_feature("tool_quality") if bool(sim.opts.tools) else null
-	if tqf != null and not tqf.held.is_empty():
-		for b: Sim.Bld in mine:
-			if b.worker > 0:
-				var h = tqf.held.get(b.id)
-				if h != null and float(h[0]) < 0.0:
-					var t := sim.tool_of(b)
-					if t != "":
-						p.tool_wait[t] = int(p.tool_wait.get(t, 0)) + 1
-	# builders and workers go to high-priority buildings first, then normal, then low; paused get none.
-	# The buildings are put in that order once; when every priority is normal the list stays as it is.
-	var ordered: Array = mine
-	var hi := []
-	var lo := []
-	var pa := []
+	var held: Dictionary = tqf.held if tqf != null else {}
+	var worn_check := not held.is_empty()
+	# builders and workers go to high-priority buildings first, then normal, then low; paused get none;
+	# within each priority, building types with a lower number in the worker priorities first (ties: as
+	# they stood). (Build 78: sorted in one pass over the realm's buildings, which also counts the
+	# worn-out tools; the order is the same as before.)
+	var ordered: Array = []
+	var ranked := not p.work_rank.is_empty()
+	var bk := []
+	bk.resize(40 if ranked else 4)
+	for g in bk.size():
+		bk[g] = []
+	var any_prio := false
+	var wr: Dictionary = p.work_rank
 	for b: Sim.Bld in mine:
-		if b.prio == Sim.PRIO_HIGH: hi.append(b)
-		elif b.prio == Sim.PRIO_LOW: lo.append(b)
-		elif b.prio == Sim.PRIO_PAUSED: pa.append(b)
-	if hi.size() + lo.size() + pa.size() > 0:
-		ordered = hi
-		for b: Sim.Bld in mine:
-			if b.prio == Sim.PRIO_NORMAL:
-				ordered.append(b)
-		ordered.append_array(lo)
-		ordered.append_array(pa)
-	# the worker priorities: within each priority, building types with a lower number first (ties: as
-	# they stood)
-	if not p.work_rank.is_empty():
-		# (the same order as sorting by group, then number, then as they stood: buckets, in one pass)
-		var grp := {Sim.PRIO_HIGH: 0, Sim.PRIO_NORMAL: 1, Sim.PRIO_LOW: 2, Sim.PRIO_PAUSED: 3}
-		var bk := []
-		for g in 4:
-			var row := []
-			for r in 10:
-				row.append([])
-			bk.append(row)
-		for b: Sim.Bld in ordered:
-			(bk[int(grp.get(b.prio, 1))][clampi(int(p.work_rank.get(b.ty, 5)), 0, 9)] as Array).append(b)
-		ordered = []
-		for g in 4:
-			for r in 10:
-				ordered.append_array(bk[g][r])
+		if worn_check and b.worker > 0:
+			var h = held.get(b.id)
+			if h != null and float(h[0]) < 0.0:
+				var t := sim.tool_of(b)
+				if t != "":
+					p.tool_wait[t] = int(p.tool_wait.get(t, 0)) + 1
+		var pr := b.prio
+		var g := 1
+		if pr != Sim.PRIO_NORMAL:
+			g = 0 if pr == Sim.PRIO_HIGH else (2 if pr == Sim.PRIO_LOW else (3 if pr == Sim.PRIO_PAUSED else 1))
+			if g != 1:
+				any_prio = true
+		if ranked:
+			(bk[g * 10 + clampi(int(wr.get(b.ty, 5)), 0, 9)] as Array).append(b)
+		else:
+			(bk[g] as Array).append(b)
+	if not ranked and not any_prio:
+		ordered = mine
+	else:
+		for row in bk:
+			ordered.append_array(row)
+	var sites := []
+	var readies := []
 	for b: Sim.Bld in ordered:
+		if b.state == "build":
+			sites.append(b)
+		elif b.state == "ready":
+			readies.append(b)
+	for b: Sim.Bld in sites:
 		if b.state == "build":
 			b.staffed = b.prio != Sim.PRIO_PAUSED and ip > 0
 			if b.staffed: ip -= 1
@@ -199,7 +200,7 @@ func staffing(p: Sim.Player) -> void:
 		ip -= 1
 		spare = 1
 	var lim_n := {}
-	for b: Sim.Bld in ordered:
+	for b: Sim.Bld in readies:
 		if b.state != "ready":
 			continue
 		var wk := String(b.def.get("worker", ""))
@@ -240,7 +241,7 @@ func staffing(p: Sim.Player) -> void:
 	# (build 73) a peasant whose workshop waits because the stores are full of what it makes helps the
 	# carriers meanwhile: on a big realm the goods otherwise pile up while nobody carries them on
 	var full := 0
-	for b: Sim.Bld in ordered:
+	for b: Sim.Bld in readies:
 		if b.staffed and b.state == "ready" and String(b.def.get("worker", "")) == "peasant" and b.msg.begins_with("Stores are full"):
 			full += 1
 	p.full_hands = full
@@ -570,7 +571,6 @@ func _walker_arrival(t: Sim.Trip, p: Sim.Player) -> void:
 		b.sera = Sim.mix_avg(sim.gmix_of(b))
 		if b.garrison == 1:
 			sim.recompute_territory()
-		sim._mil_dirty = true
 		return
 	if p.alive:
 		p.reserve += 1
