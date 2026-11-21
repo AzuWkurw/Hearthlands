@@ -73,6 +73,7 @@ TESTS = [
 	("tools and arms by metal", "arms_test", [], False, False, [r"ARMS TEST: PASS"]),
 	("blueprints",        "bp_test", [], False, False, [r"BLUEPRINT TEST: PASS"]),
 	("toolbar tools",     "toolbar_tool_test", [], True, False, [r"tool clicks answered: 8 of 8"]),
+	("rebindable keys",   "keys_test", [], False, True, [r"KEYS TEST: PASS"]),
 ]
 
 

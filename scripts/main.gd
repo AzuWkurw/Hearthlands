@@ -413,9 +413,11 @@ func _sel_drag(e: InputEvent) -> void:
 		sel_pos = sel_box.position + e.relative
 
 
-## A keyboard shortcut.
-func add_feature_key(f: Feature, keycode: int, pressed: Callable) -> void:
+## A keyboard shortcut. It is listed in Settings, Keys, as `what` (or the feature's title), and the
+## player can give it another key there; keycode is its default key.
+func add_feature_key(f: Feature, keycode: int, pressed: Callable, what: String = "") -> void:
 	_feature_entry(f).keys[keycode] = pressed
+	keys.add_feature(f.id, keycode, what if what != "" else String(f.title))
 
 
 ## Removes every feature's interface and builds it again for the features now switched on.
@@ -1836,29 +1838,10 @@ func _show_hint(text: String, secs: float) -> void:
 	hint_t = secs
 
 
-## Keys the player can change in Settings: [action, what it does, the key it has by default].
-const KEY_ACTIONS := [
-	["events", "Show or hide the event log", KEY_E],
-	["problems", "Show or hide the Problems list", KEY_O],
-	["copy", "Build another of the building under the mouse", KEY_Q],
-	["sites", "Show free building spots", KEY_B],
-	["turn", "Turn the entrance (research when not placing)", KEY_R],
-	["diplomacy", "Diplomacy", KEY_G],
-	["targets", "Production targets", KEY_T],
-	["pause", "Pause the game", KEY_SPACE],
-	["prio_pause", "Pause the selected building", KEY_P],
-	["demolish", "Demolish the selected building", KEY_DELETE],
-	["quicksave", "Quick save", KEY_F5],
-	["quickload", "Quick load", KEY_F9],
-	["transport", "Transport priorities", KEY_K],
-	["workers", "Worker priorities", KEY_L],
-	["bottlenecks", "Bottleneck finder", KEY_N],
-	["market", "Market prices", KEY_M],
-	["blueprints", "Blueprints", KEY_U],
-]
 var expedition_from := 0   # the harbour an expedition will leave from (the @expedition tool)
 var watch := {}     # building sites the player wants to hear about when finished (id -> true)
 var key_wait := ""   # an action waiting for its new key (Settings, Keys)
+var keys := Keys.new(settings)   # the keyboard shortcuts and the keys the player gave them (keys.gd)
 
 
 ## Rings the bell for watched building sites that are finished (or gone).
@@ -1917,50 +1900,39 @@ func _check_watch() -> void:
 
 ## The key that does action id now.
 func key_for(id: String) -> int:
-	for a in KEY_ACTIONS:
-		if a[0] == id:
-			return int(settings.keys.get(id, a[2]))
-	return KEY_NONE
+	return keys.key_for(id)
 
 
-## Turns a pressed key into the default key of the action it is set to, so the rest of the input code
-## can keep using the default keys. A default key whose action was moved to another key does nothing,
-## unless another action was given it. Keys not involved pass through unchanged.
-func _translate_key(k: int) -> int:
-	if settings.keys.is_empty():
-		return k
-	for a in KEY_ACTIONS:
-		if int(settings.keys.get(a[0], a[2])) == k:
-			return int(a[2])
-	for a in KEY_ACTIONS:
-		if int(a[2]) == k:
-			return KEY_NONE
-	return k
+## The name of action id's key, for hints ("Shift+Q").
+func key_name(id: String) -> String:
+	return keys.key_name(id)
 
 
 func _input(event: InputEvent) -> void:
 	# Settings, Keys: the next key pressed becomes the action's key (Esc keeps the old one)
+	if key_wait != "" and not set_panel.visible:
+		key_wait = ""   # the Settings window was closed while it waited
 	if key_wait != "" and event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode != KEY_ESCAPE:
-			for a in KEY_ACTIONS:
-				# a key can do only one thing: whoever had it gets its own default back
-				if a[0] != key_wait and key_for(a[0]) == event.keycode:
-					settings.keys.erase(a[0])
-			settings.keys[key_wait] = event.keycode
-			settings.save_file()
-		key_wait = ""
+		var k := Keys.of_event(event)
+		if (k & KEY_CODE_MASK) in Keys.MODIFIERS:
+			return   # Shift or Ctrl on its own: wait for the rest of the key
 		get_viewport().set_input_as_handled()
+		var id := key_wait
+		key_wait = ""
+		if event.keycode == KEY_ESCAPE:
+			settings_ui._fill_settings()
+			return
+		if not Keys.usable(k):
+			_show_hint(tr("%s cannot be given to a shortcut (Esc cancels, Enter answers questions).") % Keys.name_of(k), 3.5)
+		else:
+			var msg := keys.set_key(id, k)
+			settings.save_file()
+			if msg != "":
+				_show_hint(msg, 5.0)
 		settings_ui._fill_settings()
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not settings.keys.is_empty():
-		var tk := _translate_key(event.keycode)
-		if tk == KEY_NONE:
-			return
-		if tk != event.keycode:
-			event = event.duplicate()
-			event.keycode = tk
 	if not (event is InputEventKey) or not event.pressed or event.echo:
 		return
 	if confirm_panel.visible:
@@ -1972,92 +1944,119 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if (set_panel.visible or targets_panel.visible) and event.keycode != KEY_ESCAPE:
 		return
-	for fid in feature_ui:
-		if (feature_ui[fid].keys as Dictionary).has(event.keycode) and not setup.visible:
-			(feature_ui[fid].keys[event.keycode] as Callable).call()
+	var act := keys.action_of(event)
+	var menu := setup.visible
+	var ed: bool = editor_ui.open
+	if act.begins_with("f:"):
+		# a key of a game feature or mod: "f:<feature>:<its default key>"
+		var parts := act.split(":")
+		var fe: Dictionary = feature_ui.get(parts[1], {})
+		var cb = (fe.get("keys", {}) as Dictionary).get(int(parts[2]))
+		if cb != null and not menu:
+			(cb as Callable).call()
+		return
+	match act:
+		"events":
+			if not menu: log_ui.toggle()
 			return
-	if event.keycode == KEY_E and not setup.visible:
-		log_ui.toggle()
-		return
-	if event.keycode == KEY_Q and event.shift_pressed and not setup.visible and not editor_ui.open:
-		var qb := sim.bld_at(view.ghost.x, view.ghost.y) if sim.inb(view.ghost.x, view.ghost.y) else null
-		if qb != null and qb.p == 1 and qb.state == "build":
-			var n := sim.queue_site(qb, qb.queue_n == 0)
-			_show_hint(tr("Site #%d in the build queue.") % n if n > 0 else tr("The site left the build queue."), 2.5)
-			view.queue_redraw()
-		else:
-			_show_hint(tr("Point at one of your building sites and press Shift+Q to queue it."), 2.5)
-		return
-	if event.keycode == KEY_Q and not setup.visible and not editor_ui.open:
-		# copy: place another of the building under the mouse
-		var cb := sim.bld_at(view.ghost.x, view.ghost.y)
-		if cb != null and cb.p == 1 and cb.ty != "hq" and sim.bld_enabled(cb.ty) and (not cb.def.has("tech") or sim.human().techs.has(cb.def.tech)):
-			if view.place_type != cb.ty:
-				_pick_build(cb.ty)
-			view.door = cb.door if sim.door_ok(cb.ty, cb.door) else view.door
-			_show_hint("Placing another %s (Q copies the building under the mouse)." % String(cb.def.name).to_lower(), 2.5)
-		return
-	if event.keycode == KEY_O and not setup.visible:
-		problems_ui.toggle()
-		return
-	if editor_ui.open and event.ctrl_pressed and (event.keycode == KEY_Z or event.keycode == KEY_Y):
-		if event.keycode == KEY_Y or event.shift_pressed:
-			editor_ui.redo()
-		else:
-			editor_ui.undo()
-		return
-	if event.keycode == KEY_Z and event.ctrl_pressed and not setup.visible and not editor_ui.open:
-		undo_ui.undo()
-		return
-	if event.keycode == KEY_I and not setup.visible and not editor_ui.open:
-		_jump_idle()
-		return
-	if event.keycode == KEY_F7 and not setup.visible:
-		traffic_ui.toggle()
-		return
-	if event.keycode == KEY_J and not setup.visible and not editor_ui.open:
-		workers_ui.toggle()
-		return
-	if event.keycode == KEY_K and not setup.visible and not editor_ui.open:
-		carry_prio_ui.toggle()
-		return
-	if event.keycode == KEY_L and not setup.visible and not editor_ui.open:
-		work_prio_ui.toggle()
-		return
-	# Ctrl and + or -: the interface a size bigger or smaller (build 56)
-	if event.ctrl_pressed and event.keycode in [KEY_EQUAL, KEY_KP_ADD, KEY_MINUS, KEY_KP_SUBTRACT]:
-		settings.step_scale(1 if event.keycode in [KEY_EQUAL, KEY_KP_ADD] else -1)
-		settings.apply_scale(get_window())
-		settings.save_file()
-		_show_hint(tr("Interface size %d%% (Ctrl and + or -; Auto in Settings)") % roundi(settings.scale_now() * 100.0), 2.5)
-		return
-	if event.keycode == KEY_H and event.shift_pressed and not setup.visible:
-		sea_guide_ui.open()
-		return
-	if event.keycode == KEY_N and not setup.visible and not editor_ui.open:
-		neck_ui.toggle()
-		return
-	if event.keycode == KEY_M and not setup.visible and not editor_ui.open:
-		market_ui.toggle()
-		return
-	if event.keycode == KEY_U and not setup.visible and not editor_ui.open:
-		blueprints_ui.toggle()
-		return
-	if event.keycode == KEY_B and not setup.visible and not save_panel.visible:
-		toolbar.toggle_sites()
-		return
-	if (setup.visible or save_panel.visible) and not (event.keycode in [KEY_ESCAPE, KEY_F9]):
-		if not (save_panel.visible and event.keycode == KEY_ESCAPE):
+		"queue_site":
+			if not menu and not ed:
+				var qb := sim.bld_at(view.ghost.x, view.ghost.y) if sim.inb(view.ghost.x, view.ghost.y) else null
+				if qb != null and qb.p == 1 and qb.state == "build":
+					var n := sim.queue_site(qb, qb.queue_n == 0)
+					_show_hint(tr("Site #%d in the build queue.") % n if n > 0 else tr("The site left the build queue."), 2.5)
+					view.queue_redraw()
+				else:
+					_show_hint(tr("Point at one of your building sites and press %s to queue it.") % key_name("queue_site"), 2.5)
 			return
-	match event.keycode:
-		KEY_F5: _save_game("quicksave")
-		KEY_F9:
+		"copy":
+			if not menu and not ed:
+				# copy: place another of the building under the mouse
+				var cb := sim.bld_at(view.ghost.x, view.ghost.y)
+				if cb != null and cb.p == 1 and cb.ty != "hq" and sim.bld_enabled(cb.ty) and (not cb.def.has("tech") or sim.human().techs.has(cb.def.tech)):
+					if view.place_type != cb.ty:
+						_pick_build(cb.ty)
+					view.door = cb.door if sim.door_ok(cb.ty, cb.door) else view.door
+					_show_hint(tr("Placing another %s (%s copies the building under the mouse).") % [String(cb.def.name).to_lower(), key_name("copy")], 2.5)
+			return
+		"problems":
+			if not menu: problems_ui.toggle()
+			return
+		"undo":
+			# Shift with the undo key (Ctrl+Shift+Z) redoes in the map editor
+			if ed:
+				if event.shift_pressed: editor_ui.redo()
+				else: editor_ui.undo()
+			elif not menu:
+				undo_ui.undo()
+			return
+		"redo":
+			if ed: editor_ui.redo()
+			return
+		"idle":
+			if not menu and not ed: _jump_idle()
+			return
+		"traffic":
+			if not menu: traffic_ui.toggle()
+			return
+		"buildings":
+			if not menu and not ed: workers_ui.toggle()
+			return
+		"transport":
+			if not menu and not ed: carry_prio_ui.toggle()
+			return
+		"workers":
+			if not menu and not ed: work_prio_ui.toggle()
+			return
+		"ui_bigger", "ui_smaller":
+			# the interface a size bigger or smaller (build 56)
+			settings.step_scale(1 if act == "ui_bigger" else -1)
+			settings.apply_scale(get_window())
+			settings.save_file()
+			_show_hint(tr("Interface size %d%% (%s and %s; Auto in Settings)") % [roundi(settings.scale_now() * 100.0), key_name("ui_bigger"), key_name("ui_smaller")], 2.5)
+			return
+		"sea_guide":
+			if not menu: sea_guide_ui.open()
+			return
+		"bottlenecks":
+			if not menu and not ed: neck_ui.toggle()
+			return
+		"market":
+			if not menu and not ed: market_ui.toggle()
+			return
+		"blueprints":
+			if not menu and not ed: blueprints_ui.toggle()
+			return
+		"sites":
+			if not menu and not save_panel.visible: toolbar.toggle_sites()
+			return
+	if (menu or save_panel.visible) and not (event.keycode == KEY_ESCAPE or act == "quickload"):
+		return
+	if event.keycode == KEY_ESCAPE:
+		if view.follow != null: view.follow = null
+		elif view.chain_res != "": view.chain_res = ""
+		elif attack_ui.panel.visible: attack_ui.close()
+		elif chain_ui.panel.visible: chain_ui.close()
+		elif set_panel.visible: set_panel.visible = false
+		elif targets_panel.visible: targets_panel.visible = false
+		elif tex_panel.visible: tex_panel.visible = false
+		elif tech_panel.visible: tech_panel.visible = false
+		elif save_panel.visible: save_panel.visible = false
+		elif dip_panel.visible: dip_panel.visible = false
+		elif kinds_panel != null and kinds_panel.visible: kinds_panel.visible = false
+		elif toolbar.popup != null and toolbar.popup.visible: toolbar.close_popup()
+		else: _cancel_place(); _clear_selection()
+		return
+	match act:
+		"quicksave": _save_game("quicksave")
+		"quickload":
 			if game_running():
 				confirm("Load your quick save? The game since then is lost.", "Load", _load_game.bind("quicksave"))
 			else:
 				_load_game("quicksave")
-		KEY_R:
-			# while placing a building R turns its entrance; otherwise it opens research
+		"turn":
+			# while placing a building the turn key turns its entrance (Shift: the other way); otherwise
+			# it opens research
 			if view.place_type != "" and GameData.bld.has(view.place_type):
 				# only the sides its size allows (a large building's entrance always faces south)
 				var sides: Array = Sim.SIZE_DOORS.get(sim.size_of(view.place_type), [0])
@@ -2069,51 +2068,45 @@ func _unhandled_input(event: InputEvent) -> void:
 				view.queue_redraw()
 			else:
 				_open_tech()
-		KEY_G: _open_diplomacy()
-		KEY_F3:
+		"diplomacy": _open_diplomacy()
+		"perf":
 			perf_label.visible = not perf_label.visible
 			perf_t = 1.0
-		KEY_F10: _open_settings()
-		KEY_T: _open_targets()
-		KEY_ESCAPE:
-			if view.follow != null: view.follow = null
-			elif view.chain_res != "": view.chain_res = ""
-			elif attack_ui.panel.visible: attack_ui.close()
-			elif chain_ui.panel.visible: chain_ui.close()
-			elif set_panel.visible: set_panel.visible = false
-			elif targets_panel.visible: targets_panel.visible = false
-			elif tex_panel.visible: tex_panel.visible = false
-			elif tech_panel.visible: tech_panel.visible = false
-			elif save_panel.visible: save_panel.visible = false
-			elif dip_panel.visible: dip_panel.visible = false
-			elif kinds_panel != null and kinds_panel.visible: kinds_panel.visible = false
-			elif toolbar.popup != null and toolbar.popup.visible: toolbar.close_popup()
-			else: _cancel_place(); _clear_selection()
-		KEY_SPACE: _toggle_pause()
-		KEY_PAGEUP, KEY_PAGEDOWN, KEY_P:
+		"settings": _open_settings()
+		"targets": _open_targets()
+		"pause": _toggle_pause()
+		"prio_pause", "prio_up", "prio_down":
 			var bp: Sim.Bld = sim.by_id.get(view.sel_id)
 			if bp != null:
-				if event.keycode == KEY_P:
+				if act == "prio_pause":
 					_set_prio(Sim.PRIO_NORMAL if bp.prio == Sim.PRIO_PAUSED else Sim.PRIO_PAUSED)
 				else:
-					_set_prio(clampi(bp.prio + (1 if event.keycode == KEY_PAGEUP else -1), Sim.PRIO_LOW, Sim.PRIO_HIGH))
-		KEY_DELETE:
+					_set_prio(clampi(bp.prio + (1 if act == "prio_up" else -1), Sim.PRIO_LOW, Sim.PRIO_HIGH))
+		"demolish":
 			var bd: Sim.Bld = sim.by_id.get(view.sel_id)
 			if bd != null and bd.p == 1 and bd.ty != "hq":
 				_ask_demolish(bd)
-		KEY_1: _set_speed(1.0)
-		KEY_2: _set_speed(2.0)
-		KEY_3: _set_speed(4.0)
-		KEY_4: _set_speed(8.0)
-		KEY_5: _set_speed(16.0)
-		KEY_EQUAL, KEY_KP_ADD:
+		"speed1": _set_speed(1.0)
+		"speed2": _set_speed(2.0)
+		"speed3": _set_speed(4.0)
+		"speed4": _set_speed(8.0)
+		"speed5": _set_speed(16.0)
+		"zoom_in":
 			if tech_panel.visible: research_ui.tree.set_zoom(research_ui.tree.zoom * 1.25)
 			else: view.zoom_at(view.size / 2.0, 1.15)
-		KEY_MINUS, KEY_KP_SUBTRACT:
+		"zoom_out":
 			if tech_panel.visible: research_ui.tree.set_zoom(research_ui.tree.zoom / 1.25)
 			else: view.zoom_at(view.size / 2.0, 1.0 / 1.15)
-		KEY_0, KEY_KP_0:
+		"zoom_fit":
 			if tech_panel.visible: research_ui.tree.fit()
+
+
+## Whether one of the keys of action id (moving the map) is held down now.
+func _held(id: String) -> bool:
+	for k in keys.held_keys(id):
+		if Input.is_key_pressed(k):
+			return true
+	return false
 
 
 func _process(delta: float) -> void:
@@ -2128,10 +2121,10 @@ func _process(delta: float) -> void:
 			w.position.y = min_y
 	if not setup.visible and not (get_viewport().gui_get_focus_owner() is LineEdit):
 		var mv := Vector2.ZERO
-		if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP): mv.y -= 1
-		if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN): mv.y += 1
-		if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT): mv.x -= 1
-		if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT): mv.x += 1
+		if _held("pan_up"): mv.y -= 1
+		if _held("pan_down"): mv.y += 1
+		if _held("pan_left"): mv.x -= 1
+		if _held("pan_right"): mv.x += 1
 		if mv != Vector2.ZERO:
 			if tech_panel.visible:
 				research_ui.tree.pan(mv * 700.0 * delta)

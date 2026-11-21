@@ -472,7 +472,7 @@ var _txt: RichTextLabel
 
 func build_ui(main: Main) -> void:
 	main.add_feature_button(self, "Climate", _toggle_window)
-	main.add_feature_key(self, KEY_F4, _toggle_window)
+	main.add_feature_key(self, KEY_F4, _toggle_window, "Climate window")
 	_win = main.add_feature_window(self, "Climate (F4)", Vector2i(560, 400))
 	var bg := PanelContainer.new()
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)

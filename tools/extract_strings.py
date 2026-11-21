@@ -30,6 +30,7 @@ PATTERNS = [
     r'_btn\(\s*"((?:[^"\\]|\\.)+)"',
     r'\["[a-z_]+", "([A-Z][^"\\]+)"\]',                # building groups: ["raw", "Raw"]
     r'\["[a-z_]+", "((?:[^"\\]|\\.)+)", KEY_',          # keys in Settings
+    r'add_feature_key\([^)]*?, "((?:[^"\\]|\\.)+)"\)',   # keys of game features
     r'\["@\w+", "((?:[^"\\]|\\.)+)"',                   # road tools: name
     r'\["@\w+", "[^"]*", "[^"]*", "((?:[^"\\]|\\.)+)"\]',  # road tools: tooltip
     r'\["((?:[^"\\]|\\.)+)", "(?:has|joined|any):[^"]*", "(?:[^"\\]|\\.)+"\]',   # the first-game guide

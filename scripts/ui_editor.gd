@@ -121,12 +121,16 @@ func build() -> void:
 	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	sc.add_child(body)
 	win.close_requested.connect(close)
-	# Ctrl+Z and Ctrl+Y work with the panel focused too (not while typing in a field)
+	# the undo and redo keys (Ctrl+Z, Ctrl+Y unless changed in Settings) work with the panel focused too
+	# (not while typing in a field)
 	win.window_input.connect(func(e: InputEvent):
-		if e is InputEventKey and e.pressed and not e.echo and e.ctrl_pressed and (e.keycode == KEY_Z or e.keycode == KEY_Y):
+		if e is InputEventKey and e.pressed and not e.echo:
+			var act := main.keys.action_of(e)
+			if act != "undo" and act != "redo":
+				return
 			if win.gui_get_focus_owner() is LineEdit or win.gui_get_focus_owner() is TextEdit:
 				return
-			if e.keycode == KEY_Y or e.shift_pressed: redo()
+			if act == "redo" or e.shift_pressed: redo()
 			else: undo()
 			win.set_input_as_handled())
 	main.add_child(win)

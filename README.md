@@ -420,8 +420,11 @@ Open **Settings** (top bar or F10). Everything there is remembered in `user://se
 - **Language**: English or German (Deutsch) for the interface. Messages from the game itself (the event
   log and the building info) are still in English. Other languages: add `data/lang_<code>.json` (or put
   it in the mods folder's `data`); `python3 tools/extract_strings.py` fills in the texts to translate.
-- **Keys**: click a key in the list, then press the new one (Esc keeps the old one). *Default keys* puts
-  them all back.
+- **Keys**: *Change keys* lists every shortcut (over 40, in groups: map, game, buildings, windows, and
+  the keys of game features such as Statistics). Click a key, then press the new one; Shift, Ctrl and
+  Alt combinations work, Esc keeps the old key, and Esc and Enter themselves cannot be taken. A key
+  another shortcut already has is swapped with it, and a hint says which. ↺ puts one shortcut back on
+  its default key, *Default keys* puts them all back. The keys are kept in the settings file.
 - **Show the first-game guide**: a short checklist for the first minutes of a new game, ticked off as you
   go. Closing it turns this off.
 - Command line (also for the exported game): `--rendering-method gl_compatibility` or `forward_plus` or
