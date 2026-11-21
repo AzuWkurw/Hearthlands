@@ -2,7 +2,7 @@
 
 Every source file with what it is for, grouped by part. Written by `tools/file_list.py` from the comment at the
 top of each file; run it again after adding files. For how the parts work together, read
-`docs/SOURCE_GUIDE.md`. Besides these 345 files there are 2204 pictures in `textures/` (made by
+`docs/SOURCE_GUIDE.md`. Besides these 346 files there are 2204 pictures in `textures/` (made by
 `tools/make_textures.py` and `tools/make_scenery.py`, or your own) and 79 sounds in `sounds/` (made by
 `tools/make_sounds.py`) and 10 pieces of music in `music/` (made by `tools/make_music.py`). Godot's
 `.import` files next to them are made by the editor.
@@ -109,7 +109,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `scripts/ui_toolbar.gd` | 412 | The toolbar along the bottom of the map: a button per building group (each opens a panel of its buildings just above the bar), the road tools and Auto roads, Demolish, and the tools of the game features (send a scout, send a geologist). Esc closes the panel. |
 | `scripts/ui_traffic.gd` | 189 | The traffic map (F7, or the Traffic button): every road of yours coloured by how busy it has been over the last few minutes. Green is free, amber busy, red jammed (goods waiting at a flag, or a carrier on it nearly all the time). Click a road while it shows to hear what goes on there and what might help. Each game second it notes where your carriers are; older notes fade (a tenth every 10 seconds), so it follows the town as it changes. Only the interface: the game itself is not touched, and nothing of it is saved. |
 | `scripts/ui_undo.gd` | 115 | Undo (Ctrl+Z): takes back the last building placed, road laid or building demolished, if it was within the last 10 seconds, with everything paid back: a site's materials (delivered or used), a road's bridge planks, and for a demolished building the goods it gave back are taken again and it stands as before (its workers and soldiers come back by themselves). |
-| `scripts/ui_welcome.gd` | 292 | The welcome screen shown when the game starts, over the realm the menu has waiting behind it. It offers to continue the last game, start a new realm, the campaign, saved games, Settings and quitting. Its look: the title over the slowly drifting map, embers rising from the bottom, the menu and, beside it, what is new in this build (from the change log). |
+| `scripts/ui_welcome.gd` | 309 | The welcome screen shown when the game starts, over the realm the menu has waiting behind it. It offers to continue the last game, start a new realm, the campaign, saved games, Settings and quitting. Its look: the title over the slowly drifting map, embers rising from the bottom, the menu and, beside it, what is new in this build (from the change log). |
 | `scripts/ui_workers.gd` | 233 | The Buildings and workers window (J, or the Buildings button): every kind of building you have, how many, how many are still being built, how many have their worker and how many wait for one. For each kind with workers you can set a priority for all of them at once and a limit on how many get workers (the rest stand idle, so the peasants go elsewhere). Next jumps the map to them one after another. At the top: idle people, and keeping one peasant free as a builder for new sites. |
 | `scripts/version.gd` | 25 | The game's version. Run `python3 tools/bump_build.py` before every release: it raises BUILD by one (or FIX with --fix, for a fix release of the last build), updates DATE and copies the version into project.godot and the Windows export settings. |
 
@@ -397,9 +397,10 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `.claude/skills/godot/scripts/validate_tscn.py` | 170 | Validates Godot .tscn (scene) files for common structural errors. |
 | `.claude/skills/hearthlands-localization/SKILL.md` | 113 | (no description yet) |
 | `CHANGELOG.md` | 1062 | What changed in each build. |
-| `CLAUDE.md` | 106 | (no description yet) |
+| `CHANGELOG_pl.md` | 15 | (no description yet) |
+| `CLAUDE.md` | 107 | (no description yet) |
 | `README.md` | 1478 | How to play, the rules, controls, settings, modding and the project layout. |
-| `docs/FILES.md` | 406 | This list (written by tools/file_list.py). |
+| `docs/FILES.md` | 408 | This list (written by tools/file_list.py). |
 | `docs/SOURCE_GUIDE.md` | 470 | A tour of the code for programmers: the parts, how a game tick runs, where things live. |
 | `docs/SUGGESTIONS.md` | 203 | Ideas and their status after each round of work. |
 | `export_presets.cfg` | 61 | Godot export settings for the Windows and Linux builds. |

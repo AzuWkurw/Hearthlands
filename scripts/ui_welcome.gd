@@ -222,10 +222,20 @@ func _continue() -> void:
 
 
 ## The newest build's notes from the change log: its title line and its first points, each cut to
-## the words before its first colon.
-static func news(count := 6) -> Array:
+## the words before its first colon. In another language they come from CHANGELOG_<code>.md (written
+## the same way) when that file has the newest build too; otherwise they stay English.
+static func news(count := 6, lang := "") -> Array:
+	var en := _news_from("res://CHANGELOG.md", count)
+	if lang != "" and lang != "en" and not en.is_empty():
+		var other := _news_from("res://CHANGELOG_%s.md" % lang, count)
+		if not other.is_empty() and _build_no(String(other[0])) == _build_no(String(en[0])):
+			return other
+	return en
+
+
+static func _news_from(path: String, count: int) -> Array:
 	var out := []
-	var f := FileAccess.open("res://CHANGELOG.md", FileAccess.READ)
+	var f := FileAccess.open(path, FileAccess.READ)
 	if f == null:
 		return out
 	var inside := false
@@ -238,9 +248,14 @@ static func news(count := 6) -> Array:
 			out.append(line.substr(3).get_slice(" (", 0))
 		elif inside and line.begins_with("- ") and out.size() <= count:
 			var s := line.substr(2)
-			var head := s.get_slice(":", 0).get_slice(". ", 0)
-			out.append(head)
+			out.append(s.get_slice(":", 0).get_slice(". ", 0))
 	return out
+
+
+## The build number in a change log heading ("Build 77" -> "77", "Wersja 75.1" -> "75.1").
+static func _build_no(head: String) -> String:
+	var m := RegEx.create_from_string("[0-9]+(\\.[0-9]+)?").search(head)
+	return m.get_string() if m != null else head
 
 
 # ---------------------------------------------------------------- the screen
@@ -269,7 +284,7 @@ func _build() -> void:
 	row.add_child(mv)
 	_menu(mv)
 	# what is new in this build, from the change log (left out when the log can't be read)
-	var items := news(7)
+	var items := news(7, TranslationServer.get_locale().get_slice("_", 0))
 	if items.size() > 1:
 		var np := PanelContainer.new()
 		var sb := main._panel_style(0.88)
@@ -281,12 +296,14 @@ func _build() -> void:
 		var nv := VBoxContainer.new()
 		nv.add_theme_constant_override("separation", 6)
 		np.add_child(nv)
-		nv.add_child(main._label(tr("WHAT'S NEW") + "  ·  " + String(items[0]), 14, Main.BRASS))
+		var head := main._label(tr("WHAT'S NEW") + "  ·  " + String(items[0]), 14, Main.BRASS)
+		head.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+		nv.add_child(head)
 		for k in range(1, items.size()):
 			var l := main._label("•  " + String(items[k]), 14)
 			l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			l.custom_minimum_size = Vector2(420, 0)
-			# the change log is written in English only: shown as it is, not matched against translations
+			# already in the shown language (see news): not matched against translations again
 			l.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 			nv.add_child(l)
 	add_child(_version_label())

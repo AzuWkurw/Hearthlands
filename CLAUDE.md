@@ -44,7 +44,8 @@ python3 tools/check_data.py [modsdir]    # validate data/*.json (prints "data ch
 `tools/bump_build.py`), checks data, exports Windows and Linux, smoke-runs the export, zips to `../build`,
 and commits. `--dry-run` shows the steps, `--tests` runs all tests first. Pushing a change to
 `scripts/version.gd` on `main` triggers `.github/workflows/release.yml`, which builds and publishes a
-GitHub Release. Per build, the README's roadmap table and relevant sections are updated too; run
+GitHub Release. The welcome screen shows the newest CHANGELOG entry; add its Polish version at the top of
+`CHANGELOG_pl.md` (same format, heading `## Wersja N`), or Polish players see it in English. Per build, the README's roadmap table and relevant sections are updated too; run
 `python3 tools/readme_tables.py` after changing buildings, goods or techs (it regenerates the README tables).
 
 ## Architecture
