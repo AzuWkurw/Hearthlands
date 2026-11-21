@@ -54,6 +54,8 @@ var goals := true         # the sandbox goals in endless games (build 63)
 var guide := true                         # show the first-game guide in a new game
 var keys := {}                            # action -> key code the player chose (Keys in Settings)
 var sea_guide := false                    # the sea and supplies guide has been shown once
+var tips := true                          # short tips the first time something happens (ui_tips.gd)
+var tips_seen := {}                       # tip id -> true once it was shown
 var prio_presets := {}                    # name -> {"carry": {...}, "work": {...}}: priority sets the player saved
 var sound_on := true
 var master_vol := 0.8
@@ -96,6 +98,9 @@ func load_file() -> void:
 	keys = cf.get_value("game", "keys", {})
 	prio_presets = cf.get_value("game", "prio_presets", {})
 	sea_guide = bool(cf.get_value("game", "sea_guide", false))
+	tips = bool(cf.get_value("game", "tips", tips))
+	var ts = cf.get_value("game", "tips_seen", {})
+	tips_seen = ts if ts is Dictionary else {}
 	sound_on = bool(cf.get_value("sound", "on", sound_on))
 	master_vol = float(cf.get_value("sound", "master", master_vol))
 	sfx_vol = float(cf.get_value("sound", "effects", sfx_vol))
@@ -134,6 +139,8 @@ func save_file() -> void:
 	cf.set_value("game", "keys", keys)
 	cf.set_value("game", "prio_presets", prio_presets)
 	cf.set_value("game", "sea_guide", sea_guide)
+	cf.set_value("game", "tips", tips)
+	cf.set_value("game", "tips_seen", tips_seen)
 	cf.set_value("sound", "on", sound_on)
 	cf.set_value("sound", "master", master_vol)
 	cf.set_value("sound", "effects", sfx_vol)

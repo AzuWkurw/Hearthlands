@@ -149,6 +149,13 @@ func _fill_settings() -> void:
 	_set_row(g, "", _check("Show the first-game guide (in the next new game)", main.settings.guide, func(on):
 		main.settings.guide = on
 		main.settings.save_file()))
+	_set_row(g, "", _check("Short tips the first time something happens (turning them on shows them all again)", main.settings.tips, func(on):
+		main.settings.tips = on
+		if on:
+			main.settings.tips_seen = {}
+		else:
+			main.tips_ui.close()
+		main.settings.save_file()))
 	_set_row(g, "", _check("Goals to aim for in endless games", main.settings.goals, func(on):
 		main.settings.goals = on
 		main.settings.save_file()

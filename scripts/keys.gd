@@ -51,6 +51,7 @@ const ACTIONS := [
 	["market", "Market prices", KEY_M, "Windows"],
 	["blueprints", "Blueprints", KEY_U, "Windows"],
 	["sea_guide", "Sea and supplies guide", KEY_MASK_SHIFT | KEY_H, "Windows"],
+	["handbook", "Handbook", KEY_F1, "Windows"],
 ]
 
 ## Second keys that do the same as an action, as long as the player has not given the key to another.
