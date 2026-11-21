@@ -303,10 +303,14 @@ usually just data edits. After changing buildings, goods or techs, run `tools/re
   `ui_textures`, `ui_log`, `ui_toolbar`, `ui_guide` (the first-game checklist, or a mission's goals),
   `ui_problems` (what is stuck and why), `ui_attack` (the attack window), `ui_chain` (a good's production
   chain), `ui_editor` (the map editor) and `ui_missions` (the mission list).
-- **Languages** (`i18n.gd`): `data/lang_<code>.json` maps English text to a translation and is loaded as a
-  Godot translation, so labels and buttons whose text is a key show translated; text with numbers goes
-  through `tr("... %d ...")`. `tools/extract_strings.py` collects new text into the files. German is
-  included. Messages from the simulation (event log, building info) are still English.
+- **Languages** (`i18n.gd`): `data/lang_<code>.json` maps English text to a translation. The simulation
+  always writes English (logic and sounds match its messages); text is translated only when shown, by a
+  Godot `Translation` (`I18n.Table`) that also understands text built from keys: keys with `%s`/`%d` are
+  templates (`"%s is finished."` translates "Sawmill is finished."), names are found in lower case too,
+  counts take the language's forms (a value `"name|one|few|many"`, e.g. `"deski|deska|deski|desek"`),
+  and lines with markup or several sentences are translated piece by piece. Write `tr("... %d" % n)`, not
+  `tr("...") % n`, so the inserted values are translated as well. `tools/extract_strings.py --missing`
+  lists text without a translation; `tools/lang_test.gd` checks it. Polish is included.
 - **`map_view.gd`** draws the world each frame in tile units (one tile = 1.0, scaled by `zoom`). With
   raised ground (2.5D, on by default) every tile corner is lifted by the height there (`_lift`,
   `lift_at`); the ground is drawn as grid meshes through those corners (`_chunk_grid`, and

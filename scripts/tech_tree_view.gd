@@ -447,7 +447,7 @@ func _draw() -> void:
 		var x_end := _sp(Vector2(age_x[a][1], 0)).x
 		if x_end < 20: continue
 		var col: Color = C_STUDY if a == p.age else (C_DONE if a < p.age else C_DIM)
-		draw_string(_font, Vector2(x, 21), GameData.age_name(a), HORIZONTAL_ALIGNMENT_LEFT, maxf(10, x_end - x - 6), 15, col)
+		draw_string(_font, Vector2(x, 21), tr(GameData.age_name(a)), HORIZONTAL_ALIGNMENT_LEFT, maxf(10, x_end - x - 6), 15, col)
 	for ln in lanes:
 		var y0 := _sp(Vector2(0, ln[1])).y
 		var hgt := float(ln[2]) * z
@@ -459,7 +459,7 @@ func _draw() -> void:
 		draw_rect(Rect2(6, cy - tw - 6, 20, tw + 12), Color("15181a"))
 		draw_rect(Rect2(6, cy - tw - 6, 20, tw + 12), C_LINE, false, 1.0)
 		draw_set_transform(Vector2(21, cy), -PI / 2.0, Vector2.ONE)
-		draw_string(_font, Vector2.ZERO, name, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, C_DIM)
+		draw_string(_font, Vector2.ZERO, tr(name), HORIZONTAL_ALIGNMENT_LEFT, -1, fs, C_DIM)
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
@@ -525,7 +525,7 @@ func _draw_card(p: Sim.Player, id: String, r: Rect2, plan: Dictionary) -> void:
 	if fs < 6:
 		return
 	var ink := C_INK; ink.a = fade
-	draw_string(_font, Vector2(tx, r.position.y + pad + fs), _fit_text(String(d.name), tw - (16 * z if plan.has(id) else 0.0), fs), HORIZONTAL_ALIGNMENT_LEFT, -1, fs, ink)
+	draw_string(_font, Vector2(tx, r.position.y + pad + fs), _fit_text(tr(String(d.name)), tw - (16 * z if plan.has(id) else 0.0), fs), HORIZONTAL_ALIGNMENT_LEFT, -1, fs, ink)
 	var lv := int(p.reps.get(id, 0)) if is_rep else 0
 	var c := sim.research_cost(p, id)
 	var line2 := ""
@@ -543,7 +543,7 @@ func _draw_card(p: Sim.Player, id: String, r: Rect2, plan: Dictionary) -> void:
 				line2 = "%d points" % int(c)
 	col2.a = fade
 	var y2 := r.position.y + pad + fs + 3.0 * z + fs2
-	draw_string(_font, Vector2(tx, y2), _fit_text(line2, tw, fs2), HORIZONTAL_ALIGNMENT_LEFT, -1, fs2, col2)
+	draw_string(_font, Vector2(tx, y2), _fit_text(tr(line2), tw, fs2), HORIZONTAL_ALIGNMENT_LEFT, -1, fs2, col2)
 	# progress of the study under way
 	if st == "study" and c > 0:
 		draw_rect(Rect2(r.position.x, r.end.y - 3.0 * z, r.size.x * clampf(p.rp / c, 0, 1), 3.0 * z), C_STUDY)
@@ -575,7 +575,7 @@ func _draw_card(p: Sim.Player, id: String, r: Rect2, plan: Dictionary) -> void:
 				draw_rect(pr, C_BRASS if k < lv + pl else C_LINE, false, 1.0)
 		var eff := GameData.effect_text(d.get("effects", {})) + " a level"
 		var dim := C_DIM; dim.a = fade
-		draw_string(_font, Vector2(tx, y3 + 8.0 * z + fs2), _fit_text(eff, tw, fs2), HORIZONTAL_ALIGNMENT_LEFT, -1, fs2, dim)
+		draw_string(_font, Vector2(tx, y3 + 8.0 * z + fs2), _fit_text(tr(eff), tw, fs2), HORIZONTAL_ALIGNMENT_LEFT, -1, fs2, dim)
 		return
 	var ub := unlocks(id)
 	if not ub.is_empty():
@@ -591,6 +591,7 @@ func _draw_card(p: Sim.Player, id: String, r: Rect2, plan: Dictionary) -> void:
 	else:
 		var eff2 := GameData.effect_text(d.get("effects", {}))
 		if eff2 == "": eff2 = String(d.get("info", ""))
+		eff2 = tr(eff2)
 		var dim2 := C_DIM; dim2.a = fade
 		# two lines at most
 		var words := eff2.split(" ")

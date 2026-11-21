@@ -52,7 +52,7 @@ func _open(ev, q: Dictionary) -> void:
 		row.add_child(b)
 		row.add_child(main._label(String(opts[i][1]), 13, Main.DIM))
 		v.add_child(row)
-	v.add_child(main._label(tr("Unanswered, the last answer is taken in %d s of game time.") % int(q.left), 12, Main.DIM))
+	v.add_child(main._label(tr("Unanswered, the last answer is taken in %d s of game time." % int(q.left)), 12, Main.DIM))
 	v.add_child(main._button(tr("Later"), func():
 		_later_t = main.sim.time
 		panel.visible = false

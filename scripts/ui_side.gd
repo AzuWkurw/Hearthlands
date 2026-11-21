@@ -40,7 +40,7 @@ func _refresh_folk() -> void:
 	if worn > 0:
 		t += "[color=#e0b060]  %d soldiers have worn weapons; new ones come from the stores (%d weapons there)[/color]\n" % [worn, int(p.stock.get("weapons", 0.0))]
 	t += "Housing  [b]%d / %d[/b]\n" % [main.sim.pop_total(p), main.sim.housing(p)]
-	t += tr("Children  [b]%s[/b]") % main.sim.people.kids_text(p) + (tr(", %d schooled") % p.schooled if p.schooled > 0 else "") + "\n"
+	t += tr("Children  [b]%s[/b]" % main.sim.people.kids_text(p)) + (tr(", %d schooled" % p.schooled) if p.schooled > 0 else "") + "\n"
 	# specialists: workers level up only in their own trade
 	var ts := main.sim.trade_summary(p)
 	var parts := []
@@ -92,7 +92,7 @@ func _refresh_build() -> void:
 		var d: Dictionary = GameData.bld[id]
 		var locked: bool = d.has("tech") and not p.techs.has(d.tech)
 		b.disabled = locked
-		b.text = tr("%s\n%s") % [String(d.name), ("Needs " + GameData.tech_name(d.tech)) if locked else "%s · %s" % [GameData.cost_text(d.get("cost", {})), String(Sim.SIZE_NAMES[main.sim.size_of(id)]).to_lower()]]
+		b.text = tr("%s\n%s" % [String(d.name), ("Needs " + GameData.tech_name(d.tech)) if locked else "%s · %s" % [GameData.cost_text(d.get("cost", {})), String(Sim.SIZE_NAMES[main.sim.size_of(id)]).to_lower()]])
 		b.modulate = Color(1, 1, 1, 0.5) if (locked or main.sim.missing(p, d.get("cost", {})) != "") else Color.WHITE
 		b.set_pressed_no_signal(main.view.place_type == id)
 

@@ -31,7 +31,7 @@ func _draw() -> void:
 		for v in s.values:
 			top = maxf(top, float(v))
 	if n < 2:
-		draw_string(font, area.position + Vector2(10, 20), "Not enough data yet: one point per game minute.", HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0.7, 0.7, 0.6))
+		draw_string(font, area.position + Vector2(10, 20), tr("Not enough data yet: one point per game minute."), HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0.7, 0.7, 0.6))
 		return
 	top = _nice(top)
 	# horizontal grid lines with their values
@@ -43,7 +43,7 @@ func _draw() -> void:
 	for k in 5:
 		var x := area.position.x + area.size.x * k / 4.0
 		var ago := roundi((n - 1) * (1.0 - k / 4.0))
-		draw_string(font, Vector2(x - 20, size.y - 4), "now" if ago == 0 else str(ago), HORIZONTAL_ALIGNMENT_CENTER, 40, fs, Color(0.7, 0.7, 0.6))
+		draw_string(font, Vector2(x - 20, size.y - 4), tr("now") if ago == 0 else str(ago), HORIZONTAL_ALIGNMENT_CENTER, 40, fs, Color(0.7, 0.7, 0.6))
 	for s in series:
 		var vals: Array = s.values
 		var pts := PackedVector2Array()

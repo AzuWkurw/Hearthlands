@@ -312,11 +312,11 @@ func _toggle(text: String, on: bool, cb: Callable) -> Button:
 func _paint_tab() -> void:
 	var ur := HBoxContainer.new()
 	body.add_child(ur)
-	var ub := main._button(tr("Undo (%d)") % _undo.size(), undo)
+	var ub := main._button(tr("Undo (%d)" % _undo.size()), undo)
 	ub.disabled = _undo.is_empty()
 	ub.tooltip_text = "Ctrl+Z"
 	ur.add_child(ub)
-	var rb := main._button(tr("Redo (%d)") % _redo.size(), redo)
+	var rb := main._button(tr("Redo (%d)" % _redo.size()), redo)
 	rb.disabled = _redo.is_empty()
 	rb.tooltip_text = "Ctrl+Y"
 	ur.add_child(rb)
@@ -369,7 +369,7 @@ func _paint_tab() -> void:
 				ob.tooltip_text = "Each ore tile painted holds %d units; a vein holds what its tiles hold together." % (int(WorldGen.ORE_AMOUNTS[k]) * WorldGen.ORE_UNIT)
 				orr.add_child(ob)
 		if what == "animal":
-			body.add_child(_wrap(tr("%d animals placed. Click to place one; No animals clears them under the brush. With none placed the game puts animals at random.") % animals.size()))
+			body.add_child(_wrap(tr("%d animals placed. Click to place one; No animals clears them under the brush. With none placed the game puts animals at random." % animals.size())))
 		if what == "place":
 			body.add_child(_wrap("Ruins: the first realm whose land reaches them finds planks, stone, gold and tools. Bandit camps: nobody builds within %d tiles, they steal from realms nearby until soldiers clear them (click the camp in the game), and hold gold and weapons." % Places.BLOCK_R))
 		if what == "climate":
@@ -417,7 +417,7 @@ func _paint_tab() -> void:
 		if clip.is_empty():
 			body.add_child(_wrap("Nothing copied yet."))
 		else:
-			body.add_child(main._label(tr("Copied: %d x %d tiles") % [int(clip.w), int(clip.h)], 13, Main.DIM))
+			body.add_child(main._label(tr("Copied: %d x %d tiles" % [int(clip.w), int(clip.h)]), 13, Main.DIM))
 			var cr := HBoxContainer.new()
 			body.add_child(cr)
 			cr.add_child(main._button("Turn", func():
@@ -478,9 +478,9 @@ func _map_tab() -> void:
 		if ob.disabled:
 			return
 		var path := String(ob.get_item_metadata(ob.selected))
-		main.confirm(tr("Open \"%s\"? Changes to the map in the editor that you have not saved are lost.") % path.get_file().get_basename(), "Open", func():
+		main.confirm(tr("Open \"%s\"? Changes to the map in the editor that you have not saved are lost." % path.get_file().get_basename()), "Open", func():
 			var err := load_file(path)
-			main._show_hint(err if err != "" else tr("Opened \"%s\".") % map_name, 3.0)))
+			main._show_hint(err if err != "" else tr("Opened \"%s\"." % map_name), 3.0)))
 	lb.disabled = files.is_empty()
 	lr.add_child(lb)
 	body.add_child(HSeparator.new())
@@ -574,10 +574,10 @@ func _starts_tab() -> void:
 		sw.custom_minimum_size = Vector2(14, 14)
 		sw.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		head.add_child(sw)
-		head.add_child(main._label(tr("Start %d") % (k + 1) + (tr(" (you)") if k == 0 else ""), 14, Main.BRASS))
+		head.add_child(main._label(tr("Start %d" % (k + 1)) + (tr(" (you)") if k == 0 else ""), 14, Main.BRASS))
 		var mv := _toggle("Move", moving == k, func():
 			moving = k
-			main._show_hint(tr("Click where start %d should be.") % (k + 1), 3.0)
+			main._show_hint(tr("Click where start %d should be." % (k + 1)), 3.0)
 			_fill())
 		head.add_child(mv)
 		head.add_child(main._button("Go", func():
@@ -636,7 +636,7 @@ func _starts_tab() -> void:
 			starts.append(Vector2i(main.sim.w / 2, main.sim.h / 2))
 			setup.append({})
 			moving = starts.size() - 1
-			main._show_hint(tr("Click where start %d should be.") % starts.size(), 3.0)
+			main._show_hint(tr("Click where start %d should be." % starts.size()), 3.0)
 			_fill()))
 	ar.add_child(main._button("Remove last", func():
 		if starts.size() > 2:
@@ -800,7 +800,7 @@ func _mission_tab() -> void:
 	body.add_child(br)
 	br.add_child(main._button("Save the mission", func():
 		var err := save_mission()
-		main._show_hint(err if err != "" else tr("Saved the mission \"%s\" with the map. It is in the Missions list.") % String(mission.name), 4.0)))
+		main._show_hint(err if err != "" else tr("Saved the mission \"%s\" with the map. It is in the Missions list." % String(mission.name)), 4.0)))
 	br.add_child(main._button("Play it", func():
 		var err := save_mission()
 		if err != "":
@@ -847,7 +847,7 @@ func _check_tab() -> void:
 	body.add_child(rr)
 	rr.add_child(main._label("What lies within", 13, Main.DIM))
 	for r in [10, 15, 20]:
-		rr.add_child(_toggle(tr("%d tiles") % r, r == _fair_r, func():
+		rr.add_child(_toggle(tr("%d tiles" % r), r == _fair_r, func():
 			_fair_r = r
 			_fill()))
 	var fair := EditorTools.fairness(sim, starts, _fair_r)
@@ -858,7 +858,7 @@ func _check_tab() -> void:
 	body.add_child(g)
 	g.add_child(main._label("", 12))
 	for k in starts.size():
-		var l := main._label(tr("Start %d") % (k + 1), 12, Sim.PCOL[k % Sim.PCOL.size()].lightened(0.3))
+		var l := main._label(tr("Start %d" % (k + 1)), 12, Sim.PCOL[k % Sim.PCOL.size()].lightened(0.3))
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		l.custom_minimum_size = Vector2(52, 0)
 		g.add_child(l)
@@ -873,7 +873,7 @@ func _check_tab() -> void:
 			var col := Color("e6e2d3")
 			if hi > 0 and v < hi * 0.5:
 				col = Color("ff8a6a")
-				notes.append(tr("Start %d: %s %d, the richest start %d.") % [k + 1, tr(String(c[1])).to_lower(), v, hi])
+				notes.append(tr("Start %d: %s %d, the richest start %d." % [k + 1, tr(String(c[1])).to_lower(), v, hi]))
 			elif hi > 0 and v >= hi * 0.85:
 				col = Color("a6d88a")
 			var l := main._label("%d" % v, 12, col)
@@ -892,7 +892,7 @@ func _check_tab() -> void:
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		g.add_child(l)
 	if near_lo < 24:
-		notes.append(tr("Two starts are only %d tiles apart: those realms meet at once.") % roundi(near_lo))
+		notes.append(tr("Two starts are only %d tiles apart: those realms meet at once." % roundi(near_lo)))
 	body.add_child(_wrap("Counted in tiles within %d tiles of each start. Green: about as much as the richest start; red: less than half of it." % _fair_r))
 	if notes.is_empty():
 		body.add_child(_wrap("The starts look fair.", 13, Color("a6d88a")))
@@ -906,7 +906,7 @@ func _check_tab() -> void:
 	var painted := 0
 	for v in biome:
 		if v > 0: painted += 1
-	body.add_child(_wrap(tr("On the map: %d ruins, %d bandit camps, %d animals placed, climate painted on %d%% of it.") % [rc, bc, animals.size(), painted * 100 / maxi(1, biome.size())]))
+	body.add_child(_wrap(tr("On the map: %d ruins, %d bandit camps, %d animals placed, climate painted on %d%% of it." % [rc, bc, animals.size(), painted * 100 / maxi(1, biome.size())])))
 
 
 # --- Saving and playing -----------------------------------------------------------------------------------
@@ -1263,7 +1263,7 @@ func _paint_done() -> void:
 		var r: Rect2i = main.view.editor_rect
 		if r.size.x * r.size.y >= 1:
 			clip = EditorTools.cut(sim, biome, r)
-			main._show_hint(tr("Copied %d x %d tiles. Pick Paste and click where it goes.") % [r.size.x, r.size.y], 3.0)
+			main._show_hint(tr("Copied %d x %d tiles. Pick Paste and click where it goes." % [r.size.x, r.size.y]), 3.0)
 		main.view.editor_rect = Rect2i()
 		_a = Vector2i(-1, -1)
 		_end_stroke()

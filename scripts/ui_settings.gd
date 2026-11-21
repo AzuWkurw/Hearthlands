@@ -73,13 +73,13 @@ func _fill_settings() -> void:
 	_set_row(g, "Language", _choice(langs.map(func(l): return l[1]), li, func(i):
 		main.settings.language = String(langs[i][0])
 		main.settings.save_file()
-		TranslationServer.set_locale(main.settings.language)
+		I18n.set_language(main.settings.language)
 		main._show_hint(tr("Some text changes when its window is next opened or refreshed."), 4.0)
 		_fill_settings.call_deferred()))
 	_set_row(g, "Renderer", _choice(Settings.RENDERERS.map(func(r): return r[1]), maxi(0, ids.find(running)), func(i):
 		_switch_renderer(String(ids[i]))))
 	var adapter := "%s, %s" % [RenderingServer.get_video_adapter_name(), RenderingServer.get_video_adapter_api_version()]
-	var note := main._label(tr("Now drawing with %s on %s.") % [Settings.renderer_name(running), adapter], 13, Main.DIM)
+	var note := main._label(tr("Now drawing with %s on %s." % [Settings.renderer_name(running), adapter]), 13, Main.DIM)
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	note.custom_minimum_size = Vector2(380, 0)
 	_set_row(g, "", note)
@@ -98,7 +98,7 @@ func _fill_settings() -> void:
 	rn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	rn.custom_minimum_size = Vector2(380, 0)
 	_set_row(g, "", rn)
-	_set_row(g, "Interface size", _choice(Settings.UI_SCALES.map(func(v): return tr("Auto (%d%%)") % roundi(main.settings.scale_now() * 100) if v == 0.0 and main.settings.ui_scale == 0.0 else (tr("Auto (fits the screen)") if v == 0.0 else "%d%%" % roundi(v * 100))), maxi(0, Settings.UI_SCALES.find(main.settings.ui_scale)), func(i):
+	_set_row(g, "Interface size", _choice(Settings.UI_SCALES.map(func(v): return tr("Auto (%d%%)" % roundi(main.settings.scale_now() * 100)) if v == 0.0 and main.settings.ui_scale == 0.0 else (tr("Auto (fits the screen)") if v == 0.0 else "%d%%" % roundi(v * 100))), maxi(0, Settings.UI_SCALES.find(main.settings.ui_scale)), func(i):
 		main.settings.ui_scale = Settings.UI_SCALES[i]
 		_apply_settings()))
 	_set_row(g, "Frame rate limit", _choice(Settings.FPS_LIMITS.map(func(v): return "No limit" if v == 0 else "%d fps" % v), maxi(0, Settings.FPS_LIMITS.find(main.settings.max_fps)), func(i):
@@ -136,7 +136,7 @@ func _fill_settings() -> void:
 		main.settings.ask_demolish = on
 		main.settings.save_file())
 	_set_row(g, "", ask_check)
-	_set_row(g, "", _check(tr("Demolish mines whose vein has run dry (warns %d s before)") % Main.DRY_MINE_WAIT, main.settings.demolish_dry_mines, func(on):
+	_set_row(g, "", _check(tr("Demolish mines whose vein has run dry (warns %d s before)" % Main.DRY_MINE_WAIT), main.settings.demolish_dry_mines, func(on):
 		main.settings.demolish_dry_mines = on
 		main.settings.save_file()))
 	_set_row(g, "", _check("Show the first-game guide (in the next new game)", main.settings.guide, func(on):
@@ -178,7 +178,7 @@ func _switch_renderer(id: String) -> void:
 			Settings.write_override(id)
 			main.settings.renderer = id
 			main.settings.save_file()
-			main._show_hint(tr("%s will be used from now on.") % Settings.renderer_name(id), 5.0)
+			main._show_hint(tr("%s will be used from now on." % Settings.renderer_name(id)), 5.0)
 		return
 	var extra := PackedStringArray()
 	if id == "gl_compatibility":
@@ -196,7 +196,7 @@ func _switch_renderer(id: String) -> void:
 	extra.append("rm=" + id)
 	if resume:
 		extra.append("resume")
-	main._show_hint(tr("Restarting with %s...") % Settings.renderer_name(id), 3.0)
+	main._show_hint(tr("Restarting with %s..." % Settings.renderer_name(id)), 3.0)
 	OS.set_restart_on_exit(true, Settings.restart_args(extra))
 	main.get_tree().quit()
 
@@ -280,7 +280,7 @@ func set_body_key_rows(g: GridContainer) -> void:
 			_fill_settings())
 		b.focus_mode = Control.FOCUS_NONE
 		b.custom_minimum_size = Vector2(110, 0)
-		b.tooltip_text = tr("Click, then press the key for: %s") % tr(String(a[1]))
+		b.tooltip_text = tr("Click, then press the key for: %s" % tr(String(a[1])))
 		var row := HBoxContainer.new()
 		row.add_child(b)
 		row.add_child(main._label(tr(String(a[1])), 13, Main.DIM))

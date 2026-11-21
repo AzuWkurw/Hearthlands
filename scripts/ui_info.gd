@@ -149,13 +149,13 @@ func _refresh_sel() -> void:
 	var rw: SimRail = main.sim.railway
 	if b.steam:
 		if not rw.steam_on(b):
-			t += tr("[color=#e8c870]Steam engine:[/color] being fitted, ready in %d s (it keeps working meanwhile).\n") % maxi(0, ceili(b.steam_at - main.sim.time))
+			t += tr("[color=#e8c870]Steam engine:[/color] being fitted, ready in %d s (it keeps working meanwhile).\n" % maxi(0, ceili(b.steam_at - main.sim.time)))
 		else:
 			var coal := int(main.sim.players[b.p - 1].stock.get("coal", 0.0))
-			t += (tr("[color=#e8c870]Steam engine:[/color] works [b]%d%% faster[/b] for 1 coal every 2 cycles (%d coal in store). Its smoke makes homes within %d tiles a little less content.\n") % [roundi(SimRail.STEAM * 100), coal, SimRail.SMOKE_R]) \
+			t += (tr("[color=#e8c870]Steam engine:[/color] works [b]%d%% faster[/b] for 1 coal every 2 cycles (%d coal in store). Its smoke makes homes within %d tiles a little less content.\n" % [roundi(SimRail.STEAM * 100), coal, SimRail.SMOKE_R])) \
 				+ ("" if coal > 0 or b.steam_coal >= 0.5 else tr("[color=#e0b060]No coal: it works at the old speed.[/color]\n"))
 	elif b.p == 1 and SimRail.STEAM_KINDS.has(b.ty) and b.state == "ready" and main.sim.human().techs.has("steam_engine"):
-		t += tr("[color=#9a9c88]It can take a steam engine: %d%% faster for 1 coal every 2 cycles.[/color]\n") % roundi(SimRail.STEAM * 100)
+		t += tr("[color=#9a9c88]It can take a steam engine: %d%% faster for 1 coal every 2 cycles.[/color]\n" % roundi(SimRail.STEAM * 100))
 	if SimRail.is_station(b) and b.state == "ready":
 		var piece := rw.station_piece(b)
 		var others := 0
@@ -168,8 +168,8 @@ func _refresh_sel() -> void:
 		elif others == 0:
 			t += tr("[color=#e0b060]On the track, but no other station on it yet: a line needs two.[/color]\n")
 		else:
-			t += tr("On a line with %d other station%s. Trains: %d (%d out now), one for each locomotive in store; 1 coal a trip.\n") % [others, "" if others == 1 else "s", rw.trains(pl), rw.trains_out(pl)]
-		t += tr("Goods its trains carried: %d\n") % b.carried
+			t += tr("On a line with %d other station%s. Trains: %d (%d out now), one for each locomotive in store; 1 coal a trip.\n" % [others, "" if others == 1 else "s", rw.trains(pl), rw.trains_out(pl)])
+		t += tr("Goods its trains carried: %d\n" % b.carried)
 	# its guild (build 62)
 	if b.p == 1 and b.state == "ready" and GameData.trade(b.ty) != "" and String(b.def.get("worker", "")) != "":
 		var me := main.sim.human()
@@ -177,11 +177,11 @@ func _refresh_sel() -> void:
 		var tn := GameData.trade_name(GameData.trade(b.ty)).to_lower()
 		if not me.techs.has("guilds"):
 			if gn >= SimPeople.GUILD_MIN:
-				t += tr("[color=#9a9c88]%d %s workplaces stand together: study Guilds and they form a guild (work +%d%%).[/color]\n") % [gn, tn, roundi(SimPeople.GUILD_BONUS * 100)]
+				t += tr("[color=#9a9c88]%d %s workplaces stand together: study Guilds and they form a guild (work +%d%%).[/color]\n" % [gn, tn, roundi(SimPeople.GUILD_BONUS * 100)])
 		elif gn >= SimPeople.GUILD_MIN:
-			t += tr("[color=#e8c870]Guild of %s:[/color] %d workplaces within %d tiles, work +%d%%%s\n") % [tn, gn, SimPeople.GUILD_R, roundi(main.sim.people.guild_bonus(me, b) * 100), "" if gn >= SimPeople.GUILD_LARGE else tr(" (+%d%% with %d)") % [roundi(SimPeople.GUILD_BIG * 100), SimPeople.GUILD_LARGE]]
+			t += tr("[color=#e8c870]Guild of %s:[/color] %d workplaces within %d tiles, work +%d%%%s\n" % [tn, gn, SimPeople.GUILD_R, roundi(main.sim.people.guild_bonus(me, b) * 100), "" if gn >= SimPeople.GUILD_LARGE else tr(" (+%d%% with %d)") % [roundi(SimPeople.GUILD_BIG * 100), SimPeople.GUILD_LARGE]])
 		else:
-			t += tr("[color=#9a9c88]No guild: %d of %d %s workplaces within %d tiles.[/color]\n") % [gn, SimPeople.GUILD_MIN, tn, SimPeople.GUILD_R]
+			t += tr("[color=#9a9c88]No guild: %d of %d %s workplaces within %d tiles.[/color]\n" % [gn, SimPeople.GUILD_MIN, tn, SimPeople.GUILD_R])
 	main.sel_label.text = t
 	if b.p == 1 and b.ty != "hq" and b.def.has("garrison") and b.state == "ready":
 		_garrison_ui(b)
@@ -195,7 +195,7 @@ func _refresh_sel() -> void:
 			main.prio_row.add_child(pb)
 	# a store's town name, which you can change
 	if b.p == 1 and b.town != "":
-		var rn := main._button(tr("Rename %s") % b.town, func():
+		var rn := main._button(tr("Rename %s" % b.town), func():
 			var dlg := AcceptDialog.new()
 			dlg.title = "Rename the town"
 			dlg.theme = UiLog.window_theme()
@@ -244,27 +244,27 @@ func _refresh_sel() -> void:
 			var cost := []
 			for k in SimRail.STEAM_COST:
 				cost.append("%d %s" % [int(SimRail.STEAM_COST[k]), GameData.res_name(k).to_lower()])
-			var sb2 := main._button(tr("Steam upgrade: %s") % ", ".join(cost), func():
+			var sb2 := main._button(tr("Steam upgrade: %s" % ", ").join(cost), func():
 				var bb: Sim.Bld = main.sim.by_id.get(main.view.sel_id)
 				if bb:
 					var why := main.sim.railway.fit_steam(bb)
-					main._show_hint(why if why != "" else tr("The steam engine is being fitted: %d s.") % int(SimRail.STEAM_FIT), 3.0)
+					main._show_hint(why if why != "" else tr("The steam engine is being fitted: %d s." % int(SimRail.STEAM_FIT)), 3.0)
 					_refresh_sel())
-			sb2.tooltip_text = tr("A steam engine and a chimney: %d%% faster for 1 coal every 2 work cycles. Its smoke makes homes within %d tiles a little less content.") % [roundi(SimRail.STEAM * 100), SimRail.SMOKE_R]
+			sb2.tooltip_text = tr("A steam engine and a chimney: %d%% faster for 1 coal every 2 work cycles. Its smoke makes homes within %d tiles a little less content." % [roundi(SimRail.STEAM * 100), SimRail.SMOKE_R])
 			sb2.disabled = main.sim.railway.steam_why(b) != ""
 			main.sel_actions.add_child(sb2)
 	# a workshop: how many work cycles of inputs to keep here
 	if b.p == 1 and b.state == "ready" and b.def.has("in") and b.def.has("cycle"):
 		main.prio_row.add_child(main._label("Keep inputs for", 14, Main.DIM))
 		for k in [1, 2, 4]:
-			var kb := main._button(tr("%d cycle%s") % [k, "s" if k > 1 else ""], func():
+			var kb := main._button(tr("%d cycle%s" % [k, "s" if k > 1 else ""]), func():
 				var bb: Sim.Bld = main.sim.by_id.get(main.view.sel_id)
 				if bb:
 					bb.keep = k
 					_refresh_sel())
 			kb.toggle_mode = true
 			kb.set_pressed_no_signal((b.keep if b.keep > 0 else 2) == k)
-			kb.tooltip_text = tr("Carriers bring enough for %d work cycle%s (food for %d). More keeps it working through gaps; less leaves more in the stores for others.") % [k, "s" if k > 1 else "", maxi(1, k / 2)]
+			kb.tooltip_text = tr("Carriers bring enough for %d work cycle%s (food for %d). More keeps it working through gaps; less leaves more in the stores for others." % [k, "s" if k > 1 else "", maxi(1, k / 2)])
 			main.prio_row.add_child(kb)
 	# the numbers of the priority windows for this kind and its goods (build 54), changed from here too
 	if b.p == 1 and b.state == "ready" and (String(b.def.get("worker", "")) != "" or b.def.has("in")):
@@ -287,8 +287,8 @@ func _refresh_sel() -> void:
 	# warships: how many, and whether they sail with your landings
 	if b.p == 1 and b.state == "ready" and (main.sim.sea.is_harbour(b) or b.ty == "naval_yard") and (me_warships() > 0 or b.ty == "naval_yard"):
 		var me2 := main.sim.human()
-		main.prio_row.add_child(main._label(tr("Warships: %d of %d") % [me2.warships, SimNavy.MAX_WARSHIPS], 14, Main.DIM))
-		var xb := main._button(tr("Escort landings: %s") % (tr("on") if me2.escort else tr("off")), func():
+		main.prio_row.add_child(main._label(tr("Warships: %d of %d" % [me2.warships, SimNavy.MAX_WARSHIPS]), 14, Main.DIM))
+		var xb := main._button(tr("Escort landings: %s" % (tr("on") if me2.escort else tr("off"))), func():
 			main.sim.human().escort = not main.sim.human().escort
 			_refresh_sel())
 		xb.tooltip_text = tr("When on, up to 3 free warships sail with each landing you send, to fight off enemy warships and coastal guns on the way. When off, they all stay to guard your harbours.")
@@ -296,27 +296,27 @@ func _refresh_sel() -> void:
 	# a building site: the build queue (build 62)
 	if b.p == 1 and b.state == "build":
 		var qn := b.queue_n
-		var qb := main._button(tr("In the build queue: #%d (leave it)") % qn if qn > 0 else tr("Add to the build queue"), func():
+		var qb := main._button(tr("In the build queue: #%d (leave it)" % qn) if qn > 0 else tr("Add to the build queue"), func():
 			var bb: Sim.Bld = main.sim.by_id.get(main.view.sel_id)
 			if bb:
 				var n := main.sim.queue_site(bb, bb.queue_n == 0)
-				main._show_hint(tr("Site #%d in the build queue: the carriers bring its materials once those before it are done.") % n if n > 0 else tr("The site left the build queue."), 3.5)
+				main._show_hint(tr("Site #%d in the build queue: the carriers bring its materials once those before it are done." % n) if n > 0 else tr("The site left the build queue."), 3.5)
 				_refresh_sel())
 		qb.tooltip_text = tr("Queued sites are built one after another, in the order you queued them, before any other site (Shift+Q queues the site under the mouse). Sites not queued are built as before.")
 		main.sel_actions.add_child(qb)
 	# copy this building's settings to all of its kind (build 62)
 	if b.p == 1 and b.state == "ready" and b.ty != "hq" and _same_kind(b) > 0:
-		var cb := main._button(tr("Copy settings to all %d") % _same_kind(b), func():
+		var cb := main._button(tr("Copy settings to all %d" % _same_kind(b)), func():
 			var bb: Sim.Bld = main.sim.by_id.get(main.view.sel_id)
 			if bb:
 				var n := copy_settings(main.sim, bb)
-				main._show_hint(tr("Priority, inputs kept and crop copied to %d other %s.") % [n, String(bb.def.name).to_lower()] if not main.sim.is_mil(bb) else tr("Priority, soldiers wanted and archers copied to %d others.") % n, 3.5)
+				main._show_hint(tr("Priority, inputs kept and crop copied to %d other %s." % [n, String(bb.def.name).to_lower()]) if not main.sim.is_mil(bb) else tr("Priority, soldiers wanted and archers copied to %d others." % n), 3.5)
 				_refresh_sel())
 		cb.tooltip_text = tr("Give every other building of this kind the same priority, inputs to keep, crop (farms) or soldiers wanted and archers (military buildings).")
 		main.sel_actions.add_child(cb)
 	# a building site: ring a bell when it is finished
 	if b.p == 1 and (b.state == "build" or b.reno_to >= 0):
-		var wb := main._button(tr("Bell when done: %s") % ("on" if main.watch.has(b.id) else "off"), func():
+		var wb := main._button(tr("Bell when done: %s" % ("on" if main.watch.has(b.id) else "off")), func():
 			var bb: Sim.Bld = main.sim.by_id.get(main.view.sel_id)
 			if bb:
 				if main.watch.has(bb.id): main.watch.erase(bb.id)
@@ -331,7 +331,7 @@ func _refresh_sel() -> void:
 				main.moving_id = bb.id
 				main.view.place_type = bb.ty
 				main.view.door = bb.door if bb.door >= 0 else 0
-				main._show_hint(tr("Click where the new %s should stand. The old one keeps working until the new one is finished.") % String(bb.def.name).to_lower(), 4.0)
+				main._show_hint(tr("Click where the new %s should stand. The old one keeps working until the new one is finished." % String(bb.def.name).to_lower()), 4.0)
 				main._refresh_build())
 		mb.tooltip_text = "Build this building again somewhere else (full cost). The old one keeps working until the new one is finished, then it is pulled down and hands over its settings; 40% of its materials come back."
 		main.sel_actions.add_child(mb)
@@ -348,22 +348,22 @@ func _refresh_sel() -> void:
 	# upgrading where it stands (the mule station to an ox cart yard; military ones have their own row)
 	if b.p == 1 and b.state == "ready" and b.def.has("upgrade_to"):
 		if b.upg != "":
-			main.sel_actions.add_child(main._label(tr("Upgrading to a %s: %d%%") % [String(GameData.bld[b.upg].name).to_lower(), roundi(b.reno_prog * 100.0)], 13, Color("9fd0e8")))
+			main.sel_actions.add_child(main._label(tr("Upgrading to a %s: %d%%" % [String(GameData.bld[b.upg].name).to_lower(), roundi(b.reno_prog * 100.0)]), 13, Color("9fd0e8")))
 		elif b.reno_to < 0:
 			var ups := main.sim.upgrades_of(b)
 			for ty in ups:
 				var cost := main.sim.upgrade_cost(b, ty)
-				var ub := main._button(tr("Upgrade to %s") % String(GameData.bld[ty].name), func():
+				var ub := main._button(tr("Upgrade to %s" % String(GameData.bld[ty].name)), func():
 					var bb: Sim.Bld = main.sim.by_id.get(main.view.sel_id)
 					if bb:
 						var r := main.sim.upgrade(bb, ty)
-						main._show_hint(r if r != "" else tr("Upgrade started: carriers bring %s.") % Diplomacy.goods_text(main.sim.upgrade_cost(bb, ty)), 3.5)
+						main._show_hint(r if r != "" else tr("Upgrade started: carriers bring %s." % Diplomacy.goods_text(main.sim.upgrade_cost(bb, ty))), 3.5)
 						_refresh_sel())
-				ub.tooltip_text = tr("Rebuild it as a %s where it stands. Costs %s.\n%s") % [String(GameData.bld[ty].name).to_lower(), Diplomacy.goods_text(cost), String(GameData.bld[ty].get("info", ""))]
+				ub.tooltip_text = tr("Rebuild it as a %s where it stands. Costs %s.\n%s" % [String(GameData.bld[ty].name).to_lower(), Diplomacy.goods_text(cost), String(GameData.bld[ty].get("info", ""))])
 				main.sel_actions.add_child(ub)
 			for ty in b.def.upgrade_to:
 				if not ups.has(ty) and GameData.bld.has(ty) and GameData.bld[ty].has("tech"):
-					main.sel_actions.add_child(main._label(tr("Upgrade to %s after studying %s") % [String(GameData.bld[ty].name), GameData.tech_name(GameData.bld[ty].tech)], 12, Main.DIM))
+					main.sel_actions.add_child(main._label(tr("Upgrade to %s after studying %s" % [String(GameData.bld[ty].name), GameData.tech_name(GameData.bld[ty].tech)]), 12, Main.DIM))
 	if b.p == 1 and b.state == "ready":
 		var why := main.sim.can_renovate(b)
 		if why == "":
@@ -373,17 +373,17 @@ func _refresh_sel() -> void:
 					var r := main.sim.renovate(bb)
 					main._show_hint(r if r != "" else ("Renovation starts: carriers bring half the building's materials." if bb.reno_to >= 0 else "Renovation queued: two run at a time."), 3.0)
 					_refresh_sel())
-			rb.tooltip_text = tr("Rebuild it in the %s style: half its building cost, carried here, and half its building time. Work stops meanwhile; the worker keeps his job.") % GameData.age_name(main.sim.human().age)
+			rb.tooltip_text = tr("Rebuild it in the %s style: half its building cost, carried here, and half its building time. Work stops meanwhile; the worker keeps his job." % GameData.age_name(main.sim.human().age))
 			main.sel_actions.add_child(rb)
 			var same := 0
 			for x: Sim.Bld in main.sim.realm_blds(main.sim.human()):
 				if x.ty == b.ty and main.sim.can_renovate(x) == "":
 					same += 1
 			if same > 1:
-				main.sel_actions.add_child(main._button(tr("Renovate all %d") % same, func():
+				main.sel_actions.add_child(main._button(tr("Renovate all %d" % same), func():
 					var bb: Sim.Bld = main.sim.by_id.get(main.view.sel_id)
 					if bb:
-						main._show_hint(tr("%d %s queued for renovation; two at a time.") % [main.sim.renovate_all(main.sim.human(), bb.ty), String(bb.def.name).to_lower()], 3.0)
+						main._show_hint(tr("%d %s queued for renovation; two at a time." % [main.sim.renovate_all(main.sim.human(), bb.ty), String(bb.def.name).to_lower()]), 3.0)
 						_refresh_sel()))
 	if b.p == 1 and b.ty != "hq":
 		main.sel_actions.add_child(main._button("Demolish", func():
@@ -427,7 +427,7 @@ func _set_prio(pr: int) -> void:
 	if b == null or b.p != 1 or not main.sim.has_priority(b):
 		return
 	main.sim.set_priority(b, pr)
-	main._show_hint(tr("%s: priority %s.") % [String(b.def.name), Sim.PRIO_NAMES[b.prio].to_lower()], 2.5)
+	main._show_hint(tr("%s: priority %s." % [String(b.def.name), Sim.PRIO_NAMES[b.prio].to_lower()]), 2.5)
 	_refresh_sel()
 
 
@@ -518,7 +518,7 @@ func _crop_ui(b: Sim.Bld) -> void:
 	var ga := main._button("Use for all farms", func():
 		var bb: Sim.Bld = main.sim.by_id.get(main.view.sel_id)
 		if bb:
-			main._show_hint(tr("%d other farms now sow the same crops by season.") % Crops.apply_to_all(main.sim, bb), 3.0)
+			main._show_hint(tr("%d other farms now sow the same crops by season." % Crops.apply_to_all(main.sim, bb)), 3.0)
 			_refresh_sel())
 	ga.tooltip_text = "Give every farm of yours this farm's crops: the main crop, the crop for each season and the winter rye setting."
 	main.prio_row.add_child(ga)
@@ -546,7 +546,7 @@ func _garrison_ui(b: Sim.Bld) -> void:
 	var minus := main._button("-", func(): main._set_want(b, want - 1))
 	minus.disabled = want <= 1
 	row.add_child(minus)
-	var n := main._label(tr("%d of %d") % [want, cap], 15)
+	var n := main._label(tr("%d of %d" % [want, cap]), 15)
 	n.custom_minimum_size = Vector2(60, 0)
 	n.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	row.add_child(n)
@@ -583,7 +583,7 @@ func _garrison_ui(b: Sim.Bld) -> void:
 		var here := int(gm[k])
 		var trainable := k <= p.age or int(rm[k]) > 0 or here > 0
 		var info := ("%d at headquarters" % int(rm[k])) + ((", %d here" % here) if here > 0 else "")
-		tb.text = tr("%s\n%s") % [Sim.soldier_plural(k).capitalize(), info if trainable else "not yet (%s age)" % GameData.age_name(k)]
+		tb.text = tr("%s\n%s" % [Sim.soldier_plural(k).capitalize(), info if trainable else "not yet (%s age)" % GameData.age_name(k)])
 		var ok := main.sim.kind_allowed(b, k)
 		tb.set_pressed_no_signal(ok)
 		# allowed kinds in gold, the others faded
@@ -592,7 +592,7 @@ func _garrison_ui(b: Sim.Bld) -> void:
 		if not ok:
 			tb.modulate = Color(1, 1, 1, 0.55)
 		tb.disabled = not trainable
-		tb.tooltip_text = tr("Untick to keep %s out of this building: they are swapped for an allowed kind as soon as headquarters has one.") % Sim.soldier_plural(k)
+		tb.tooltip_text = tr("Untick to keep %s out of this building: they are swapped for an allowed kind as soon as headquarters has one." % Sim.soldier_plural(k))
 		var kk := k
 		tb.toggled.connect(func(on):
 			if b.want_kinds.is_empty():
@@ -635,7 +635,7 @@ func _garrison_ui(b: Sim.Bld) -> void:
 		main._click())
 	am.disabled = b.archer_want <= 0
 	row4.add_child(am)
-	var an := main._label(tr("%d (want %d of %d)") % [b.archers, b.archer_want, main.sim.military.archer_cap(b)], 15)
+	var an := main._label(tr("%d (want %d of %d)" % [b.archers, b.archer_want, main.sim.military.archer_cap(b)]), 15)
 	an.custom_minimum_size = Vector2(90, 0)
 	an.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	row4.add_child(an)
@@ -645,11 +645,11 @@ func _garrison_ui(b: Sim.Bld) -> void:
 		main._click())
 	ap.disabled = b.archer_want >= main.sim.military.archer_cap(b)
 	row4.add_child(ap)
-	row4.add_child(main._label(tr("  bows in store: %d") % int(p.stock.get("bows", 0.0)), 12, Main.DIM))
+	row4.add_child(main._label(tr("  bows in store: %d" % int(p.stock.get("bows", 0.0))), 12, Main.DIM))
 	main.garrison_box.add_child(row4)
 	# weapons wear out in fights; worn ones are swapped for new ones from the stores
 	var bl := b.blunt if b.ty != "hq" else p.blunt
-	var wl := main._label(tr("Weapons: all sharp") if bl == 0 else (tr("Weapons: %d soldiers fight with worn weapons (%s)") % [bl, tr("new ones on the way") if float(p.stock.get("weapons", 0.0)) >= 1.0 else tr("no weapons in store!")]), 13, Main.DIM if bl == 0 else Color("e0b060"))
+	var wl := main._label(tr("Weapons: all sharp") if bl == 0 else (tr("Weapons: %d soldiers fight with worn weapons (%s)" % [bl, tr("new ones on the way") if float(p.stock.get("weapons", 0.0)) >= 1.0 else tr("no weapons in store!")])), 13, Main.DIM if bl == 0 else Color("e0b060"))
 	wl.tooltip_text = "Each fight may wear out a soldier's weapon (1 in 10). Worn weapons fight about 12% worse until a new one comes from the stores, one a second. Bows break now and then too."
 	main.garrison_box.add_child(wl)
 	var sc := CheckBox.new()
@@ -665,7 +665,7 @@ func _garrison_ui(b: Sim.Bld) -> void:
 	# upgrading where it stands: a bigger military building of the same size
 	main.garrison_box.add_child(HSeparator.new())
 	if b.upg != "":
-		main.garrison_box.add_child(main._label(tr("Upgrading to a %s: %d%% (soldiers stay inside)") % [String(GameData.bld[b.upg].name).to_lower(), roundi(b.reno_prog * 100.0)], 14, Color("9fd0e8")))
+		main.garrison_box.add_child(main._label(tr("Upgrading to a %s: %d%% (soldiers stay inside)" % [String(GameData.bld[b.upg].name).to_lower(), roundi(b.reno_prog * 100.0)]), 14, Color("9fd0e8")))
 	elif b.reno_to < 0:
 		var ups := main.sim.upgrades_of(b)
 		if ups.is_empty():
@@ -679,22 +679,22 @@ func _garrison_ui(b: Sim.Bld) -> void:
 					var bb: Sim.Bld = main.sim.by_id.get(main.view.sel_id)
 					if bb:
 						var r := main.sim.upgrade(bb, ty)
-						main._show_hint(r if r != "" else tr("Upgrade started: carriers bring %s.") % Diplomacy.goods_text(main.sim.upgrade_cost(bb, ty)), 3.5)
+						main._show_hint(r if r != "" else tr("Upgrade started: carriers bring %s." % Diplomacy.goods_text(main.sim.upgrade_cost(bb, ty))), 3.5)
 						main._gar_sig = "-"
 						_refresh_sel())
-				ub.tooltip_text = tr("Rebuild it as a %s where it stands: room for %d soldiers instead of %d, radius %d instead of %d. Costs %s. Its soldiers stay inside and it keeps its land meanwhile.") % [String(GameData.bld[ty].name).to_lower(), int(GameData.bld[ty].garrison), int(b.def.garrison), int(GameData.bld[ty].get("radius", 0)), int(b.def.get("radius", 0)), Diplomacy.goods_text(cost)]
+				ub.tooltip_text = tr("Rebuild it as a %s where it stands: room for %d soldiers instead of %d, radius %d instead of %d. Costs %s. Its soldiers stay inside and it keeps its land meanwhile." % [String(GameData.bld[ty].name).to_lower(), int(GameData.bld[ty].garrison), int(b.def.garrison), int(GameData.bld[ty].get("radius", 0)), int(b.def.get("radius", 0)), Diplomacy.goods_text(cost)])
 				ur.add_child(ub)
 			main.garrison_box.add_child(ur)
 	# the realm's border settings
 	main.garrison_box.add_child(HSeparator.new())
-	var where := main._label(tr("This building is near the border.") if b.border else tr("This building is inland (no other realm within %d tiles).") % SimMilitary.BORDER_R, 13, Color("e0b060") if b.border else Main.DIM)
+	var where := main._label(tr("This building is near the border.") if b.border else tr("This building is inland (no other realm within %d tiles)." % SimMilitary.BORDER_R), 13, Color("e0b060") if b.border else Main.DIM)
 	main.garrison_box.add_child(where)
 	var br := HBoxContainer.new()
 	br.add_child(main._label("All inland buildings hold", 14, Main.DIM))
 	var ib := OptionButton.new()
 	ib.focus_mode = Control.FOCUS_NONE
 	for pct in [100, 75, 50, 25]:
-		ib.add_item(tr("%d%% of their soldiers") % pct if pct < 100 else tr("all their soldiers"), pct)
+		ib.add_item(tr("%d%% of their soldiers" % pct) if pct < 100 else tr("all their soldiers"), pct)
 		if p.inner_pct == pct:
 			ib.select(ib.item_count - 1)
 	ib.tooltip_text = "For your whole realm: military buildings away from the border keep only this share (at least one soldier); the rest wait at headquarters for the border. A building with its own 'Soldiers wanted' keeps that."
@@ -726,7 +726,7 @@ func _prio_numbers(b: Sim.Bld) -> void:
 	row.add_theme_constant_override("separation", 4)
 	if String(b.def.get("worker", "")) != "":
 		var wl := main._label(tr("Worker no."), 13, Main.DIM)
-		wl.tooltip_text = tr("Worker priority of all your %s (L): kinds with a lower number get workers first.") % String(b.def.name).to_lower()
+		wl.tooltip_text = tr("Worker priority of all your %s (L): kinds with a lower number get workers first." % String(b.def.name).to_lower())
 		row.add_child(wl)
 		var ty := b.ty
 		row.add_child(_num_box(int(p.work_rank.get(ty, SimLogistics.RANK_DEFAULT)), func(v: int):

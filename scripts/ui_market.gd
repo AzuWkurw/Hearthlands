@@ -73,7 +73,7 @@ func build() -> void:
 	add.add_child(r_res)
 	add.add_child(main._label(tr("every"), 13))
 	r_every = OptionButton.new()
-	for m in SimMarket.ROUTE_EVERY: r_every.add_item(tr("%d min") % m)
+	for m in SimMarket.ROUTE_EVERY: r_every.add_item(tr("%d min" % m))
 	r_every.select(1)
 	add.add_child(r_every)
 	add.add_child(main._label(tr("keep"), 13))
@@ -99,7 +99,7 @@ func refresh() -> void:
 	var sim: Sim = main.sim
 	var me := sim.human()
 	var has := sim.market.has_market(me)
-	head.text = (tr("Prices follow what all realms have in store: short goods grow dear, plentiful ones cheap. Your market sells at %d%% and buys at %d%% of the price. You have %d gold.") % [roundi(SimMarket.SELL * 100), roundi(SimMarket.BUY * 100), int(me.stock.get("gold", 0.0))]) \
+	head.text = (tr("Prices follow what all realms have in store: short goods grow dear, plentiful ones cheap. Your market sells at %d%% and buys at %d%% of the price. You have %d gold." % [roundi(SimMarket.SELL * 100), roundi(SimMarket.BUY * 100), int(me.stock.get("gold", 0.0))])) \
 		+ ("" if has else "\n" + tr("Build a market to sell and buy here."))
 	for c in grid.get_children():
 		grid.remove_child(c)
@@ -125,24 +125,24 @@ func refresh() -> void:
 		var tr_ := sim.market.trend(id)
 		var arrow := " ▲" if tr_ > 0 else (" ▼" if tr_ < 0 else "")
 		var pl := main._label("%.1f%s" % [sim.market.price(id) * 10.0, arrow], 14, Color("e07a5a") if tr_ > 0 else (Color("86ad5c") if tr_ < 0 else Color("e6e2d3")))
-		pl.tooltip_text = tr("%.0f%% of its usual worth") % (sim.market.factor(id) * 100.0)
+		pl.tooltip_text = tr("%.0f%% of its usual worth" % (sim.market.factor(id) * 100.0))
 		grid.add_child(pl)
 		var sp := Sparkline.new()
 		sp.values = sim.price_hist.get(id, [])
 		sp.custom_minimum_size = Vector2(110, 22)
 		grid.add_child(sp)
 		grid.add_child(main._label(str(int(me.stock.get(id, 0.0))), 14))
-		var sb := main._button(tr("Sell 10 (+%d)") % sim.market.sell_price(id, 10), func(): _do(sim.market.sell(me, id, 10)))
+		var sb := main._button(tr("Sell 10 (+%d)" % sim.market.sell_price(id, 10)), func(): _do(sim.market.sell(me, id, 10)))
 		sb.disabled = not has or float(me.stock.get(id, 0.0)) < 10.0
 		grid.add_child(sb)
-		var bb := main._button(tr("Buy 10 (-%d)") % sim.market.buy_price(id, 10), func(): _do(sim.market.buy(me, id, 10)))
+		var bb := main._button(tr("Buy 10 (-%d)" % sim.market.buy_price(id, 10)), func(): _do(sim.market.buy(me, id, 10)))
 		bb.disabled = not has or float(me.stock.get("gold", 0.0)) < sim.market.buy_price(id, 10)
 		grid.add_child(bb)
 		# in lots of 50, so cheap goods are worth the trip (build 61)
-		var sb5 := main._button(tr("Sell 50 (+%d)") % sim.market.sell_price(id, 50), func(): _do(sim.market.sell(me, id, 50)))
+		var sb5 := main._button(tr("Sell 50 (+%d)" % sim.market.sell_price(id, 50)), func(): _do(sim.market.sell(me, id, 50)))
 		sb5.disabled = not has or float(me.stock.get(id, 0.0)) < 50.0
 		grid.add_child(sb5)
-		var bb5 := main._button(tr("Buy 50 (-%d)") % sim.market.buy_price(id, 50), func(): _do(sim.market.buy(me, id, 50)))
+		var bb5 := main._button(tr("Buy 50 (-%d)" % sim.market.buy_price(id, 50)), func(): _do(sim.market.buy(me, id, 50)))
 		bb5.disabled = not has or float(me.stock.get("gold", 0.0)) < sim.market.buy_price(id, 50)
 		grid.add_child(bb5)
 		# tools, weapons and armor of a chosen metal, from merchants who come from afar (build 72)
@@ -152,11 +152,11 @@ func refresh() -> void:
 			for t in [SimArms.BRONZE, SimArms.STEEL]:
 				var tt: int = t
 				var cost := sim.market.metal_price(id, 10, tt)
-				var mb := main._button(tr("Buy 10 %s (-%d)") % [SimArms.NAMES[tt], cost], func(): _do(sim.market.buy_metal(me, id, 10, tt)))
+				var mb := main._button(tr("Buy 10 %s (-%d)" % [SimArms.NAMES[tt], cost]), func(): _do(sim.market.buy_metal(me, id, 10, tt)))
 				mb.icon = Tex.get_tex(SimArms.icon_id(id, tt))
 				mb.add_theme_constant_override("icon_max_width", 20)
 				mb.disabled = not has or float(me.stock.get("gold", 0.0)) < cost
-				mb.tooltip_text = tr("Merchants bring %s from afar: %s") % [GameData.res_name(id).to_lower(), tr("bronze, cheaper than the market's") if tt == SimArms.BRONZE else tr("steel, at two and a half times the price")]
+				mb.tooltip_text = tr("Merchants bring %s from afar: %s" % [GameData.res_name(id).to_lower(), tr("bronze, cheaper than the market's") if tt == SimArms.BRONZE else tr("steel, at two and a half times the price")])
 				grid.add_child(mb)
 			for k in 2:
 				grid.add_child(Control.new())
@@ -189,7 +189,7 @@ func _refresh_routes() -> void:
 		var row := HBoxContainer.new()
 		var t := (tr("Sell %d %s every %d min while more than %d stay") if bool(r.sell) else tr("Buy %d %s every %d min up to %d in store")) % [int(r.n), GameData.res_name(String(r.res)).to_lower(), int(r.every), int(r.keep)]
 		var wy := String(r.get("why", ""))
-		var l := main._label(t + "  ·  " + tr("%d so far, %+d gold") % [int(r.done), int(r.gold)] + ("  ·  " + tr("last time: %s") % tr(wy) if wy != "" else ""), 13)
+		var l := main._label(t + "  ·  " + tr("%d so far, %+d gold" % [int(r.done), int(r.gold)]) + ("  ·  " + tr("last time: %s" % tr(wy)) if wy != "" else ""), 13)
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(l)

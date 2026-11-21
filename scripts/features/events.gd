@@ -599,7 +599,7 @@ func _fill() -> void:
 		if int(h[1]) != me.id:
 			continue
 		any = true
-		var l := _main._label(tr("%02d:%02d %s: %s") % [int(h[0]) / 60, int(h[0]) % 60, String(EVENTS[h[2]][0]), String(h[3])], 13)
+		var l := _main._label(tr("%02d:%02d %s: %s" % [int(h[0]) / 60, int(h[0]) % 60, String(EVENTS[h[2]][0]), String(h[3])]), 13)
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		l.custom_minimum_size = Vector2(480, 0)
 		_box.add_child(l)

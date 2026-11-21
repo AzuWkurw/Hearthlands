@@ -94,10 +94,38 @@ def main():
 			errs.append("%s: unknown feature %s" % (where, b["feature"]))
 		if "cycle" in b and "worker" not in b:
 			errs.append("%s: works in cycles but has no worker" % where)
+	errs += check_languages()
 	for e in errs:
 		print("  " + e)
 	print("data check: ok" if not errs else "data check: %d problem(s)" % len(errs))
 	sys.exit(1 if errs else 0)
+
+
+def check_languages():
+	"""Each translation keeps the English text's %s / %d / %f placeholders, in the same order (a
+	"%.0s" may stand for an %s it leaves out), and a "|" split gives four forms or none."""
+	import glob, re
+	spec = re.compile(r"%[-+0-9.]*[sdfxX]")
+	errs = []
+	for path in sorted(glob.glob(os.path.join(ROOT, "data", "lang_*.json"))):
+		name = os.path.basename(path)
+		try:
+			d = json.load(open(path, encoding="utf-8"))
+		except ValueError as e:
+			errs.append("%s: %s" % (name, e))
+			continue
+		for k, v in d.items():
+			if k.startswith("_") or not v:
+				continue
+			want = [m[-1] for m in spec.findall(k.replace("%%", ""))]
+			forms = v.split("|") if v.count("|") == 3 else [v]
+			if "|" in v and len(forms) == 1 and "|" not in k:
+				errs.append("%s: %r: give four forms split by | (or none)" % (name, k))
+			for f in forms:
+				got = [("s" if m == "%.0s" else m[-1]) for m in spec.findall(f.replace("%%", ""))]
+				if got != want and not (len(forms) == 4 and f is forms[0] and not got):
+					errs.append("%s: %r: placeholders %s, translation %r has %s" % (name, k, want, f, got))
+	return errs
 
 
 if __name__ == "__main__":

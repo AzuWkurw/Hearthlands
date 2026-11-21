@@ -2,7 +2,7 @@
 
 Every source file with what it is for, grouped by part. Written by `tools/file_list.py` from the comment at the
 top of each file; run it again after adding files. For how the parts work together, read
-`docs/SOURCE_GUIDE.md`. Besides these 290 files there are 2181 pictures in `textures/` (made by
+`docs/SOURCE_GUIDE.md`. Besides these 291 files there are 2181 pictures in `textures/` (made by
 `tools/make_textures.py` and `tools/make_scenery.py`, or your own) and 79 sounds in `sounds/` (made by
 `tools/make_sounds.py`) and 10 pieces of music in `music/` (made by `tools/make_music.py`). Godot's
 `.import` files next to them are made by the editor.
@@ -54,7 +54,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `scripts/map_chunks.gd` | 551 | Bakes the parts of the map that rarely change (ground, roads, scenery, ore, territory) into large images of 16 x 16 tiles called chunks. Drawing a few dozen chunks each frame is far cheaper than drawing thousands of separate tiles. A chunk is baked again only when something inside it changes. Where two kinds of ground meet, the higher one (beach over water, grass over beach, mountain over grass) spills softly over the edge. Open water is baked half transparent: the ground shader uses that as a marker to make the water shimmer. |
 | `scripts/map_view.gd` | 3791 | Draws the world and turns mouse input into tile clicks. The ground, roads, scenery and borders come from pre-baked chunks (map_chunks.gd), drawn by a child layer whose shader makes the water shimmer. Everything that moves or changes often (buildings, carriers, soldiers, workers, smoke, selections, tool previews) is drawn every frame on top. Animations follow the game clock, so they freeze while the game is paused and speed up with it. |
 | `scripts/minimap.gd` | 279 | Whole-map overview: terrain, roads, territory, military buildings and the camera frame. Its images double as the far-zoom picture of the main map. |
-| `scripts/tech_tree_view.gd` | 611 | The tech tree drawn as a map: ages run left to right, each band is a branch of the realm, and lines run from what a tech needs to what it leads to. The places come from data/techs.json ("lane", "col", "row", worked out to cross as few lines as possible); techs added by a mod without them are put in an "Other" band. Repeatable studies sit in the Mastery band at the bottom. Drag (or the arrow keys) to move, the wheel to scroll, Ctrl + wheel or a pinch to zoom. |
+| `scripts/tech_tree_view.gd` | 612 | The tech tree drawn as a map: ages run left to right, each band is a branch of the realm, and lines run from what a tech needs to what it leads to. The places come from data/techs.json ("lane", "col", "row", worked out to cross as few lines as possible); techs added by a mod without them are put in an "Other" band. Repeatable studies sit in the Mastery band at the bottom. Drag (or the arrow keys) to move, the wheel to scroll, Ctrl + wheel or a pinch to zoom. |
 | `scripts/tex.gd` | 210 | Texture lookup with user overrides. For an id like "bld_sawmill" the game looks for, in order: 1. user://textures/bld_sawmill.png   (your custom texture, any size) 2. res://textures/bld_sawmill.png    (the default shipped with the project) 3. a magenta placeholder, so a missing file is obvious in game. |
 
 ## Game: interface
@@ -64,8 +64,8 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `scripts/achievements.gd` | 133 | Achievements: little goals across all your games, kept in user://achievements.json with the day each was earned. Checked every few seconds while you play; a new one rings and shows a line. The end screen lists the ones earned in that game, and the new-game screen shows them all. |
 | `scripts/blueprints.gd` | 326 | Blueprints (build 58): a group of buildings and the roads between them, copied from your own land and kept across games in user://blueprints.json, sorted into categories. Placing one puts down every building site and road at once; trees and roads in the way are listed first, so the player can be asked whether to clear them (Blueprints.obstacles, Blueprints.clear).  A blueprint: {"name", "cat", "w", "h", "items": [[type, dx, dy, door], ...], "roads": [[dx, dy], ...]} with every offset from the top-left corner of the area it was copied from. |
 | `scripts/editor_tools.gd` | 236 | The map editor's work on the map itself, apart from its panel (ui_editor.gd): where a mirrored brush paints, the fill bucket, smoothing, carving rivers, cutting out and stamping areas (copy and paste, turned or mirrored), and the fairness count of what lies around each start. These only work out which tiles change; the editor makes the changes, so it can undo them. |
-| `scripts/i18n.gd` | 54 | Interface languages. Each data/lang_<code>.json (and the same name in the mods folder) maps the English text to its translation; "_language" holds the language's own name. The files are loaded at start as Godot translations, so every label and button whose text is a key is shown translated, and text with numbers in it goes through tr("... %d ...") in the code. tools/extract_strings.py collects new text into the files. The game's own messages (event log, building info) stay English. |
-| `scripts/main.gd` | 2743 | Builds the interface in code and runs the game loop. |
+| `scripts/i18n.gd` | 381 | Interface languages: English (the game's own text) and Polish. Each data/lang_<code>.json (and the same name in the mods folder) maps the English text to its translation; "_language" holds the language's own name. tools/extract_strings.py collects the text to translate from the scripts and the data files.  The game itself always works in English: the simulation, the event log and saves keep English text, so a save plays the same in every language. Text is translated only where it is shown: every label, button, tooltip and window title translates itself (Godot's auto-translate), and drawn text goes through tr(). A language file is loaded as a Table, which besides exact matches understands text built from a template: "%s is finished." in the file also translates "Sawmill is finished.", with the building's name translated in turn. Text of several lines is translated line by line. |
+| `scripts/main.gd` | 2756 | Builds the interface in code and runs the game loop. |
 | `scripts/places.gd` | 190 | Neutral places a hand-made map can hold (set in the map editor): - Ruins: the first realm whose land reaches them finds what was left there (planks, stone, gold, tools). Nothing can be built on the ruins themselves. - Bandit camps: nobody can build within 3 tiles of one, and every 90 seconds the bandits steal goods from the nearest realm whose land comes within 8 tiles. A realm clears a camp by sending soldiers from a military building within reach (click the camp); they fight the bandits one by one, and whoever wins takes what the camp held. Rivals clear camps near them when they have soldiers to spare. Each place is a Dictionary in sim.places (saved with the game): {kind: "ruins"\|"bandits", x, y, done: looted or cleared, n: bandits left, raid_t, party: {} or {p, src, n, mix, t0, t1}} |
 | `scripts/prio_presets.gd` | 60 | Ready-made sets of priorities (build 54): transport numbers (Player.carry_rank) and worker numbers (Player.work_rank) together. The player's own sets are kept in the settings (Settings.prio_presets); rivals pick one of these as their situation changes (SimAI._ai_priorities). |
 | `scripts/rid_canvas.gd` | 82 | The drawing calls the map view uses (draw_rect, draw_texture_rect, ...), recorded into a canvas item of the RenderingServer instead of the map view itself. The map view draws its buildings, fields and trees through one of these when zoomed out, and keeps the recording until something changes: a frame then only moves and scales it with the camera (MapView, "the building layer"). |
@@ -110,7 +110,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 |---|---:|---|
 | `data/buildings.json` | 3759 | Every building: name, group, size, cost, build time, worker, inputs and outputs, work cycle, garrison, store room, art style and info text. |
 | `data/campaign.json` | 397 | The campaign: its chapters, their place on the campaign map, story before and after, what carries over, and the mission of each. |
-| `data/lang_de.json` | 376 | German translation of the interface. |
+| `data/lang_pl.json` | 3089 | Polish translation of the interface and game messages. |
 | `data/map_iron_coast.json` | 1 | The hand-made map of the Iron Coast mission (made by tools/make_mission_map.gd). |
 | `data/missions.json` | 63 | The missions: story, map or seed, rivals, options, time limit and goals. |
 | `data/needs.json` | 21 | What each class of people (peasants, artisans, nobles, soldiers) uses up to stay content. |
@@ -161,6 +161,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `tools/geo_test.gd` | 44 | Tests geologists: ore hidden until surveyed, mines only on surveyed ore, a survey trip, rivals surveying. Run: godot --headless --script res://tools/geo_test.gd |
 | `tools/goals_test.gd` | 58 | Build 63: sandbox goals (a chain of goals in endless games, gold for each), the hats of each age, the music for the later ages and the workers' voices. godot --headless --script res://tools/goals_test.gd |
 | `tools/guild_test.gd` | 102 | Build 62: guilds (workplaces of one trade close together, with the Guilds tech, work faster), the build queue (queued sites get their materials one after another, before other sites), and copying a building's settings to all of its kind. godot --headless --script res://tools/guild_test.gd |
+| `tools/lang_test.gd` | 62 | Languages: English and Polish are offered; in Polish the interface, text built from templates (the event log, the building info), names in lower case, counts with their Polish forms and text of several lines with markup are all translated; switching back gives English again; the simulation keeps writing English to the log whatever the language; a whole played minute of log, info box and side panel translates without errors, and quickly. godot --headless --script res://tools/lang_test.gd |
 | `tools/load_saves_test.gd` | 34 | Loads every save in the saves folder (user://saves) and plays each on for a minute: old saves must still load. godot --headless --script res://tools/load_saves_test.gd |
 | `tools/log_go_test.gd` | 34 | Checks the Go buttons of the event log: xvfb-run godot --rendering-driver opengl3 --script res://tools/log_go_test.gd -- out=/dir |
 | `tools/luxury_test.gd` | 33 | Luxuries: spices, silk, porcelain and coffee. Nobles who have had one lately pay more tax, each kind counting once; the chains make them: godot --headless --script res://tools/luxury_test.gd |
@@ -186,7 +187,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `tools/research_ui_test.gd` | 113 | Drives the research window with real mouse and key events and prints what happened. |
 | `tools/route_test.gd` | 69 | Build 61: standing orders at the market (sell or buy every few minutes, keeping a reserve), lots of 50, and gold and wealth in the realms graph. godot --headless --script res://tools/route_test.gd |
 | `tools/rules_test.gd` | 55 | Tests the build 11 rules: difficulty options, tools for new workers, the toolsmith's choice and production targets. |
-| `tools/run_all.py` | 142 | Run every automatic test and say which passed. |
+| `tools/run_all.py` | 143 | Run every automatic test and say which passed. |
 | `tools/save_test.gd` | 33 | Save/load round trip: play, save, load into a fresh Sim, then check both continue identically. |
 | `tools/sea_test.gd` | 95 | Ships and harbours: a harbour on your coast, an expedition founds a colony across the water, ships then carry goods there, and a game with ships at sea saves and loads the same. godot --headless --script res://tools/sea_test.gd [-- seed=valley] |
 | `tools/sea_war_test.gd` | 107 | Build 49: landing from the sea at the start, landings on a rival's coast, fleets sinking ships at sea, and army supplies. godot --headless --script res://tools/sea_war_test.gd |
@@ -259,7 +260,7 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `tools/shot_geo.gd` | 62 | Screenshots of geologists at work, their markers, surveyed ore shown while placing a mine, and wildlife. xvfb-run godot --rendering-driver opengl3 --script res://tools/shot_geo.gd -- out=/dir |
 | `tools/shot_hide.gd` | 41 | Hiding problems in the Problems list. xvfb-run -a -s "-screen 0 1920x1080x24" godot --rendering-driver opengl3 --script res://tools/shot_hide.gd.gd -- out=/dir |
 | `tools/shot_hills.gd` | 34 | Screenshot of hilly land with roads (slope marks): xvfb-run godot --rendering-driver opengl3 --script res://tools/shot_hills.gd -- out=/dir |
-| `tools/shot_lang.gd` | 24 | The interface in German: xvfb-run -a -s "-screen 0 1920x1080x24" godot --rendering-driver opengl3 --script res://tools/shot_lang.gd -- out=/dir |
+| `tools/shot_lang.gd` | 33 | The interface in Polish: the new-game screen, a game a few minutes in (event log open, a building selected), and Settings. xvfb-run -a -s "-screen 0 1920x1080x24" godot --rendering-driver opengl3 --script res://tools/shot_lang.gd -- out=/dir |
 | `tools/shot_look.gd` | 28 | Screenshots of a mid-game town at three zooms, for judging the graphics: xvfb-run godot --rendering-driver opengl3 --script res://tools/shot_look.gd -- out=/dir [tag=now] |
 | `tools/shot_missions.gd` | 53 | The map editor, the missions list and a mission being played. xvfb-run -a -s "-screen 0 1920x1080x24" godot --rendering-driver opengl3 --script res://tools/shot_missions.gd -- out=/dir |
 | `tools/shot_navy.gd` | 114 | Screenshots for build 52: warships fighting by a harbour, a coastal fort's guns, a landing led by a general, the harbour's warship controls. xvfb-run godot --rendering-driver opengl3 --script res://tools/shot_navy.gd -- out=/dir |
@@ -323,8 +324,8 @@ top of each file; run it again after adding files. For how the parts work togeth
 | `tools/bld_tex.py` | 243 | Surface textures for the building pictures (used by make_textures.py). |
 | `tools/bld_variants.py` | 2837 | Own pictures for buildings that share a drawing style in make_textures.py. |
 | `tools/bump_build.py` | 63 | Raise the build number before a release. |
-| `tools/check_data.py` | 104 | Check the data files (and optionally a mod's JSON files) for mistakes. |
-| `tools/extract_strings.py` | 76 | Collect the interface text from the scripts into the translation files. |
+| `tools/check_data.py` | 132 | Check the data files (and optionally a mod's JSON files) for mistakes. |
+| `tools/extract_strings.py` | 143 | Collect the text the player sees into the translation files. |
 | `tools/file_list.py` | 137 | Writes docs/FILES.md: every source file of the project with what it is for. |
 | `tools/folk_sprites.py` | 382 | Townsfolk, porters, workers, pack mules and ox carts, drawn in detail. Run on its own (python3 tools/folk_sprites.py) or from make_textures.py; it writes the unit_folk_*, unit_porter*, unit_worker_*, unit_mule, unit_cart and unit_load_* strips into textures/. Everything is drawn in design pixels with make_textures' Pen, so edges come out smooth. Strips that the game tints with the realm's colour come with a *_tint companion: the tunic alone, in grey, drawn over the picture in the realm's colour. |
 | `tools/make_build.py` | 250 | Make a release build of Hearthlands in one go. |
@@ -343,9 +344,9 @@ top of each file; run it again after adding files. For how the parts work togeth
 | File | Lines | What it is |
 |---|---:|---|
 | `CHANGELOG.md` | 1050 | What changed in each build. |
-| `README.md` | 1429 | How to play, the rules, controls, settings, modding and the project layout. |
+| `README.md` | 1430 | How to play, the rules, controls, settings, modding and the project layout. |
 | `docs/FILES.md` | 353 | This list (written by tools/file_list.py). |
-| `docs/SOURCE_GUIDE.md` | 439 | A tour of the code for programmers: the parts, how a game tick runs, where things live. |
+| `docs/SOURCE_GUIDE.md` | 443 | A tour of the code for programmers: the parts, how a game tick runs, where things live. |
 | `docs/SUGGESTIONS.md` | 203 | Ideas and their status after each round of work. |
 | `export_presets.cfg` | 61 | Godot export settings for the Windows and Linux builds. |
 | `main.tscn` | 12 | The one scene: a Node with scripts/main.gd, which builds the whole interface in code. |
