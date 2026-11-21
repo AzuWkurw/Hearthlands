@@ -225,7 +225,17 @@ class Bld:
 	var wxp := 0.0     # experience of the worker here
 	var cyc := 0.0     # seconds per work cycle, copied from the data (0 = this building never works)
 	var rate_c := 1.0  # work speed, worked out when a work cycle starts
-	var retry := 0.0   # game time before which nobody checks again why work cannot start
+	# game time before which nobody checks again why work cannot start. (Build 74) Setting it tells the
+	# simulation when to look at the building next (see Sim._wake): a big realm's buildings mostly sleep,
+	# and going over all of them every moment was most of the buildings' cost.
+	var retry := 0.0:
+		set(v):
+			retry = v
+			if _sim != null and _tidx >= 0:
+				_sim._wake(self)
+	var _sim = null     # the simulation, while this building is in its list of ticking buildings (not saved)
+	var _tidx := -1     # its place in that list (not saved)
+	var _wk := -1       # the tick it is to be looked at next (-1: none; not saved)
 	var fails := 0     # failed start checks in a row; each one makes the next wait a little longer
 	var t_start := 0.0 # game time the current work cycle started
 	var t_end := 0.0   # game time it will finish; the building sleeps until then
@@ -428,6 +438,7 @@ class Trip:
 	var aim := -1      # a ship on an expedition: the tile it lands on
 	var res2 := ""    # a second good in the same load for that building (filling the load up)
 	var n2 := 0
+	var _i := -1       # (not saved) where it is in Sim.trips, for the trip schedule (build 74)
 	                   # kind "builder" or "soldier": a person walking to building `site` (0: walking home);
 	                   # for a soldier, n is his kind (0 bronze warrior to 6 rifleman, -1 any)
 
@@ -676,9 +687,13 @@ var perf: Dictionary = {}          # microseconds spent in each part of the simu
 var perf_realm: Dictionary = {}    # realm id -> microseconds spent on its buildings, carriers and turns (F3, build 69)
 ## The carriers' loop is skipped while no trip arrives or comes home (build 69): the earliest time one
 ## does, and the trips list as it was then (a new trip, wherever it was added, makes it look again).
-var _trip_next := -1.0
-var _trip_n := -1
-var _trip_last: Trip = null
+# the trip schedule (build 74): every trip under the time it is next due (arriving, or back home),
+# soonest first; not saved, it is made again from the trips (Trip._i is where each one is)
+var _th_k := PackedFloat64Array()
+var _th_v: Array = []
+var _th_known := -1          # how many of the trips the schedule has (the rest were added since)
+var _th_last: Trip = null    # trips[_th_known - 1] when it was last looked at
+var _tt := {}                # realm id -> tools on their way to the stores, of the trips in the schedule
 
 
 var _acc1 := 0.0
@@ -752,7 +767,7 @@ func new_game(p_seed: String, p_foes: int, p_strength: int, p_mix: bool, p_size 
 	_avail = {}; _avail_at = {}
 	players.clear(); blds.clear(); by_id.clear(); trips.clear(); attacks.clear(); navy.clear(); naval.fx.clear(); naval._comp = PackedInt32Array(); prices.clear(); price_hist.clear(); logs.clear()
 	rel = {}; rel_since = {}; proposals = []; standing = []; _prop_id = 0
-	time = 0.0; over = false; _bid = 0; _acc1 = 0.0; _sec_n = 0; _owned_dirty = true; _owned_full = true; _trip_n = -1; _trip_next = -1.0
+	time = 0.0; over = false; _bid = 0; _acc1 = 0.0; _sec_n = 0; _owned_dirty = true; _owned_full = true; _th_known = -1; _tt = {}
 	_alloc_path_buffers()
 	rng.seed = seed_str.hash()
 	var names := AI_NAMES.duplicate()
@@ -1909,6 +1924,7 @@ func _reno_tick(p: Player) -> void:
 				b.def = GameData.bld[b.ty]
 				b.upg = ""
 				_tick_dirty = true
+				logistics._store_ver += 1     # (build 74) its kind changed: the lists by kind are made again
 				_rebuild_realm_lists()
 				recompute_territory()
 				if not p.ai and b.def.has("garrison"):
@@ -2307,8 +2323,149 @@ func update_needs(p: Player) -> void:
 # ================================================================ tick
 
 ## Adds the time since t0 (from Time.get_ticks_usec) to the perf counter called k.
+func _th_push(key: float, t: Trip) -> void:
+	var i := _th_k.size()
+	_th_k.append(key); _th_v.append(t)
+	while i > 0:
+		var par := (i - 1) >> 1
+		if _th_k[par] <= _th_k[i]:
+			break
+		var tk := _th_k[par]; _th_k[par] = _th_k[i]; _th_k[i] = tk
+		var tv = _th_v[par]; _th_v[par] = _th_v[i]; _th_v[i] = tv
+		i = par
+
+
+func _th_pop() -> Trip:
+	var top: Trip = _th_v[0]
+	var last := _th_k.size() - 1
+	_th_k[0] = _th_k[last]; _th_v[0] = _th_v[last]
+	_th_k.resize(last); _th_v.resize(last)
+	var i := 0
+	while true:
+		var l := 2 * i + 1
+		var r := l + 1
+		var m := i
+		if l < last and _th_k[l] < _th_k[m]: m = l
+		if r < last and _th_k[r] < _th_k[m]: m = r
+		if m == i:
+			break
+		var tk := _th_k[m]; _th_k[m] = _th_k[i]; _th_k[i] = tk
+		var tv = _th_v[m]; _th_v[m] = _th_v[i]; _th_v[i] = tv
+		i = m
+	return top
+
+
+func _tt_add(t: Trip, n: int) -> void:
+	if t.delivered or t.dest != 0 or not GameData.is_tool_res(t.res):
+		return
+	if not _tt.has(t.p):
+		_tt[t.p] = {}
+	var d: Dictionary = _tt[t.p]
+	d[t.res] = int(d.get(t.res, 0)) + n * t.n
+
+
+func _th_ok() -> bool:
+	var n := trips.size()
+	return _th_known >= 0 and _th_known <= n and (_th_known == 0 or trips[_th_known - 1] == _th_last)
+
+
+## Tools on their way to realm pid's stores on carriers' trips (not yet there), by kind: the same as
+## counting over every trip, kept up to date as trips come and arrive (build 74).
+func tool_trips(pid: int) -> Dictionary:
+	if not _th_ok():
+		_trips_reindex()
+	var out: Dictionary = (_tt.get(pid, {}) as Dictionary).duplicate()
+	for i in range(_th_known, trips.size()):
+		var t := trips[i]
+		if t.p == pid and not t.delivered and t.dest == 0 and GameData.is_tool_res(t.res):
+			out[t.res] = int(out.get(t.res, 0)) + t.n
+	return out
+
+
+func _trip_in(t: Trip) -> bool:
+	return t._i >= 0 and t._i < trips.size() and trips[t._i] == t
+
+
+## Sets Trip._i for every trip after the list was changed elsewhere, and makes the schedule again
+## (trips no longer in the list fail _trip_in, so they are left out).
+func _trips_reindex() -> void:
+	_th_k = PackedFloat64Array(); _th_v = []
+	_tt = {}
+	for i in trips.size():
+		var t := trips[i]
+		t._i = i
+		_th_push(_trip_due_at(t), t)
+		_tt_add(t, 1)
+	_th_known = trips.size()
+	_th_last = trips[_th_known - 1] if _th_known > 0 else null
+
+
+func _trip_due_at(t: Trip) -> float:
+	return t.t2 if t.delivered else t.t1
+
+
+## The trips due now (arriving or coming home), last in the list first: what the old look over every
+## trip found, in its order. Trips added since the last tick join the schedule here; when the list was
+## changed any other way the schedule is made again.
+func _trips_due() -> Array:
+	var n := trips.size()
+	if _th_ok():
+		for i in range(_th_known, n):
+			var t := trips[i]
+			t._i = i
+			_th_push(_trip_due_at(t), t)
+			_tt_add(t, 1)
+		_th_known = n
+		_th_last = trips[n - 1] if n > 0 else null
+	else:
+		_trips_reindex()
+	var due := []
+	var seen := {}
+	while _th_k.size() > 0 and _th_k[0] <= time:
+		var key := _th_k[0]
+		var t := _th_pop()
+		# an old entry (the trip was due at another time then, or is gone): left out
+		if t._i < 0 or t._i >= n or trips[t._i] != t or _trip_due_at(t) != key or seen.has(t):
+			continue
+		seen[t] = true
+		due.append(t)
+	if due.size() > 1:
+		due.sort_custom(func(a, b): return a._i > b._i)
+	return due
+
+
 func _pf(k: String, t0: int) -> void:
 	perf[k] = int(perf.get(k, 0)) + Time.get_ticks_usec() - t0
+
+
+## (Build 74) The wheel of ticking buildings: tick number -> the buildings to look at then. A building
+## goes in under the first moment its retry may have come (a moment early rather than late: it is put
+## back if not yet due), and again whenever its retry is set earlier (Bld.retry's setter). Those due are
+## then worked in the list's order, as when every building was looked at each moment.
+var _wheel := {}
+
+func _wheel_at(b: Bld, k: int) -> void:
+	if b._wk >= 0 and b._wk <= k and b._wk >= _ticks:
+		return           # already waiting for that moment or an earlier one
+	b._wk = k
+	if not _wheel.has(k):
+		_wheel[k] = []
+	_wheel[k].append(b)
+
+
+func _wheel_put(b: Bld, now_ok: bool) -> void:
+	var k: int
+	if b.retry <= time:
+		k = _ticks if now_ok else _ticks + 1
+	else:
+		k = _ticks + maxi(1, int(floor((b.retry - time) / TICK)) - 1)
+	_wheel_at(b, k)
+
+
+## A building's retry was set: look at it again by then (during the buildings' turn, not before the next
+## moment).
+func _wake(b: Bld) -> void:
+	_wheel_put(b, false)
 
 
 func tick(dt: float) -> void:
@@ -2317,40 +2474,81 @@ func tick(dt: float) -> void:
 	var t0 := Time.get_ticks_usec()
 	var parity := _ticks % 2
 	if _tick_dirty:
+		for b0 in _tickers:
+			b0._tidx = -1
+			b0._wk = -1
+			b0._sim = null
 		_tickers.clear()
+		_wheel = {}
 		for b in blds:
 			if b.state == "build" or b.cyc > 0.0:
+				b._tidx = _tickers.size()
+				b._sim = self
+				b._wk = -1
 				_tickers.append(b)
+				_wheel_put(b, true)
 		_tick_dirty = false
+	# (build 74) only the buildings due now, in the list's order: those whose time to look again has
+	# come (each waits in the wheel under the moment it is due; see _wake)
+	var due: Array[Bld] = []
+	var bucket = _wheel.get(_ticks)
+	if bucket != null:
+		_wheel.erase(_ticks)
+		for b: Bld in bucket:
+			if b._wk != _ticks:
+				continue          # moved to an earlier moment, and looked at then
+			b._wk = -1
+			if b.dead or b._tidx < 0:
+				continue
+			if b.retry > time:
+				_wheel_put(b, false)
+				continue
+			if b.state == "build" and b.id % 2 != parity:
+				_wheel_at(b, _ticks + 1)
+				continue
+			if b.cyc <= 0.0 and b.state == "ready":
+				continue
+			if not players[b.p - 1].alive:
+				continue
+			due.append(b)
+	if due.size() > 1:
+		due.sort_custom(func(x, y): return x._tidx < y._tidx)
 	# destroy() only marks buildings dead and flags the list, so walking it here is safe
-	for b: Bld in _tickers:
-		if b.dead or b.retry > time:
-			continue
-		if b.state == "build" and b.id % 2 != parity:
-			continue
-		if b.cyc <= 0.0 and b.state == "ready":
+	for b: Bld in due:
+		if b.dead:
 			continue
 		var p := players[b.p - 1]
-		if not p.alive:
-			continue
 		var tb := Time.get_ticks_usec()
 		if b.state == "build":
 			build_tick(b, p, dt * 2.0)
 		else:
 			prod_tick(b, p, dt * 2.0)
 		perf_realm[b.p] = int(perf_realm.get(b.p, 0)) + Time.get_ticks_usec() - tb
+		if not b.dead and b._tidx >= 0 and b._wk < 0:
+			_wheel_put(b, false)
 	_pf("buildings", t0)
 	t0 = Time.get_ticks_usec()
 	if _ticks % 3 == 0:
 		_dispatch()
-	var n_tr := trips.size()
-	var skip := n_tr == _trip_n and time < _trip_next and (n_tr == 0 or trips[n_tr - 1] == _trip_last)
-	var removed := 0
-	var nxt := INF
-	var k := -1 if skip else trips.size() - 1
-	while k >= 0:
-		var t := trips[k]
+	# (build 74) only the trips due now are looked at, from the trip schedule, in the same order the
+	# old look over every trip took (from the last to the first), so a game goes on exactly as before
+	var tdue := _trips_due()
+	var di := 0
+	while di < tdue.size():
+		var t: Trip = tdue[di]
+		di += 1
+		if not _trip_in(t):
+			# the list was changed under us (a ship sunk on its way, a realm defeated): put the rest
+			# right and go on in the same order
+			_trips_reindex()
+			var rest := tdue.slice(di - 1).filter(func(x): return _trip_in(x))
+			rest.sort_custom(func(a, b): return a._i > b._i)
+			tdue = rest
+			di = 0
+			continue
+		var k := t._i
 		if not t.delivered and time >= t.t1:
+			_tt_add(t, -1)
 			t.delivered = true
 			if GameData.is_tool_res(t.res):
 				logistics._tc_memo.clear()     # (only a tool arriving changes the tools on their way)
@@ -2372,21 +2570,34 @@ func tick(dt: float) -> void:
 			elif p.alive:
 				production.arrived(p, t.res, t.n)
 				logistics.arrive_at_store(t, p)
+		if not _trip_in(t):
+			_trips_reindex()
+			if not _trip_in(t):
+				continue
+			k = t._i
 		if t.delivered and time >= t.t2:
 			_free_carrier(t)
-			trips[k] = trips[trips.size() - 1]
+			if not _trip_in(t):
+				_trips_reindex()
+				if not _trip_in(t):
+					continue
+				k = t._i
+			var li := trips.size() - 1
+			var last := trips[li]
+			if li >= _th_known and last != t:
+				_th_push(_trip_due_at(last), last)     # added during this tick: into the schedule
+				_tt_add(last, 1)
+			trips[k] = last
+			last._i = k
 			trips.pop_back()
-			removed += 1
+			t._i = -1
+			_th_known = mini(_th_known, trips.size())
+			if _th_known > 0:
+				_th_last = trips[_th_known - 1]
 		elif t.delivered:
-			nxt = minf(nxt, t.t2)
+			_th_push(t.t2, t)
 		else:
-			nxt = minf(nxt, t.t1)
-		k -= 1
-	if not skip:
-		# trips added while the loop ran (an arrival sends another on) are not in nxt: look again next tick
-		_trip_next = nxt if trips.size() == n_tr - removed else -1.0
-		_trip_n = trips.size()
-		_trip_last = trips[trips.size() - 1] if trips.size() > 0 else null
+			_th_push(t.t1, t)
 	if changed_tiles.size() > 100000:
 		changed_tiles.clear()
 		map_dirty = true
@@ -2665,10 +2876,10 @@ func to_save() -> Dictionary:
 		pl.append(pd)
 	var bl := []
 	for b in blds:
-		bl.append(_dump(b, ["def"]))
+		bl.append(_dump(b, ["def", "_sim", "_tidx", "_wk"]))
 	var tr := []
 	for t in trips:
-		tr.append(_dump(t, []))
+		tr.append(_dump(t, ["_i"]))
 	var at := []
 	for a in attacks:
 		at.append(_dump(a, []))

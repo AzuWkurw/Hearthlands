@@ -142,6 +142,8 @@ func start_check(b: Sim.Bld, p: Sim.Player) -> String:
 ## being made right now. Worked out at most once a game second (COMING_TICKS) and kept up to date in
 ## between: a cycle that starts adds to it, goods that reach a store come off it.
 const COMING_TICKS := 10
+var _mk_at := -1
+var _mk: Array = []        # the buildings that make goods, in the order of Sim.blds (build 74)
 
 func coming(p: Sim.Player, res: String) -> float:
 	if sim._ticks - sim._coming_tick >= COMING_TICKS or sim._coming_tick > sim._ticks or not sim._coming.has(p.id):
@@ -157,13 +159,30 @@ func _count_coming() -> void:
 	sim._coming = {}
 	for q: Sim.Player in sim.players:
 		sim._coming[q.id] = {}
-	for b: Sim.Bld in sim.blds:
+	# (build 74) goods waiting for a carrier: only the buildings that have some (whole numbers, so the
+	# order they are added in does not matter); then the cycles under way, of the buildings that make
+	# goods, kept in a list until a building comes, goes or changes
+	var waiting := {}
+	for q: Sim.Player in sim.players:
+		waiting[q.id] = {}
+	for id in sim._pending:
+		var wb: Sim.Bld = sim.by_id.get(id)
+		if wb == null or wb.dead or not waiting.has(wb.p):
+			continue
+		var wc: Dictionary = waiting[wb.p]
+		for k in wb.out_buf:
+			wc[k] = int(wc.get(k, 0)) + int(wb.out_buf[k])
+	var lg := sim.logistics
+	if _mk_at != lg._store_ver:
+		_mk_at = lg._store_ver
+		_mk = []
+		for b: Sim.Bld in sim.blds:
+			if b.def.has("out"):
+				_mk.append(b)
+	for b: Sim.Bld in _mk:
 		if b.dead or not sim._coming.has(b.p):
 			continue
 		var c: Dictionary = sim._coming[b.p]
-		if not b.out_buf.is_empty():
-			for k in b.out_buf:
-				c[k] = float(c.get(k, 0.0)) + float(b.out_buf[k])
 		if b.working and b.def.has("out"):
 			var p := sim.players[b.p - 1]
 			if Crops.is_farm(b):
@@ -183,6 +202,11 @@ func _count_coming() -> void:
 					tb[key] = adds
 				for a2 in tb[key]:
 					c[a2[0]] = float(c.get(a2[0], 0.0)) + float(a2[1])
+	for pid in waiting:
+		var c0: Dictionary = sim._coming[pid]
+		var w0: Dictionary = waiting[pid]
+		for k in w0:
+			c0[k] = float(c0.get(k, 0.0)) + float(w0[k])
 	# goods carried to the stores
 	for t: Sim.Trip in sim.trips:
 		if not t.delivered and t.site == 0 and t.dest == 0 and sim._coming.has(t.p):

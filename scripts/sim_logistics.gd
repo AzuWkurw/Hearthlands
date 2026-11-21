@@ -925,6 +925,8 @@ func target_of(p: Sim.Player, res: String) -> int:
 
 
 ## Tools of each kind made but not yet in store: waiting at the toolsmith or on a carrier's back.
+var _tsm_at := -1
+var _tsm: Array = []       # the buildings that make tools (in the order of Sim.blds)
 var _tc_memo := {}         # realm id -> [tick, trips count, tools coming] (build 69: asked many times a tick)
 
 ## The tools on their way to the stores (made and waiting, or carried), by kind. (Build 73) Worked out
@@ -939,15 +941,25 @@ func _tools_coming(p: Sim.Player) -> Dictionary:
 	var all := {}
 	for q in sim.players:
 		all[q.id] = {}
-	for b: Sim.Bld in sim.blds:
+	# (build 74) the toolsmiths are kept in a list until a building comes, goes or changes: on a big
+	# map going over every building for them took most of the time
+	if _tsm_at != _store_ver:
+		_tsm_at = _store_ver
+		_tsm = []
+		for b: Sim.Bld in sim.blds:
+			if b.def.has("makes_tools"):
+				_tsm.append(b)
+	for b: Sim.Bld in _tsm:
 		if b.def.has("makes_tools") and not b.dead and all.has(b.p):
 			var o: Dictionary = all[b.p]
 			for k in b.out_buf:
 				o[k] = int(o.get(k, 0)) + int(b.out_buf[k])
-	for t in sim.trips:
-		if not t.delivered and t.dest == 0 and all.has(t.p) and GameData.is_tool_res(t.res):
-			var o2: Dictionary = all[t.p]
-			o2[t.res] = int(o2.get(t.res, 0)) + t.n
+	# (build 74) the tools on carriers' trips are counted as the trips come and go
+	for pid in all:
+		var o2: Dictionary = all[pid]
+		var tt := sim.tool_trips(pid)
+		for r in tt:
+			o2[r] = int(o2.get(r, 0)) + int(tt[r])
 	for pid in all:
 		_tc_memo[pid] = [sim._ticks, sim.trips.size(), all[pid]]
 	return all.get(p.id, {})

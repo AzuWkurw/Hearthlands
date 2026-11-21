@@ -1,5 +1,16 @@
 # Changelog
 
+## Build 74 (v0.69.0, 2026-11-21)
+
+Build 74: speed for buildings and carriers in huge late games.
+- Buildings wait on a timetable: each one is looked at only when it is due (its work done, or its wait over), instead of every building being checked every moment. On a 60-minute game of nine realms (1,860 buildings) that was 10,000 checks a second to find about 270 with something to do.
+- Carriers' trips are on a timetable too: only the trips arriving or coming home right now are looked at, not all of them (about 1,300 in a late game) every moment. They still go in the same order as before.
+- Toolsmiths no longer count every building and every trip on the map to see which tool is wanted: the smiths are kept in a list, and the tools on the roads are counted as trips set off and arrive.
+- Farms keep their list of fields up to date as fields are sown, grow and are harvested, instead of making it again after each change.
+- "Goods on their way" (used to stop a workshop before the stores fill up) looks only at the buildings that make goods and those with goods waiting, not at every building.
+- Fix: a building upgraded into another kind (a bronze smith becoming a toolsmith, say) was missing from some lists by kind until another building came or went.
+- On a 60-minute save of nine realms on a 448 x 448 map, a game second now takes about 124 ms of work instead of about 150: buildings 41 down to 31 ms, carriers 37 down to 27 ms. A loaded game still goes on exactly as the saved one would have.
+
 ## Build 73 (v0.68.0, 2026-11-21)
 
 Build 73: speed on the biggest maps, bug fixes, and 15 more Bronze Age studies.
